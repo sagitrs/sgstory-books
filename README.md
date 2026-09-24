@@ -41,6 +41,17 @@ SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs
 
 **验收**：跑完 `git status` 干净。
 
+## 格式事实（写故事前必读 · **引擎契约事实**，不是本仓偏好）
+
+四条都是**实测**出来的（写 `north-room` 时被引擎的门逐条抓过），按此写可一次过：
+
+1. **`00-story.json` 的 `files` 不列 `data/*.json`** —— 数据面由引擎的 `data/` 面自动发现（`allSourceFiles()` 的 `withStoryData` 只在显式要求时收）。列了会报 `missing-manifest-file`。
+2. **`files` 必列"生成物"名**（`00-meta.twee`／`15-tables.twee`／`17-rules.twee`）—— 它们由 `data/*.json` 编译产出，**不入仓但必须登记**；否则报 `unclaimed-file`。
+3. **必须写 `audit.json`（空表也要显式写）** —— 门侧的故事判据数据（`text.topicWords`／`text.styleBlacklist`／`readBaseline`）**必须由故事自己声明**（`#602`）；缺文件 ⇒ 门直接点名报错。
+4. **段落的 `payload` 标注只认三个值：`信息`／`张力`／`选择`**（可组合，如 `张力|信息`）—— 写别的值（例：`结局`）会被判"缺 payload 标注"。
+
+> 另（预期项，不是缺口）：`lint-story` 的"**无冻结基线 ⇒ 未查等价**"降级 —— 建基线不是 M1 的要求，**按需在 `#1163`／后续**再做。
+
 ## 用例形态
 
 ```json
