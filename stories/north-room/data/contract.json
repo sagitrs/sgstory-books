@@ -28,14 +28,6 @@
 			"name": "mechanics",
 			"kind": "null",
 			"docs": "新机制声明表：**本故事未启用** ⇒ 按 `#492` 口径**也要显式声明**（`null` ＝ 能力不在；调用方必须跳过，不许当空表）"
-		},
-		{
-			"name": "checkSite",
-			"kind": "lookup",
-			"from": "window.Game?.Checks?.sites",
-			"key": "name",
-			"required": true,
-			"error": "Sg.story.checkSite：位点「{key}」未登记（结构缺失必须报错，#441-E）"
 		}
 	]
 }
