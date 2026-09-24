@@ -1,0 +1,101 @@
+name: pages
+
+# `#1297`：把本仓（books）的故事**用引擎编译**，产物发到本仓 Pages ⇒ `https://sagitrs.github.io/sgstory-books/` 可直接玩。
+# 触发：push 到 main（内容一变就重发）＋ workflow_dispatch（手动补跑取证）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时刻只发一次（后到的等前一次发完；不取消在发的 —— 取消会留下半发布）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: books
+
+      # 引擎版本＝**声明件唯一权威**（`.github/engine-ref.json` 的 `ref` ＝ 完整 sha）。
+      # 为什么读它而不是写在 workflow 里：workflow 里写死会与声明件**两份真源**；
+      # 读它则「升级引擎」＝改一行 ＋ PR 里写清为什么升（可审）。
+      - name: 读引擎钉 ref
+        id: pin
+        working-directory: books
+        run: |
+          ref=$(jq -r .ref .github/engine-ref.json)
+          echo "引擎 ref = $ref"
+          case "$ref" in
+            ????????????????????????????????????????) ;;
+            *) echo "✗ 钉的 ref 不是完整 sha（40 位）：$ref" >&2; exit 1 ;;
+          esac
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: sagitrs/sgstory
+          ref: ${{ steps.pin.outputs.ref }}
+          path: engine
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+
+      - name: 装引擎依赖
+        working-directory: engine
+        run: npm ci
+
+      - name: 编译故事（产物随故事根 ⇒ 落 books/dist）
+        working-directory: engine
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/books/dist"
+          SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" node build.mjs
+
+      # 能假①的一部分：产物**在本步就判**（不让"发出去再说"）——
+      # 书架页没有 stories/ 链接 ⇒ 直接红（线上 0 链接那种状况在 CI 里先被挡）。
+      - name: 断言产物可用（书架页有链接 ＋ 故事页存在）
+        working-directory: books
+        run: |
+          test -f dist/index.html || { echo "✗ 未生成 dist/index.html" >&2; exit 1; }
+          n=$(grep -c 'stories/' dist/index.html || true)
+          echo "书架页 stories/ 链接数 = $n"
+          [ "$n" -ge 1 ] || { echo "✗ 书架页 0 个 stories/ 链接 ⇒ 发出去也没得玩" >&2; exit 1; }
+          ls dist/stories/*/index.html >/dev/null 2>&1 || { echo "✗ 无任何故事页" >&2; exit 1; }
+
+      # 本仓不提交产物：以下是"跑完不脏"的自证（CI 里也看得见）
+      - name: 核产物没被提交进来
+        working-directory: books
+        run: |
+          git status --porcelain
+          if git status --porcelain | grep -qE '^\?\? .*(dist/|build/)'; then
+            echo "✗ 有未忽略的产物（dist/build）⇒ 请补 .gitignore" >&2; exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true      # Pages 未启用时试一次；失败 ⇒ 请管理员在 Settings → Pages 选 Source: GitHub Actions
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: books/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

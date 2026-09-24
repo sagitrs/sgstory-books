@@ -1,0 +1,6 @@
+{
+  "ref": "186899a63280c7587610732a354559ca6672dd44",
+  "branch": "main",
+  "why": "本仓（books）发布 Pages 时用来编译故事的引擎版本。★ 钉**完整 sha**（不用 tag、不用分支名）—— 理由同 `#1262` 裁定：分支名会漂、tag 可被移动，只有完整 sha 是「本次发布用的是哪一份引擎」的**可复现**凭据（与引擎 CI 钉 books 的 sha 对称）。升级＝改这一行 ＋ 在本仓 PR 里写清「为什么升」（新格式能力／缺陷修复）。",
+  "checked": "本地核过：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（在引擎目录跑）⇒ 产物随故事根落 `<本仓>/dist/`，含 `index.html`／`stories/north-room/index.html`／`fonts/`。"
+}
