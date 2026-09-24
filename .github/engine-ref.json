@@ -1,6 +1,6 @@
 {
-  "ref": "186899a63280c7587610732a354559ca6672dd44",
-  "branch": "main",
-  "why": "本仓（books）发布 Pages 时用来编译故事的引擎版本。★ 钉**完整 sha**（不用 tag、不用分支名）—— 理由同 `#1262` 裁定：分支名会漂、tag 可被移动，只有完整 sha 是「本次发布用的是哪一份引擎」的**可复现**凭据（与引擎 CI 钉 books 的 sha 对称）。升级＝改这一行 ＋ 在本仓 PR 里写清「为什么升」（新格式能力／缺陷修复）。",
-  "checked": "本地核过：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（在引擎目录跑）⇒ 产物随故事根落 `<本仓>/dist/`，含 `index.html`／`stories/north-room/index.html`／`fonts/`。"
+	"ref": "db2b97b54e989645dd6b9be1cdc44c99403ab5ef",
+	"branch": "main",
+	"why": "本仓（books）发布 Pages 时用来编译故事的引擎版本。★ 钉**完整 sha**（不用 tag、不用分支名）—— 理由同 `#1262` 裁定：分支名会漂、tag 可被移动，只有完整 sha 是「本次发布用的是哪一份引擎」的**可复现**凭据（与引擎 CI 钉 books 的 sha 对称）。升级＝改这一行 ＋ 在本仓 PR 里写清「为什么升」（新格式能力／缺陷修复）。 ｜ 本次升级（`#1296` 修）：故事现在声明了**位点表**（`Checks.sites` ＋ 散文里的 `<<sitecheck>>`，G4 那笔），而旧 pin（`186899a6`，早于 `#1299`）在 emit 侧还是**顶层浅合并** ⇒ 故事侧容器把引擎的 `Game.Checks` **整块覆盖** ⇒ `Game.Checks.resolve` 不是函数 ⇒ **线上里屋那一步会直接显示出错**（实测：用旧 pin 编出的产物里 `Error: <<sitecheck>>: error within widget code … Game.Checks.resolve is not a function`）。`#1299` 改成**逐容器合并**后消失 ⇒ pin 必须跟着升，否则「故事要的能力」与「发布用的引擎」脱节。",
+	"checked": "本地核过：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（在引擎目录跑）⇒ 产物随故事根落 `<本仓>/dist/`，含 `index.html`／`stories/north-room/index.html`／`fonts/`。 ｜ 本次另核：新 pin 下 `<<sitecheck>>` 正常渲染（`🎯 察觉检定（感知） 〔里屋·察觉〕 · DC10：d20(11) +0 = 11 ✔ 成功`），且用例 `sitecheck-snapshot`／`sitecheck-none` 全绿（10 条：绿 9 ｜ 预期缺口 1 ⇒ rc=0）。"
 }

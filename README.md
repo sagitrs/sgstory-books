@@ -34,6 +34,18 @@ SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs --cases=../sgs
 > **命令的权威以引擎仓实现为准**：`SG_STORIES_DIR` 是引擎的"故事根"口（环境变量，单一口名）；
 > 本 README 的命令**在引擎侧落地后逐条实跑过**才定稿 —— 不写"想象中的命令"。
 
+## 本地复算前先清生成物（**必做**）
+
+本地复算/跑用例前，先清掉**本故事**的生成物与 `dist/`：
+
+```bash
+rm -f stories/*/1[5678]-*.twee stories/*/00-meta.twee && rm -rf dist
+```
+
+**为什么**：`build.mjs` 的"按需重编"只看**件在不在** —— 生成物还在就直接用旧编译产物 ⇒
+改过 `data/*.json`／`passages/*.md` 后**不复算**，读到的却是旧故事（**`git status` 脏 0 也照样发生**，
+因为它们是被 `.gitignore` 忽略的件）。今天这条坑让一次复算得出"故事缺行/缺表"的假结论。
+
 ## 生成物不入仓
 
 跑编译会在故事目录里生成 `1[5678]-*.twee` 与 `00-meta.twee`（源是 `data/*.json`），
