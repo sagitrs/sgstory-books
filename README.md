@@ -26,8 +26,9 @@ SG_STORIES_DIR=../sgstory-books/stories node build.mjs
 # 2) 跑门
 SG_STORIES_DIR=../sgstory-books/stories node scripts/audit.mjs --check
 
-# 3) 跑用例（执行器**尚未实现** —— 见 M1 交付「用例执行器」那件）
-#    SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs
+# 3) 跑用例（执行器已在引擎仓落地：scripts/case-run.mjs）
+#    先建产物（**清掉本故事的旧生成物再 build**，否则会跳过重编、读到旧产物）
+SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs --cases=../sgstory-books/cases
 ```
 
 > **命令的权威以引擎仓实现为准**：`SG_STORIES_DIR` 是引擎的"故事根"口（环境变量，单一口名）；
@@ -68,3 +69,17 @@ SG_STORIES_DIR=../sgstory-books/stories node scripts/audit.mjs --check
 - **期望分四类** ⇒ 红能直接归因到面；
 - **`why` 必填** ⇒ 防"为绿而写用例"；
 - **三态**：① 绿 ｜ ② 红-有归因票（`ticket: N`，转绿时补 `closed-by`）｜ **③ 红-无归因＝失败**。
+
+### 用例读数（分母）
+
+**报「全过」必须带分母**，且**各桶之和 ＝ 用例总数**（判决桶：绿／预期缺口／未归因／归因无效／陈旧归因；
+「未核实」是**另一根轴**，不参与这个和）：
+
+```
+用例 10 条：绿 9 ｜ 预期缺口 1（1236）｜ 未归因 0 ｜ 归因无效 0 ｜ 陈旧归因 0 ｜ 未核实 0 ⇒ rc=0
+```
+
+- **读数时点**：2026-09-24（引擎主干 `0ef8420`；`cases/` 10 件）——**本行是历史读数，不是常设断言**；
+- **重取**：按上面第 3 条命令跑一次（汇总行即权威）；
+- **为什么写在这里**：用例是故事仓自己的交付面，**分母应当随手可见** ——
+  「用例跑得出结果」这句话没有分母就等于没有内容，而分母**随用例数增长**，所以新增用例时**同笔更新这一行**。
