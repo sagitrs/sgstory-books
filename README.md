@@ -26,8 +26,8 @@ SG_STORIES_DIR=../sgstory-books/stories node build.mjs
 # 2) 跑门
 SG_STORIES_DIR=../sgstory-books/stories node scripts/audit.mjs --check
 
-# 3) 跑用例
-SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs
+# 3) 跑用例（执行器**尚未实现** —— 见 M1 交付「用例执行器」那件）
+#    SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs
 ```
 
 > **命令的权威以引擎仓实现为准**：`SG_STORIES_DIR` 是引擎的"故事根"口（环境变量，单一口名）；
