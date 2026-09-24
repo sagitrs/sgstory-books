@@ -103,6 +103,11 @@ jobs:
         working-directory: engine
         run: npm ci
 
+      # 字体子集化依赖：引擎自己的 4 个工作流都装了（`ci.yml:62` 等）⇒ 本仓发布**同款**。
+      # 不装 ⇒ `build.mjs` 走"优雅回退"（系统字体）⇒ **发布页静默缺字体面**（实测线上少 4 段／686 B）。
+      - name: 装字体子集化依赖（fonttools／brotli）
+        run: pip install fonttools brotli
+
       - name: 编译故事（产物随故事根 ⇒ 落 books/dist；归因 (b)）
         working-directory: engine
         run: |
@@ -144,6 +149,27 @@ jobs:
             echo "::error title=pd-attribution::(b) story-face — 引擎仓里出现了 stories/<slug>（未设 SG_STORIES_DIR？）"; exit 1
           fi
           echo "✓ 引擎仓脏 0；✓ 引擎仓 stories/** 0"
+
+          # ── 字体面（归因 (b) story-face）──
+          # 引擎侧把字体当**一等交付物**（其 `ci.yml` 有「字体 404（mis-deploy）⇒ 红」）⇒ 本仓发布**同步该口径**。
+          # 为什么必须显式断言：`build.mjs` 在缺 fonttools 时**优雅回退系统字体**且只 warn ⇒ 该步仍 success
+          # ⇒ **发布判据看不见"线上缺字体面"**（实测：线上故事页少 `font-face`／`woff2` preload 共 4 段 ≈ 686 B）。
+          nw=$( (ls dist/fonts/*.woff2 2>/dev/null || true) | wc -l | tr -d ' ')
+          echo "dist/fonts/*.woff2 = $nw 个"
+          if [ "$nw" -lt 2 ]; then
+            echo "::error title=pd-attribution::(b) story-face — 字体产物缺失（dist/fonts/*.woff2 只有 $nw 个，应 2 个：Regular／Medium）⇒ 核 pip install fonttools brotli 与 vendor/fonts/*.ttf"
+            exit 1
+          fi
+          # 口径：**每个**故事页都应带 font-face ⇒ 数"带该标记的页数"，缺页则红。
+          # （不用 `grep -c` 求和：单文件时它不输出 `文件:数` 形态 ⇒ `awk -F:` 会恒得 0 ＝**必红假阳**）
+          nf=$( (grep -l 'id="font-face"' dist/stories/*/index.html 2>/dev/null || true) | wc -l | tr -d ' ')
+          nsp=$( (ls -d dist/stories/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
+          echo "故事页带 font-face = $nf / $nsp"
+          if [ "$nf" -lt "$nsp" ]; then
+            echo "::error title=pd-attribution::(b) story-face — 有故事页缺 font-face（$nf/$nsp 页带该标记）⇒ 发布出去那些页会静默用系统字体"
+            exit 1
+          fi
+          echo "✓ 字体面在场（2 个 woff2 ＋ 故事页 font-face）"
           # 本仓不提交产物
           if git status --porcelain | grep -qE '^\?\? .*(dist/|build/)'; then
             echo "::error title=pd-attribution::(b) story-face — 有未忽略的产物（dist/build）⇒ 补 .gitignore"; exit 1
