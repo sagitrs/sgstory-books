@@ -3,7 +3,12 @@
 	"note": "北屋（`north-room`）：新格式最小故事（M1 样本）的引擎接入契约清单 —— 照最小合法集，本故事不新增面。",
 	"containers": {
 		"Checks": {
-			"sites": {},
+			"sites": {
+				"里屋·察觉": {
+					"skill": "察觉",
+					"dc": 10
+				}
+			},
 			"keyYields": []
 		},
 		"Combat": {
