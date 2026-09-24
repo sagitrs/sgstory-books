@@ -151,6 +151,35 @@ jobs:
           echo "✓ 本仓无未忽略产物"
 
       # 归因类 (c) Pages 配置：启用失败 ⇒ 点名叫 (c)
+      # ── 用例门（`#1304`）──
+      # 为什么必须有：发布面此前只判"**发得出去**"（书架页有链接、故事页在、字体面在），**不判"能不能玩"**
+      # ⇒ 结构上允许"**产品坏、发布绿**"（今日就出现过一次读数误判；下次可能是真坏）。
+      # 归因照既有口径：**绿 ⇒ 继续／预期缺口 ⇒ rc=0 继续／未归因或陈旧归因 ⇒ rc≠0 ⇒ 不发布**。
+      - name: 用例门（本仓用例必须过；归因 (b) story-face）
+        working-directory: engine
+        env:
+          # 用例的"归因票号"检查要读 issue；本仓 token 只能读本仓 ⇒ 跨仓读不到时 case-run 会**明说"未核实"**
+          # （不静默：缺 token 时它打印醒目告警 ＋ 单列"未核实 N 条"）。要用完整归因能力 ⇒ 配 `SG_CASES_TOKEN`。
+          GH_TOKEN: ${{ secrets.SG_CASES_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=pd-attribution::(b) story-face — $*"; exit 1; }
+          storyN=$( (ls -d "$GITHUB_WORKSPACE/books/stories"/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
+          echo "故事数 = $storyN"
+          if [ "$storyN" -eq 0 ]; then
+            echo "::notice title=pd-cases::零故事态 ⇒ 无用例可跑，本门**显式分叉软通过**（不是恒绿）"
+            exit 0
+          fi
+          for d in "$GITHUB_WORKSPACE/books/stories"/*/; do
+            slug=$(basename "$d")
+            echo "── 用例门：slug=$slug"
+            if ! SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" \
+                 node scripts/case-run.mjs --cases="$GITHUB_WORKSPACE/books/cases" --slug="$slug"; then
+              fail "用例门未过（slug=$slug）⇒ **不发布**（看上面的绿／预期缺口／未归因／陈旧归因分类）"
+            fi
+          done
+          echo "✓ 用例门通过（所有 slug）"
+
       - name: Pages 配置（§三；归因 (c)）
         uses: actions/configure-pages@v5
         with:
