@@ -118,7 +118,9 @@ jobs:
         working-directory: books
         run: |
           set -euo pipefail
-          storyN=$(ls -d stories/*/ 2>/dev/null | wc -l | tr -d ' ')
+          # ★ 计数空集合的**安全写法**：`ls` 对空 glob 返回 2 ⇒ `2>/dev/null` 只藏报文、藏不住退出码 ⇒
+          #   `set -e`＋`pipefail` 会**把通过态当失败杀掉**（books 首跑实测 exit 2）⇒ 一律 `|| true` 包住。
+          storyN=$( (ls -d stories/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
           echo "故事数 = $storyN"
           if [ "$storyN" -eq 0 ]; then
             echo "::notice title=pd-smoke::零故事态 ⇒ 书架页无链接属预期，**软通过**（显式分叉，非恒红）"
@@ -128,14 +130,16 @@ jobs:
             if [ "$n" -lt 1 ]; then
               echo "::error title=pd-attribution::(b) story-face — 有 $storyN 个故事，但书架页 0 个 stories/ 链接"; exit 1
             fi
-            ls dist/stories/*/index.html >/dev/null 2>&1 || { echo "::error title=pd-attribution::(b) story-face — 无任何故事页产物"; exit 1; }
+            nPages=$( (ls dist/stories/*/index.html 2>/dev/null || true) | wc -l | tr -d ' ')
+            [ "$nPages" -ge 1 ] || { echo "::error title=pd-attribution::(b) story-face — 无任何故事页产物"; exit 1; }
           fi
           # §六：引擎仓必须干净（发布只读引擎仓）
           dirty=$(git -C "$GITHUB_WORKSPACE/engine" status --porcelain)
           if [ -n "$dirty" ]; then
             echo "::error title=pd-attribution::(b) story-face — 引擎仓被写脏（发布应只读）："; echo "$dirty"; exit 1
           fi
-          inside=$(ls -d "$GITHUB_WORKSPACE/engine/stories"/*/ 2>/dev/null | wc -l | tr -d ' ')
+          # 同款安全写法（本行是首跑 exit 2 的真因：引擎仓 `stories/` 本来就空 ⇒ 空 glob ⇒ `ls` 退出 2）。
+          inside=$( (ls -d "$GITHUB_WORKSPACE/engine/stories"/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
           if [ "$inside" != "0" ]; then
             echo "::error title=pd-attribution::(b) story-face — 引擎仓里出现了 stories/<slug>（未设 SG_STORIES_DIR？）"; exit 1
           fi
