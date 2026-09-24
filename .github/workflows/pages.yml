@@ -44,8 +44,12 @@ jobs:
           case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
           why=$(jq -r '.why // empty' .github/engine-ref.json)
           [ -n "$why" ] || fail "声明件里读不到 why（钉法必须写明理由）"
-          echo "引擎 ref = $ref"
+          # `branch` 也取自声明件（唯一权威）—— 工作流**不硬写**分支名（否则声明件与工作流两份真源）
+          br=$(jq -r '.branch // empty' .github/engine-ref.json)
+          [ -n "$br" ] || fail "声明件里读不到 branch（"祖先/陈旧"那一格要拿它当基线）"
+          echo "引擎 ref = $ref（声明件 branch = $br）"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "branch=$br" >> "$GITHUB_OUTPUT"
 
       # §四4b：**bump 那一笔件面只含声明件** —— 本笔改了声明件 ⇒ 它的件面必须 ⊆ 声明件（不许夹带故事面）
       - name: §四4b 核 bump 笔未夹带故事面（归因 (a)）
@@ -89,14 +93,15 @@ jobs:
           if ! git cat-file -e "$ref^{commit}" 2>/dev/null; then
             echo "::error title=pd-attribution::(a) engine-ref — 钉的 sha 在引擎仓里**取不到**：$ref"; exit 1
           fi
-          git fetch -q origin main || true
-          if ! git merge-base --is-ancestor "$ref" origin/main 2>/dev/null; then
-            echo "::error title=pd-attribution::(a) engine-ref — 钉的 sha **不是引擎 main 的祖先**（钉了未合入的\"在飞\"提交）：$ref"; exit 1
+          base="origin/${{ steps.pin.outputs.branch }}"
+          git fetch -q origin "${{ steps.pin.outputs.branch }}" || true
+          if ! git merge-base --is-ancestor "$ref" "$base" 2>/dev/null; then
+            echo "::error title=pd-attribution::(a) engine-ref — 钉的 sha **不是引擎 ${{ steps.pin.outputs.branch }} 的祖先**（钉了未合入的\"在飞\"提交）：$ref"; exit 1
           fi
-          behind=$(git rev-list --count "$ref..origin/main")
+          behind=$(git rev-list --count "$ref..$base")
           echo "落后引擎 main 笔数 = $behind"
           if [ "$behind" -gt 0 ]; then
-            echo "::warning title=pd-stale-ref::钉的引擎 ref 落后 main $behind 笔（不阻断：可用但陈旧；升级＝改声明件一行）"
+            echo "::warning title=pd-stale-ref::钉的引擎 ref 落后 ${{ steps.pin.outputs.branch }} $behind 笔（不阻断：可用但陈旧；升级＝改声明件一行）"
           fi
 
       - uses: actions/setup-node@v4
@@ -211,6 +216,34 @@ jobs:
             fi
           done
           echo "✓ 用例门通过（所有 slug）"
+      # ── 读数（**只作读数，不作门**）──
+      # 为什么只作读数：故事面一变，字节**本来就该变** ⇒ 做成硬格必然恒红。
+      # 它要补的是"**字节 ↔ 输入**"这一半：钉的引擎 sha ＋ 本仓自身 sha ＋ 每故事页字节 ＋ 字体面在场数，
+      # 三者同处 ⇒ 下次再遇到"线上字节 ≠ 本地构建字节"时可直接对照，不必猜。
+      - name: 读数（字节 ↔ 输入；写入 step summary，不作门）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          {
+            echo "### 发布读数（${{ github.sha }}）"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 引擎钉 ref | \`${{ steps.pin.outputs.ref }}\` |"
+            echo "| 引擎声明 branch | \`${{ steps.pin.outputs.branch }}\` |"
+            echo "| 本仓 sha | \`$(git rev-parse HEAD)\` |"
+            echo ""
+            echo "| 故事页 | 字节 |"
+            echo "|---|---|"
+            for f in dist/stories/*/index.html; do [ -f "$f" ] || continue; echo "| \`$f\` | $(wc -c < "$f") |"; done
+            echo ""
+            echo "| 字体面 | 数 |"
+            echo "|---|---|"
+            echo "| dist/fonts/*.woff2 | $( (ls dist/fonts/*.woff2 2>/dev/null || true) | wc -l | tr -d ' ') |"
+            echo "| 故事页带 font-face | $( (grep -l 'id=\"font-face\"' dist/stories/*/index.html 2>/dev/null || true) | wc -l | tr -d ' ') |"
+            echo "| 书架页字节 | $(wc -c < dist/index.html) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "✓ 读数已写入 step summary（不作门）"
 
       - name: Pages 配置（§三；归因 (c)）
         uses: actions/configure-pages@v5
