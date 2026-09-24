@@ -1,0 +1,23 @@
+{
+	"id": "north-room/text-with-attr",
+	"story": "north-room",
+	"why": "★引擎缺口（expected gap）：正文里要一句『随状态变的短语』（例：门的开合随 `ev.key_taken` 变化）。现行散文形态只认本段入参 `{{名字}}`，而**引擎/世界态的值不走 `{{}}`**（见 `docs/engine/authoring-model.md` §1.2 与 §3 的『③ 取值』层：`{{…}}` 在仓内**尚未实现**，实施票 `#1048`；`#1234`/`#1236` 一族口径）。⇒ 当前写法表达不出来，故本用例预期为『红-有归因票』。",
+	"ticket": "#1048",
+	"drive": {
+		"clicks": [
+			"翻一翻靴子",
+			"把钥匙收进口袋"
+		],
+		"state": {},
+		"seed": 12345
+	},
+	"expect": {
+		"visible": [
+			"门是关着的"
+		],
+		"absent": [],
+		"state": [],
+		"edges": []
+	},
+	"_closed_by": "（引擎侧落地后补：closed-by: <引擎票号> @ <时点>）"
+}

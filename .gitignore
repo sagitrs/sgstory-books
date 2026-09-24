@@ -1,0 +1,11 @@
+# ── 生成物（跑引擎编译时落在故事目录里）：源是 data/*.json，构建链可重建 ──
+# 名单来源＝引擎的生成物家族谓词：editor/lib/core/generated-family.mjs
+#   `/^stories\/[^/]+\/1[5678]-[^/]*\.twee$/` 或 `/^stories\/[^/]+\/00-meta\.twee$/`
+# 此处用通配（不逐名列出），将来家族扩展（如 19-）也不会漏。
+1[5678]-*.twee
+00-meta.twee
+# ── 产物面 ──
+dist/
+build/
+# ── 依赖与临时件 ──
+node_modules/
