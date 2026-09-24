@@ -48,7 +48,7 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       # §四4b：**bump 那一笔件面只含声明件** —— 本笔改了声明件 ⇒ 它的件面必须 ⊆ 声明件（不许夹带故事面）
-      - name: §四4b 核 bump 笔的件面（归因 (a)）
+      - name: §四4b 核 bump 笔未夹带故事面（归因 (a)）
         if: github.event_name == 'push'
         working-directory: books
         run: |
@@ -58,9 +58,15 @@ jobs:
           if git diff-tree --no-commit-id --name-only -r "$sha" | grep -qx '.github/engine-ref.json'; then
             files=$(git diff-tree --no-commit-id --name-only -r "$sha")
             echo "本笔件面："; echo "$files"
-            bad=$(printf '%s\n' "$files" | grep -vx '.github/engine-ref.json' || true)
-            [ -z "$bad" ] || fail "bump 引擎 ref 的那一笔**夹带了别的件**（应只含 .github/engine-ref.json）：$bad"
-            echo "✓ bump 笔件面干净"
+            # `#1304` 口径收窄：4b 的本意是「**不许借 bump 夹带故事行为改动**」——
+            # 故判据从"件面只含声明件"改为"件面**不得含 `stories/**` 或 `cases/**`**"。
+            # 为什么必须改（实况）：bump 那笔常把「本地复算前先清生成物」这类**说明面**（README）一并带上，
+            # 而它正是这条链的前置步骤、与 bump 同笔**合理**；原判据会把"修 pin 的那次发布"挡在门外 ✗
+            # （实测：books `#5` 合入后发布 run 35992248367 **failure**，失败步就是本步 ⇒ 线上仍是老引擎）。
+            # ★ "不许夹带故事面"这一格**保留**（bump 顺手改进故事行为 ⇒ 必须红）。
+            bad=$(printf '%s\n' "$files" | grep -E '^(stories/|cases/)' || true)
+            [ -z "$bad" ] || fail "bump 引擎 ref 的那一笔**夹带了故事面改动**（不得含 stories/** 或 cases/**）：$bad"
+            echo "✓ bump 笔未夹带故事面（说明面如 README／docs 允许同笔）"
           else
             echo "本笔未改声明件 ⇒ §四4b 不适用"
           fi
