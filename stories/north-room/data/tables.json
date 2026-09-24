@@ -39,14 +39,30 @@
 			"rows": []
 		},
 		"State": {
-			"domains": {
-				"ev": {
+			"domains": [
+				{
+					"id": "runtime",
+					"keys": [
+						"last_result",
+						"last_roll",
+						"soc",
+						"soc_last",
+						"soc_lever",
+						"fight",
+						"ending",
+						"notes",
+						"settle"
+					],
+					"note": "引擎保留的运行时槽（每个故事都要登记）—— 形态照历史既有故事（minimal-demo）的同一域"
+				},
+				{
+					"id": "ev",
 					"note": "事件旗标域（本故事只用一个：钥匙已取）",
 					"keys": [
 						"key_taken"
 					]
 				}
-			}
+			]
 		}
 	}
 }
