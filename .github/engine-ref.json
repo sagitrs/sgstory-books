@@ -1,6 +1,6 @@
 {
-	"ref": "db2b97b54e989645dd6b9be1cdc44c99403ab5ef",
-	"branch": "main",
-	"why": "本仓（books）发布 Pages 时用来编译故事的引擎版本。★ 钉**完整 sha**（不用 tag、不用分支名）—— 理由同 `#1262` 裁定：分支名会漂、tag 可被移动，只有完整 sha 是「本次发布用的是哪一份引擎」的**可复现**凭据（与引擎 CI 钉 books 的 sha 对称）。升级＝改这一行 ＋ 在本仓 PR 里写清「为什么升」（新格式能力／缺陷修复）。 ｜ 本次升级（`#1296` 修）：故事现在声明了**位点表**（`Checks.sites` ＋ 散文里的 `<<sitecheck>>`，G4 那笔），而旧 pin（`186899a6`，早于 `#1299`）在 emit 侧还是**顶层浅合并** ⇒ 故事侧容器把引擎的 `Game.Checks` **整块覆盖** ⇒ `Game.Checks.resolve` 不是函数 ⇒ **线上里屋那一步会直接显示出错**（实测：用旧 pin 编出的产物里 `Error: <<sitecheck>>: error within widget code … Game.Checks.resolve is not a function`）。`#1299` 改成**逐容器合并**后消失 ⇒ pin 必须跟着升，否则「故事要的能力」与「发布用的引擎」脱节。",
-	"checked": "本地核过：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（在引擎目录跑）⇒ 产物随故事根落 `<本仓>/dist/`，含 `index.html`／`stories/north-room/index.html`／`fonts/`。 ｜ 本次另核：新 pin 下 `<<sitecheck>>` 正常渲染（`🎯 察觉检定（感知） 〔里屋·察觉〕 · DC10：d20(11) +0 = 11 ✔ 成功`），且用例 `sitecheck-snapshot`／`sitecheck-none` 全绿（10 条：绿 9 ｜ 预期缺口 1 ⇒ rc=0）。"
+ "ref": "c8b3a3cd15cf990a8c9dbb08392df0d950739053",
+ "branch": "main",
+ "why": "本仓（books）发布 Pages 时用来编译故事的引擎版本。★ 钉**完整 sha**（不用 tag、不用分支名）—— 理由同 `#1262` 裁定：分支名会漂、tag 可被移动，只有完整 sha 是「本次发布用的是哪一份引擎」的**可复现**凭据（与引擎 CI 钉 books 的 sha 对称）。升级＝改这一行 ＋ 在本仓 PR 里写清「为什么升」（新格式能力／缺陷修复）。 ｜ 本次升级（`#1409`／发布链修复）：**旧 pin `db2b97b5` 早于新格式的三项能力** ⇒ 发布链**连续红两次**（`1ad8340`（`#9`）／`3f487ab`（`#11`））：① `{{入参}}` 三段展开（引擎 `24486b7`，`#1350` 片 2）—— 实测旧 pin 编 `m3-min-new` 报「段「暗间」取值 `{{条子}}` 未在声明面」✗；② `passageSpecs` 契约成员特判（引擎 `d64136e`，`#1350` 片 4+5）—— 实测旧 pin 编 `mist-forest` 抛 `forward.to 必须是标识符链…实得 undefined` ✗；③ 结局声明成数据（引擎 `361c284`＋`b91e390`，`#1399`）—— 本仓 `north-room` 已按 `ending:{key,kind}` 声明（本笔同批改制）。⇒ 即「**作者面能力与发布 pin 的代差**」；★该代差此前**只能在合并后**才发现（本仓 PR 无 CI）⇒ 本笔同批加**PR 门**（`pull_request` 用本仓自己的 pin 编一遍）✓",
+ "checked": "本地核过（本笔）：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（引擎＝新 pin `c8b3a3c`）⇒ **rc=0**，3 个故事编译完成；`node scripts/case-run.mjs --cases=<本仓>/cases` ⇒ **用例 20 条：绿 19 ｜ 预期缺口 1（1236）｜ 未归因 0 ⇒ rc=0**；★产物核：`north-room` 两结局段各恰一处 `<<ending \"键\" final>>`（由段数据注入）｜每段渲染宏各恰 1 个（✗ 无重复）。"
 }
