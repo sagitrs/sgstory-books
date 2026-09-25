@@ -1,0 +1,39 @@
+{
+ "门厅": {
+  "params": {},
+  "links": [
+   {
+    "label": "进暗间",
+    "to": "暗间",
+    "args": {
+     "条子": "今晚别出门"
+    }
+   },
+   {
+    "id": "门厅.敲门",
+    "label": "敲门",
+    "to": "暗间",
+    "cond": {
+     "req": [
+      "inv:铜钥匙"
+     ]
+    }
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "暗间": {
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": [],
+  "params": {
+   "条子": {
+    "type": "string",
+    "required": true
+   }
+  }
+ }
+}
