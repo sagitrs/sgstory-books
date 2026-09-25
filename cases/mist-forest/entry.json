@@ -1,0 +1,33 @@
+{
+ "id": "mist-forest/entry",
+ "story": "mist-forest",
+ "why": "第一章·入口：段落图三支出口齐备（`passages.json` 的 `links[]` 合成规则行后仍可点）",
+ "drive": {
+  "clicks": [],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "林子边缘的雾"
+  ],
+  "edges": [
+   {
+    "from": "林子边缘",
+    "label": "往林子里走",
+    "to": "林间小径"
+   },
+   {
+    "from": "林子边缘",
+    "label": "先回村里打听",
+    "to": "酒馆"
+   },
+   {
+    "from": "林子边缘",
+    "label": "到井台边问问",
+    "to": "村中井台"
+   }
+  ],
+  "absent": []
+ }
+}

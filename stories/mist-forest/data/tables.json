@@ -1,0 +1,47 @@
+{
+ "section": "Game Tables",
+ "note": "迷雾森林第一章：只用段落图＋条件行＋状态写（✗ 无检定／战斗／车卡面）⇒ 容器照最小合法形声明。",
+ "containers": {
+  "Checks": {
+   "sites": {},
+   "keyYields": []
+  },
+  "Combat": {
+   "pools": {},
+   "actions": {}
+  },
+  "Economy": {
+   "prices": {},
+   "events": []
+  },
+  "Gear": {
+   "defs": {}
+  },
+  "Items": {
+   "defs": {}
+  },
+  "Truth": {
+   "facts": {}
+  },
+  "Codex": {
+   "items": {}
+  },
+  "Echoes": {
+   "rows": []
+  },
+  "State": {
+   "domains": [
+    {
+     "id": "第一章进展",
+     "keys": [
+      "世故",
+      "听过守林人",
+      "记下警告",
+      "见过哨站",
+      "听过蜡烛"
+     ]
+    }
+   ]
+  }
+ }
+}

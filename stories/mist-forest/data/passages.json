@@ -1,0 +1,103 @@
+{
+ "林子边缘": {
+  "links": [
+   {
+    "label": "往林子里走",
+    "to": "林间小径"
+   },
+   {
+    "label": "先回村里打听",
+    "to": "酒馆"
+   },
+   {
+    "label": "到井台边问问",
+    "to": "村中井台"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "酒馆": {
+  "links": [
+   {
+    "label": "回林子边缘",
+    "to": "林子边缘"
+   }
+  ],
+  "present": "菜单",
+  "prio": 2,
+  "prereq": [],
+  "params": {
+   "金币": {
+    "type": "number",
+    "required": false,
+    "default": 3
+   }
+  }
+ },
+ "村中井台": {
+  "links": [
+   {
+    "label": "回林子边缘",
+    "to": "林子边缘"
+   }
+  ],
+  "present": "菜单",
+  "prio": 2,
+  "prereq": []
+ },
+ "林间小径": {
+  "links": [
+   {
+    "label": "继续往深处走",
+    "to": "林缘空地"
+   },
+   {
+    "label": "退回林子边缘",
+    "to": "林子边缘"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "林缘空地": {
+  "links": [
+   {
+    "label": "拨开雾往里走",
+    "to": "结间 入林"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "废哨站": {
+  "links": [
+   {
+    "label": "退回林缘空地",
+    "to": "林缘空地"
+   },
+   {
+    "label": "朝雾里那个声音走过去",
+    "to": "结间 入林"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "结局 回头": {
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "结间 入林": {
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ }
+}

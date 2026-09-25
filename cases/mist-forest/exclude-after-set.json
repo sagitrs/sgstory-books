@@ -1,0 +1,28 @@
+{
+ "id": "mist-forest/exclude-after-set",
+ "story": "mist-forest",
+ "why": "规则行的 `sets` 真写状态 ＋ `exclude` 真生效（新格式把旧版 `<<if>>` 换成条件行）",
+ "drive": {
+  "clicks": [
+   "先回村里打听",
+   "问老板娘进塔的事"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "枚金币"
+  ],
+  "edges": [
+   {
+    "from": "酒馆",
+    "label": "问老板娘进塔的事",
+    "to": "酒馆"
+   }
+  ],
+  "absent": [
+   "凑过去听守林人那桌"
+  ]
+ }
+}

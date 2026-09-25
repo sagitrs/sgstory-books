@@ -1,0 +1,20 @@
+{
+ "id": "mist-forest/param-default",
+ "story": "mist-forest",
+ "why": "入参 `{{金币}}` 走引擎宏，`default` 由契约 `passageSpecs` 读（未声明 ⇒ 渲染报错串 ⇒ 本格能咬）",
+ "drive": {
+  "clicks": [
+   "先回村里打听"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "有 3 枚金币"
+  ],
+  "absent": [
+   "printparam"
+  ]
+ }
+}
