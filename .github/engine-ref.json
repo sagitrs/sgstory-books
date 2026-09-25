@@ -1,6 +1,6 @@
 {
- "ref": "17fb6b2a8ac356f314e39e4010304825a78c18f7",
+ "ref": "343578d51bb8579ea1a2494b2ba78c8e576d2c33",
  "branch": "main",
- "why": "本仓（books）发布/门跑时使用的引擎版本。★ 钉**完整 sha**（✗ 不用 tag／分支名，理由同 `#1262`：只有完整 sha 是可复现凭据）。升级＝改这一行 ＋ 在本仓 PR 里写清为什么。｜本次升级：**为接\"故事面判据\"到 PR 门**（`#1401` 可达性机制 `unreachablePassages` 随 `#1411` 落地；散文词汇面 `prose-vocabulary` 的 **P5** 随 `#1409` 修复落地）—— 旧 pin `c8b3a3c` 里**没有** `unreachablePassages` 导出 ⇒ 门接线会 `SyntaxError` ✗（我实测撞到）⇒ 必须同笔升 pin ✓。",
- "checked": "本地核过（本笔）：`SG_STORIES_DIR=<本仓>/stories node build.mjs`（引擎＝新 pin `17fb6b2a`）⇒ rc=0；`node test/prose-vocabulary.mjs` ⇒ 改制面 P1–P5 命中 0 项（`#19` 修后）；★可达性（`unreachablePassages`，两处出边并集）⇒ 对 4 个故事实测：改制面 2 个（`m3-min-new`／`mist-forest`）全可达 ✓、旧形态 2 个不判 ✓。"
+ "why": "本仓（books）编译/门跑使用的引擎版本。★ 钉**完整 sha**（✗ 不用 tag／分支名 —— 只有完整 sha 是可复现凭据，且**前提是该 sha 已在引擎 main 上**）。｜本次升级（`#1426` 族收口）：**为让 `books#23`（`battle-demo-dnd`）用上\"战斗收尾时机\"** —— 该故事用 `<<fightpanel \"雾影\" 3 won>>`（`#1427`）：第 3 参＝打满 3 回合即收尾／第 4 参＝作者显式给的结果。旧 pin `17fb6b2a` **不含** `#1427` ⇒ 战斗**不会收尾** ⇒ 该故事的 `win`／`lose-absent` 两个用例在门里红（✗ 故事与用例都没错，断的是 pin 落后 ✓）。证据（可复跑）：`git show 17fb6b2a:src/10-core.twee | grep -c 'args\\[1\\]'` ⇒ **5**（旧）vs `git show 343578d5:src/10-core.twee | grep -c 'args\\[1\\]'` ⇒ **12**（新）。",
+ "checked": "本地核过（本笔）：① 对**本仓 main**（4 个故事）：`build` rc=0；`case-run` ⇒ **25 条：绿 24 ＋ 预期缺口 1（`#1236`）｜ 未归因 0 ⇒ rc=0** ✓（★注：两棵树都**先清三层**再跑 —— 否则 build 见生成物已在会跳过重编 ⇒ 读到旧产物 ⇒ 假读数 ✓）。② 对**在飞 `books#23`（含 `battle-demo-dnd`）的树**：`build` rc=0；`case-run` ⇒ **29 条：绿 28 ＋ 预期缺口 1 ⇒ rc=0** ✓（含该故事 4 条，`win`／`lose-absent` 在新 pin 下**转绿** —— 这正是本次升 pin 的目的 ✓）。③ 散文词汇门 P1–P5：5 个改制面故事 **命中 0** ✓｜④ 可达性：5 个故事**全可达** ✓"
 }
