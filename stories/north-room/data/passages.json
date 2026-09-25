@@ -1,0 +1,69 @@
+{
+ "门厅": {
+  "links": [
+   {
+    "label": "翻一翻靴子",
+    "to": "靴子"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "靴子": {
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "里屋": {
+  "links": [
+   {
+    "label": "读完那张字条",
+    "to": "字条"
+   },
+   {
+    "label": "原路退回去",
+    "to": "门厅"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "字条": {
+  "links": [
+   {
+    "label": "把字条折好收起来",
+    "to": "结局 收好"
+   },
+   {
+    "label": "放回原处",
+    "to": "结局 原样"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "结局 收好": {
+  "ending": {
+   "key": "收好",
+   "kind": "final"
+  },
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "结局 原样": {
+  "ending": {
+   "key": "原样",
+   "kind": "final"
+  },
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ }
+}
