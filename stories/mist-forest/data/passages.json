@@ -97,12 +97,20 @@
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "ending": {
+   "key": "回头",
+   "kind": "chapter"
+  }
  },
  "结间 入林": {
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "ending": {
+   "key": "入林",
+   "kind": "chapter"
+  }
  }
 }
