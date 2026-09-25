@@ -92,6 +92,44 @@ jobs:
           done
           echo "✓ 用例门通过（所有 slug）"
 
+      - name: 故事面判据（散文词汇 P1–P5 ＋ 可达性）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          # ★本步**复用引擎侧既有判据**（✗ 不在本仓重写：单一权威 ✓）
+          #   ① `test/prose-vocabulary.mjs` ⇒ 散文词汇面 **P1–P5**
+          #      （零链接／零表达式／入参声明／无悬空＋必填实参／**反引号包宏**）
+          #      ★为什么必须在 PR 期跑：`m3-min-new` 曾有一条 `P4`（`门厅.敲门` 无 `args` 而目标段 `条子` 必填）
+          #        ⇒ 读者走到「暗间」时 `{{条子}}` 取不到值 ✗ —— 那之前**只有人跑真门才会发现** ✓
+          #   ② **可达性**：`unreachablePassages`（引擎 `#1411` 的纯函数机制）⇒ 每个真故事跑 ⇒ 不可达即红
+          #      ★为什么由 books 跑：机制留引擎、**策略判据（这个故事该不该全可达）归使用方仓** ✓
+          #   ★两处出边并集是它的口径（`passages.json` 的 `links[].to` ＋ 规则行 `[[label|to]]`）
+          #     —— 只算一处会**误报**（实测：改制后 `north-room` 只算 `links[]` 会误报 4 段 ✗）
+          export SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories"
+          echo "── ① 散文词汇面（复用真门）"
+          node test/prose-vocabulary.mjs || {
+            echo "::error title=pd-attribution::(b) story-face — 散文词汇门未过（P1–P5）"; exit 1; }
+          echo "── ② 可达性（复用 unreachablePassages 机制）"
+          node --input-type=module -e '
+            import { unreachablePassages } from "./editor/lib/core/passages-links.mjs";
+            import { readFileSync, readdirSync, existsSync } from "node:fs";
+            const base = process.env.SG_STORIES_DIR;
+            let bad = 0;
+            for (const slug of readdirSync(base)) {
+              const d0 = base + "/" + slug + "/data/passages.json";
+              if (!existsSync(d0)) { console.log("  " + slug + " ⇒ 旧形态（无 passages.json）⇒ 不判 ✓"); continue; }
+              const data = JSON.parse(readFileSync(d0, "utf8"));
+              const entry = JSON.parse(readFileSync(base + "/" + slug + "/00-story.json", "utf8")).entry;
+              const rp = base + "/" + slug + "/data/rules.json";
+              const rules = existsSync(rp) ? JSON.parse(readFileSync(rp, "utf8")) : null;
+              const probs = unreachablePassages({ data, entry, rules });
+              for (const p of probs) { console.error("  ✗ " + slug + "：" + p); bad++; }
+              if (!probs.length) console.log("  " + slug + " ⇒ 全可达 ✓");
+            }
+            if (bad) { console.error("::error title=pd-attribution::(b) story-face — 有 " + bad + " 个不可达段（读者永远走不到）"); process.exit(1); }
+            console.log("✓ 可达性通过（所有改制面故事）");
+          '
+
       - name: 断言引擎仓没被写脏（✗ 产物应落 books/dist）
         run: |
           set -euo pipefail
