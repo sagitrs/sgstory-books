@@ -1,0 +1,1 @@
+{"id":"battle-demo-dnd/entry","story":"battle-demo-dnd","why":"进门厅 ⇒ 一条「推门进去」（入口段无必填入参）","drive":{"clicks":[],"state":{},"seed":1},"expect":{"visible":["推门进去"],"absent":["查看战果"],"state":[],"edges":[]}}

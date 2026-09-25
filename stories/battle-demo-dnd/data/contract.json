@@ -1,0 +1,97 @@
+{
+ "section": "StoryBindings",
+ "note": "战斗演示（battle-demo-dnd）：最小合法集 ＋ 战斗面 ＋ hp 面（★战斗故事必须显式给 hp：不声明 ⇒ 车卡族不生成 ⇒ pc 无 hp）",
+ "members": [
+  {
+   "name": "rules",
+   "kind": "empty-array",
+   "docs": "条件表：本故事无 `data/rules.json` ⇒ 缺省＝空表；链接走 `passages.json` 的 `links[]` ✓"
+  },
+  {
+   "name": "passageSpecs",
+   "kind": "forward",
+   "docs": "段落声明面（params／slot／present）—— 必须在契约里声明，否则 `<<printparam>>` 读不到 `params.default`"
+  },
+  {
+   "name": "hasChargen",
+   "kind": "const",
+   "value": true,
+   "docs": "开启车卡族 ⇒ pc 面含 hp／max_hp／salves。★注：本故事**暂不声明 `pcDefaults`** —— 实测（`#1428`）：声明它 ⇒ 战斗段 `<<fightact>>` 抛 `reading 'dis'` ⇒ 打不动 ✗ ⇒ 待该缺陷修复后**同笔补回**（协调席裁：先闭环作者链，hp 面显式化随缺陷修复补 ✓）"
+  },
+  {
+   "name": "foeState",
+   "kind": "state-ref",
+   "path": "foe",
+   "default": {},
+   "docs": "敌人状态槽（战斗面）：`path` 必填（缺它 ⇒ `state-ref.path 必须是标识符链…实得 undefined`）"
+  },
+  {
+   "name": "battleDamage",
+   "kind": "forward",
+   "to": "Game.Items.battleDamage",
+   "params": [
+    "inv",
+    "round",
+    "defeats",
+    "poisoned"
+   ],
+   "args": [
+    "round",
+    "inv",
+    "defeats",
+    "poisoned"
+   ],
+   "docs": "伤害施加（战斗面）：`to`/`params`/`args` 三者必填（照旧故事先例）"
+  },
+  {
+   "name": "mechanics",
+   "kind": "null",
+   "docs": "新机制声明表：本故事未启用 ⇒ 显式 null"
+  },
+  {
+   "name": "__pools",
+   "kind": "const",
+   "value": {
+    "雾影": [
+     "雾影·挥击",
+     "雾影·突刺",
+     "雾影·盘绕"
+    ]
+   },
+   "docs": "池表（内部）：本故事的敌人池「雾影」含三条动作（与 `tables.json` 的 `Combat.pools` 同源）"
+  },
+  {
+   "name": "combatPool",
+   "kind": "lookup",
+   "from": "Sg.story.__pools()",
+   "key": "id",
+   "default": [],
+   "docs": "战斗池：按池 id 取动作 id 数组（`lookup` ⇒ `combatPool(poolId)`）—— ✗ 缺它 ⇒ `eligible` 得空池 ⇒ 面板无动作可点（我实测撞到）"
+  },
+  {
+   "name": "combatAction",
+   "kind": "lookup",
+   "from": "Game.Combat.actions",
+   "key": "id",
+   "default": null,
+   "docs": "战斗动作：按动作 id 取声明（`Game.Combat.actions`）"
+  },
+  {
+   "name": "actionLabel",
+   "kind": "lookup-field",
+   "via": "combatAction",
+   "key": "id",
+   "field": "label",
+   "required": true,
+   "docs": "动作标签（面板按钮的文案来源）"
+  },
+  {
+   "name": "checkSite",
+   "kind": "lookup",
+   "from": "Game.Checks.sites",
+   "key": "name",
+   "default": null,
+   "docs": "位点（战斗检定用）"
+  }
+ ]
+}
