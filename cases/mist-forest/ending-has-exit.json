@@ -1,0 +1,7 @@
+{
+ "id": "mist-forest/ending-has-exit",
+ "story": "mist-forest",
+ "why": "★`#1399`：结局段必须有**出口卡**（C1「每个结局都有出口」）—— 缺 `<<ending>>`／声明时本格必红（旧版由图鉴门 canon.mjs:316 看守，那道门随旧故事删除 ⇒ 本格把它补回）",
+ "drive": { "clicks": ["往林子里走", "继续往深处走", "拨开雾往里走"], "state": {}, "seed": 1 },
+ "expect": { "visible": ["雾在身后合拢", "这段旅程到此结束"], "absent": [], "edges": [] }
+}
