@@ -1,0 +1,1 @@
+{"id":"battle-demo-dnd/win","story":"battle-demo-dnd","why":"★打满 3 回合 ⇒ 自动收尾（作者给 won）⇒ 去「战果」段 ⇒ 只出「胜」分叉（✗ 不出败）","drive":{"clicks":["推门进去","劈下去","劈下去","劈下去","查看这一场"],"state":{},"seed":1},"expect":{"visible":["查看战果（胜）"],"absent":["查看战果（败）"],"state":[],"edges":[]}}

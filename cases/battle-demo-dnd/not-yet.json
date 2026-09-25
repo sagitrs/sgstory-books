@@ -1,0 +1,1 @@
+{"id":"battle-demo-dnd/not-yet","story":"battle-demo-dnd","why":"★未打满 ⇒ 两侧分叉都不出（与 #1420「未收尾 ⇒ 不出」同轴）","drive":{"clicks":["推门进去","劈下去"],"state":{},"seed":1},"expect":{"visible":["雾在你面前立起来了"],"absent":["查看战果（胜）","查看战果（败）"],"state":[],"edges":[]}}

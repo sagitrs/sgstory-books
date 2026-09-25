@@ -1,0 +1,18 @@
+{
+ "slug": "battle-demo-dnd",
+ "title": "战斗演示",
+ "subtitle": "一场战斗 ⇒ 赢／输两结局（测战斗面 · `#1413` 的作者面样本）",
+ "entry": "门厅",
+ "contractVersion": 1,
+ "audience": "content",
+ "files": [
+  "stories/battle-demo-dnd/00-meta.twee",
+  "stories/battle-demo-dnd/passages/01-门厅.md",
+  "stories/battle-demo-dnd/passages/02-斗.md",
+  "stories/battle-demo-dnd/passages/03-结局 胜.md",
+  "stories/battle-demo-dnd/passages/05-战果.md",
+  "stories/battle-demo-dnd/passages/04-结局 败.md",
+  "stories/battle-demo-dnd/15-tables.twee",
+  "stories/battle-demo-dnd/17-rules.twee"
+ ]
+}
