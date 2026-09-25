@@ -1,0 +1,30 @@
+{
+ "房间": {
+  "links": [],
+  "params": {},
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "结局": {
+  "ending": {
+   "key": "出门",
+   "kind": "final"
+  },
+  "links": [],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ },
+ "吃苹果": {
+  "links": [
+   {
+    "label": "回到房间",
+    "to": "房间"
+   }
+  ],
+  "present": "菜单",
+  "prio": 1,
+  "prereq": []
+ }
+}

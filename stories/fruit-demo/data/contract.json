@@ -1,0 +1,27 @@
+{
+ "section": "StoryBindings",
+ "note": "水果演示（fruit-demo）：最小合法集 ＋ 状态面。★`pcDefaults` 按协调席裁显式给（T 席 m3-hp-fixture 实测：不声明 ⇒ 车卡族不生成 ⇒ pc 无 hp 面）。",
+ "members": [
+  {
+   "name": "rules",
+   "kind": "empty-array",
+   "docs": "条件表：本故事的行在 `data/rules.json`（5 条收下 ＋ 吃下后的出口）"
+  },
+  {
+   "name": "passageSpecs",
+   "kind": "forward",
+   "docs": "段落声明面（params／slot／present）——必须在契约里声明，否则渲染出错串"
+  },
+  {
+   "name": "pcDefaults",
+   "kind": "const",
+   "value": { "hp": 12, "max_hp": 12, "salves": 0 },
+   "docs": "玩家默认态：hp 面（道具/战斗故事必需）"
+  },
+  {
+   "name": "mechanics",
+   "kind": "null",
+   "docs": "新机制声明表：未启用 ⇒ 显式 null"
+  }
+ ]
+}
