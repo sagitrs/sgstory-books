@@ -1,0 +1,7 @@
+{
+ "id": "mist-forest/ending-back-link",
+ "story": "mist-forest",
+ "why": "★`#1401`：`结局 回头`（章末出口）**可达** —— 从酒馆一条链接直达（此前该段**无人指向**，`build` rc=0 而玩家走不到）",
+ "drive": { "clicks": ["先回村里打听", "把林子留给别人，就此回头"], "state": {}, "seed": 1 },
+ "expect": { "visible": ["你在林缘站了很久", "这段旅程到此结束"], "absent": [], "edges": [] }
+}
