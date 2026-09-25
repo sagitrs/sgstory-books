@@ -1,7 +1,0 @@
-{
- "id": "battle-demo-dnd/lose-absent",
- "story": "battle-demo-dnd",
- "why": "★反向：作者给的是 won ⇒ 「败」分叉**不出现**（✗ 不是两侧都出；把第 4 参改成 lost 才会出）",
- "drive": { "clicks": ["推门进去", "劈下去", "劈下去", "劈下去", "查看这一场"], "state": {}, "seed": 1 },
- "expect": { "visible": ["查看战果（胜）"], "absent": ["查看战果（败）"], "state": [], "edges": [] }
-}

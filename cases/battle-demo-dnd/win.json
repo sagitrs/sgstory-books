@@ -1,1 +1,7 @@
-{"id":"battle-demo-dnd/win","story":"battle-demo-dnd","why":"★打满 3 回合 ⇒ 自动收尾（作者给 won）⇒ 去「战果」段 ⇒ 只出「胜」分叉（✗ 不出败）","drive":{"clicks":["推门进去","劈下去","劈下去","劈下去","查看这一场"],"state":{},"seed":1},"expect":{"visible":["查看战果（胜）"],"absent":["查看战果（败）"],"state":[],"edges":[]}}
+{
+ "id": "battle-demo-dnd/win",
+ "story": "battle-demo-dnd",
+ "why": "★打满 3 回合 ⇒ 引擎自动收尾（作者显式给 `won`）⇒ 去「战果」段 ⇒ **只出「胜」分叉**（✗ 不出「败」）。★本格一条断言管两面：**胜 visible ＋ 败 absent**（✗ 不另写一条同断言副本）。★「败」的**正例**由引擎侧机制格承担（照 `test/fight-keys-e2e.mjs` 先例：设战斗态 ⇒ 收尾 `lost` ⇒ 断只出败分叉）—— ✗ 本故事不为覆盖面造「玩家可选输」的假语义 ✓",
+ "drive": { "clicks": ["推门进去", "劈下去", "劈下去", "劈下去", "查看这一场"], "state": {}, "seed": 1 },
+ "expect": { "visible": ["查看战果（胜）"], "absent": ["查看战果（败）"], "state": [], "edges": [] }
+}
