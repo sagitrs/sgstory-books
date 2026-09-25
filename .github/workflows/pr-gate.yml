@@ -1,0 +1,103 @@
+name: pr-gate
+
+# `#1409`：**本仓（books）PR 门** —— 用**本仓自己的 pin** 编一遍故事 ＋ 跑用例。
+#
+# 为什么需要它（**实测教训**）：`pages.yml` 只在 `push: main` 跑 ⇒ pin 与作者面能力的**代差**只能在**合并后**才发现 ✗
+#   实测：`1ad8340`（`#9`）与 `3f487ab`（`#11`）两次 push 到 main 后发布链**连续红**，
+#   根因＝旧 pin `db2b97b5` 早于三项新格式能力（`{{入参}}` 展开／`passageSpecs` 特判／结局声明成数据）
+#   ⇒ 发布页自那以后**没有更新**，而 PR 阶段一路全绿 ✗
+# ⇒ 本门把"**pin 认不认识这个故事**"提前到 **PR 期**：
+#   · 用 **PR 自己的 `.github/engine-ref.json` 的 ref** checkout 引擎（✗ 不用引擎 main —— 那会掩盖 pin 陈旧）
+#   · 跑 `build.mjs`（编译）＋ `case-run.mjs`（用例）⇒ ✗ **不发布**、✗ 不写任何产物入仓
+#
+# 归因口径（与 `pages.yml` 同）：失败归 (b) story-face —— 要么故事面不合形态，要么 pin 不认它（报文会点名）。
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: books
+
+      # ── 读本仓的 pin（唯一权威＝`.github/engine-ref.json`；✗ 工作流不硬写 sha）──
+      - name: 读引擎 pin（本仓声明件为唯一权威）
+        id: pin
+        working-directory: books
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=pd-attribution::(a) engine-ref — $*"; exit 1; }
+          [ -f .github/engine-ref.json ] || fail "声明件缺失：.github/engine-ref.json"
+          ref=$(jq -r '.ref // empty' .github/engine-ref.json)
+          [ -n "$ref" ] || fail "声明件里读不到 ref"
+          case "$ref" in
+            ????????????????????????????????????????) ;;
+            *) fail "钉的 ref 不是完整 sha（40 位十六进制）：$ref" ;;
+          esac
+          case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
+          echo "引擎 pin = $ref（本 PR 用它编一遍）"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: sagitrs/sgstory
+          ref: ${{ steps.pin.outputs.ref }}
+          path: engine
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+
+      - name: 装引擎依赖
+        working-directory: engine
+        run: npm ci --no-audit --no-fund
+
+      - name: 编译故事（产物随故事根 ⇒ 落 books/dist）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" node build.mjs || {
+            echo "::error title=pd-attribution::(b) story-face — 引擎编译失败 ⇒ **本 PR 的 pin 编不动本仓故事**（看上面点名；常见＝pin 早于故事用到的新格式能力）"; exit 1; }
+
+      - name: 用例门（本仓用例必须过）
+        working-directory: engine
+        env:
+          GH_TOKEN: ${{ secrets.SG_CASES_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          storyN=$( (ls -d "$GITHUB_WORKSPACE/books/stories"/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
+          echo "故事数 = $storyN"
+          if [ "$storyN" -eq 0 ]; then
+            echo "::notice title=pd-cases::零故事态 ⇒ 无用例可跑，本门**显式分叉软通过**（不是恒绿）"; exit 0
+          fi
+          for d in "$GITHUB_WORKSPACE/books/stories"/*/; do
+            slug=$(basename "$d")
+            echo "── 用例门：slug=$slug"
+            if ! SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" \
+                 node scripts/case-run.mjs --cases="$GITHUB_WORKSPACE/books/cases" --slug="$slug"; then
+              echo "::error title=pd-attribution::(b) story-face — 用例门未过（slug=$slug）"; exit 1
+            fi
+          done
+          echo "✓ 用例门通过（所有 slug）"
+
+      - name: 断言引擎仓没被写脏（✗ 产物应落 books/dist）
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/engine"
+          bad=$(git status --porcelain | grep -E '^\?\? (dist|build)/' || true)
+          if [ -n "$bad" ]; then
+            echo "::error title=pd-attribution::(b) story-face — 引擎仓里出现了产物（未设 SG_STORIES_DIR？）：$bad"; exit 1
+          fi
+          echo "✓ 引擎仓干净（产物随故事根 ⇒ books/dist √）"
