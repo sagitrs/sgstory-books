@@ -1,0 +1,18 @@
+{
+ "id": "m3-min-new/basic",
+ "story": "m3-min-new",
+ "why": "新格式最小真形态①：入参随跳转到达 ⇒ 目标段渲染出该值（`#9` 片 2–5）",
+ "drive": {
+  "clicks": [
+   "进暗间"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "今晚别出门"
+  ],
+  "absent": []
+ }
+}

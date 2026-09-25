@@ -1,0 +1,23 @@
+{
+ "id": "m3-min-new/exits",
+ "story": "m3-min-new",
+ "why": "新格式最小真形态②：links 进规则行后仍可点（停在门厅看出口）＋ 条件不命中那行不出现（`#9`）",
+ "drive": {
+  "clicks": [],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [],
+  "edges": [
+   {
+    "from": "门厅",
+    "label": "进暗间",
+    "to": "暗间"
+   }
+  ],
+  "absent": [
+   "敲门"
+  ]
+ }
+}
