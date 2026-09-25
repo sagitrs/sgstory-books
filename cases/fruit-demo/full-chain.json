@@ -1,0 +1,1 @@
+{"id":"fruit-demo/full-chain","story":"fruit-demo","why":"★完整链：收下 ⇒ 吃掉 ⇒ 出门 ⇒ 结局（验「吃过才开出口」这条条件真生效）","drive":{"clicks":["收下苹果","吃掉苹果"],"state":{},"seed":1},"expect":{"visible":["出门去"],"absent":["收下梨"],"state":[],"edges":[]}}

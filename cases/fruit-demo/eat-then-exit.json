@@ -1,0 +1,1 @@
+{"id":"fruit-demo/eat-then-exit","story":"fruit-demo","why":"★出口条件真生效：吃过之后「出门去」才出现（与 no-eat-no-exit 成对 ⇒ 两个态都可判）","drive":{"clicks":["收下枣","吃掉枣"],"state":{},"seed":1},"expect":{"visible":["出门去"],"absent":["收下枣","吃掉枣"],"state":[],"edges":[]}}

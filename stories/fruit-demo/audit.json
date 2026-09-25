@@ -1,0 +1,5 @@
+{
+ "note": "水果演示：空表＝合法数据集（`#602`：故事侧判据数据须由故事自己声明，空也要显式）。",
+ "text": { "topicWords": [], "styleBlacklist": [] },
+ "readBaseline": {}
+}

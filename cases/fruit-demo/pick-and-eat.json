@@ -1,0 +1,1 @@
+{"id":"fruit-demo/pick-and-eat","story":"fruit-demo","why":"★核心：收下苹果 ⇒ 吃下链接出现 ⇒ 吃掉 ⇒ 出口开（验「道具使用」能否用现有面表达）","drive":{"clicks":["收下苹果"],"state":{},"seed":1},"expect":{"visible":["吃掉苹果"],"absent":["收下梨"],"state":[],"edges":[]}}
