@@ -1,0 +1,21 @@
+{
+ "id": "mist-forest/chapter-end",
+ "story": "mist-forest",
+ "why": "一章一条主链走通 ＋ 章末段**无出口**（结局收敛面）",
+ "drive": {
+  "clicks": [
+   "往林子里走",
+   "继续往深处走",
+   "拨开雾往里走"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "第一章 · 完"
+  ],
+  "edges": [],
+  "absent": []
+ }
+}

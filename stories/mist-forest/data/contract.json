@@ -1,0 +1,21 @@
+{
+ "section": "StoryBindings",
+ "note": "迷雾森林（`mist-forest`）第一章的接入契约成员：照最小合法集 ＋ 状态面登记。",
+ "members": [
+  {
+   "name": "rules",
+   "kind": "empty-array",
+   "docs": "条件表：第一章的**状态写**行在 `data/rules.json`（`sets`）；链接由 `passages.json` 的 `links[]` 合成（两处真源各管一段，✗ 不重复声明同一行 ✓）"
+  },
+  {
+   "name": "passageSpecs",
+   "kind": "forward",
+   "docs": "`#1350` 片 5：段落**声明面**（`params`／`slot`／`present`）—— ★**必须在契约里声明**，否则装配期的 `<<printparam>>` 读不到 `params.default`（实测：未声明 ⇒ 渲染出报错串 ✗）。✗ 不含 `args` 值（那是运行期数据 ✓）"
+  },
+  {
+   "name": "mechanics",
+   "kind": "null",
+   "docs": "新机制声明表：第一章未启用（战斗／车卡／图鉴属后续章）⇒ 显式声明 `null` ✓"
+  }
+ ]
+}

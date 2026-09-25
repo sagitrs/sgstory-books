@@ -1,0 +1,28 @@
+{
+ "id": "mist-forest/any-gate-closed",
+ "story": "mist-forest",
+ "why": "`any` 条件行在**都不满足**时不出现（先断「关着」这一态）",
+ "drive": {
+  "clicks": [
+   "往林子里走",
+   "继续往深处走"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "一半是来找东西的"
+  ],
+  "edges": [
+   {
+    "from": "林缘空地",
+    "label": "往废哨站去",
+    "to": "废哨站"
+   }
+  ],
+  "absent": [
+   "问他这些蜡烛是谁的"
+  ]
+ }
+}

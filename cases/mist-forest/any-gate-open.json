@@ -1,0 +1,28 @@
+{
+ "id": "mist-forest/any-gate-open",
+ "story": "mist-forest",
+ "why": "`any` 命中后出现 —— 与上一条**成对**（同一条判据的两个态，✗ 不合成一格）",
+ "drive": {
+  "clicks": [
+   "往林子里走",
+   "继续往深处走",
+   "往废哨站去",
+   "退回林缘空地"
+  ],
+  "state": {},
+  "seed": 1
+ },
+ "expect": {
+  "visible": [
+   "一半是来找东西的"
+  ],
+  "edges": [
+   {
+    "from": "林缘空地",
+    "label": "问他这些蜡烛是谁的",
+    "to": "林缘空地"
+   }
+  ],
+  "absent": []
+ }
+}
