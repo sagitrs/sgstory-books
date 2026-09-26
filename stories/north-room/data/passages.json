@@ -54,7 +54,8 @@
   "present": "菜单",
   "prio": 1,
   "prereq": [],
-  "payload": "信息|选择"
+  "payload": "信息|选择",
+  "check": "里屋·察觉"
  },
  "字条": {
   "links": [
