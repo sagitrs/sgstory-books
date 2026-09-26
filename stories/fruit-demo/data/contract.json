@@ -15,8 +15,14 @@
   {
    "name": "pcDefaults",
    "kind": "const",
+   "value": { "心情": { "值": 60 } },
+   "docs": "玩家默认态：**故事自定义键**（★引擎已知键 ⇒ ✗ 不许走本口 —— `#1484` 收束；车卡族数值见 `pcShape`）"
+  },
+  {
+   "name": "pcShape",
+   "kind": "const",
    "value": { "hp": 12, "max_hp": 12, "salves": 0 },
-   "docs": "玩家默认态：hp 面（道具/战斗故事必需）"
+   "docs": "★`#1484`：**车卡族键的静态初值**（本故事✗ 不跑车卡流程 ⇒ 走这一路；★由 `pcDefaults` **搬来** —— 收束 `#1484` 后 `pcDefaults` ✗ 收引擎已知键）"
   },
   {
    "name": "mechanics",
