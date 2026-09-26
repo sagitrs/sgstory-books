@@ -8,7 +8,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|选择"
  },
  "靴子": {
   "links": [
@@ -36,7 +37,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息"
  },
  "里屋": {
   "links": [
@@ -51,7 +53,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|选择"
  },
  "字条": {
   "links": [
@@ -66,7 +69,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息"
  },
  "结局 收好": {
   "ending": {
@@ -76,7 +80,8 @@
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "张力|信息"
  },
  "结局 原样": {
   "ending": {
@@ -86,6 +91,7 @@
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "张力|信息"
  }
 }
