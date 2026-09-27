@@ -22,7 +22,12 @@
   "present": "菜单",
   "prio": 1,
   "prereq": [],
-  "payload": "张力|选择"
+  "payload": "张力|选择",
+  "fight": {
+   "pool": "雾影",
+   "turns": 3,
+   "result": "won"
+  }
  },
  "结局 胜": {
   "ending": {
