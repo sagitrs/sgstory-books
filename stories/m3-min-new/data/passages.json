@@ -25,7 +25,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|选择"
  },
  "暗间": {
   "links": [],
@@ -37,6 +38,7 @@
     "type": "string",
     "required": true
    }
-  }
+  },
+  "payload": "信息"
  }
 }

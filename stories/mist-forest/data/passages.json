@@ -16,7 +16,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力|选择"
  },
  "酒馆": {
   "links": [
@@ -39,7 +40,8 @@
     "required": false,
     "default": 3
    }
-  }
+  },
+  "payload": "信息|选择"
  },
  "村中井台": {
   "links": [
@@ -50,7 +52,8 @@
   ],
   "present": "菜单",
   "prio": 2,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息"
  },
  "林间小径": {
   "links": [
@@ -65,7 +68,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力|选择"
  },
  "林缘空地": {
   "links": [
@@ -76,7 +80,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息"
  },
  "废哨站": {
   "links": [
@@ -91,7 +96,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力|选择"
  },
  "结局 回头": {
   "links": [],
@@ -101,7 +107,8 @@
   "ending": {
    "key": "回头",
    "kind": "chapter"
-  }
+  },
+  "payload": "信息|张力"
  },
  "结间 入林": {
   "links": [],
@@ -111,6 +118,7 @@
   "ending": {
    "key": "入林",
    "kind": "chapter"
-  }
+  },
+  "payload": "信息|张力"
  }
 }
