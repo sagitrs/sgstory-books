@@ -130,6 +130,51 @@ jobs:
             console.log("✓ 可达性通过（所有改制面故事）");
           '
 
+      # ★ `#36`（`#1516` C 案·乙类）：**真机浏览器断言**收进 books CI ——
+      #   ★为何在 books：★乙类**点名真故事段**（`north-room`／`mist-forest`／`battle-demo-dnd`／`fruit-demo` ✓）
+      #     ⇒ ★books **天然有真故事** ✓（★引擎仓反之：天然零故事 ⇒ 那一层归 realmachine 的 `BROWSER_TIERS=engine` ✓）
+      #   ★Chrome 由**本仓自装**（★协调席裁：✗ 不跨仓 realmachine checkout ⇒ ★"验的人"与"被验的物"同仓 ✓）
+      #     —— ★装法照 realmachine 的 playwright 手法 ＋ 缓存 ✓（`CHROME_PATH` 是引擎 `test/browser.mjs` 认的**同一个口** ✓）
+      - name: 装 playwright（★本仓自查故事自家的浏览器面）
+        working-directory: engine
+        run: npm i --no-save playwright
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-chromium-${{ runner.os }}-v1
+
+      - name: 装 chromium（playwright）
+        working-directory: engine
+        run: npx playwright install --with-deps chromium
+
+      - name: 链接 CHROME_PATH（✗ 缺即出声）
+        working-directory: engine
+        env:
+          CHROME_PATH: ${{ github.workspace }}/pw-chromium-ci
+        run: |
+          set -euo pipefail
+          PW_PATH=$(node -e "console.log(require('playwright').chromium.executablePath())")
+          test -x "$PW_PATH" || {
+            echo "::error title=pd-attribution::(b) story-face — playwright chromium 缺失（✗ 不许静默跳过）"; exit 1; }
+          ln -sf "$PW_PATH" "$CHROME_PATH"
+          echo "✓ chromium ⇒ $CHROME_PATH"
+
+      - name: 浏览器面断言（乙类：真机 · 故事侧）
+        working-directory: engine
+        env:
+          CHROME_PATH: ${{ github.workspace }}/pw-chromium-ci
+          SG_STORIES_DIR: ${{ github.workspace }}/books/stories
+          BROWSER_TIERS: story
+          # ★★待甲（引擎侧 `#1532` 把 B1–B8 的**段名/键改成可注入**后）⇒ ★在此传 books 的段名/键 ✓
+          #   （★一处权威：**断言在引擎、段名由数据给** ✓ —— ✗ books 重写断言＝分叉漂移 ✓）
+        run: |
+          set -euo pipefail
+          echo "── 浏览器面断言（乙类）：BROWSER_TIERS=$BROWSER_TIERS"
+          node test/browser.mjs || {
+            echo "::error title=pd-attribution::(b) story-face — 浏览器面断言未过（乙类：真机 · 故事侧）"; exit 1; }
+          echo "✓ 浏览器面断言通过（乙类）"
+
       - name: 断言引擎仓没被写脏（✗ 产物应落 books/dist）
         run: |
           set -euo pipefail
