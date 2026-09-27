@@ -23,7 +23,8 @@
      "props": [
       {
        "valueKey": "inv",
-       "empty": "（空）"
+       "empty": "（空）",
+       "label": "物品栏"
       }
      ]
     }
