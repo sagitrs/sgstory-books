@@ -11,6 +11,23 @@
    "name": "mechanics",
    "kind": "null",
    "docs": "新机制声明表：本故事未启用 ⇒ 按 `#492` 口径**也要显式声明**（`null` ＝ 能力不在 ✓）"
+  },
+  {
+   "name": "panels",
+   "kind": "const",
+   "docs": "表示面 P3（sagitrs/sgstory#1539 books 半 · #42）：inv 真在玩（铜钥匙）⇒ 只声明 list（✗ 无 hp 真值）。★只写**被消费的键**：slot 在 **block**（✗ prop 上的 slot 不读）；style 用**对象形**（✗ 字符串形是 no-op）；list 的 inv 来自 pc.inv",
+   "value": [
+    {
+     "as": "list",
+     "slot": "sidebar.primary",
+     "props": [
+      {
+       "valueKey": "inv",
+       "empty": "（空）"
+      }
+     ]
+    }
+   ]
   }
  ]
 }
