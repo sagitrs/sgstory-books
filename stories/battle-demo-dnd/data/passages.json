@@ -8,7 +8,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力"
  },
  "斗": {
   "links": [
@@ -20,7 +21,8 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "张力|选择"
  },
  "结局 胜": {
   "ending": {
@@ -30,7 +32,8 @@
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力"
  },
  "结局 败": {
   "ending": {
@@ -40,7 +43,8 @@
   "links": [],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|张力"
  },
  "战果": {
   "links": [
@@ -67,6 +71,7 @@
   ],
   "present": "菜单",
   "prio": 1,
-  "prereq": []
+  "prereq": [],
+  "payload": "信息|选择"
  }
 }
