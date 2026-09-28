@@ -1,0 +1,12 @@
+{
+ "id": "battle-demo-dnd/swing",
+ "story": "battle-demo-dnd",
+ "why": "★阶 1 主格（`sgstory-books#44` 验收②）：走上前去（`gives` 木桩）⇒ 用小刀劈木桩（★固定伤害经链接入参 ⇒ `{{伤害}}` 填 3；★`takes` 使木桩**离开** pc.inv）⇒ 战果段印出伤害。★本格一条断言管两面：伤害文本 visible ＋ inv 空（✗ 不另写同断言副本）",
+ "drive": { "clicks": ["走上前去", "用小刀劈木桩"], "state": {}, "seed": 1 },
+ "expect": {
+  "visible": ["木桩受到了 3 点伤害"],
+  "absent": ["走上前去"],
+  "state": { "inv": {} },
+  "edges": []
+ }
+}
