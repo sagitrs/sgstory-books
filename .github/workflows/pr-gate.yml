@@ -78,7 +78,7 @@ jobs:
       #   ★本仓保留：**build（编译性）** ＋ 散文形态（P1–P5）＋ 发布管理 ✓
       #   ★引擎侧的对应承载：`sagitrs/sgstory` 的 `test/any-and-req-cases.mjs`（`any`／`req`／值门／
       #     `m3-chk-e2e` 全集）＋ `m3-*` 夹具族 ⇒ ★引擎看护自己（✗ 以本书全量故事为语料）✓
-      #   ★`cases/` 目录**暂留**（迁完前留档，✗ 不删）—— 后续票按 `#1592` M2 清单收尾。
+      #   ★`cases/` 目录**已删**（`sagitrs/sgstory#1597` 的 books 半 · `books#38` 同轮）：★M2 之后**零 CI 消费**（行为验收已迁引擎夹具）⇒ 按「非必要不保留」删尽 ⇒ ★**git 历史即归档** ✓
 
       #   ★`books#56`（伞 M3）：本步已**拆两段**（散文门留 ／ 可达性降提示 —— 见下两步）✓
       - name: 故事面判据 · 散文词汇门（P1–P5 ＋ P6）
@@ -129,45 +129,14 @@ jobs:
               : "✓ 可达性全清（无未达段落）");
           '
 
-      - name: 装 playwright（★本仓自查故事自家的浏览器面）
-        working-directory: engine
-        run: npm i --no-save playwright
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-chromium-${{ runner.os }}-v1
-
-      - name: 装 chromium（playwright）
-        working-directory: engine
-        run: npx playwright install --with-deps chromium
-
-      - name: 链接 CHROME_PATH（✗ 缺即出声）
-        working-directory: engine
-        env:
-          CHROME_PATH: ${{ github.workspace }}/pw-chromium-ci
-        run: |
-          set -euo pipefail
-          PW_PATH=$(node -e "console.log(require('playwright').chromium.executablePath())")
-          test -x "$PW_PATH" || {
-            echo "::error title=pd-attribution::(b) story-face — playwright chromium 缺失（✗ 不许静默跳过）"; exit 1; }
-          ln -sf "$PW_PATH" "$CHROME_PATH"
-          echo "✓ chromium ⇒ $CHROME_PATH"
-
-      - name: 浏览器面断言（乙类：真机 · 故事侧）
-        working-directory: engine
-        env:
-          CHROME_PATH: ${{ github.workspace }}/pw-chromium-ci
-          SG_STORIES_DIR: ${{ github.workspace }}/books/stories
-          BROWSER_TIERS: story
-          # ★★待甲（引擎侧 `#1532` 把 B1–B8 的**段名/键改成可注入**后）⇒ ★在此传 books 的段名/键 ✓
-          #   （★一处权威：**断言在引擎、段名由数据给** ✓ —— ✗ books 重写断言＝分叉漂移 ✓）
-        run: |
-          set -euo pipefail
-          echo "── 浏览器面断言（乙类）：BROWSER_TIERS=$BROWSER_TIERS"
-          node test/browser.mjs || {
-            echo "::error title=pd-attribution::(b) story-face — 浏览器面断言未过（乙类：真机 · 故事侧）"; exit 1; }
-          echo "✓ 浏览器面断言通过（乙类）"
+      # ── 乙类浏览器档（**故事侧**）**已整段摘除**（`sagitrs/sgstory#1597` 的 books 半 · 操作者裁「非必要不保留」）──
+      #   ★摘了哪些步：装 playwright／playwright 缓存／装 chromium／链接 CHROME_PATH／**浏览器面断言（乙类：真机 · 故事侧）** ✓
+      #   ★为什么摘：★这五步的**对象是"故事"**（`BROWSER_TIERS=story` ＋ `SG_STORIES_DIR=books/stories`）⇒
+      #     ★那属**看护故事**（内容侧），而 Operator 裁定「**引擎只看护引擎能力；books 仓仅看护可编译性**」✗ ✓
+      #   ★引擎浏览器能力**另有直接看护**（✗ 不缺）：引擎 `realmachine` job 的 `BROWSER_TIERS=engine` 档
+      #     （对象＝`m3-nocar-fixture` ⇒ `BROWSER_ASSERTIONS 33/33` ✓）⇒ ★"能力面"有主 ✓
+      #   ★顺带闭掉 `sagitrs/sgstory-books#38`：本步**曾"零断言却印通过"**（books 未装 fonttools ⇒ `build.mjs` 优雅回退
+      #     ⇒ 页面无 `#font-face` ⇒ `browser.mjs` 就绪守卫 bail ⇒ 打印"跳过" ⇒ step 绿 ✗）⇒ ★删掉本步＝**该洞无宿主** ✓
 
       - name: 断言引擎仓没被写脏（✗ 产物应落 books/dist）
         run: |

@@ -10,7 +10,7 @@ stories/<slug>/          故事（与引擎仓同形；换仓不换形）
   00-story.json          清单：slug / title / entry / audience / contractVersion / files
   passages/*.md          散文（纯 Markdown ＋ front-matter）
   data/*.json            数据面（契约项 / 条件表 / 声明面表）
-cases/<slug>/<case>.json 用例（对故事的期望；不属故事）
+cases/（**已删**：`sagitrs/sgstory#1597` 的 books 半 · M2 后零 CI 消费 ⇒ 按「非必要不保留」删尽，**git 历史即归档**）
 ```
 
 ## 怎么跑
