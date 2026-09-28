@@ -80,29 +80,39 @@ jobs:
       #     `m3-chk-e2e` 全集）＋ `m3-*` 夹具族 ⇒ ★引擎看护自己（✗ 以本书全量故事为语料）✓
       #   ★`cases/` 目录**暂留**（迁完前留档，✗ 不删）—— 后续票按 `#1592` M2 清单收尾。
 
-      - name: 故事面判据（散文词汇 P1–P5 ＋ 可达性）
+      #   ★`books#56`（伞 M3）：本步已**拆两段**（散文门留 ／ 可达性降提示 —— 见下两步）✓
+      - name: 故事面判据 · 散文词汇门（P1–P5 ＋ P6）
         working-directory: engine
         run: |
           set -euo pipefail
-          # ★本步**复用引擎侧既有判据**（✗ 不在本仓重写：单一权威 ✓）
-          #   ① `test/prose-vocabulary.mjs` ⇒ 散文词汇面 **P1–P5**
-          #      （零链接／零表达式／入参声明／无悬空＋必填实参／**反引号包宏**）
-          #      ★为什么必须在 PR 期跑：`m3-min-new` 曾有一条 `P4`（`门厅.敲门` 无 `args` 而目标段 `条子` 必填）
-          #        ⇒ 读者走到「暗间」时 `{{条子}}` 取不到值 ✗ —— 那之前**只有人跑真门才会发现** ✓
-          #   ② **可达性**：`unreachablePassages`（引擎 `#1411` 的纯函数机制）⇒ 每个真故事跑 ⇒ 不可达即红
-          #      ★为什么由 books 跑：机制留引擎、**策略判据（这个故事该不该全可达）归使用方仓** ✓
-          #   ★两处出边并集是它的口径（`passages.json` 的 `links[].to` ＋ 规则行 `[[label|to]]`）
-          #     —— 只算一处会**误报**（实测：改制后 `north-room` 只算 `links[]` 会误报 4 段 ✗）
+          # ★本段**复用引擎侧既有判据**（✗ 不在本仓重写：单一权威 ✓）
+          #   `test/prose-vocabulary.mjs` ⇒ 散文词汇面 **P1–P5 ＋ P6**（**P4 ＝ 无悬空 ＋ 必填实参**）
+          #   ★为什么必须在 PR 期跑：`m3-min-new` 曾有一条 P4（`门厅.敲门` 无 `args` 而目标段 `条子` 必填）
+          #     ⇒ 读者走到「暗间」时 `{{条子}}` 取不到值 ✗ —— 那之前**只有人跑真门才会发现** ✓
           export SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories"
-          echo "── ① 散文词汇面（复用真门）"
           node test/prose-vocabulary.mjs || {
             echo "::error title=pd-attribution::(b) story-face — 散文词汇门未过（P1–P5）"; exit 1; }
-          echo "── ② 可达性（复用 unreachablePassages 机制）"
+
+      # ── 可达性（`books#56` · M3）：★**只承载"未达段落" ⇒ 降为提示（✗ 阻断）** ─────────────
+      #   ★为什么降：**作者草稿自由** —— 写到一半的故事本就可达性不全，它会挡住"上传＝**可编译**即可"的回路 ✗
+      #   ★"**悬空链接目标**"**仍是门**（口径＝`#1592` M3"悬空留门"✓），由**两处已有**阻断承担：
+      #     ① 上一步**编译故事**（引擎 `danglingProblems` ⇒ 解不开的 `[[…]]` 直接 build 失败 ✓）
+      #     ② 上一步**散文门 P4**（`links[].to` 不在键集 ⇒ 点名 to ＋ 来源段 ✓）
+      #     ⇒ ★故本段**不重复实现**那条"目标存在性"判据（✗ 在 workflow 里再写一份＝两份判据必漂移 ✗）
+      #   ★机制仍取引擎（`unreachablePassages` 纯函数 ✓）；★**策略**（这个故事该不该全可达）归本仓 ✓
+      #   ★口径：出边并集 ＝ `passages.json` 的 `links[].to` ＋ 规则行 `[[label|to]]`
+      #     —— 只算一处会**误报**（实测：改制后 `north-room` 只算 `links[]` 会误报 4 段 ✗）
+      #   ★两段**独立 rc 可分**：散文门红时本段不受影响，反之亦然 ✓
+      - name: 故事面判据 · 可达性（未达＝**提示**；✗ 阻断）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          export SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories"
           node --input-type=module -e '
             import { unreachablePassages } from "./editor/lib/core/passages-links.mjs";
             import { readFileSync, readdirSync, existsSync } from "node:fs";
             const base = process.env.SG_STORIES_DIR;
-            let bad = 0;
+            let n = 0;
             for (const slug of readdirSync(base)) {
               const d0 = base + "/" + slug + "/data/passages.json";
               if (!existsSync(d0)) { console.log("  " + slug + " ⇒ 旧形态（无 passages.json）⇒ 不判 ✓"); continue; }
@@ -111,18 +121,14 @@ jobs:
               const rp = base + "/" + slug + "/data/rules.json";
               const rules = existsSync(rp) ? JSON.parse(readFileSync(rp, "utf8")) : null;
               const probs = unreachablePassages({ data, entry, rules });
-              for (const p of probs) { console.error("  ✗ " + slug + "：" + p); bad++; }
+              for (const p of probs) { console.log("::warning title=pd-reachability::(b) story-face — " + slug + "：" + p); n++; }
               if (!probs.length) console.log("  " + slug + " ⇒ 全可达 ✓");
             }
-            if (bad) { console.error("::error title=pd-attribution::(b) story-face — 有 " + bad + " 个不可达段（读者永远走不到）"); process.exit(1); }
-            console.log("✓ 可达性通过（所有改制面故事）");
+            console.log(n
+              ? ("⚠ 未达段落 " + n + " 个 ⇒ **提示**（✗ 阻断；`sagitrs/sgstory-books#56` M3：作者草稿自由）")
+              : "✓ 可达性全清（无未达段落）");
           '
 
-      # ★ `#36`（`#1516` C 案·乙类）：**真机浏览器断言**收进 books CI ——
-      #   ★为何在 books：★乙类**点名真故事段**（`north-room`／`mist-forest`／`battle-demo-dnd`／`fruit-demo` ✓）
-      #     ⇒ ★books **天然有真故事** ✓（★引擎仓反之：天然零故事 ⇒ 那一层归 realmachine 的 `BROWSER_TIERS=engine` ✓）
-      #   ★Chrome 由**本仓自装**（★协调席裁：✗ 不跨仓 realmachine checkout ⇒ ★"验的人"与"被验的物"同仓 ✓）
-      #     —— ★装法照 realmachine 的 playwright 手法 ＋ 缓存 ✓（`CHROME_PATH` 是引擎 `test/browser.mjs` 认的**同一个口** ✓）
       - name: 装 playwright（★本仓自查故事自家的浏览器面）
         working-directory: engine
         run: npm i --no-save playwright
