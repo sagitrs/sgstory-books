@@ -26,9 +26,12 @@ SG_STORIES_DIR=../sgstory-books/stories node build.mjs
 # 2) 跑门
 SG_STORIES_DIR=../sgstory-books/stories node scripts/audit.mjs --check
 
-# 3) 跑用例（执行器已在引擎仓落地：scripts/case-run.mjs）
-#    先建产物（**清掉本故事的旧生成物再 build**，否则会跳过重编、读到旧产物）
-SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs --cases=../sgstory-books/cases
+# 3) 跑「**行为用例**」⇒ ★已迁**引擎仓夹具**（本仓**不再有** `cases/` 目录）
+#    ★本仓 `cases/` 已删尽（`sagitrs/sgstory#1597` 的 books 半 ⇒ **git 历史即归档** ✓）——
+#      删除依据：伞 `sagitrs/sgstory#1592` **M2**「books 仓**仅看护可编译性**」⇒ 行为回归归**引擎夹具**
+#      （能力半：`m3-*` 夹具 ＋ `test/any-and-req-cases.mjs` 等）＋ **作者/玩家反馈回路**（内容半）✓
+#    ★示例（引擎侧，✗ 需本仓产物）：
+cd ../sgstory && node test/any-and-req-cases.mjs      # 行为夹具之一；清单见引擎 `scripts/test-plan.mjs`
 ```
 
 > **命令的权威以引擎仓实现为准**：`SG_STORIES_DIR` 是引擎的"故事根"口（环境变量，单一口名）；
@@ -36,7 +39,7 @@ SG_STORIES_DIR=../sgstory-books/stories node scripts/case-run.mjs --cases=../sgs
 
 ## 本地复算前先清生成物（**必做**）
 
-本地复算/跑用例前，先清掉**本故事**的生成物与 `dist/`：
+本地复算前，先清掉**本故事**的生成物与 `dist/`：
 
 ```bash
 rm -f stories/*/1[5678]-*.twee stories/*/00-meta.twee && rm -rf dist
@@ -105,7 +108,7 @@ rm -f stories/*/1[5678]-*.twee stories/*/00-meta.twee && rm -rf dist
 用例 10 条：绿 9 ｜ 预期缺口 1（1236）｜ 未归因 0 ｜ 归因无效 0 ｜ 陈旧归因 0 ｜ 未核实 0 ⇒ rc=0
 ```
 
-- **读数时点**：2026-09-24（引擎主干 `0ef8420`；`cases/` 10 件）——**本行是历史读数，不是常设断言**；
+- **读数时点**：2026-09-24（引擎主干 `0ef8420`；`cases/` 10 件）（★`cases/` 目录已于 `sagitrs/sgstory#1597` 的 books 半**删尽** ✓）——**本行是历史读数，不是常设断言**；
 - **重取**：按上面第 3 条命令跑一次（汇总行即权威）；
 - **为什么写在这里**：用例是故事仓自己的交付面，**分母应当随手可见** ——
   「用例跑得出结果」这句话没有分母就等于没有内容，而分母**随用例数增长**，所以新增用例时**同笔更新这一行**。
