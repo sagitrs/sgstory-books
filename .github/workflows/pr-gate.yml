@@ -71,26 +71,14 @@ jobs:
           SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" node build.mjs || {
             echo "::error title=pd-attribution::(b) story-face — 引擎编译失败 ⇒ **本 PR 的 pin 编不动本仓故事**（看上面点名；常见＝pin 早于故事用到的新格式能力）"; exit 1; }
 
-      - name: 用例门（本仓用例必须过）
-        working-directory: engine
-        env:
-          GH_TOKEN: ${{ secrets.SG_CASES_TOKEN || github.token }}
-        run: |
-          set -euo pipefail
-          storyN=$( (ls -d "$GITHUB_WORKSPACE/books/stories"/*/ 2>/dev/null || true) | wc -l | tr -d ' ')
-          echo "故事数 = $storyN"
-          if [ "$storyN" -eq 0 ]; then
-            echo "::notice title=pd-cases::零故事态 ⇒ 无用例可跑，本门**显式分叉软通过**（不是恒绿）"; exit 0
-          fi
-          for d in "$GITHUB_WORKSPACE/books/stories"/*/; do
-            slug=$(basename "$d")
-            echo "── 用例门：slug=$slug"
-            if ! SG_STORIES_DIR="$GITHUB_WORKSPACE/books/stories" \
-                 node scripts/case-run.mjs --cases="$GITHUB_WORKSPACE/books/cases" --slug="$slug"; then
-              echo "::error title=pd-attribution::(b) story-face — 用例门未过（slug=$slug）"; exit 1
-            fi
-          done
-          echo "✓ 用例门通过（所有 slug）"
+      # ★ `sagitrs/sgstory#1592`（伞 M2）：**逐故事行为用例门已摘除** ——
+      #   Operator 2026-09-28 裁定「引擎只看护引擎能力；**books 仓仅看护可编译性**」；
+      #   而 `case-run` 的逐故事断言是**行为回归**（✗ 编译），且大多数锚**逐字散文文案**
+      #   （＝作者自由，✗ 质量门）⇒ ★该判据**归属引擎**（引擎仓夹具 `m3-*` 族）。
+      #   ★本仓保留：**build（编译性）** ＋ 散文形态（P1–P5）＋ 发布管理 ✓
+      #   ★引擎侧的对应承载：`sagitrs/sgstory` 的 `test/any-and-req-cases.mjs`（`any`／`req`／值门／
+      #     `m3-chk-e2e` 全集）＋ `m3-*` 夹具族 ⇒ ★引擎看护自己（✗ 以本书全量故事为语料）✓
+      #   ★`cases/` 目录**暂留**（迁完前留档，✗ 不删）—— 后续票按 `#1592` M2 清单收尾。
 
       - name: 故事面判据（散文词汇 P1–P5 ＋ 可达性）
         working-directory: engine
