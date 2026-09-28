@@ -1,82 +1,36 @@
 {
  "门厅": {
+  "text": "演武场里立着一根木桩。\n\n它没有脸，也没有动作，只是立在那里。\n",
   "links": [
-   {
-    "label": "推门进去",
-    "to": "斗"
-   }
+   { "id": "门厅.上前", "label": "走上前去", "to": "斗", "gives": ["木桩"] }
   ],
-  "present": "菜单",
-  "prio": 1,
-  "prereq": [],
-  "payload": "信息|张力"
+  "present": "菜单", "prio": 1, "prereq": [], "payload": "信息|张力"
  },
  "斗": {
+  "text": "你抽出小刀。木桩立在原地，一动不动。\n",
   "links": [
    {
-    "id": "斗.去战果",
-    "label": "查看这一场",
-    "to": "战果"
+    "id": "斗.劈",
+    "label": "用小刀劈木桩",
+    "to": "战果",
+    "args": { "伤害": 3 },
+    "takes": ["木桩"]
    }
   ],
-  "present": "菜单",
-  "prio": 1,
-  "prereq": [],
-  "payload": "张力|选择",
-  "fight": {
-   "pool": "雾影",
-   "turns": 3,
-   "result": "won"
-  }
- },
- "结局 胜": {
-  "ending": {
-   "key": "胜",
-   "kind": "final"
-  },
-  "links": [],
-  "present": "菜单",
-  "prio": 1,
-  "prereq": [],
-  "payload": "信息|张力"
- },
- "结局 败": {
-  "ending": {
-   "key": "败",
-   "kind": "final"
-  },
-  "links": [],
-  "present": "菜单",
-  "prio": 1,
-  "prereq": [],
-  "payload": "信息|张力"
+  "present": "菜单", "prio": 1, "prereq": [], "payload": "张力|选择"
  },
  "战果": {
+  "text": "木桩受到了 {{伤害}} 点伤害。它还是立在那里。\n",
+  "params": { "伤害": { "type": "number", "required": true } },
   "links": [
-   {
-    "id": "战果.胜",
-    "label": "查看战果（胜）",
-    "to": "结局 胜",
-    "cond": {
-     "req": [
-      "fight:雾影.won"
-     ]
-    }
-   },
-   {
-    "id": "战果.败",
-    "label": "查看战果（败）",
-    "to": "结局 败",
-    "cond": {
-     "req": [
-      "fight:雾影.lost"
-     ]
-    }
-   }
+   { "id": "战果.离开", "label": "收刀走开", "to": "结局" }
   ],
-  "present": "菜单",
-  "prio": 1,
-  "prereq": [],
-  "payload": "信息|选择"
+  "present": "菜单", "prio": 1, "prereq": [], "payload": "信息|选择"
+ },
+ "结局": {
+  "text": "你收刀走开。演武场里只剩下那根木桩。\n",
+  "links": [],
+  "present": "菜单", "prio": 1, "prereq": [], "payload": "信息|张力",
+  "ending": { "key": "完", "kind": "final" }
  }
 }
