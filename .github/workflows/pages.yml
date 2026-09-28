@@ -51,29 +51,42 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "branch=$br" >> "$GITHUB_OUTPUT"
 
-      # §四4b：**bump 那一笔件面只含声明件** —— 本笔改了声明件 ⇒ 它的件面必须 ⊆ 声明件（不许夹带故事面）
-      - name: §四4b 核 bump 笔未夹带故事面（归因 (a)）
+      # §四4b：**升钉那一笔不许夹带故事行为改动** —— ★判据按「**笔的类型**」收窄（`sgstory-books#49` · 链路裁定「甲案」）。
+      #   ★为什么要收窄（实测在案）：旧判据＝「件面含声明件 ⇒ 件面不得含 stories/** 或 cases/**」，
+      #     而链路**要求**「同笔升 pin」（故事面在旧引擎上编不过 ⇒ 必须与 pin 同笔）⇒ 二者**不可能同时满足** ✗
+      #     ⇒ 实测 `937ae0c`（books#45）／`397bdff`（#42）／`e5146c6`（fix(39)）三笔 `pages` **failure**，
+      #     失败步逐字是本步 ⇒ **`deploy` skipped ⇒ 线上一直是老引擎**（`#45` 的「物品栏」标题修复至今没上线）。
+      #   ★口径：① **升钉笔**（主题 `chore`／`build`／`ci`／`style` 型 ⇒ 以"升钉"为名）⇒ 件面**仍不得**含
+      #     `stories/**`／`cases/**`（原意保留 ✓）；② **故事笔**（`feat`／`fix`／`perf`／`refactor`／`test`／`docs` 等
+      #     "有内容"的类型）顺手升钉 ⇒ ★走 **PR CI**（`pr-gate` 已跑 `build` ＋ `case-run` 逐 slug）⇒ 本格不适用 ✓。
+      #   ★为什么故事笔可以放心：故事面的行为改动**只能**经 PR 进主干（PR 级 CI 已覆盖编译＋用例）⇒
+      #     不存在"逃过评审"的口子；本格的价值只在防"以升钉为名的夹带"✓
+      - name: §四4b 核升钉笔未夹带故事面（归因 (a)；按笔的类型收窄）
         if: github.event_name == 'push'
         working-directory: books
         run: |
           set -euo pipefail
           fail() { echo "::error title=pd-attribution::(a) engine-ref — $*"; exit 1; }
           sha="${{ github.sha }}"
-          if git diff-tree --no-commit-id --name-only -r "$sha" | grep -qx '.github/engine-ref.json'; then
-            files=$(git diff-tree --no-commit-id --name-only -r "$sha")
-            echo "本笔件面："; echo "$files"
-            # `#1304` 口径收窄：4b 的本意是「**不许借 bump 夹带故事行为改动**」——
-            # 故判据从"件面只含声明件"改为"件面**不得含 `stories/**` 或 `cases/**`**"。
-            # 为什么必须改（实况）：bump 那笔常把「本地复算前先清生成物」这类**说明面**（README）一并带上，
-            # 而它正是这条链的前置步骤、与 bump 同笔**合理**；原判据会把"修 pin 的那次发布"挡在门外 ✗
-            # （实测：books `#5` 合入后发布 run 35992248367 **failure**，失败步就是本步 ⇒ 线上仍是老引擎）。
-            # ★ "不许夹带故事面"这一格**保留**（bump 顺手改进故事行为 ⇒ 必须红）。
-            bad=$(printf '%s\n' "$files" | grep -E '^(stories/|cases/)' || true)
-            [ -z "$bad" ] || fail "bump 引擎 ref 的那一笔**夹带了故事面改动**（不得含 stories/** 或 cases/**）：$bad"
-            echo "✓ bump 笔未夹带故事面（说明面如 README／docs 允许同笔）"
-          else
+          files=$(git diff-tree --no-commit-id --name-only -r "$sha")
+          if ! printf '%s\n' "$files" | grep -qx '.github/engine-ref.json'; then
             echo "本笔未改声明件 ⇒ §四4b 不适用"
+            exit 0
           fi
+          echo "本笔件面："; echo "$files"
+          subject=$(git log -1 --format=%s "$sha")
+          echo "本笔主题：$subject"
+          # `#1304` 口径保留：说明面（README／docs）允许与升钉同笔——它正是"本地复算前先清生成物"这类链前置步骤。
+          # `#49` 收窄：只有"以升钉为名"的维护型主题才受"不许夹带故事面"约束。
+          case "$subject" in
+            chore*|build*|ci*|style*)
+              bad=$(printf '%s\n' "$files" | grep -E '^(stories/|cases/)' || true)
+              [ -z "$bad" ] || fail "升钉笔（主题「$subject」）**夹带了故事面改动**（不得含 stories/** 或 cases/**）：$bad"
+              echo "✓ 升钉笔未夹带故事面（说明面如 README／docs 允许同笔）" ;;
+            *)
+              echo "✓ 故事笔（主题「$subject」）同笔升钉 ⇒ 走 PR CI（pr-gate：build ＋ case-run 逐 slug）；§四4b 不适用"
+              echo "  （依据：sgstory-books#49 的裁定——旧判据实测挡了 937ae0c／397bdff／e5146c6 三笔发布）" ;;
+          esac
 
       - uses: actions/checkout@v4
         with:
