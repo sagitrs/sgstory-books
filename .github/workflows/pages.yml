@@ -51,42 +51,59 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "branch=$br" >> "$GITHUB_OUTPUT"
 
-      # §四4b：**升钉那一笔不许夹带故事行为改动** —— ★判据按「**笔的类型**」收窄（`sgstory-books#49` · 链路裁定「甲案」）。
-      #   ★为什么要收窄（实测在案）：旧判据＝「件面含声明件 ⇒ 件面不得含 stories/** 或 cases/**」，
-      #     而链路**要求**「同笔升 pin」（故事面在旧引擎上编不过 ⇒ 必须与 pin 同笔）⇒ 二者**不可能同时满足** ✗
-      #     ⇒ 实测 `937ae0c`（books#45）／`397bdff`（#42）／`e5146c6`（fix(39)）三笔 `pages` **failure**，
-      #     失败步逐字是本步 ⇒ **`deploy` skipped ⇒ 线上一直是老引擎**（`#45` 的「物品栏」标题修复至今没上线）。
-      #   ★口径：① **升钉笔**（主题 `chore`／`build`／`ci`／`style` 型 ⇒ 以"升钉"为名）⇒ 件面**仍不得**含
+      # §四4b：**升钉那一笔不许夹带故事行为改动** —— ★按「**笔的类型**」收窄（`sgstory-books#49` · 链路裁定「甲案」）
+      #   ＋ ★按「**push 内的每一笔**」判（`sgstory-books#51`：旧形只读 `github.sha` 单笔 ⇒ **多笔 push 时父笔夹带可逃** ✗）。
+      #   ★口径：① **升钉笔**（主题 chore／build／ci／style 型 ⇒ 以“升钉”为名）⇒ 件面**不得**含
       #     `stories/**`／`cases/**`（原意保留 ✓）；② **故事笔**（`feat`／`fix`／`perf`／`refactor`／`test`／`docs` 等
-      #     "有内容"的类型）顺手升钉 ⇒ ★走 **PR CI**（`pr-gate` 已跑 `build` ＋ `case-run` 逐 slug）⇒ 本格不适用 ✓。
-      #   ★为什么故事笔可以放心：故事面的行为改动**只能**经 PR 进主干（PR 级 CI 已覆盖编译＋用例）⇒
-      #     不存在"逃过评审"的口子；本格的价值只在防"以升钉为名的夹带"✓
-      - name: §四4b 核升钉笔未夹带故事面（归因 (a)；按笔的类型收窄）
+      #     “有内容”的类型）顺手升钉 ⇒ ★走 **PR CI**（`pr-gate` 已跑 `build` ＋ `case-run` 逐 slug）⇒ 本格不适用 ✓；
+      #     ③ 说明面（README／docs）与升钉同笔**仍允许**（`#1304` 原意保留 ✓）。
+      #   ★两个坑（`#51` 实测在案 ⇒ 显式处置，勿删）：
+      #     · `github.event.before` 在**分支新建／强推**时是**全零**或取不到 ⇒ ★退化为“只判 tip 单笔”（有意保留）；
+      #     · **合并提交**在 `git diff-tree -r` 下**不列件**（需 `-m`）⇒ ★对合并提交取“**相对第一父**”的件面
+      #       （＝该合并**带进主干**的那一份）；✗ 不静默跳过（否则“合并时顺手改故事”可逃）。
+      #   ★前提（本格**无法**自证，须靠平台面）：故事面的行为改动**只经 PR** ⇒ main 由 **branch protection 禁直推**
+      #     （`sgstory-books#51` ② 已提请 Admin）✓
+      - name: §四4b 核升钉笔未夹带故事面（归因 (a)；按笔的类型 ＋ push 内逐笔）
         if: github.event_name == 'push'
         working-directory: books
         run: |
           set -euo pipefail
           fail() { echo "::error title=pd-attribution::(a) engine-ref — $*"; exit 1; }
           sha="${{ github.sha }}"
-          files=$(git diff-tree --no-commit-id --name-only -r "$sha")
-          if ! printf '%s\n' "$files" | grep -qx '.github/engine-ref.json'; then
-            echo "本笔未改声明件 ⇒ §四4b 不适用"
-            exit 0
+          # 该笔的件面：**合并提交**取“相对第一父”的那一份（-m --first-parent）；普通提交走常形。
+          face_of() {
+            if [ "$(git rev-list --parents -n 1 "$1" | wc -w)" -gt 2 ]; then
+              git diff-tree -r -m --first-parent --no-commit-id --name-only "$1"
+            else
+              git diff-tree --no-commit-id --name-only -r "$1"
+            fi
+          }
+          touched=0
+          judge_one() {
+            local files subject bad
+            files=$(face_of "$1")
+            printf '%s\n' "$files" | grep -qx '.github/engine-ref.json' || return 0
+            touched=1
+            subject=$(git log -1 --format=%s "$1")
+            echo "  笔 $(git rev-parse --short "$1")｜主题：$subject"
+            case "$subject" in
+              chore*|build*|ci*|style*)
+                bad=$(printf '%s\n' "$files" | grep -E '^(stories/|cases/)' || true)
+                [ -z "$bad" ] || fail "升钉笔（$(git rev-parse --short "$1")，主题「$subject」）**夹带了故事面改动**（不得含 stories/** 或 cases/**）：$bad"
+                echo "    ✓ 升钉笔未夹带故事面（说明面如 README／docs 允许同笔）" ;;
+              *)
+                echo "    ✓ 故事笔同笔升钉 ⇒ 走 PR CI（pr-gate：build ＋ case-run 逐 slug）；本格不适用" ;;
+            esac
+          }
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "★ before 不可用（分支新建／强推／本地取不到）⇒ 退化为**只判 tip 单笔**"
+            judge_one "$sha"
+          else
+            echo "本次 push 范围：$before .. $sha（逐笔判）"
+            for c in $(git rev-list "$before..$sha"); do judge_one "$c"; done
           fi
-          echo "本笔件面："; echo "$files"
-          subject=$(git log -1 --format=%s "$sha")
-          echo "本笔主题：$subject"
-          # `#1304` 口径保留：说明面（README／docs）允许与升钉同笔——它正是"本地复算前先清生成物"这类链前置步骤。
-          # `#49` 收窄：只有"以升钉为名"的维护型主题才受"不许夹带故事面"约束。
-          case "$subject" in
-            chore*|build*|ci*|style*)
-              bad=$(printf '%s\n' "$files" | grep -E '^(stories/|cases/)' || true)
-              [ -z "$bad" ] || fail "升钉笔（主题「$subject」）**夹带了故事面改动**（不得含 stories/** 或 cases/**）：$bad"
-              echo "✓ 升钉笔未夹带故事面（说明面如 README／docs 允许同笔）" ;;
-            *)
-              echo "✓ 故事笔（主题「$subject」）同笔升钉 ⇒ 走 PR CI（pr-gate：build ＋ case-run 逐 slug）；§四4b 不适用"
-              echo "  （依据：sgstory-books#49 的裁定——旧判据实测挡了 937ae0c／397bdff／e5146c6 三笔发布）" ;;
-          esac
+          [ "$touched" -eq 1 ] || echo "范围内没有改声明件的笔 ⇒ §四4b 不适用"
 
       - uses: actions/checkout@v4
         with:

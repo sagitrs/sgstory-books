@@ -6,8 +6,8 @@
   { "name": "passageSpecs", "kind": "forward", "docs": "段落声明面（params／slot／present）—— 必须在契约里声明，否则 printparam 读不到 params 的 default" },
   { "name": "hasChargen", "kind": "const", "value": true, "docs": "开启车卡族 ⇒ pc 面含 hp／max_hp／salves" },
   { "name": "itemEffect", "kind": "lookup", "from": "window.Game?.Items?.effects", "key": "name", "default": null, "docs": "★物品效果面（本故事 effects 为空）—— ★声明它才有 pc.inv（items 组的 present 条件）：木桩作为玩家持有的 item 需要它" },
-  { "name": "foeState", "kind": "state-ref", "path": "foe", "default": {}, "docs": "★必给成员（引擎 `REQUIRED_MEMBERS`）—— ★留声明**是安全的**：引擎 `contract-defaults.mjs` 的『死声明』『冗余声明』两支都**跳过**必给成员 ⇒ ✗ 不会有人来叫你删它；★本故事**不使用**战斗面。★✗ 勿读成“不可去”：实测撤掉本行 `build` 仍 rc=0（那两支是“**建议删**”面，✗ 强制门；本仓防的“登记成永久豁免”是另一回事）——留它是为**与其它故事契约形状一致 ＋ 引擎必给约定**，✗ 不是“有门挡着”。（`sgstory-books#49` 顺带改口）" },
-  { "name": "battleDamage", "kind": "forward", "to": "Game.Items.battleDamage", "params": ["inv", "round", "defeats", "poisoned"], "args": ["round", "inv", "defeats", "poisoned"], "docs": "★必给成员（同上，`REQUIRED_MEMBERS`）—— 同 `foeState`：留声明**安全**（审计的死声明／冗余两支都跳过必给成员），✗ 勿读成“不可去”（撤掉 `build` 仍 rc=0）；★本故事不使用战斗面。" },
+  { "name": "foeState", "kind": "state-ref", "path": "foe", "default": {}, "docs": "★必给成员（引擎 `REQUIRED_MEMBERS`）。★留声明**是安全的**：审计的『死声明』『冗余声明』两支都**跳过**必给成员 ⇒ ✗ 不会有人来劝你删。★而**撤掉它是否 fail-loud 取决于该成员的读点**（引擎 `contract-defaults.mjs:364` 的注释“必给成员的声明不可去（读点是 fail-loud）”说的正是**读点**那一面）—— ★证据边界：本笔实测**本故事**撤掉后 `build` rc=0 ＋ `case-run` 3/3 绿，★但本故事**不使用**战斗面 ⇒ 用例**未必覆盖**该读点 ⇒ **✗ 不主张“运行时也安全”**。留它是为**与其它故事契约形状一致 ＋ 引擎的必给约定**。（`sgstory-books#49`／`#51`）" },
+  { "name": "battleDamage", "kind": "forward", "to": "Game.Items.battleDamage", "params": ["inv", "round", "defeats", "poisoned"], "args": ["round", "inv", "defeats", "poisoned"], "docs": "★必给成员（同上）。同 `foeState`：审计两支都跳过必给成员（✗ 不会有人劝你删）；★撤掉是否 fail-loud **取决于该成员的读点**（本故事实测 `build` rc=0 ＋ 用例 3/3，★但本故事**不使用**战斗面 ⇒ 用例未必覆盖该读点 ⇒ ✗ 不主张“运行时也安全”）。" },
   { "name": "mechanics", "kind": "null", "docs": "新机制声明表：本故事未启用 ⇒ 显式 null" }
  ]
 }
