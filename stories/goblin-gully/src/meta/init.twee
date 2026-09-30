@@ -1,0 +1,10 @@
+:: StoryInit
+<<set $player to { name: "冒险者", hp: 16, maxHp: 16, stats: setup.DND3.stats({ ac: 13, bab: 1, str_mod: 1, dex_mod: 1 }), effects: [] }>>
+<<set $inventory to []>>
+<<set $rumoursKnown to []>>
+<<set $secretDoorFound to false>>
+<<set $pitDoorBarred to true>>
+<<set $massReleased to false>>
+<<run setup.RPG.give("club")>>
+<<run setup.RPG.equip("club")>>
+<<run setup.RPG.give("bandage")>>

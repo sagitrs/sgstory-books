@@ -1,0 +1,36 @@
+:: StoryStylesheet
+body {
+	background: #0d1a0d;
+	color: #c8d8c0;
+	font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+#passages {
+	max-width: 38em;
+	margin: 3em auto;
+	padding: 0 1em;
+}
+a {
+	color: #7fc97f;
+}
+a:hover {
+	color: #a0d8a0;
+}
+hr {
+	border: 0;
+	border-top: 1px solid #2a4a2a;
+}
+.statusbar {
+	color: #6a9a6a;
+	font-size: 0.9em;
+}
+small {
+	color: #5a7a5a;
+}
+.choice-box button {
+	display: inline-block;
+	margin: 0.25em 0.8em 0.25em 0;
+}
+
+:: PassageFooter
+<hr>
+<div class="statusbar">体力：$player.hp / $player.maxHp　｜　背包：<<= setup.RPG.inventoryLabel()>></div>

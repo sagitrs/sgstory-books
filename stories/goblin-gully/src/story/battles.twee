@@ -1,0 +1,161 @@
+/* 哥布林溪谷 —— 战斗段落
+ *
+ * 设计规则：
+ *   自动战（interactive:false）同步完成，<<if>> 可在 <<run>> 后直接读结果。
+ *   交互战（interactive:true）异步，结果检查放在战后段落（重渲染）。
+ *   所有战斗段落结尾统一检查玩家是否死亡 → 跳转死亡结局。
+ */
+
+:: 大厅战斗
+<<run (new setup.RPG.Battle(5, [setup.DND3.Player], [setup.DND3.GG_Goblin, setup.DND3.GG_Goblin], false)).execute()>>
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<</if>>
+<<if setup.DND3.GG_Goblin.isDown>>
+<<run setup.RPG.loot(setup.DND3.GG_Goblin)>>
+<</if>>
+
+[[回到地图|探索]]
+
+:: 弓手战斗
+<<run (new setup.RPG.Battle(4, [setup.DND3.Player], [setup.DND3.GG_Archer, setup.DND3.GG_Archer], false)).execute()>>
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<</if>>
+<<if setup.DND3.GG_Archer.isDown>>
+<<run setup.RPG.loot(setup.DND3.GG_Archer)>>
+<</if>>
+
+[[回到地图|探索]]
+
+:: 首领战斗
+哥布林首领咆哮着挥舞木棒冲了过来！
+<<run (new setup.RPG.Battle(6, [setup.DND3.Player], [setup.DND3.GG_Boss], true)).execute()>>
+
+[[查看战况|首领战结果]]
+
+:: 首领战结果
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<<elseif setup.DND3.GG_Boss.isDown>>
+<<run setup.RPG.loot(setup.DND3.GG_Boss)>>
+哥布林首领倒下了！它的私室里藏着Erhurr家的财物。
+<<else>>
+首领还在抵抗。
+<</if>>
+
+[[回到地图|探索]]
+
+:: 雕像战斗
+水晶雕像缓缓转身，双臂如刃般挥来！
+<<run (new setup.RPG.Battle(5, [setup.DND3.Player], [setup.DND3.GG_CrystalStatue], true)).execute()>>
+
+[[查看战况|雕像战结果]]
+
+:: 雕像战结果
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<<elseif setup.DND3.GG_CrystalStatue.isDown>>
+水晶雕像碎裂成一地晶莹的碎片。
+<<else>>
+雕像还在运转……它的水晶身躯非常坚硬。
+<</if>>
+
+[[回到地图|探索]]
+
+:: 兵营战斗
+<<run (new setup.RPG.Battle(6, [setup.DND3.Player], [setup.DND3.GG_Goblin], false)).execute()>>
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<</if>>
+<<if setup.DND3.GG_Goblin.isDown>>
+<<run setup.RPG.loot(setup.DND3.GG_Goblin)>>
+<</if>>
+
+[[回到地图|探索]]
+
+:: 深坑遭遇
+你拉开铁门——一股腐烂的恶臭扑面而来。
+
+在浑浊的死水中，一团蠕动的、腐烂的变异肉块正在翻涌。扭曲的肢体不断从中长出又被重新吸收。你的本能尖叫着让你逃跑。
+
+<<if not setup.DND3.checkSave(setup.DND3.Player, "spells", 12, "恐惧")>>
+你转身就跑！
+<<goto "恐惧逃跑">>
+<</if>>
+
+你强忍恐惧，站住了脚。这东西……不该存在于这个世界。
+<<set $massReleased to true>>
+<<run (new setup.RPG.Battle(8, [setup.DND3.Player], [setup.DND3.GG_Mass], true)).execute()>>
+
+[[查看战况|深坑战结果]]
+
+:: 深坑战结果
+<<if setup.DND3.Player.isDown>>
+<<goto "结局-死亡">>
+<<elseif setup.DND3.GG_Mass.isDown>>
+<<run setup.RPG.loot(setup.DND3.GG_Mass)>>
+你赢了。Kale 帝国最黑暗的实验残余终于被终结了。
+<<goto "结局-胜利">>
+<<else>>
+肉团还在翻涌……它太强大了。
+<</if>>
+
+[[退回兵营|兵营撤退]]
+
+:: 恐惧逃跑
+你连滚带爬地冲上螺旋楼梯，身后传来肉团撞击铁门的闷响。
+
+如果你不回去把铁门闩上，那东西迟早会爬出来……毁掉整个镇子。
+
+<<link "回去闩上铁门（勇气检定）">><<goto "闩门">><</link>>
+[[逃出溪谷（不闩门）|结局-肉团逃出]]
+
+:: 闩门
+你深吸一口气，强迫自己转身冲下楼梯。肉团的触手已经伸出了铁门——
+你用尽全力把门撞回去，插上了门闩。
+
+门后传来愤怒的撞击声，但铁门很牢——至少现在是。
+
+你救了镇子……但肉团还在下面。总有一天，有人得回去终结它。
+
+[[结局-暂时安全]]
+
+:: 兵营撤退
+你退回兵营，喘着粗气。铁门后的咕噜声还在继续。
+
+[[探索]]
+
+:: 结局-死亡
+你的视野变暗，最后听到的是那令人作呕的咕噜声——或者哥布林的狞笑。
+
+—— 哥布林溪谷 · 死亡结局 ——
+
+<<link "重新开始">><<run SugarCube.Engine.restart()>><</link>>
+
+:: 结局-胜利
+腐烂变异肉团在最后一击中崩解成一滩污水。
+
+Kale 帝国最黑暗的实验残余终于被终结。你在它巢穴的残骸中找到了大量的琥珀金币和一张祝福卷轴。
+
+—— 哥布林溪谷 · 完美结局 ——
+
+<<link "重新开始">><<run SugarCube.Engine.restart()>><</link>>
+
+:: 结局-肉团逃出
+你逃出了溪谷，但身后传来铁门被撞开的巨响。
+
+数周后，哥布林溪谷的肉团爬上了地面，沿着河谷向镇子而去。
+
+—— 哥布林溪谷 · 坏结局 ——
+
+<<link "重新开始">><<run SugarCube.Engine.restart()>><</link>>
+
+:: 结局-暂时安全
+你闩上了铁门，肉团被困在了深坑里。
+
+镇子暂时安全了。但你知道，总有一天要回来面对它。
+
+—— 哥布林溪谷 · 生存结局 ——
+
+<<link "重新开始">><<run SugarCube.Engine.restart()>><</link>>
