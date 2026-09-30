@@ -1,0 +1,22 @@
+# 哥布林溪谷（Goblin Gully）改编授权
+
+## 原作
+
+- **模组名称**：Goblin Gully — A Deadly One-Page Dungeon
+- **作者**：Dyson Logos (https://dysonlogos.blog)
+- **发布日期**：2009-08-21
+- **原文链接**：https://dysonlogos.blog/2009/08/21/friday-map-goblin-gully-a-deadly-one-page-dungeon/
+- **PDF**：https://dysonlogos.blog/wp-content/uploads/2009/08/onepagedungeon-goblin-gully.pdf
+
+## 授权说明
+
+原模组基于 [Creative Commons Attribution-ShareAlike license](https://dysonlogos.blog/maps-and-adventures/) 发布。
+本改编作品遵循相同的 CC BY-SA 授权条款。
+
+## 改编说明
+
+- 原模组为纸笔桌游 one-page dungeon（B/X D&D 系统）
+- 本改编将其转换为基于 SC RPG 引擎的文字冒险游戏
+- 数值转换：B/X 属性 → D&D 3.5E 调整值（大致对应，非精确换算）
+- 12 个区域布局、怪物组合、陷阱机制、结局分支均忠实于原作
+- 新增：交互式战斗、装备系统、豁免检定、恐惧机制（引擎层新功能）

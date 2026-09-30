@@ -35,7 +35,7 @@ PLUGIN_SRC = ROOT / "src"
 UNIT_DIR = ROOT / "tests" / "unit"
 UNIT_DIST = UNIT_DIR / "dist"  # 测试构建产物（bundle/manifest，勿手改）
 VENDOR = ROOT / "vendor"
-DEFAULT_STORY = ROOT / "tests" / "e2e" / "old-house"
+DEFAULT_STORY = ROOT / "stories" / "goblin-gully"
 
 HEADER_RE = re.compile(
     r"^::\s*(?P<name>[^\[\{]*?)\s*(?:\[(?P<tags>[^\]]*)\])?\s*(?:\{.*\})?\s*$"
@@ -141,31 +141,27 @@ def load_template():
 
 def build_unit_bundle():
     """插件源码 → tests/unit/dist/bundle.js（shims 由 framework/ 提供）；
-    并扫描 tests/unit/ + stories/*/test/ 的 *.test.js 生成 dist/manifest.js。"""
+    并扫描 tests/unit/*.test.js 生成 dist/manifest.js（新用例文件自动被发现）。"""
     bundle = UNIT_DIST / "bundle.js"
     UNIT_DIST.mkdir(parents=True, exist_ok=True)
     bundle.write_text("\n\n".join(js_parts_of(collect_js_files())), encoding="utf-8")
     print(f"单元测试 bundle：{bundle.relative_to(ROOT)}")
 
-    # 扫描 tests/unit/ 和 stories/*/test/ 下的测试文件
-    test_files = set()
-    # tests/unit/ 内的测试：相对路径
-    for p in UNIT_DIR.rglob("*.test.js"):
-        if "dist" in p.parts:
-            continue
-        test_files.add(p.relative_to(UNIT_DIR).as_posix())
-    # stories/*/test/ 内的测试：从 tests/unit/ 出发的相对路径（../../stories/...）
+    test_files = sorted(
+        p.relative_to(UNIT_DIR).as_posix() for p in UNIT_DIR.rglob("*.test.js")
+    )
+    # 故事仓：也扫描 stories/*/test/*.test.js
+    import os
     stories_dir = ROOT / "stories"
     if stories_dir.exists():
-        for p in stories_dir.rglob("*.test.js"):
-            import os
-            rel = os.path.relpath(p, UNIT_DIR).replace("\\", "/")
-            test_files.add(rel)
-
+        for sp in stories_dir.rglob("*.test.js"):
+            rel = os.path.relpath(sp, UNIT_DIR).replace("\\", "/")
+            test_files.append(rel)
+        test_files.sort()
     manifest = UNIT_DIST / "manifest.js"
     manifest.write_text(
-        "/* 由 build.py 生成：测试文件清单（含 stories/*/test/），勿手改 */\n"
-        "window.__TEST_FILES = " + json.dumps(sorted(test_files), ensure_ascii=False, indent=1) + ";\n",
+        "/* 由 build.py 生成：测试文件清单（目录镜像 src/ 结构），勿手改 */\n"
+        "window.__TEST_FILES = " + json.dumps(test_files, ensure_ascii=False, indent=1) + ";\n",
         encoding="utf-8",
     )
     print(f"单元测试清单：{manifest.relative_to(ROOT)}（{len(test_files)} 个用例文件）")

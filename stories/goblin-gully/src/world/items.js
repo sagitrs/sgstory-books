@@ -52,6 +52,23 @@ DND3.GG_LightSword = R.defItem({
 	},
 });
 
+/* ---------- 天生武器（Boss 专用，不掉落不可卸） ---------- */
+DND3.GG_CrystalArm = R.defItem({
+	id: 'gg-crystal-arm', name: '水晶臂',
+	desc: '雕像自身生长的锐利晶体手臂。',
+	stats: { dmg: '1d6+4', type: 'slashing', crit: 2 },
+	weapon: true, slot: 'weapon', charges: null, stackable: false,
+	used(that, from) { DND3.meleeAttack(this, that, from); },
+});
+
+DND3.GG_Tentacle = R.defItem({
+	id: 'gg-tentacle', name: '腐烂触手',
+	desc: '肉团伸出的、不断蠕动的触手。',
+	stats: { dmg: '1d8+6', type: 'bludgeoning', crit: 2 },
+	weapon: true, slot: 'weapon', charges: null, stackable: false,
+	used(that, from) { DND3.meleeAttack(this, that, from); },
+});
+
 /* ---------- 护甲（Erhurr 家遗物 / 生锈链甲） ---------- */
 DND3.GG_RustedMail = R.defItem({
 	id: 'gg-rusted-mail', name: '生锈链甲',

@@ -205,12 +205,12 @@ map.addPath({
 map.addPath({ from: 'empty-chamber', to: 'boss-room', text: '进入首领房间' });
 map.addPath({ from: 'boss-room', to: 'empty-chamber', text: '退回空室' });
 
-// 首领房间 → 秘密房间（需发现秘密门 + 陷阱豁免）
+// 首领房间 → 秘密房间（首次推开触发陷阱，之后可自由通行）
 map.addPath({
 	from: 'boss-room', to: 'secret-chamber',
 	text: '推开秘密门',
-	when: () => !State.variables.secretDoorFound,
 	action: () => {
+		if (State.variables.secretDoorFound) return; // 已发现，无陷阱
 		State.variables.secretDoorFound = true;
 		// 陷阱：推开数秒后巨石落下，豁免石化或受 1d10
 		const ok = DND3.checkSave(DND3.Player, 'petrification', 13, '巨石陷阱');
