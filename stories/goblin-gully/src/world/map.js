@@ -233,12 +233,8 @@ map.addPath({ from: 'secret-storage', to: 'secret-chamber', text: '回到秘密�
 map.addPath({ from: 'boss-room', to: 'barracks', text: '走下螺旋楼梯' });
 map.addPath({ from: 'barracks', to: 'boss-room', text: '爬上楼梯' });
 
-// 兵营 → 深坑（铁门闩着）
-map.addPath({
-	from: 'barracks', to: 'the-pit',
-	text: '走向深坑铁门',
-	when: () => !State.variables.pitDoorBarred,
-});
+// 兵营 → 深坑（铁门可视但需打开才能进入）
+map.addPath({ from: 'barracks', to: 'the-pit', text: '走向深坑铁门' });
 map.addPath({ from: 'the-pit', to: 'barracks', text: '退回兵营' });
 
 /* ---------- 校验 ---------- */
