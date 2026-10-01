@@ -56,6 +56,15 @@ for (const r of rows) {
 		if (!r['断言']?.['渲染']) bad('层含 render 但缺「断言.渲染」');
 	}
 	if (!r['守的面']) bad('缺「守的面」（一句话说清守哪个回归）');
+	/* ★第 5 条强制形「准写死」（writer ＋ writer-2 合署）：**渲染栏每个被断言的值/子串须带实指**
+	 *   —— `文件:行`（如 `play.twee:58`）**或**选择器（如 `.noticebar`／`[data-panel="hp"]`）——
+	 *   **指不出 ⇒ 该断言未成立**（本轮 5 处错**全同形**：断言了 UI 不产出的东西；带实指是唯一**当场**拦得住的形）。 */
+	const 渲染 = (r['断言'] ?? {})['渲染'];
+	if (typeof 渲染 === 'string' && 渲染.length > 0) {
+		const 有文件行 = /[\w./-]+\.(js|mjs|twee|json|md|html):\d+/.test(渲染);
+		const 有选择器 = /(^|[\s（(])[.#][\w-]+|\[[^\]]+\]/.test(渲染);
+		if (!有文件行 && !有选择器) bad('「断言.渲染」缺**实指**（须带 `文件:行` 或选择器 —— 指不出 ⇒ 断言未成立）');
+	}
 	if (!fail.length || !fail.some((f) => f.startsWith(at))) ok.push(r.id);
 }
 
