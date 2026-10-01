@@ -25,13 +25,25 @@ const JSONF = argv.find((a) => a.endsWith('.json')) ?? path.join(BOOKS, 'stories
 const DOCS = argv.includes('--docs');
 // 豁免面（`#1842` 设计输入①）：`tools/refs-exemptions.json` 按**文件前缀**豁免 ⇒ 进「已豁免（计数出声）」，✗ 静默丢弃。
 const EXEMPT = (() => {
-	try { return JSON.parse(fs.readFileSync(path.join(HERE, 'refs-exemptions.json'), 'utf8'))['豁免'] ?? []; }
-	catch { return []; }
+	try {
+		const list = JSON.parse(fs.readFileSync(path.join(HERE, 'refs-exemptions.json'), 'utf8'))['豁免'] ?? [];
+		// ★NIT②③ 机械守卫：过宽前缀（空／`docs/`）不受理；「为何」「谁定」须各一行非空
+		const bad = [];
+		for (const e of list) {
+			const f = String(e['文件'] ?? '');
+			if (!f || f === 'docs/' || f === 'docs/**') bad.push(`豁免前缀过宽：\`${f}\``);
+			for (const k of ['为何', '谁定']) if (!String(e[k] ?? '').trim()) bad.push(`豁免 \`${f}\` 缺「${k}」`);
+		}
+		// eslint-disable-next-line no-console
+		for (const b of bad) console.error(`✗ refs-exemptions.json：${b}`);
+		return bad.length ? [] : list;   // 坏了就**不豁免任何东西**（保守：宁红不漏）
+	} catch { return []; }
 })();
 // 跨仓/外来形（设计输入③）：不在本仓/引擎树里的稿内相对名 ⇒ 归「外来（计数出声）」，✗ 与「本仓引用指错」混为一谈。
 const 外来形 = (f) => /^(gates\/|[\w-]*ch\d+\.twee$|[\w-]*endings\.twee$|[\w-]*tables?\.twee$|[\w-]*codex\.twee$)/.test(f);
 
 const fail = [];
+const docsFail = [];   // ★docs 面**独立数组**：报告态 ✗ 吞清单面的红（dev-10 阻断 RC）
 process.on('uncaughtException', (e) => {
 	console.error(`✗ ★未捕获异常：${e.message}`);
 	console.error('✗ 清单引用核失败 1 条');
@@ -125,6 +137,13 @@ for (const r of 场景) {
 	}
 }
 
+console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
+console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜散文形**一律红**');
+console.log(`  通过 ${Math.max(0, 处 - fail.length)}｜不符 ${fail.length}　★明账：仅范围核 ${仅范围核}（＝待补显式符号，逐条递减到零）`);
+for (const f of fail.slice(0, 12)) console.log(`  ✗ ${f}`);
+if (fail.length > 12) console.log(`  …（另 ${fail.length - 12} 条）`);
+console.log(fail.length ? '✗ 清单引用核失败' : '✓ 清单引用核通过');
+/* ---------- `--docs`（报告态；**独立数组**，✗ 不影响清单面的 rc —— dev-10 阻断 RC 的裁甲案） ---------- */
 /* ---------- `--docs`（报告态；`#1842` writer 三条设计输入） ---------- */
 if (DOCS) {
 	const walkMd = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -135,6 +154,7 @@ if (DOCS) {
 	const docsDir = path.join(BOOKS, 'docs');
 	const files = fs.existsSync(docsDir) ? walkMd(docsDir) : [];
 	let 处 = 0, 豁免数 = 0, 外来数 = 0, 范围核 = 0;
+	const 豁免命中 = [];
 	for (const f of files) {
 		const rel = 'docs/' + path.relative(docsDir, f).split(path.sep).join('/');
 		const 豁免 = EXEMPT.some((e) => rel.startsWith(String(e['文件']).replace('/**', '/')));
@@ -144,29 +164,29 @@ if (DOCS) {
 			const from = Number(m[2]), to = Number(m[3] ?? m[2]);
 			const got = readAt(m[1], from, raw);   // ② 同文件简写（近似「同节」）在 readAt 内处理
 			if (!got.ok) {
-				if (豁免) { 豁免数++; continue; }          // ① 豁免面（计数出声）
+				if (豁免) { 豁免数++; 豁免命中.push(`${rel} → ${m[1]}:${from}`); continue; }          // ① 豁免面（计数出声）
 				if (外来形(m[1])) { 外来数++; continue; }  // ③ 跨仓/外来形（计数出声）
-				fail.push(`[${rel}] ${got.why}`);
+				docsFail.push(`[${rel}] ${got.why}`);
 				continue;
 			}
 			const seg = got.all.slice(from - 1, to).join('\n');
-			if (seg.trim() === '') { fail.push(`[${rel}] ${m[1]}:${from} 所指区段空行`); continue; }
+			if (seg.trim() === '') { docsFail.push(`[${rel}] ${m[1]}:${from} 所指区段空行`); continue; }
 			范围核++;
 		}
 	}
-	console.log(`─ docs 引用核（**报告态**：存在＋范围两核）：扫 ${files.length} 个 md｜引用 ${处} 处｜**不符 ${fail.length}**`
+	console.log(`─ docs 引用核（**报告态**：存在＋范围两核）：扫 ${files.length} 个 md｜引用 ${处} 处｜**不符 ${docsFail.length}**`
 		+ `｜已豁免 ${豁免数}｜外来形 ${外来数}（★两类**计数出声**，✗ 静默丢弃）｜范围核 ${范围核}`);
-	console.log('  ★明账（棘轮）：不符须归零后方转**硬判**；本条**不使 rc≠0**');
-	for (const f of fail.slice(0, 20)) console.log(`  · ${f}`);
-	if (fail.length > 20) console.log(`  …（另 ${fail.length - 20} 条）`);
-	console.log('✓ docs 引用核（报告态）—— 清单面无涉');
-	process.exit(fail.length ? 0 : 0);
+	console.log(`  ★明账（棘轮）：不符须归零后方转**硬判**；本条**不使 rc≠0**（rc 由**清单面**决定）`);
+	// NIT①：豁免**逐条打印** ＋ 条数输出 —— 光一个「已豁免 16」回答不了「有没有本仓真红被豁免掉」
+	console.log(`  豁免面（${EXEMPT.length} 条声明）：`);
+	for (const e of EXEMPT) console.log(`    · ${e['文件']}（${e['谁定']}）`);
+	for (const h of 豁免命中) console.log(`    · 命中：${h}`);
+	for (const f of docsFail.slice(0, 20)) console.log(`  · ${f}`);
+	if (docsFail.length > 20) console.log(`  …（另 ${docsFail.length - 20} 条）`);
+	console.log(`✓ docs 引用核（报告态）—— **清单面的 rc 由清单面自己给**（本块 ✗ 退出、✗ 覆盖 rc）`);
+	console.log(`  清单面此时：不符 ${fail.length} ⇒ 本进程将 rc=${fail.length ? 1 : 0}`);
 }
 
-console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
-console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜散文形**一律红**');
-console.log(`  通过 ${Math.max(0, 处 - fail.length)}｜不符 ${fail.length}　★明账：仅范围核 ${仅范围核}（＝待补显式符号，逐条递减到零）`);
-for (const f of fail.slice(0, 12)) console.log(`  ✗ ${f}`);
-if (fail.length > 12) console.log(`  …（另 ${fail.length - 12} 条）`);
-console.log(fail.length ? '✗ 清单引用核失败' : '✓ 清单引用核通过');
+
 process.exit(fail.length ? 1 : 0);
+
