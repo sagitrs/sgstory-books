@@ -1,0 +1,136 @@
+name: e2e-window
+
+# 巴别产物级 e2e（`books#90` 裁定 **②「丙窗口试点」**）
+#
+# ★本 workflow 的**存在理由**：`#1856` 那类失效形**只有浏览器/真 DOM 层照得出**
+#   （场景链的静态断言照不出 —— `books#88` MAJOR 已记），而**逐 PR** 跑无头 e2e 会
+#   动**舰队零依赖基线**（books#81 丙案搁置的正是它）。⇒ 折中：**窗口式**（nightly ＋ 手动），
+#   且用 **ephemeral 安装**（`npm i --no-save`）—— **仓零改动**（✗ 提交 `package.json`／lockfile）。
+#
+# ★两条**边界**（✗ 别误读本 job）：
+#   ① 它**不是 PR 门**：失败**不阻塞**任何 PR ⇒ 新回归的**发现延迟 = 到下一次 nightly**。
+#   ② 它**不替代** `babel-tests.yml`：那门跑装配自检（静态）＋单文件判据，本门跑**真 DOM 交互**。
+#
+# ★本 job 的**第二用途**（票面点名）：把「甲」（Playwright/Chromium）路线的**三项未测**量完 ——
+#   装机时长／额度成本／**真实 CI 里的 boot 时长** ⇒ 三项都打印在 step summary，供裁甲/乙时参考。
+on:
+  schedule:
+    # 每日 03:17 UTC（避开整点高峰；cron 无时区，GitHub 用 UTC）
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      engine_ref:
+        description: '引擎 ref（缺省 origin/main；给 40 位 sha 可对 pin 复现）'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-window-${{ github.ref }}
+  cancel-in-progress: false            # 窗口式 job：不取消（跑一次是一次读数）
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: books
+
+      # ── 引擎：缺省 main（本门**为发现回归**而设 ⇒ 打新树；要复现线上则传 engine_ref=pin）──
+      - name: 读本仓 pin（仅作参照打印，✗ 本门的检出依据）
+        id: pin
+        working-directory: books
+        run: |
+          set -euo pipefail
+          ref=$(jq -r '.ref // empty' .github/engine-ref.json)
+          echo "本仓 pin = $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: sagitrs/sgstory
+          ref: ${{ github.event.inputs.engine_ref || 'main' }}
+          path: engine
+          # ★`fetch-depth: 1` 足够（本门不比对 base —— 那是行尾门的事）
+
+      #   ★为何处处 `${GITHUB_STEP_SUMMARY:-/dev/null}`（✗ 裸 `$GITHUB_STEP_SUMMARY`）：
+      #     裸引在 `set -u` 下**未定义即失败** —— 真 CI 里有值故看不出，但**仓内演练器**
+      #     （`tools/rehearse-workflow.py`，同 shell flags）**不设该变量** ⇒ 本 workflow **无法演练**。
+      #     本席实测即如此：4 个 step 先后红在 `unbound variable`，而**它们干的正事全部成功**
+      #     （见下方「瞬时安装」的读数）⇒ 会**把「workflow 不可演练」伪装成「步骤失败」**。
+      #     ⇒ 兼容写法**不损 CI**、又让本 workflow **可被演练** —— 演练正是本仓查 CI 缺陷的手段。
+      - name: 核检出面（打印实际被验的树；✗ 让人以为验了 pin）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          head=$(git rev-parse HEAD)
+          pin='${{ steps.pin.outputs.ref }}'
+          echo "被验引擎 HEAD = $head"
+          if [ "$head" = "$pin" ]; then echo "（= 本仓 pin）"; else echo "（≠ pin $pin —— ★本门打的是**新树**，为发现回归）"; fi
+          echo "### e2e-window" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+          echo "- 引擎 HEAD: \`$head\`" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+          echo "- 本仓 pin: \`$pin\`" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # ── ★ephemeral 安装：只在**检出出来的引擎树**里装，✗ 不碰本仓、✗ 不落 lockfile ──
+      #   代价读数（本 step 同时是**甲路线的量尺**之一）：装机时长与体积打给裁用。
+      - name: 瞬时安装 jsdom（✗ 仓零改动：--no-save --no-package-lock）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          t0=$(date +%s)
+          npm install jsdom --no-save --no-package-lock --no-audit --no-fund 2>&1 | tail -5
+          t1=$(date +%s)
+          echo "装机时长 = $((t1-t0))s"
+          du -sh node_modules | awk '{print "node_modules 体积:", $1}'
+          node -e "console.log('jsdom', require('jsdom/package.json').version)"
+          { echo "- jsdom 装机时长: $((t1-t0))s"; du -sh node_modules | awk '{print "- node_modules: " $1}'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+          # ★自证「验的是哪棵树」：装机后面向**本仓**确认为零改动（✗ 有人以为会写回 books）
+          (cd "$GITHUB_WORKSPACE/books" && git status --porcelain | wc -l | sed 's/^/books 脏文件数: /')
+
+      - name: 构建产物（引擎 build.py ＋ 本仓故事）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          STORY="$GITHUB_WORKSPACE/books/stories/babel"
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html
+
+      # ── 共享件：冒烟 ＋ 刀（两道都跑 —— ✗ 只跑冒烟会漏「判据是否还判得了」）──
+      - name: e2e 共享件 · 刀（证明判据判得了）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/e2e-harness.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest | tee /tmp/knives.out
+          { echo '```'; tail -3 /tmp/knives.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+      - name: e2e 共享件 · 产物级冒烟（P0/P1 机械子集）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          t0=$(date +%s)
+          node tools/e2e-harness.mjs --engine "$GITHUB_WORKSPACE/engine" | tee /tmp/smoke.out
+          t1=$(date +%s)
+          # ★boot 时长由共享件自己打印（「boot(含 5 步) Nms」）—— 那是**甲路线三项未测**之一，
+          #   此处把它并成一行汇总，供裁甲/乙时直接引用。
+          boot=$(grep -oE 'boot\(含 5 步\) [0-9]+ms' /tmp/smoke.out | head -1 || true)
+          echo "冒烟总时长 $((t1-t0))s ｜ $boot"
+          { echo "- 冒烟: $((t1-t0))s ｜ ${boot:-（未打印）}"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+      # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
+      - name: 引擎仓没被写脏（归因）
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/engine"
+          dirty=$(git status --porcelain -- src tests/unit/framework stories 2>/dev/null | wc -l)
+          [ "$dirty" -eq 0 ] || { echo "::error title=e2e-attribution::引擎源被改写 $dirty 处"; git status --porcelain -- src tests/unit/framework stories; exit 1; }
+          echo "引擎源零改动 ✓（build 产物与 install 的 node_modules 除外）"
