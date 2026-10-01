@@ -115,7 +115,7 @@
       ],
       "断言": {
         "逻辑": "RPG.stockOf(c,'iron-ore') **直读 character.stats**，往返不变（✗ 镜像/缓存）",
-        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:67` 才带 `×N`；`.inventory-links a[data-item]`（`ui/ui.twee:4` ＋ `src/core/70-ui.js:57`））；往返后**逐字不变**"
+        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:70` 才带 `×N`；`.inventory-links a[data-item]`（`ui/ui.twee:4` ＋ `src/core/70-ui.js:57`））；往返后**逐字不变**"
       },
       "锚": [
         "#1782",
