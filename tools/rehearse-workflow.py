@@ -7,7 +7,11 @@
 import os, re, subprocess, sys, pathlib
 
 BOOKS = os.environ.get('BOOKS') or str(pathlib.Path(__file__).resolve().parent.parent)
-ENGINE = os.environ['ENGINE']   # 引擎检出（@pin）
+# ★ENGINE 必给（✗ 不回落任何绝对路径 —— `#79` tester-4 RC 同族）：缺了要**具名报错**，✗ 抛裸 KeyError
+if not os.environ.get('ENGINE'):
+	sys.stderr.write('✗ 缺 ENGINE：用法 `ENGINE=<引擎检出@pin> python3 tools/rehearse-workflow.py`\n')
+	sys.exit(2)
+ENGINE = os.environ['ENGINE']
 wf = pathlib.Path(os.environ.get('WF') or pathlib.Path(BOOKS, '.github/workflows/babel-tests.yml')).read_text(encoding='utf-8')
 
 # 逐 step 切分（按 `      - ` 缩进层级）

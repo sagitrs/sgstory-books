@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # 刀：每条必须红 **且红在该红的那一支**（✗ 只看 rc≠0 —— 那会把「红错支」读成通过）
 set -uo pipefail
-cd "$(dirname "$0")/../../workspaces/sagitrs-writer-2/sgstory-books" 2>/dev/null || cd ~/bots/workspaces/sagitrs-writer-2/sgstory-books
-V=stories/babel/scenarios/validate.mjs; S=stories/babel/scenarios/scenarios.json; K=/tmp/k.json
+# ★便携形（tester-4 RC：v4 曾**硬编回落本席工作区** ⇒ 他人一跑就是「越界 ＋ 测错树」）：
+#   仓根**只从脚本自身位置推**（`$0` ⇒ `stories/babel/scenarios/` 上三级），✗ 任何绝对路径回落；
+#   推不出来（不在仓里／符号链接怪）⇒ **显式报错退出**（✗ 悄悄 cd 到某个 home 目录）。
+cd "$(dirname "$(readlink -f "$0")")/../../.." || { echo "✗ 推不出仓根（脚本位置异常）"; exit 2; }
+[ -f stories/babel/scenarios/scenarios.json ] || {
+	echo "✗ 当前目录不是本仓根（缺 stories/babel/scenarios/scenarios.json）：$(pwd)"; exit 2; }
+V=stories/babel/scenarios/validate.mjs; S=stories/babel/scenarios/scenarios.json
+# ★临时件用 `mktemp`（✗ 固定 `/tmp/k.json`：并发跑会互踩 —— 与行尾门/触点门同族的固定名坑）
+K=$(mktemp "${TMPDIR:-/tmp}/babel-knife-XXXXXX.json") || { echo "✗ mktemp 失败"; exit 2; }
 pass=0; fail=0
 knife() { # $1=名  $2=变异(python)  $3=期望出现的支标
   python3 -c "
@@ -34,4 +41,4 @@ echo "$out" | grep -qF "★未捕获异常" && { echo "  ✓ 路径错 ⇒ rc=$r
 echo "=== 复原（原件须绿，且不得出现任何红标）==="
 out=$(node $V 2>&1); rc=$?
 echo "$out" | grep -q "✗" && { echo "  ✗ 复原后仍有红"; fail=$((fail+1)); } || { echo "  ✓ 复原 rc=$rc 零红标"; pass=$((pass+1)); }
-echo "  ── 通过 $pass｜失败 $fail"; rm -f $K; exit $((fail>0))
+echo "  ── 通过 $pass｜失败 $fail"; rm -f "$K"; exit $((fail>0))
