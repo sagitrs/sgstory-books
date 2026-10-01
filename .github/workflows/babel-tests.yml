@@ -13,12 +13,16 @@ on:
   pull_request:
     paths:
       - 'stories/babel/**'
+      - 'tests/scenario/**'      # ★#1814 末件：场景链住这里 ⇒ 只改它也必须触发（✗ 漏则「改了不跑」）
+      - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
   push:
     branches: [main]
     paths:
       - 'stories/babel/**'
+      - 'tests/scenario/**'      # ★#1814 末件：场景链住这里 ⇒ 只改它也必须触发（✗ 漏则「改了不跑」）
+      - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
 
