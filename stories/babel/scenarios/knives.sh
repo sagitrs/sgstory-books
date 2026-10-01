@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# 清单自检的**刀**（每条须红，且 ★断到「哪条红」）：bash stories/babel/scenarios/knives.sh
 # 刀：每条必须红 **且红在该红的那一支**（✗ 只看 rc≠0 —— 那会把「红错支」读成通过）
 set -uo pipefail
-cd "$(dirname "$0")/../../.."        # 仓根（本脚本住在 stories/babel/scenarios/）
-V=stories/babel/scenarios/validate.mjs; S=stories/babel/scenarios/scenarios.json
-K=$(mktemp -t babel-knife-XXXX.json)
+cd "$(dirname "$0")/../../workspaces/sagitrs-writer-2/sgstory-books" 2>/dev/null || cd ~/bots/workspaces/sagitrs-writer-2/sgstory-books
+V=stories/babel/scenarios/validate.mjs; S=stories/babel/scenarios/scenarios.json; K=/tmp/k.json
 pass=0; fail=0
 knife() { # $1=名  $2=变异(python)  $3=期望出现的支标
   python3 -c "
@@ -29,6 +27,7 @@ knife "K9 同主锚无分案"      "d['场景'][0].pop('同锚分案')"         
 knife "K10 分案面逐字相同"   "[r for r in d['场景'] if r['id']=='cross-span-boundary-seal'][0]['同锚分案']['面']=[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['同锚分案']['面']" "逐字相同"
 knife "K11 分案指错锚"       "[r for r in d['场景'] if r['id']=='cross-pkg-same-name-shadow'][0]['同锚分案']={'同锚':'#1743-WRONG','面':'x'}" "≠ 主锚"
 knife "K12 信封形 fixture"   "[r for r in d['场景'] if r['id']=='span1-herb-poultice-house-rule-use'][0]['入口态']['数据']={'state':{}}" "存档信封键"
+knife "K13 渲染缺实指"      "[r for r in d['场景'] if r['id']=='cross-gather-state-machine'][0]['断言']['渲染']='活行随状态变'" "缺**实指**"
 echo "=== 路径不存在（同一具名支）==="
 out=$(node $V /tmp/does-not-exist.json 2>&1); rc=$?
 echo "$out" | grep -qF "★未捕获异常" && { echo "  ✓ 路径错 ⇒ rc=$rc，红在 uncaughtException 具名支"; pass=$((pass+1)); } || { echo "  ✗ 路径错未具名"; fail=$((fail+1)); }
