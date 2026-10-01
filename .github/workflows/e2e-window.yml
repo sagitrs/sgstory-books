@@ -13,6 +13,12 @@ name: e2e-window
 #
 # ★本 job 的**第二用途**（票面点名）：把「甲」（Playwright/Chromium）路线的**三项未测**量完 ——
 #   装机时长／额度成本／**真实 CI 里的 boot 时长** ⇒ 三项都打印在 step summary，供裁甲/乙时参考。
+#
+# ★★**本版能力的边界**（✗ 别把「本 job 在跑」读成「`#1856` 那类已被守住」）：
+#   本版冒烟走的是 boot → 点链接 → 五面板 → localStorage，**尚未跑战斗流**
+#   （要跑「胜／败／僵持三终点」须先有**入口态夹具** —— 即 `#1814` **甲案**要供的东西）。
+#   ⇒ **`#1856`（战斗收场无出口）那类失效形，本版抓不到**；能抓到的是**装配/面板/导航**面。
+#   ⇒ **能力已备**（`clickPassage` 内建「导航确已发生」断言正是那类判据的原语），**接线候甲案**。
 on:
   schedule:
     # 每日 03:17 UTC（避开整点高峰；cron 无时区，GitHub 用 UTC）
@@ -88,15 +94,28 @@ jobs:
         working-directory: engine
         run: |
           set -euo pipefail
+          # ★自证「验的是哪棵树」＋★**判**（✗ 只打印）：本 job 的核心承诺是**仓零改动**，
+          #   而「打印一行数字」守不住任何东西。
+          #   ★★判据形＝**前后比对**（✗ 断言「树是干净的」）—— 首版我写的是后者，**当场演练即假红**：
+          #     它把「环境本来就有的未跟踪残留」算成了「本 step 写的」（我工作区里的
+          #     `stories/*demo*` 等残留与我自己未提交的档都被算进去）。
+          #   ⇒ 本 step 只该为**自己做过的事**负责 ⇒ 取**装前/装后快照**比对。
           t0=$(date +%s)
+          books_before=$(cd "$GITHUB_WORKSPACE/books" && git status --porcelain | sort)
           npm install jsdom --no-save --no-package-lock --no-audit --no-fund 2>&1 | tail -5
           t1=$(date +%s)
           echo "装机时长 = $((t1-t0))s"
           du -sh node_modules | awk '{print "node_modules 体积:", $1}'
           node -e "console.log('jsdom', require('jsdom/package.json').version)"
+          books_after=$(cd "$GITHUB_WORKSPACE/books" && git status --porcelain | sort)
+          if [ "$books_before" != "$books_after" ]; then
+            echo "::error title=e2e-attribution::本 step 声称只在引擎树里装，却**动了 books**"
+            echo "  （装前 ${books_before:+有} ／ 装后 有 —— 差异如下；若落了 lockfile 即 --no-package-lock 失守）"
+            diff <(printf '%s\n' "$books_before") <(printf '%s\n' "$books_after") || true
+            exit 1
+          fi
+          echo "books 零改动 ✓（装前=装后）"
           { echo "- jsdom 装机时长: $((t1-t0))s"; du -sh node_modules | awk '{print "- node_modules: " $1}'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
-          # ★自证「验的是哪棵树」：装机后面向**本仓**确认为零改动（✗ 有人以为会写回 books）
-          (cd "$GITHUB_WORKSPACE/books" && git status --porcelain | wc -l | sed 's/^/books 脏文件数: /')
 
       - name: 构建产物（引擎 build.py ＋ 本仓故事）
         working-directory: books
