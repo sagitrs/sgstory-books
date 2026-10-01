@@ -15,12 +15,15 @@ on:
       - 'stories/babel/**'
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
+      # ★引用核工具本身入触发面（`#1842`）：改工具而不跑 CI ⇒ 工具的回归无人看
+      - 'tools/check-refs*'
   push:
     branches: [main]
     paths:
       - 'stories/babel/**'
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
+      - 'tools/check-refs*'
 
 permissions:
   contents: read
