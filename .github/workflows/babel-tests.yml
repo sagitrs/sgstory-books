@@ -1,0 +1,131 @@
+name: babel-tests
+
+# 巴别井 · 试玩版（`books#76` 相 A）—— 故事在**本仓**，引擎按 **pin 检出**：
+#   编译（引擎 `build.py` ＋ 本仓故事 ⇒ **单文件**）＋ **装配自检**（`stories/babel/verify.mjs`，随故事走）。
+#
+# 归因口径（与 `pr-gate`／`pages` 同）：① 读本仓声明件 `.github/engine-ref.json` 的 ref 检出引擎
+#   （✗ **不用引擎 main** —— 那会掩盖 pin 陈旧；本门的存在意义正是让「引擎漂移打红故事测试」**显式化**，
+#   与 `#1823` 的棘轮同理）；② 失败报文点名，让人一眼看出是「故事面」还是「pin 不认它」。
+#
+# 与 `pr-gate` 的分工：那门跑**引擎的 `build.mjs`**（book 格式的其余故事）；本门跑**巴别专用的
+#   `build.py`**（SugarCube 单文件）＋ 巴别自己的装配自检。两者互不替代。
+on:
+  pull_request:
+    paths:
+      - 'stories/babel/**'
+      - '.github/engine-ref.json'
+      - '.github/workflows/babel-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'stories/babel/**'
+      - '.github/engine-ref.json'
+      - '.github/workflows/babel-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: babel-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  babel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: books
+
+      # ── 读本仓的 pin（唯一权威＝`.github/engine-ref.json`；✗ 工作流不硬写 sha）──
+      - name: 读引擎 pin（本仓声明件为唯一权威）
+        id: pin
+        working-directory: books
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=babel-attribution::(a) engine-ref — $*"; exit 1; }
+          [ -f .github/engine-ref.json ] || fail "声明件缺失：.github/engine-ref.json"
+          ref=$(jq -r '.ref // empty' .github/engine-ref.json)
+          [ -n "$ref" ] || fail "声明件里读不到 ref"
+          case "$ref" in
+            ????????????????????????????????????????) ;;
+            *) fail "钉的 ref 不是完整 sha（40 位十六进制）：$ref" ;;
+          esac
+          case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
+          echo "引擎 pin = $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: sagitrs/sgstory
+          ref: ${{ steps.pin.outputs.ref }}
+          path: engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # 引擎侧另需 node（`verify.mjs` 跑在 node 上；`build.py` 本身零依赖纯标准库）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 构建（引擎 build.py ＋ 本仓故事 ⇒ 单文件；归因 (b)）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # ★故事目录必须给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**（`ROOT / story_dir`）
+          #   ⇒ 相对形会把引擎仓里的同名故事编掉（实测踩过：产物落在 engine/stories/babel 而非本仓）。
+          STORY="$GITHUB_WORKSPACE/books/stories/babel"
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html || {
+            echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本 PR 的 pin 编不动这个故事**"
+            echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
+          # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算
+          n=$(grep -oE '(src|href)="(https?:|//|[^#][^"]*\.(js|css|png|jpg|svg))"' "$STORY/babel-trial.html" | wc -l)
+          [ "$n" -eq 0 ] || { echo "::error title=babel-attribution::(b) story-face — 产物有外部依赖 $n 条 ⇒ 不是单文件"; exit 1; }
+          echo "产物：$(du -h "$STORY/babel-trial.html" | cut -f1)（外部依赖 0 条 ✓）"
+
+      - name: ★构建可复现（同 pin 同故事 ⇒ 逐字节相同）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          STORY="$GITHUB_WORKSPACE/books/stories/babel"
+          cp "$STORY/babel-trial.html" /tmp/first.html
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html >/dev/null
+          a=$(sha1sum /tmp/first.html | cut -d' ' -f1)
+          b=$(sha1sum "$STORY/babel-trial.html" | cut -d' ' -f1)
+          [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }
+          echo "两次构建 sha1 相同 ✓（$a）"
+
+      - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
+        working-directory: books
+        run: node stories/babel/verify.mjs --engine "$GITHUB_WORKSPACE/engine"
+
+      # ★**恒绿门自证**（`#1815` 的教训随迁）：证明这道门**失败得了** ——
+      #   把正常出口的汇总调用注释掉，脚本必须 rc≠0 且打出「恒绿门」具名红（✗ 静默全绿）。
+      - name: ★恒绿门自证（门必须红得了）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          cp stories/babel/verify.mjs /tmp/verify.bak
+          perl -0pi -e 's/\nprintSummary\(\);/\n\/\/ printSummary();/' stories/babel/verify.mjs
+          if node stories/babel/verify.mjs --engine "$GITHUB_WORKSPACE/engine" >/tmp/hg.out 2>&1; then
+            echo "::error title=babel-attribution::(c) gate-self — 恒绿门自证失败：把出口注释掉它**仍然绿**"
+            cat /tmp/hg.out; exit 1
+          fi
+          grep -q '恒绿门' /tmp/hg.out || {
+            echo "::error title=babel-attribution::(c) gate-self — 门红了，但**不是**恒绿门那条（说明红了别的原因）"
+            cat /tmp/hg.out; exit 1; }
+          cp /tmp/verify.bak stories/babel/verify.mjs
+          echo "恒绿门自证 ✓（出口被删 ⇒ rc≠0 且具名）"
+
+      - name: 引擎仓没被写脏（归因 (b)）
+        run: |
+          set -euo pipefail
+          # `build.py` 会在引擎侧生成 `tests/unit/dist/**`（构建产物）⇒ 那是**预期**的；
+          # 这里只断言「引擎的**源**没被改写」（✗ 以 build 产物为脏）。
+          cd "$GITHUB_WORKSPACE/engine"
+          dirty=$(git status --porcelain -- src tests/unit/framework stories 2>/dev/null | wc -l)
+          [ "$dirty" -eq 0 ] || { echo "::error title=babel-attribution::(b) story-face — 引擎源被改写 $dirty 处"; git status --porcelain -- src tests/unit/framework stories; exit 1; }
+          echo "引擎源零改动 ✓（build 产物除外：ngbuild 产物在 tests/unit/dist/）"
