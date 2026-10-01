@@ -48,8 +48,39 @@ for (const r of rows) {
 	if (!fail.length || !fail.some((f) => f.startsWith(at))) ok.push(r.id);
 }
 
+/* ★「主锚 + 同锚分案」口径（`#1814` 去重判据的**可执行**形）：
+ *   · `主锚` 必须**恰一个**且 ∈ `锚`（一条场景＝一个裁定 —— 其余锚只是同条场景的旁证）；
+ *   · 主锚**重** ⇒ 两条都须声明 `同锚分案{同锚:主锚, 面}`，且 `面` 必须**互不相同**
+ *     （「前提同源、断言面不同」⇒ 允许并存；✗「同一面拆两条」）。 */
+const 主锚 = new Map();
+for (const r of rows) {
+	const at = `[${r.id ?? '(缺 id)'}]`;
+	if (!r['主锚']) fail.push(`${at} 缺「主锚」`);
+	else if (!Array.isArray(r['锚']) || !r['锚'].includes(r['主锚'])) fail.push(`${at} 「主锚」(${r['主锚']}) 不在「锚」里`);
+	if (r['主锚']) {
+		if (!主锚.has(r['主锚'])) 主锚.set(r['主锚'], []);
+		主锚.get(r['主锚']).push(r);
+	}
+	/* 声明了分案就必须指向**自己**的主锚（✗ 只在重复组里查 —— 那样 stale 分案会溜过） */
+	if (r['同锚分案'] && r['同锚分案']['同锚'] !== r['主锚']) {
+		fail.push(`${at} 「同锚分案.同锚」(${r['同锚分案']['同锚']}) ≠ 主锚(${r['主锚']})`);
+	}
+}
+for (const [a, group] of 主锚) {
+	if (group.length < 2) continue;
+	const 面s = group.map((r) => r['同锚分案']?.['面']);
+	for (let i = 0; i < group.length; i++) {
+		const r = group[i], at = `[${r.id}]`;
+		if (!r['同锚分案']) fail.push(`${at} 与另 ${group.length - 1} 条同主锚 ${a}，但缺「同锚分案」（须写清**断言面**，✗ 同一面拆两条）`);
+	}
+	for (let i = 0; i < 面s.length; i++) for (let j = i + 1; j < 面s.length; j++) {
+		if (面s[i] && 面s[i] === 面s[j]) fail.push(`[${group[i].id}] 与 [${group[j].id}] 同主锚 ${a} 的「分案面」**逐字相同** —— ✗ 同一面拆两条`);
+	}
+}
+
 const by = (k, v) => rows.filter((r) => r[k] === v).length;
 console.log(`─ 清单：${rows.length} 条（来源 writer ${by('来源', 'writer')}｜writer-2 ${by('来源', 'writer-2')}`
+	+ `｜主锚 ${主锚.size} 个、其中同锚分案 ${[...主锚.values()].filter((g) => g.length > 1).length} 组`
 	+ `｜段 span1 ${by('段', 'span1')}／span2 ${by('段', 'span2')}／cross ${by('段', 'cross')}）`);
 console.log(`  通过 ${ok.length}｜不符 ${fail.length}`);
 for (const f of fail) console.log(`  ✗ ${f}`);
