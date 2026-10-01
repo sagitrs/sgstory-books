@@ -412,7 +412,7 @@
       "层": "both",
       "守的面": "**house rule（非 SRD）件**的显式声明 ＋ 使用行为 ＋ 往返存活",
       "构造": "中间经 保存→读档 往返",
-      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证**：**3E** 装备面 `engine/tests/gates/pin-cache/equipment-3e.md`（**3590 行**、`grep -ci herb` ⇒ **0** 命中）；⚠ **5E** 面 `engine/tests/gates/pin-cache/equipment.md`（2286 行）里**有** `Herbalism Kit` —— 见 `engine/tests/gates/pin-cache/equipment.md:741`（`Herbalism Kit`）⇒ ✗ 别引错面（本席曾引 5E 面 ＋ 越界行号，由 `tools/check-refs.mjs` 抓出，已更正）。"
+      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证（按 writer `#1842` 更正后的形）**：3E 装备表在该行给的是**工具**而非本件那种消耗品 —— 见 `engine/tests/gates/pin-cache/equipment-3e.md:3220`（`Healer's Kit`）（＝源路径 `Basic Rules and Legal/equipment.md`，3590 行／`44b0c09a7783c8d9`；见 `engine/README.md:25`（`Basic Rules and Legal/equipment.md`））。⚠ **短名陷阱**：pin-cache 里的 `equipment.md` 是 **5E** 那份（2286 行、`b027bc54551bf66b`；其 `:741` 有 `Herbalism Kit`）——3E 那份的缓存名是 `equipment-3e.md`（3590 行）。本席曾按短名把 3E 的 `:3220` 判成「越界」，实为**引错文件名**（行号在 3E 面上是对的），已更正。"
     }
   ]
 }

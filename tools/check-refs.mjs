@@ -21,6 +21,8 @@ const argv = process.argv.slice(2);
 const argOf = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : null; };
 const ENGINE = argOf('--engine') ?? process.env.ENGINE ?? null;
 const JSONF = argv.find((a) => a.endsWith('.json')) ?? path.join(BOOKS, 'stories/babel/scenarios/scenarios.json');
+// `--docs`（`sagitrs-writer` 建议）：改扫本仓 `docs/**/*.md` 里的引用，只做「存在 ＋ 范围」两核（✗ 不判符号 —— 文档引用常指整段/整表，判符号会大面积假红）。
+const DOCS = argv.includes('--docs');
 
 const fail = [];
 process.on('uncaughtException', (e) => {
@@ -85,6 +87,29 @@ const FIELDS = ['断言', '备注', '守的面', '构造', '动作'];
 const rawOf = (r, field) => (field === '断言' ? Object.values(r['断言'] ?? {}).join('\n') : String(r[field] ?? ''));
 
 let 处 = 0, 符号核 = 0, 仅范围核 = 0;
+if (DOCS) {
+	const walkMd = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+		if (SKIP.has(e.name)) return [];
+		const p = path.join(dir, e.name);
+		return e.isDirectory() ? walkMd(p) : (e.name.endsWith('.md') ? [p] : []);
+	});
+	const docsDir = path.join(BOOKS, 'docs');
+	const files = fs.existsSync(docsDir) ? walkMd(docsDir) : [];
+	for (const f of files) {
+		const raw = fs.readFileSync(f, 'utf8');
+		for (const m of raw.matchAll(CIT)) {
+			处++;
+			const from = Number(m[2]), to = Number(m[3] ?? m[2]);
+			const at = `${m[1]}:${from}${to !== from ? '-' + to : ''}`;
+			const got = readAt(m[1], from);
+			if (!got.ok) { fail.push(`[docs/${path.relative(docsDir, f)}] ${got.why}`); continue; }
+			const seg = got.all.slice(from - 1, to).join('\n');
+			if (seg.trim() === '') { fail.push(`[docs/${path.relative(docsDir, f)}] ${at} 所指区段空行`); continue; }
+			仅范围核++;
+		}
+	}
+	console.log(`─ docs 引用核（存在＋范围两核）：扫 ${files.length} 个 md｜引用 ${处} 处｜不符 ${fail.length}`);
+} else
 for (const r of 场景) {
 	for (const field of FIELDS) {
 		const raw = rawOf(r, field);
@@ -107,7 +132,7 @@ for (const r of 场景) {
 	}
 }
 
-console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
+if (!DOCS) console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
 console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜散文形**一律红**');
 console.log(`  通过 ${Math.max(0, 处 - fail.length)}｜不符 ${fail.length}　★明账：仅范围核 ${仅范围核}（＝待补显式符号，逐条递减到零）`);
 for (const f of fail.slice(0, 12)) console.log(`  ✗ ${f}`);

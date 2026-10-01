@@ -127,6 +127,13 @@ jobs:
             echo "::notice title=babel-scenario::场景链**当前未生效**：尚未移植（本仓无 tests/scenario/run.mjs）—— 归 tester-3/4（票 #76 相 A／#1814）；本节＝预留接线点，✗ 别把这条 notice 读成「场景链绿了」，到位后同一步才真正断言"
           fi
 
+      # ── 清单引用核（`#80` tester-4 裁乙；`#82` dev-10 折）：K13 只查引用**有形**，本步查其**内容** ——
+      #    文件存在／行号在范围内／★**声明了符号的引用须逐字含该符号**／★散文形引用一律红。
+      #    `src/**` 等引用落在**引擎检出**（故此步必须在引擎检出之后）。
+      - name: 清单引用核（行号须含所声明的符号）
+        working-directory: books
+        run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine"
+
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
         run: node stories/babel/verify.mjs --engine "$GITHUB_WORKSPACE/engine"
