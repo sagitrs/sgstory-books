@@ -412,7 +412,7 @@
       "层": "both",
       "守的面": "**house rule（非 SRD）件**的显式声明 ＋ 使用行为 ＋ 往返存活",
       "构造": "中间经 保存→读档 往返",
-      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）；SRD 3.5 装备面无「草药」条目（`tests/gates/pin-cache/equipment-3e.md`（**3590 行**、`grep -ci herb` ⇒ **0**；★原引 5E 面（`equipment.md` 第 3220 行 —— 该文件仅 2286 行，**越界**） —— 行号越界（该文件 2286 行）且引错面））　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
+      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证**：**3E** 装备面 `engine/tests/gates/pin-cache/equipment-3e.md`（**3590 行**、`grep -ci herb` ⇒ **0** 命中）；⚠ **5E** 面 `engine/tests/gates/pin-cache/equipment.md`（2286 行）里**有** `Herbalism Kit` —— 见 `engine/tests/gates/pin-cache/equipment.md:741`（`Herbalism Kit`）⇒ ✗ 别引错面（本席曾引 5E 面 ＋ 越界行号，由 `tools/check-refs.mjs` 抓出，已更正）。"
     }
   ]
 }
