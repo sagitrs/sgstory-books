@@ -1,9 +1,24 @@
 name: trial-pages
+
+# 巴别井 · 试玩版（`books#76` **相 B：切流**）—— 产物源**切到本仓**
+#
+# 切流前：checkout **sgstory@main** ⇒ `build.py stories/babel`（故事与引擎同在 sgstory 侧）。
+# 切流后：故事＝**本仓** `stories/babel/**`；引擎＝按 `.github/engine-ref.json` 的 **ref 检出**
+#   （✗ 不用引擎 `main` —— 那会让「引擎漂移」静默影响线上试玩；pin 陈旧须**显式**升版，与
+#   `babel-tests.yml` **同口径**，也与 `#1823` 的棘轮同理）。
+#
+# ★切流**不改产物**（平移不变式）：本席实测**同 pin**（`abc23517`）下
+#   旧路（`sgstory@pin` 的 `stories/babel`）与新路（本仓 `stories/babel`）
+#   ⇒ 产物 sha1 皆 **`8e3f232cfe706f95f7eaad46304bb56d7cd4dda9`**（1,045,687 B）✓
+#   ⇒ 本工作流另置**构建可复现**自证（同树两次须逐字节相同），使该不变式在 CI 里**持续可测**。
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/trial.yml']
+    paths:
+      - 'stories/babel/**'           # ★切流后**故事住本仓** ⇒ 故事变更须重发 Pages（✗ 漏则线上陈旧）
+      - '.github/engine-ref.json'    # pin 升版同样须重发
+      - '.github/workflows/trial.yml'
 
 permissions:
   contents: read
@@ -17,23 +32,102 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout sgstory (public)
+      # ── 双检出（`books` 本仓树 ＋ `engine` 按 pin）──
+      - name: Checkout books（本仓树＝故事面）
+        uses: actions/checkout@v4
+        with:
+          path: books
+
+      # 读本仓的 pin（唯一权威＝`.github/engine-ref.json`；✗ 工作流不硬写 sha）
+      - name: 读引擎 pin（本仓声明件为唯一权威）
+        id: pin
+        working-directory: books
+        run: |
+          set -euo pipefail
+          fail() { echo "::error title=babel-attribution::(a) engine-ref — $*"; exit 1; }
+          [ -f .github/engine-ref.json ] || fail "声明件缺失：.github/engine-ref.json"
+          ref=$(jq -r '.ref // empty' .github/engine-ref.json)
+          [ -n "$ref" ] || fail "声明件里读不到 ref"
+          case "$ref" in
+            ????????????????????????????????????????) ;;
+            *) fail "钉的 ref 不是完整 sha（40 位十六进制）：$ref" ;;
+          esac
+          case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
+          echo "引擎 pin = $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout sgstory（引擎，按 pin）
         uses: actions/checkout@v4
         with:
           repository: sagitrs/sgstory
-          ref: main
-      - name: Build trial (single file, no deps)
-        run: python3 build.py stories/babel --out babel-trial.html
-      - name: Assemble Pages artifact
+          ref: ${{ steps.pin.outputs.ref }}
+          path: engine
+
+      # ★检出**自证**：`actions/checkout` 的 `ref` 若打错／上游 ref 变动，光看 step 是绿的 ⇒
+      #   这里直接比 `HEAD` 与声明件里的 `.ref`（✗ 让「检出」与「钉」的不一致溜进后续步骤）。
+      - name: 核检出 == pin（自证）
+        working-directory: engine
         run: |
+          set -euo pipefail
+          head=$(git rev-parse HEAD)
+          want=$(jq -r '.ref' "$GITHUB_WORKSPACE/books/.github/engine-ref.json")
+          [ "$head" = "$want" ] || {
+            echo "::error title=babel-attribution::(a) engine-ref — 检出的引擎 HEAD($head) ≠ 声明件 ref($want)"; exit 1; }
+          echo "检出 == pin ✓（$head）"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 构建（引擎 build.py ＋ 本仓故事 ⇒ 单文件）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # ★故事目录必须给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**（`ROOT / story_dir`）
+          #   ⇒ 相对形会把引擎仓里的同名故事编掉（实测踩过：产物落在 engine/stories/babel 而非本仓）。
+          STORY="$GITHUB_WORKSPACE/books/stories/babel"
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html || {
+            echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本仓故事编不动**"
+            echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
+          # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算。
+          # ⚠ `grep` **无匹配时退出码 1** ＋ `set -o pipefail` ⇒ 管道判红
+          #   （`babel-tests.yml` 首跑实测踩到：产物明明合法却被判「不是单文件」）
+          #   ⇒ 必须 `|| true` 把「0 条外部依赖」这唯一的**好事**与「grep 失败」分开（✗ 用 `$?` 猜）。
+          n=$({ grep -oE '(src|href)="(https?:|//|[^#][^"]*\.(js|css|png|jpg|svg))"' "$STORY/babel-trial.html" || true; } | wc -l)
+          [ "$n" -eq 0 ] || { echo "::error title=babel-attribution::(b) story-face — 产物有外部依赖 $n 条 ⇒ 不是单文件"; exit 1; }
+          echo "产物：$(du -h "$STORY/babel-trial.html" | cut -f1)（外部依赖 0 条 ✓）"
+
+      - name: ★构建可复现（同树两次 ⇒ 逐字节相同）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # 切流的立约是「迁移**不改产物**」（照片面 §硬判据）；本步把该不变式**持续可测**：
+          #   同 pin 同故事 ⇒ 两次构建须逐字节相同（✗ 则线上会随构建抖动，且「新旧产物同 sha1」
+          #   这类比对将失去意义）。与 `babel-tests.yml` 的同名步同形。
+          STORY="$GITHUB_WORKSPACE/books/stories/babel"
+          cp "$STORY/babel-trial.html" /tmp/first.html
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html >/dev/null
+          a=$(sha1sum /tmp/first.html | cut -d' ' -f1)
+          b=$(sha1sum "$STORY/babel-trial.html" | cut -d' ' -f1)
+          [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }
+          echo "两次构建 sha1 相同 ✓（$a）"
+
+      - name: Assemble Pages artifact
+        working-directory: books
+        run: |
+          set -euo pipefail
           mkdir -p site
           cp stories/babel/babel-trial.html site/index.html
           cp stories/babel/babel-trial.html site/play.html
-          printf '# 巴别之井 · 试玩版\n\n- 直接玩: [play.html](play.html)\n- 源仓库: sagitrs/sgstory@main（手动 dispatch 或本文件变更后重建）\n' > site/README.md
+          printf '# 巴别之井 · 试玩版\n\n- 直接玩: [play.html](play.html)\n- 源仓库: 故事＝sagitrs/sgstory-books@main（本仓）；引擎＝sagitrs/sgstory@%s（钉于 `.github/engine-ref.json`）\n- 重建: 手动 dispatch，或本仓 `stories/babel/**` / `.github/engine-ref.json` / 本文件变更后自动\n' "$(jq -r '.ref' .github/engine-ref.json)" > site/README.md
+          cat site/README.md
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: books/site
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
