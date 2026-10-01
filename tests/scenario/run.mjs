@@ -34,6 +34,7 @@ const here = import.meta.dirname;                    // …/tests/scenario
 const repoRoot = path.resolve(here, '..', '..');     // books 仓根
 const scenariosPath = path.join(repoRoot, 'stories', 'babel', 'scenarios', 'scenarios.json');
 const validatePath = path.join(repoRoot, 'stories', 'babel', 'scenarios', 'validate.mjs');
+const baselinePath = path.join(here, 'not-judged-baseline.json');
 
 const argOf = (name) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
 const has = (f) => process.argv.includes(f);
@@ -70,6 +71,8 @@ export const panelRefs = (text) => {
 export const judgeScenarios = (scenarios, facts) => {
 	const reds = [];
 	const notJudged = [];
+	const kinds = {};                       // ★`#81` RC①：明账按**类目**计数（供基线棘轮）
+	const note = (kind, msg) => { notJudged.push(msg); kinds[kind] = (kinds[kind] ?? 0) + 1; };
 	let checked = 0;
 	for (const sc of scenarios) {
 		const id = sc?.id ?? '(无 id)';
@@ -84,7 +87,7 @@ export const judgeScenarios = (scenarios, facts) => {
 					+ '亦非已注册引擎夹具 ⇒ **圣经与故事漂移**（✗ 静默放过）');
 			}
 		} else {
-			notJudged.push(`[${id}] 入口态：散文描述「${String(fixture).slice(0, 40)}」⇒ 须先升为**可执行数据**（#1814 甲）`);
+			note('entryProse', `[${id}] 入口态：散文描述「${String(fixture).slice(0, 40)}」⇒ 须先升为**可执行数据**（#1814 甲）`);
 		}
 		/* ② 动作：入口态落地得了时，**每个动作须是该地点的真实入口动作** */
 		const acts = Array.isArray(sc?.['动作']) ? sc['动作'] : [];
@@ -111,7 +114,7 @@ export const judgeScenarios = (scenarios, facts) => {
 				cur = next;
 			}
 		} else if (acts.length) {
-			notJudged.push(`[${id}] 动作 ${acts.length} 条：入口态未落地 ⇒ 无法核「是否为该处真实入口」`);
+			note('actionUnresolved', `[${id}] 动作 ${acts.length} 条：入口态未落地 ⇒ 无法核「是否为该处真实入口」`);
 		}
 		/* ③ 渲染面：点名的面板须已注册且打得出来（串级结构断言的前提） */
 		const refd = panelRefs(sc?.['断言']?.['渲染']);
@@ -132,10 +135,36 @@ export const judgeScenarios = (scenarios, facts) => {
 		const sem = sc?.['断言'] ?? {};
 		for (const [k, v] of [['逻辑', sem['逻辑']], ['渲染', sem['渲染']]]) {
 			if (v == null) continue;
-			notJudged.push(`[${id}] 断言.${k}（散文 ${String(v).length} 字）⇒ 语义未机械判：${String(v).slice(0, 50)}…`);
+			note(k === '逻辑' ? 'semanticLogic' : 'semanticRender', `[${id}] 断言.${k}（散文 ${String(v).length} 字）⇒ 语义未机械判：${String(v).slice(0, 50)}…`);
 		}
 	}
-	return { reds, notJudged, checked };
+	return { reds, notJudged, kinds, checked };
+};
+
+/**
+ * ★`#81` RC① 棘轮：**未判明账不得静默增长**。
+ *   dev-9 实证：**复制一条场景** ⇒ 明账 58 → 60 且 **rc=0** —— 即「未覆盖面」可以**无声翻倍**。
+ *   ⇒ 钉**下限/上界**基线（体例照 `#1823` 的宿主触点棘轮）：
+ *     · `kinds` 任一**高于**基线 ⇒ **红**（新增的未判面须**登记并解释**，✗ 顺手带进来）
+ *     · 任一**低于**基线 ⇒ **绿但出声**（★那是**好事** —— `#1814` 甲落地后明账**逐条递减**）
+ *     · 基线缺失 ⇒ **红**（✗ 静默放过 —— 缺基线时棘轮恒不生效）
+ * @returns `{ reds, notes }`
+ */
+export const judgeNotJudged = (kinds, baseline) => {
+	const reds = [], notes = [];
+	if (baseline == null || typeof baseline !== 'object') {
+		return { reds: ['缺 `NOT_JUDGED_BASELINE`（未判面上界）⇒ ✗ 静默放过：无法判「未覆盖面是否静默增长」'], notes };
+	}
+	for (const k of Object.keys(kinds).sort()) {
+		const got = kinds[k] ?? 0, want = baseline[k];
+		if (want == null) {
+			reds.push(`未判面类目 \`${k}\`（${got} 项）**不在基线**里 ⇒ 新类目须登记（✗ 顺手新增未登记类目）`);
+			continue;
+		}
+		if (got > want) reds.push(`未判面 \`${k}\` **增长**：${want} → ${got} ⇒ 未覆盖面扩大了（须解释并同笔更新基线，✗ 静默涨）`);
+		else if (got < want) notes.push(`未判面 \`${k}\` 减少：${want} → ${got}（★好事 ⇒ 请刷新基线，否则棘轮松弛）`);
+	}
+	return { reds, notes };
 };
 
 /* ============================================================================
@@ -185,6 +214,14 @@ if (has('--selftest')) {
 		['K11 ★认得出是入口却**推不出落点** ⇒ 红（取料失败须显形，✗ 静默当原地）',
 			[Object.assign({}, F, { stepOf: () => null }), mk({ 动作: ['走向料场'] })],
 			(r) => r.reds.length === 1 && /推不出落点/.test(r.reds[0])],
+		['K12 ★未判面**增长** ⇒ 红（✗ 静默涨 —— dev-9 实证复制场景 58→60 仍 rc=0）',
+			[null, null], () => judgeNotJudged({ semanticLogic: 3 }, { semanticLogic: 2 }).reds.length === 1],
+		['K13 ★未判面**减少** ⇒ 绿但出声（★那是好事：`#1814` 甲落地后明账递减）',
+			[null, null], () => { const r = judgeNotJudged({ semanticLogic: 1 }, { semanticLogic: 2 }); return r.reds.length === 0 && r.notes.length === 1; }],
+		['K14 ★基线**缺失** ⇒ 红（✗ 静默放过 —— 缺基线时棘轮恒不生效）',
+			[null, null], () => judgeNotJudged({ semanticLogic: 1 }, null).reds.length === 1],
+		['K15 ★**新类目**未登记 ⇒ 红',
+			[null, null], () => judgeNotJudged({ brandNew: 1 }, { semanticLogic: 2 }).reds.some((x) => /不在基线/.test(x))],
 		['K9 `looksLikeId` 判据本身：id 形 ⇒ true；散文 ⇒ false',
 			[null, null], () => looksLikeId('L20-forge') && !looksLikeId('二段遭遇态') && !looksLikeId('取得 iron-ore ＋ 一张图纸的态')],
 	];
@@ -250,7 +287,10 @@ try {
 	const out = `${e.stdout ?? ''}${e.stderr ?? ''}`;
 	console.error('  ✗ 清单自检未通过 ⇒ **场景链不开跑**（清单是单源；它不合形，跑出来的读数无意义）');
 	console.error(out.split('\n').slice(-12).map((l) => `    ${l}`).join('\n'));
-	process.exit(1);                                   // ← 此处直接红，✗ 继续
+	/* ★`#81` RC②：**走 `printSummary`**（✗ 裸 `process.exit`）——
+	 *   裸退出会让**恒绿门**兜底接管（「脚本正常结束但从未打印汇总」）⇒ 报**错误的归因**、
+	 *   把读者引向「恒绿门」而**真正的因**是「清单不合形」。归因错 ⇒ 排查方向错。 */
+	printSummary('✗ 场景链失败 1 条\n  ✗ ★清单自检（validate.mjs）未通过 ⇒ 场景链未开跑（先修清单）');
 }
 
 /* ---------- 环境（**镜像** `stories/babel/verify.mjs` ＝ 镜像 `tests/unit/headless.mjs`）----------
@@ -333,11 +373,19 @@ const only = argOf('--only');
 const scenarios = only ? all.filter((s) => s.id === only) : all;
 if (!scenarios.length) { console.error(`✗ 没有匹配的场景（--only ${only}）`); process.exit(2); }
 
-const { reds, notJudged, checked } = judgeScenarios(scenarios, facts);
+const { reds, notJudged, kinds, checked } = judgeScenarios(scenarios, facts);
+/* ★`#81` RC①：棘轮 —— 未判面**不得静默增长**（体例照 `#1823`）。基线住本目录同名的 JSON。 */
+let baseline = null;
+try { baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')); } catch { baseline = null; }
+const nb = judgeNotJudged(kinds, baseline?.['未判'] ?? null);
+reds.push(...nb.reds);
 
 /* ---------- 报告 ---------- */
 console.log(`\n─ 场景链：${scenarios.length} 条（${checked} 处**机械判**）`);
 console.log(`  · 入口态落地点 ${facts.locations.size} 个｜面板 ${facts.panels.size} 个（${[...facts.panels].join('／')}）`);
+console.log(`  · 未判面按类目（对棘轮基线）：${Object.entries(kinds).sort().map(([k, v]) => `${k}=${v}`).join('｜')}`
+  + (baseline ? `（基线 ${JSON.stringify(baseline['未判'])}）` : '（★无基线）'));
+for (const n of nb.notes) console.log(`      ⚠ ${n}`);
 console.log(`\n  ⚠ **未机械判**（明账 ${notJudged.length} 项 —— 语义断言是**散文** ⇒ 本轮判不了；`
 	+ '`#1814` 甲（作者侧升可执行数据）落地后**逐条递减**）：');
 for (const x of notJudged) console.log(`      · ${x}`);
