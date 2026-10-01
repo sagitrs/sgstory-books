@@ -25,19 +25,18 @@ const JSONF = argv.find((a) => a.endsWith('.json')) ?? path.join(BOOKS, 'stories
 const DOCS = argv.includes('--docs');
 // 豁免面（`#1842` 设计输入①）：`tools/refs-exemptions.json` 按**文件前缀**豁免 ⇒ 进「已豁免（计数出声）」，✗ 静默丢弃。
 const EXEMPT = (() => {
-	try {
-		const list = JSON.parse(fs.readFileSync(path.join(HERE, 'refs-exemptions.json'), 'utf8'))['豁免'] ?? [];
-		// ★NIT②③ 机械守卫：过宽前缀（空／`docs/`）不受理；「为何」「谁定」须各一行非空
-		const bad = [];
-		for (const e of list) {
-			const f = String(e['文件'] ?? '');
-			if (!f || f === 'docs/' || f === 'docs/**') bad.push(`豁免前缀过宽：\`${f}\``);
-			for (const k of ['为何', '谁定']) if (!String(e[k] ?? '').trim()) bad.push(`豁免 \`${f}\` 缺「${k}」`);
-		}
-		// eslint-disable-next-line no-console
-		for (const b of bad) console.error(`✗ refs-exemptions.json：${b}`);
-		return bad.length ? [] : list;   // 坏了就**不豁免任何东西**（保守：宁红不漏）
-	} catch { return []; }
+	let list;
+	try { list = JSON.parse(fs.readFileSync(path.join(HERE, 'refs-exemptions.json'), 'utf8'))['豁免'] ?? []; }
+	catch (e) { console.error(`✗ refs-exemptions.json 读不出／坏：${e.message}`); process.exit(2); }   // ★配置坏 ⇒ rc=2（✗ 静默回落空豁免）
+	// ★NIT②③ 机械守卫：**结构式**前缀（`<非空路径>/**` 一条挡四形：空／`docs`／`d`／`docs/`）＋「为何」「谁定」各一行非空
+	const bad = [];
+	for (const e of list) {
+		const f = String(e['文件'] ?? '');
+		if (!/^[\w./-]+\/\*\*$/.test(f)) bad.push(`前缀不合结构式 \`<路径>/**\`：\`${f}\``);
+		for (const k of ['为何', '谁定']) if (!String(e[k] ?? '').trim()) bad.push(`豁免 \`${f}\` 缺「${k}」`);
+	}
+	if (bad.length) { for (const b of bad) console.error(`✗ refs-exemptions.json：${b}`); process.exit(2); }
+	return list;
 })();
 // 跨仓/外来形（设计输入③）：不在本仓/引擎树里的稿内相对名 ⇒ 归「外来（计数出声）」，✗ 与「本仓引用指错」混为一谈。
 const 外来形 = (f) => /^(gates\/|[\w-]*ch\d+\.twee$|[\w-]*endings\.twee$|[\w-]*tables?\.twee$|[\w-]*codex\.twee$)/.test(f);

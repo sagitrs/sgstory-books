@@ -133,6 +133,12 @@ jobs:
           set -euo pipefail
           node tests/scenario/run.mjs --engine "$GITHUB_WORKSPACE/engine"
 
+      # ── 清单引用核（乙步；`#80` tester-4 裁乙）：K13 只查引用**有形**，本步查其**内容** ——
+      #    文件存在／行号在范围内／声明了符号的引用须逐字含之／散文形一律红。
+      - name: 清单引用核（行号须含所声明的符号）
+        working-directory: books
+        run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine"
+
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
         run: node stories/babel/verify.mjs --engine "$GITHUB_WORKSPACE/engine"
