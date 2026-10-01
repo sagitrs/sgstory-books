@@ -3,9 +3,10 @@
   "_seededAt": "81d3a4b7",
   "_seededReason": "#1814 末件首落：此时 scenarios.json 的 入口态/断言 两栏是散文 ⇒ 语义面判不了；本基线把「当前未覆盖面」钉住，使其✗不能无声扩大。",
   "未判": {
-    "actionUnresolved": 14,
-    "entryProse": 14,
-    "semanticLogic": 15,
-    "semanticRender": 15
-  }
+    "actionUnresolved": 17,
+    "entryProse": 17,
+    "semanticLogic": 18,
+    "semanticRender": 18
+  },
+  "_why2026_10_01": "本次**同笔**上调（+3 ×4 类）：新增**战斗三终点**（胜／败／僵持，操作者令）三条 —— 它们与既有条同样处于「散文形」态（`入口态` 是描述、`断言` 是句子）⇒ 四类未判面各 +3。★**这不是静默涨**：三条是**主动**新增的场景，其可执行化（`#1814` 甲案）随下一笔 ⇒ 届时本基线**逐条递减**。"
 }
