@@ -35,6 +35,17 @@ for (const r of rows) {
 	if (!r['来源']) bad('缺「来源」（谁供的料）');
 	if (!形.has(r['入口态']?.['形'])) bad(`入口态.形 非法：${r['入口态']?.['形']}`);
 	if (!r['入口态']?.['fixture']) bad('缺 入口态.fixture');
+	/* ★信封形判据（`#79` dev-10 NIT-3「可判未判」）：`loadFixture` 把**含 `state` 键**的对象当**存档对象形**
+	 *   ⇒ 会走 `Save.onLoad` 契约（而入口态**不是存档**，`#1806` 笔 1）⇒ inline 数据里出现存档信封键即红。
+	 *   （fixture 为**具名字符串**时无此面；只有 inline `数据` 才可判 ⇒ 有则必判。） */
+	if (r['入口态']?.['数据'] != null) {
+		const 数据 = r['入口态']['数据'];
+		for (const k of ['state', 'saveVersion', 'version']) {
+			if (Object.prototype.hasOwnProperty.call(数据, k)) {
+				bad(`入口态.数据 含存档信封键 \`${k}\` ⇒ 会被当**存档对象形**（入口态是**裸状态**，✗ 信封）`);
+			}
+		}
+	}
 	if (!Array.isArray(r['动作']) || r['动作'].length === 0) bad('「动作」空 —— 场景必须走真实动作');
 	if (!Array.isArray(r['锚']) || r['锚'].length === 0) bad('「锚」空 —— 场景须锚一条裁定');
 	if (!层.has(r['层'])) bad(`「层」非法：${r['层']}`);
