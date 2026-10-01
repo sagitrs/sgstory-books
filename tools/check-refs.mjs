@@ -108,7 +108,14 @@ if (DOCS) {
 			仅范围核++;
 		}
 	}
-	console.log(`─ docs 引用核（存在＋范围两核）：扫 ${files.length} 个 md｜引用 ${处} 处｜不符 ${fail.length}`);
+	/* ★**报告态**（操作者口径：棘轮式 —— 明账**每次打印**、✗ 静默；✗ 硬判）：本仓 docs 的引用多为 forest
+	 * 旧线稿的**外来路径**，硬判会把不相干内容线拖进本批。待 forest 稿的引用约定（外来路径标注形）定下、
+	 * 报告读数归零后再转硬判。 */
+	console.log(`─ docs 引用核（**报告态**：存在＋范围两核）：扫 ${files.length} 个 md｜引用 ${处} 处｜不符 ${fail.length}`);
+	console.log(`  ★明账（棘轮）：${fail.length} 条待清零 ⇒ 归零之日转硬判；本条**不使 rc≠0**`);
+	for (const f of fail.slice(0, 20)) console.log(`  · ${f}`);
+	console.log(`✓ docs 引用核（报告态）—— 清单面无涉` );
+	process.exit(0);
 } else
 for (const r of 场景) {
 	for (const field of FIELDS) {
