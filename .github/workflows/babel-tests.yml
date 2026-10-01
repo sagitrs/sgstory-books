@@ -62,6 +62,18 @@ jobs:
           ref: ${{ steps.pin.outputs.ref }}
           path: engine
 
+      # ★检出**自证**：`actions/checkout` 的 `ref` 若打错／上游 ref 变动，光看 step 是绿的 ⇒
+      #   这里直接比 `HEAD` 与声明件里的 `.ref`（✗ 让「检出」与「钉」的**不一致**溜进后续步骤）。
+      - name: 核检出 == pin（自证）
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          head=$(git rev-parse HEAD)
+          want=$(jq -r '.ref' "$GITHUB_WORKSPACE/books/.github/engine-ref.json")
+          [ "$head" = "$want" ] || {
+            echo "::error title=babel-attribution::(a) engine-ref — 检出的引擎 HEAD($head) ≠ 声明件 ref($want)"; exit 1; }
+          echo "检出 == pin ✓（$head）"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
@@ -103,14 +115,16 @@ jobs:
       # ── 场景链（`#1814` 双层场景批 ⇒ 测试文件落本仓；同形移植归 tester-3/4）──
       #   ★本步是**预留接线点**（文件到位即自动生效）；未到位时**出声**（✗ 静默空门 ——
       #     那会让人把「还没移植」读成「场景链绿了」）。
-      - name: 场景链（同形断言；未移植时出声）
+      #   ⚠ **本步当前未生效**（本仓尚无 `tests/scenario/run.mjs`）⇒ 现在它只会打 `::notice`；
+      #     移植落地后**同一步**才真正跑断言（届时本注与 notice 一起删）。
+      - name: 场景链（同形断言；★当前未生效，未移植时出声）
         working-directory: books
         run: |
           set -euo pipefail
           if [ -f tests/scenario/run.mjs ]; then
             node tests/scenario/run.mjs --engine "$GITHUB_WORKSPACE/engine"
           else
-            echo "::notice title=babel-scenario::场景链**尚未移植**（本仓无 tests/scenario/run.mjs）—— 归 tester-3/4（票 #76 相 A／#1814）；本节＝预留接线点，到位即自动生效"
+            echo "::notice title=babel-scenario::场景链**当前未生效**：尚未移植（本仓无 tests/scenario/run.mjs）—— 归 tester-3/4（票 #76 相 A／#1814）；本节＝预留接线点，✗ 别把这条 notice 读成「场景链绿了」，到位后同一步才真正断言"
           fi
 
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
