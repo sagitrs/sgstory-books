@@ -1,5 +1,6 @@
 # ── 产物面（本地/CI 构建；✗ 入仓）──
 stories/babel/babel-trial.html
+site/                                   # Pages 产物目录（`trial.yml` 的 Assemble 步生成；✗ 入仓）
 dist/
 build/
 # ── 依赖与临时件 ──
