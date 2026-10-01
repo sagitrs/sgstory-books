@@ -28,9 +28,9 @@ jobs:
       - name: Assemble Pages artifact
         run: |
           mkdir -p site
-          cp babel-trial.html site/index.html
+          cp stories/babel/babel-trial.html site/index.html
           printf '<!doctype html><meta charset="utf-8"><title>巴别之井</title><meta http-equiv="refresh" content="0; url=index.html">' > site/play.html
-          cp babel-trial.html site/play.html
+          cp stories/babel/babel-trial.html site/play.html
           printf '# 巴别之井 · 试玩版\n\n- 直接玩: [play.html](play.html)\n- 源仓库: sagitrs/sgstory@main（本站随其自动重建）\n' > site/README.md
       - uses: actions/upload-pages-artifact@v3
         with:
