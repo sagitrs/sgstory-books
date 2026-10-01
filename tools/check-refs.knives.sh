@@ -20,6 +20,8 @@ echo "=== 刀（须红且红在对的支）==="
 knife "K1 行号越界"  "d['场景'][0]['备注']+='　\`src/core/70-ui.js:99999\`（\`esc\`）'" "行号越界"
 knife "K2 符号不符"  "d['场景'][0]['备注']+='　\`src/core/70-ui.js:69\`（\`绝无此符号xyz\`）'" "不含**其声明的符号"
 knife "K3 路径不存在" "d['场景'][0]['备注']+='　\`src/core/no-such-file.js:1\`（\`x\`）'" "文件不存在"
+knife "K4 引用有歧义" "d['场景'][0]['备注']+='　\`README.md:1\`（\`x\`）'" "引用有歧义"
+knife "K5 散文形引用" "d['场景'][0]['备注']+='　\`src/core/70-ui.js\` 第 69 行'" "散文形"
 echo "=== 引擎缺失（须 rc=2 具名，✗ 静默跳过）==="
 out=$(node tools/check-refs.mjs --engine /tmp/__nope__ 2>&1); rc=$?
 echo "$out" | grep -qF "引擎检出不存在" && { echo "  ✓ rc=$rc 具名"; pass=$((pass+1)); } || { echo "  ✗ 未具名 rc=$rc"; fail=$((fail+1)); }
