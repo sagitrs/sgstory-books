@@ -402,7 +402,7 @@
       ],
       "断言": {
         "逻辑": "HP +2（**house rule** 值）、充能 2→1→0；**双向**：充能 0 时使用**被拒**（✗ 静默 no-op）；往返后充能数不变",
-        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:409`／`src/core/70-ui.js:69`）；★**双向**：用尽时该槽**移除** ⇒ 该行**消失**（**符号实指**：`RPG.take` 的 `if (slot.charges <= 0) list.splice(i, 1)`；**行号辅助** `src/core/30-inventory.js:55`，✗ 不留 0 充能残槽 ⇒ **不存在**「×0／已用尽」形）；往返后文本不变"
+        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:409`／`src/core/70-ui.js:69`）；★**双向**分两面：①**0 充能槽**（可由 fixture 造）⇒ 渲染 **`×0`**（新形**自解释**，✗ 无「已用尽」字样）；②**正常用尽**⇒ 该槽**被摘**、该行**消失**（**符号实指**：`RPG.take` 的 `if (slot.charges <= 0) list.splice(i, 1)`；另两条同判据路径 `RPG.act` 的 `'use'` 分支／`35-gather.js` 采空自摘；**行号辅助** `src/core/30-inventory.js:55`）；往返后文本不变"
       },
       "锚": [
         "#1748",
@@ -412,7 +412,7 @@
       "层": "both",
       "守的面": "**house rule（非 SRD）件**的显式声明 ＋ 使用行为 ＋ 往返存活",
       "构造": "中间经 保存→读档 往返",
-      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）；SRD 3.5 装备面无「草药」条目（`equipment.md:3220`）　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。"
+      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）；SRD 3.5 装备面无「草药」条目（`equipment.md:3220`）　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
     }
   ]
 }
