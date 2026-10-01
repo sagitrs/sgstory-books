@@ -17,12 +17,10 @@ process.on('uncaughtException', (e) => {
 	console.error('✗ 清单自检失败 1 条');
 	process.exit(1);
 });
-process.on('exit', (code) => {
-	if (code === 0 && fail.length === 0 && ok.length === 0) {   // 恒绿门自证：正常结束却没跑过一条
-		console.error('✗ ★恒绿门：脚本正常结束但一条都没断（清单空？路径错？）');
-		process.exit(1);
-	}
-});
+/* ★此处曾有一个 `process.on('exit')` 的「恒绿门」支（正常结束却没跑过一条 ⇒ rc=1），**已删**：
+ *   它是**死代码** —— 空清单／路径错在 `JSON.parse` 前就被上面的具名支拦下（先抛），
+ *   而清单非空时循环必然填 `ok`／`fail` ⇒ 该条件**永不成立**（tester-4 RC：判冗余，裁乙）。
+ *   ⇒ 「空清单红」由 **uncaughtException 支具名**承担（✗ 两条支声称覆盖同一面）。 */
 
 const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
 const rows = doc['场景'];

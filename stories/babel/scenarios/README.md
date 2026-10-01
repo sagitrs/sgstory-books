@@ -30,6 +30,16 @@
 3. **活行判据** —— 文本断言读**渲染出的 DOM 活行**；✗ 读源码文件内容。
 4. **fixture 是状态不是存档** —— 裸状态形；信封形会被笔 1 契约拒（入口态 ≠ 存档）。
 
+## 三个件（都在本目录）
+
+| 件 | 用途 |
+|---|---|
+| `scenarios.json` | **单源**（改清单＝只改这一份） |
+| `validate.mjs` | 自检：`node stories/babel/scenarios/validate.mjs` ⇒ 字段齐／id 唯一／锚非空／`层=both ⇒ 两层断言齐`／动作非空／fixture 形合法；失败＝**干净红 ＋ 汇总**（崩溃走具名支） |
+| `render-table.mjs` | 票面/评审的**表渲染**：`node …/render-table.mjs > table.md`（✗ 手抄 —— 表与 JSON 永不漂移） |
+
+★**接线**：`tests/scenario/run.mjs`（tester-3/4 的场景链）落地时，**开头先跑 `validate.mjs`**（清单不合形 ⇒ 场景链不该开跑）。
+
 ## 去重口径
 
 **按 `锚` 去重**：同一裁定原则上**只出一条**；要两条 ⇒ 必须锚**不同断言面**（在 `守的面` 写清）。
