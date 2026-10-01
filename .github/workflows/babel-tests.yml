@@ -82,7 +82,9 @@ jobs:
             echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本 PR 的 pin 编不动这个故事**"
             echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
           # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算
-          n=$(grep -oE '(src|href)="(https?:|//|[^#][^"]*\.(js|css|png|jpg|svg))"' "$STORY/babel-trial.html" | wc -l)
+          # ⚠ `grep` **无匹配时退出码 1** ＋ 本步 `set -o pipefail` ⇒ 管道判红（首跑实测踩到：产物明明合法却被判「不是单文件」）
+          #   ⇒ 必须 `|| true` 把「0 条外部依赖」这唯一的**好事**与「grep 失败」分开（✗ 用 `$?` 猜）。
+          n=$({ grep -oE '(src|href)="(https?:|//|[^#][^"]*\.(js|css|png|jpg|svg))"' "$STORY/babel-trial.html" || true; } | wc -l)
           [ "$n" -eq 0 ] || { echo "::error title=babel-attribution::(b) story-face — 产物有外部依赖 $n 条 ⇒ 不是单文件"; exit 1; }
           echo "产物：$(du -h "$STORY/babel-trial.html" | cut -f1)（外部依赖 0 条 ✓）"
 
@@ -97,6 +99,19 @@ jobs:
           b=$(sha1sum "$STORY/babel-trial.html" | cut -d' ' -f1)
           [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }
           echo "两次构建 sha1 相同 ✓（$a）"
+
+      # ── 场景链（`#1814` 双层场景批 ⇒ 测试文件落本仓；同形移植归 tester-3/4）──
+      #   ★本步是**预留接线点**（文件到位即自动生效）；未到位时**出声**（✗ 静默空门 ——
+      #     那会让人把「还没移植」读成「场景链绿了」）。
+      - name: 场景链（同形断言；未移植时出声）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          if [ -f tests/scenario/run.mjs ]; then
+            node tests/scenario/run.mjs --engine "$GITHUB_WORKSPACE/engine"
+          else
+            echo "::notice title=babel-scenario::场景链**尚未移植**（本仓无 tests/scenario/run.mjs）—— 归 tester-3/4（票 #76 相 A／#1814）；本节＝预留接线点，到位即自动生效"
+          fi
 
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
