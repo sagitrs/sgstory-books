@@ -112,20 +112,19 @@ jobs:
           [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }
           echo "两次构建 sha1 相同 ✓（$a）"
 
-      # ── 场景链（`#1814` 双层场景批 ⇒ 测试文件落本仓；同形移植归 tester-3/4）──
-      #   ★本步是**预留接线点**（文件到位即自动生效）；未到位时**出声**（✗ 静默空门 ——
-      #     那会让人把「还没移植」读成「场景链绿了」）。
-      #   ⚠ **本步当前未生效**（本仓尚无 `tests/scenario/run.mjs`）⇒ 现在它只会打 `::notice`；
-      #     移植落地后**同一步**才真正跑断言（届时本注与 notice 一起删）。
-      - name: 场景链（同形断言；★当前未生效，未移植时出声）
+      # ── 场景链（`#1814`：单源清单喂两层）──
+      #   `tests/scenario/run.mjs` 已落本仓 ⇒ **本步已是真断言**（✗ 不再是预留接线点）。
+      #   ★它内部**第 0 步先跑 `validate.mjs`**（清单不合形 ⇒ 场景链不开跑）。
+      #   ★引擎单测 bundle：`build.py` 的 `main()` **总会**调 `build_unit_bundle()`
+      #     （`python3 build.py <故事> --out …` 亦然）⇒ **上面的构建步已产出**
+      #     `engine/tests/unit/dist/bundle.js` ⇒ 本步**无需**再加一次构建
+      #     （本席原拟加一步，读 `build.py:239` 后判定**冗余**，故不加）。
+      #   ⚠ 本步的读数含**未机械判明账**（语义断言是散文）—— 见运行输出，✗ 别把「通过」读成「语义已验」。
+      - name: 场景链（单源清单喂两层；★真断言）
         working-directory: books
         run: |
           set -euo pipefail
-          if [ -f tests/scenario/run.mjs ]; then
-            node tests/scenario/run.mjs --engine "$GITHUB_WORKSPACE/engine"
-          else
-            echo "::notice title=babel-scenario::场景链**当前未生效**：尚未移植（本仓无 tests/scenario/run.mjs）—— 归 tester-3/4（票 #76 相 A／#1814）；本节＝预留接线点，✗ 别把这条 notice 读成「场景链绿了」，到位后同一步才真正断言"
-          fi
+          node tests/scenario/run.mjs --engine "$GITHUB_WORKSPACE/engine"
 
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
