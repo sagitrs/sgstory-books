@@ -10,9 +10,6 @@
  * 用法（先构建，再跑）：
  *     python3 build.py stories/babel --out babel-trial.html
  *     node stories/babel/verify.mjs
- *   ★**拆分仓布局**（本仓＝故事、引擎在 sgstory 检出）：
- *     python3 <engine>/build.py stories/babel --out babel-trial.html   # 在 books 仓根跑
- *     node stories/babel/verify.mjs --engine <engine>
  * 退出码：全部通过 0；有失败 1（并逐条打印）。
  */
 
@@ -22,11 +19,10 @@ import process from 'node:process';
 
 const here = import.meta.dirname;
 
-/* ---------- 引擎根（`books#76` 相 A：故事与引擎**分仓**）----------
- *   ① **同仓布局**（故事住在 `sgstory/stories/<名>` 里）⇒ 引擎根＝两个上级；
- *   ② **拆分布局**（故事在本仓、引擎在别处检出）⇒ `--engine <引擎检出目录>`
- *      —— 引擎面（`tests/unit/framework/shims.js`、`tests/unit/dist/bundle.js`、`src/core/*`）全在那边。
- * ⚠ 引擎根不对 ⇒ **显式报错**（✗ 静默按「文件不存在」崩掉 —— 那会把「路径配错」伪装成「装配坏了」）。 */
+/* ---------- 引擎根（`books#76` 相 A：故事与引擎**可**分仓）----------
+ *   ① **同仓布局**（故事住在 `sgstory/stories/<名>` 里）⇒ 引擎根＝两个上级（缺省，本仓现状）；
+ *   ② **拆分布局**（故事在 books 仓、引擎在别处检出）⇒ `--engine <引擎检出目录>`。
+ * ⚠ 引擎根不对 ⇒ **显式报错**（✗ 静默按「文件不存在」崩 —— 那会把「路径配错」伪装成「装配坏了」）。 */
 const argOf = (name) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
 const engineArg = argOf('--engine');
 const root = engineArg ? path.resolve(engineArg) : path.resolve(here, '..', '..');
@@ -72,8 +68,9 @@ process.on('exit', () => {
 globalThis.window = globalThis;
 globalThis.document = { title: '', getElementById: () => ({ insertAdjacentHTML() {}, innerHTML: '' }) };
 /* ★载入序须与引擎的 `tests/unit/headless.mjs` 一致：**host.js（宿主仿真）先于 shims.js**
- *   —— 引擎演进后 shims 依赖 host（未加载即抛「framework/host.js 未加载」）。
- *   ⚠ 拆分布局下本脚本跟着**引擎 pin** 走 ⇒ 这里必须与 pin 的引擎同序（✗ 按旧引擎写死）。 */
+ *   —— 引擎演进后 `shims` 依赖 `host`（未加载即抛「framework/host.js 未加载」）；
+ *   本脚本是**故事侧消费者**，引擎换载入序时它**不会自动跟着变** ⇒ 曾在 main 上静默变红（本笔修的）。
+ *   ⚠ 故此处用「**存在即加载**」的形（✗ 写死）：引擎若回退到无 `host.js` 的旧形也照跑。 */
 if (fs.existsSync(path.join(root, 'tests/unit/framework/host.js'))) {
 	load(path.join(root, 'tests/unit/framework/host.js'));
 }
