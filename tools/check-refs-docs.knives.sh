@@ -31,8 +31,19 @@ doc_knife() { # 名 注入串 期望特征
 echo "=== docs 报告内容刀（须现于报告）==="
 doc_knife "K1 不存在的文件" '`src/core/no-such-file.js:1`' "no-such-file.js"
 doc_knife "K2 行号越界"     '`src/core/70-ui.js:99999`' "行号越界"
-doc_knife "K3 外来形归类"   '`gates/canon.mjs:1`'       "外来形"
-doc_knife "K4 豁免逐条打印" '`src/core/no-such-file.js:1`' "豁免面"
+# ★K3 断**计数**（✗ 断标签串 —— 干净报告里「外来形 0」是**无条件**打印的 ⇒ 原刀恒绿）
+doc_knife "K3 外来形计数"   '`gates/canon.mjs:1`'       "外来形 1"
+# ★K4 **换靶件到豁免前缀内**（`docs/plans/forest/**`）并断**命中计数**（✗ 断声明行 —— 那也是无条件打印的）
+doc_knife_exempt() {
+  local D2=docs/plans/forest/devices.md B2
+  B2=$(mktemp -t docs-knives-f-XXXXXX.md); cp "$D2" "$B2"
+  python3 "$INJ" "$D2" '`src/core/no-such-file.js:1`'
+  out=$(node tools/check-refs.mjs --docs --engine "$ENGINE" 2>&1)
+  if echo "$out" | grep -qF "已豁免 1"; then printf "  ✓ %-24s 报告现「%s」\n" "K4 豁免命中计数" "已豁免 1"; pass=$((pass+1));
+  else printf "  ✗ %-24s 报告未见「%s」\n" "K4 豁免命中计数" "已豁免 1"; fail=$((fail+1)); fi
+  cp "$B2" "$D2"; rm -f "$B2"
+}
+doc_knife_exempt
 echo "=== ★该守那把：--docs 下**清单面红仍须 rc≠0**（dev-10 阻断 RC）==="
 cp "$JB" "$J"; python3 "$INJC" "$J" '`src/core/no-such-in-cl.js:1`（`x`）'
 out=$(node tools/check-refs.mjs --docs --engine "$ENGINE" 2>&1); rc=$?
