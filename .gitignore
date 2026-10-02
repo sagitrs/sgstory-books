@@ -1,5 +1,6 @@
 # ── 产物面（本地/CI 构建；✗ 入仓）──
-stories/babel/babel-trial.html
+# ★`#1879`：**整个故事根下的 html 都算产物**（原只盖 `babel-trial.html` ⇒ `babel-a.html` 那类改名产物**溜进过仓** ✗）
+stories/babel/*.html
 site/                                   # Pages 产物目录（`trial.yml` 的 Assemble 步生成；✗ 入仓）
 dist/
 build/
