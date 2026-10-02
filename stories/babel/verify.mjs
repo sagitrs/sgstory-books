@@ -786,6 +786,12 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
 /* ---------- ⑳ L1–L9 **引导弧**（`books#132`）的 L1–L4 节拍 ----------
  * 每格对应**操作者设计的一条节拍**（✗ 我自拟）—— 判据即「该节拍在装置上**成立**」：
  *   L1 空手可胜 ＋ 捡剑 ｜ L2 战后 100% 绷带 ｜ L3 一击必杀怪 ｜ L4 必掉钥匙 ＋ 宝箱三路（不可逆）。 */
+/* 本格给⑳这一段一个已知的进入状态，做法是在它开始之前埋一件哨兵，
+ * 并把⑳自己会发下的两件物品清掉；后面那一格才有办法判断残留有没有漏到下游。
+ * 这一行必须写在⑳保存进入状态的那一行之前，否则它自己会被当成进入状态的一部分。 */
+const 刀前背包 = State.variables.inventory;
+State.variables.inventory = [{ id: 'heavy-steel-shield', charges: null, equipped: false }];
+globalThis.__arcEntry = { pos: map.current, hp: D.Player.hp };
 head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一击必杀／钥匙·宝箱）');
 {
 	/* ★**存-复原**（`dev-10` NIT · 非洁癖）：本段会**清背包／移动地图**，而 **L5–L9 的新格（㉑㉒…）**
@@ -916,6 +922,22 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 	State.variables.inventory = 存弧.inv;   // ★复原（✗ 留给下游格）
 	if (map.locations.has(存弧.位)) map.moveTo(存弧.位);
 	D.Player.hp = 存弧.hp;
+}
+
+/* ⑳b 的用处，是验证下游格看到的进入状态确实等于⑳的进入状态。
+ * ⑳会清空背包并发下物品，如果它不做复原，紧接着追加的㉑㉒等格会继承这些残留，
+ * 表现为难以定位的假红。这里一共断四个面：哨兵仍在、⑳发下的两件不在、
+ * 地图位置回到进入状态、体力回到进入状态。 */
+head('⑳b 存-复原（刀）');
+{
+	ok(R.has('heavy-steel-shield'), '⑳之后哨兵件不见了，说明进入状态没有被复原，下游格会继承⑳的残留');
+	ok(!R.has('bandage') && !R.has('iron-key'), '⑳发下的物品漏到了下游，背包里仍有绷带或铁钥匙，说明复原没有盖住残留');
+	ok(map.current === globalThis.__arcEntry.pos,
+		`⑳之后地图位置没有复原，实测为 ${map.current}，进入状态是 ${globalThis.__arcEntry.pos}`);
+	ok(D.Player.hp === globalThis.__arcEntry.hp,
+		`⑳之后体力没有复原，实测为 ${D.Player.hp}，进入状态是 ${globalThis.__arcEntry.hp}`);
+	console.log(`  存-复原：哨兵仍在 ${R.has('heavy-steel-shield')}，残留绷带 ${R.has('bandage')}，残留铁钥匙 ${R.has('iron-key')}`);
+	State.variables.inventory = 刀前背包;
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
