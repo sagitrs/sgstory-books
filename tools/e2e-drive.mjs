@@ -23,6 +23,8 @@
 
  * ── 面的**状态**（★`#300` ② 「不可解析须成明账」：✗ 把「本 pin 没修」与「判据不成立」混为一谈）──
  *   **R 读档往返·导航形**：**硬判**。存档 → **导航到别段** → 读档 ⇒ 段落须回存档刻。此形在 pin 上成立（导航会写 `_history`）。
+ *   **L 同地点读档·场景头重印**：**硬判**（`books#136` F4 —— 修在本仓故事层，随本件同笔）。
+ *     存档 → 读档（**位置不变**）⇒ 地图场景头（【层名】＋desc）须重印。
  *   **S 自环就地重绘·面板跟随**：**明账**（属 `sagitrs/sgstory#1859` ⇒ 修 `#1864`，**未合**）。`--require self-loop` 升硬判。
  *   **I 故事页点道具不穿 DOM**：**明账**（属 `sagitrs/sgstory#1857` ⇒ 修 `#1866`，**未合**）。`--require item-click` 升硬判。
  *   ⇒ ★明账面**每次运行都打印**（含归属票号）—— `#300` ⑧「非空≠存在」的同族：✗ 让「没跑」与「跑过且未修」同形。
@@ -108,7 +110,7 @@ cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
-	console.log('  硬判面：R 读档往返·导航形');
+	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
 	console.log('  原语：passageLines／choiceButtons／driveButton／saveAt／loadAt／setStateVars／panelText');
 	process.exit(0);
@@ -146,6 +148,30 @@ if (has('--selftest')) {
 	let missPanel = null;
 	try { panelText(s, '不存在面板-xyz'); } catch (e) { missPanel = e.message; }
 	F('缺面板 ⇒ **抛**（✗ 返回空串 —— 那会把「面板没了」读成「面板是空的」）', /面板宿主缺失/.test(missPanel ?? ''));
+
+	/* ★面 L 的**刀**（`books#136` F4）：证明「同地点读档 ⇒ 场景头须重印」这条**红得了** ——
+	 *   唯一变量＝**清掉 `Save.onLoad` 的全部处理器**（故事侧那条「换场景实例」的钩子就在其中）
+	 *   ⇒ 场景实例不换 ⇒ 同地点读档后头**必**不重印。
+	 *   ★两向：①正例臂（未清时头看得见）②**反例臂仍有效**（清处理器后读档照常回滚 State）
+	 *     —— ✗ 缺②则上一条可能是「读档本身坏了」造出来的**假刀**。 */
+	let L正 = null, L反 = null, L回滚 = null, L处理器数 = null;
+	{
+		await playPassage(s, '探索'); await tick(300);
+		await driveButton(s, /向上，去第 2 层/, { read: lines });
+		L正 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+		await saveAt(s, 3);
+		await driveButton(s, /^采集/, { read: choiceButtons });
+		const 采前 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
+		L处理器数 = s.SC.Save.onLoad.size;              // 至少两条：引擎的裁决 ＋ 故事侧的换实例
+		s.SC.Save.onLoad.clear();                       // ★唯一变量：撤掉全部读档处理器
+		await loadAt(s, 3);
+		const 采后 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
+		L回滚 = 采后 !== 采前;
+		L反 = !passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+	}
+	F('★面 L 两向 · 正例臂：未清处理器时走到 L2 ⇒ 头**看得见**（✗ 看不见则本面判不了）', L正 === true);
+	F('★面 L 唯一变量：只清 `Save.onLoad` 处理器（清前 ' + L处理器数 + ' 条）⇒ 同地点读档后头**确不重印**（判据红得了）', L反 === true);
+	F('★面 L 反例臂仍有效：清处理器后读档**照常回滚**（✗ 则上一条是「读档坏了」造的假刀）', L回滚 === true);
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -195,6 +221,29 @@ if (has('--selftest')) {
 		if (!read) throw new Error('点道具后正文**无可读文案** ⇒ `used()` 的抛错未被收成可读拒绝');
 		return true;
 	});
+	/* ══ 面 L（**硬判**）：同地点读档 ⇒ 场景头重印（`books#136` F4）══════════════════
+	 * 病灶（本席实测的根因）：场景头（【层名】＋desc）只在**换层**时印一次，判据是引擎 `MapScene` 的
+	 *   **实例私有字段** `#headerLoc`（`src/core/60-map.js`；故事侧读不到也写不了）——而 `map.current`
+	 *   随**存档**存活 ⇒ **同地点读档**时两者相等 ⇒ 读档后屏幕上**只剩选项**（实测：正文 4 行、头 0 条）。
+	 * 修＝读档换一个新的场景实例（故事侧 `src/story/hooks.js`）。本面判的是那个**果**。
+	 * ★两向（✗ 只判「头在不在」）：
+	 *   ① 装置须**看得见**头 —— 走到 L2 那一屏就该有【第 2 层 · 倒木坡】。
+	 *   ② 读档须**真回滚** —— 采集次数 3→2→3。✗ 缺这一臂：`loadAt` 若是空函数，旧屏连头带选项
+	 *      都还在 ⇒ 「头在」会**假绿**（本舰队反复在打的「绿而判据未执行」同族）。 */
+	await playPassage(s, '探索'); await tick(300);
+	await driveButton(s, /向上，去第 2 层/, { read: lines });         // 走到 L2 ⇒ 该屏该印【第 2 层 · 倒木坡】
+	const 头首见 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+	await saveAt(s, 1);                                             // 存档刻：current＝L2（此刻头已印）
+	await driveButton(s, /^采集/, { read: choiceButtons });          // 同地点就地重绘（头按设计不重印；次数 3→2）
+	const 采后 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
+	await loadAt(s, 1);                                             // 读档：同地点（L2）
+	const 采回 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
+	const 头回 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+	ok(头首见, '★面 L 两向①：走到 L2 那一屏就**没有**场景头 ⇒ 装置看不见头，本面判不了 F4（✗ 读成 F4 结论）');
+	ok(采回 !== 采后, `★面 L 两向②：读档后采集次数没回滚（${采后} → ${采回}）⇒ 读档未生效／屏幕未重画，本面结论不成立`);
+	ok(头回, '★面 L：同地点读档后场景头**没有重印**（读档后屏幕上只有选项、没有地点名与描述）');
+	if (头首见 && 采回 !== 采后 && 头回) console.log(`  面 L ✓ 同地点读档：${采后} → 读档 → ${采回}，场景头重印 ✓`);
+
 	s.dom.window.close();
 }
 
