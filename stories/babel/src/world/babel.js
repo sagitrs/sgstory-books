@@ -112,7 +112,9 @@ const makeLayerLocation = (L) => new R.Location({
 	/* 读数：本局到过的**最深**层（进层即记；✗ 用「当前层」代替，因为死亡会把人送回 L1）。 */
 	onEnter: () => {
 		const r = State.variables.babelRun;
-		if (r) r.deepest = L.id;
+		/* ★`#135` ②a：**max** 语义（✗ 无条件赋值 —— 从 L20 退回 L19 会把「最深」写小；
+		 *   `babel2.js:147` 确有该回边）。层号由 id 取（`L19`／`L20-forge` 皆可）⇒ ✗ 字符串直比。 */
+		if (r && Number(String(L.id).match(/L(\d+)/)?.[1] ?? 0) > Number(String((r.deepest ?? '')).match(/L(\d+)/)?.[1] ?? 0)) r.deepest = L.id;
 	},
 	actions: [
 		/* ★`#116`：**单一采集动作**（✗ 原两段式「先翻找（发进背包）⇒ 再对背包里的节点采」）——
@@ -163,7 +165,9 @@ const adoptHub = (target, hub, patch = {}) => {
 			actions: patch[loc.id] ? patch[loc.id](loc.actions) : loc.actions,
 			onEnter: () => {
 				const r = State.variables.babelRun;
-				if (r) r.deepest = R.layerOfLocation(loc.id)?.id ?? loc.id;
+				/* ★`#135` ②a（hub 接管面）：同 max 语义（✗ 无条件赋值）。 */
+				const _d = R.layerOfLocation(loc.id)?.id ?? loc.id;
+				if (r && Number(String(_d).match(/L(\d+)/)?.[1] ?? 0) > Number(String((r.deepest ?? '')).match(/L(\d+)/)?.[1] ?? 0)) r.deepest = _d;
 			},
 		}));
 	}
