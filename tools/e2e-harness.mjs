@@ -380,25 +380,25 @@ if (import.meta.filename === process.argv[1]) {
 		 *   在那儿判会**假红**（我实际踩过）。⇒ 分工：verify 守静态接线，本件守运行时行为。 */
 		{
 			const R = s.SC.setup.RPG;
-			R.perform('K9 探针行 A');
-			R.perform('K9 探针行 B');
+			R.perform('K10 探针行 A');
+			R.perform('K10 探针行 B');
 			R.refreshPanels(['notice']);
 			const boxAt = () => s.doc.querySelector('[data-panel="notice"] .rpg-notice-box');
 			const box0 = boxAt();
-			if (!box0) K.push([false, 'K9 ★`#1877` P1-3：通知面板里没有 `.rpg-notice-box`', '选择器失效 ⇒ 本条无法判']);
+			if (!box0) K.push([false, 'K10 ★`#1877` P1-3：通知面板里没有 `.rpg-notice-box`', '选择器失效 ⇒ 本条无法判']);
 			else {
 				box0.open = true;
 				R.refreshPanels(['notice']);
 				const box1 = boxAt();
 				K.push([box1 && box1.open === true,
-					'K9 ★★`#1877` P1-3：展开后一次刷新**仍展开**（✗ 旧形折回默认 ⇒ 玩家看到「计数在涨、列表恒空」）',
+					'K10 ★★`#1877` P1-3：展开后一次刷新**仍展开**（✗ 旧形折回默认 ⇒ 玩家看到「计数在涨、列表恒空」）',
 					`refresh 后 open=${box1 && box1.open}`]);
 				/* 切档重绘（点开关）—— 旧形同样折回 */
 				const tg = s.doc.querySelector('[data-panel="notice"] .rpg-notice-toggle');
 				if (tg) {
 					s.window.jQuery(tg).trigger('click');
 					const box2 = boxAt();
-					K.push([box2 && box2.open === true, 'K9b ★切档（全部/仅关键）重绘后仍展开', `toggle 后 open=${box2 && box2.open}`]);
+					K.push([box2 && box2.open === true, 'K10b ★切档（全部/仅关键）重绘后仍展开', `toggle 后 open=${box2 && box2.open}`]);
 				}
 			}
 		}
