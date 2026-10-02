@@ -235,8 +235,12 @@ const makeLayerLocation = (L) => new R.Location({
 		 *   `babel2.js:147` 确有该回边）。层号由 id 取（`L19`／`L20-forge` 皆可）⇒ ✗ 字符串直比。 */
 		if (r && Number(String(L.id).match(/L(\d+)/)?.[1] ?? 0) > Number(String((r.deepest ?? '')).match(/L(\d+)/)?.[1] ?? 0)) r.deepest = L.id;
 		/* ★`books#133` 笔 1：**首次进入该层 ⇒ 抽一次**（幂等：已有则原样返回，✗ 重抽）。
-		 *   位置就在「进层即记 deepest」同一钩子里（设计稿 §3.2：同处扩展）。 */
-		ensureDraw(L.id);
+		 *   位置就在「进层即记 deepest」同一钩子里（设计稿 §3.2：同处扩展）。
+		 *   ⚠⚠ **须白名单守**（`dev-9` 的阻断 RC）：本行原为无条件 `ensureDraw(L.id)` ⇒ 进 **L1／L9／L11**
+		 *     也开账（押反裁 ③「L9 无抽签」与笔面明账 4）且**每进一层吃掉两个随机单元**
+		 *     （`RPG.rng` 是全仓唯一随机源：战斗选靶也走它 ⇒ 这是**全局**副作用，✗ 只在本层）。
+		 *     本席自己那个「只用了白名单」的声明因此**不实**，已由㉔格的两条新臂钉住。 */
+		if (EVENT_LAYERS.includes(L.id)) ensureDraw(L.id);
 	},
 	actions: [
 		/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的基础采集退役** —— 采集在该四层改为「抽中的事件」，
