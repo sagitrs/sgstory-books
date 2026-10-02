@@ -97,7 +97,10 @@ jobs:
           #   此前**漏传** ⇒ 线上试玩页的侧栏徽标恒显源树缺省值「—」（`books#136` ①，外部评审实测）。
           python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" || {
             echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本仓故事编不动**"
-            echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
+            # ⚠ 报文里✗写反引号（`books#136` 的**同类清理**，`dev-9` 的 NIT 1）：本行是双引号字面量 ⇒
+            #   `` `路径` `` 会被 shell **命令替换**吃掉，报文变成「先升  的 ref 再重跑」，
+            #   并多跑一条 `<路径>: Permission denied`（演练实测）——故直写路径。
+            echo "  （常见＝pin 早于故事用到的新能力：先升 .github/engine-ref.json 的 ref 再重跑）"; exit 1; }
           # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算。
           # ⚠ `grep` **无匹配时退出码 1** ＋ `set -o pipefail` ⇒ 管道判红
           #   （`babel-tests.yml` 首跑实测踩到：产物明明合法却被判「不是单文件」）
