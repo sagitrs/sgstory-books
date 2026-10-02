@@ -794,14 +794,45 @@ State.variables.inventory = [{ id: 'heavy-steel-shield', charges: null, equipped
 globalThis.__arcEntry = { pos: map.current, hp: D.Player.hp };
 head('⑲b 保存域登记（`#1902`／`#1903`：`$span1Arc` 进 `envelope().domains`）');
 {
+	/* ★先断**接口在场**（`dev-9` NIT-2）：接口缺席时 `undefined === false` 为假 ⇒ 下游断言会把
+	 *   「接口不在」误报成「护栏失效」，把读的人引向错的方向。 */
+	ok(typeof R.save?.declareDomain === 'function', '接口不在（books 依赖的 `sgstory#1903` 未合入？）');
 	const en = R.save?.envelope?.();
 	ok(!!en, '`RPG.save.envelope()` 不在');
 	if (en) {
-		ok((en.domains ?? []).includes('span1Arc'),
-			`★\`span1Arc\` 不在 \`envelope().domains\`（实得：${JSON.stringify(en.domains)}）⇒ 故事侧新键未登记`);
-		console.log(`  域登记：domains 含 span1Arc ✓（${(en.domains ?? []).length} 个域）`);
+		const 域 = en.domains ?? [];
+		const 含 = 域.includes('span1Arc');
+		/* ★`✓` 只在**成功支**印（`dev-9` NIT-1）：无条件印 `✓` 是恒真面、零信息量，
+		 *   而正文恰引该行当读数 ⇒ 读的人会把恒真的 `✓` 当成判据结论。计数则两支都印。 */
+		console.log(含 ? `  域登记：domains 含 span1Arc（${域.length} 个域）`
+			: `  域登记：domains **不含** span1Arc（${域.length} 个域）｜实得 ${JSON.stringify(域)}`);
+		ok(含, `★\`span1Arc\` 不在 \`envelope().domains\`（实得：${JSON.stringify(域)}）⇒ 故事侧新键未登记`);
 	}
-	ok(R.save?.declareDomain?.('inventory', 'byPack') === false, '★内置键（inventory）被故事侧覆盖了，护栏失效');
+	ok(R.save.declareDomain('inventory', 'byPack') === false, '★内置键（inventory）被故事侧覆盖了，护栏失效');
+	/* ★**阻断的刀**（`dev-9`：可选调用在缺席时静默 ⇒ 出声支是死支）——
+	 *   把接口临时撤掉，**真调用**登记函数，断言告警出现；复原后再调一次，断言不再出现。 */
+	{
+		const 存 = R.save.declareDomain;
+		const 告警 = []; const 原warn = console.warn;
+		console.warn = (m) => 告警.push(String(m));
+		try {
+			R.save.declareDomain = undefined;
+			setup.BABEL.登记域();
+			ok(告警.some((m) => m.includes('保存域登记口缺席')),
+				'★接口缺席时**没有出声**（登记函数在缺席支不出声 ⇒ 声明与实现不符）');
+			R.save.declareDomain = 存;
+			const 前 = 告警.length;
+			setup.BABEL.登记域();
+			/* ★在场时**会**出声，但必须是**另一条**（重复登记）：`declareDomain` 对同名重复返回 `false`
+			 *   ⇒ 本条区分「缺席」与「已登记」两种 false，✗ 只看「有没有出声」。 */
+			const 新 = 告警.slice(前).join('｜');
+			ok(新.includes('已登记过') && !新.includes('缺席'),
+				`★接口在场时的出声归因错（应说「已登记」，实得：${新 || '（无）'}）`);
+		} finally {
+			R.save.declareDomain = 存; console.warn = 原warn;
+		}
+		console.log(`  缺席/在场两向：告警 ${告警.length} 条 ✓`);
+	}
 }
 
 head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一击必杀／钥匙·宝箱）');

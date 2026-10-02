@@ -360,17 +360,27 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 
 });
 
-	/* ★`#1902`／`#1903`：把本弧的**本局账**登记进保存域契约（引擎 `RPG.save.declareDomain`）。
-	 *   动机：`#116` 起就存在的缺口 —— story 侧新建的裸键**不进** `envelope().domains`，逐域往返面也看不到它；
-	 *   后果是**审计缺口**（✗ 不是丢档，进档由序列化宿主完成）。
-	 *   形状标记沿用既有 `span1Farms`／`span1Harvests` 的 `byPack` 约定。
-	 *   ⚠ 须在**导出面之后**调用（✗ 文件前部：那时 `setup.BABEL` 尚不存在，同 `nodeAt` 的实测教训）。 */
-	try {
-		R.save?.declareDomain?.('span1Arc', 'byPack');
-	} catch (e) {
-		/* 接口缺席（旧引擎）⇒ 静默降级为**未登记**（✗ 抛错拦住整个故事）—— 明账见 verify 的对应格。 */
-		console.warn('[BABEL] 保存域登记口缺席：span1Arc 未登记（候 #1903 的 `RPG.save.declareDomain`）');
+/* ★`#1902`／`#1903`：把本弧的**本局账**登记进保存域契约（引擎 `RPG.save.declareDomain`）。
+ *   动机：`#116` 起就有的缺口 —— story 侧新建的裸键**不进** `envelope().domains`，逐域往返面也看不到它；
+ *   后果是**审计缺口**，✗ 不是丢档（进档由序列化宿主完成）。
+ *   形状标记沿用既有 `span1Farms`／`span1Harvests` 的 `byPack` 约定。
+ *   ⚠ 须在**导出面之后**调用（✗ 文件前部／✗ 对象字面量内部）。
+ * ★**接口缺席必须显式判**（`dev-9` 阻断 RC）：可选调用 `?.()` 在方法缺席时求值 `undefined`、**不抛**，
+ *   故旧的 `try/catch` 对缺席支**永不参与**、那条 `console.warn` 是死支（声明与实现不符）。
+ *   现形：`typeof` 显式判 ⇒ 缺席支**真的出声**。函数挂在 `setup.BABEL.登记域` 上 ⇒ **可被调用**（刀用）。 */
+const 登记域 = () => {
+	if (typeof R.save?.declareDomain !== 'function') {
+		console.warn('[BABEL] 保存域登记口缺席：span1Arc 未登记（候 `sgstory#1903` 的 `RPG.save.declareDomain`）');
+		return false;
 	}
+	if (!R.save.declareDomain('span1Arc', 'byPack')) {
+		console.warn('[BABEL] span1Arc 未登记：与内置键同名或已登记过（引擎返回 false）');
+		return false;
+	}
+	return true;
+};
+登记域();
+setup.BABEL.登记域 = 登记域;   // ★导出以便判据可**真调用**（✗ 只能静态核）
 R.registerScene(new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' }));
 
 /* ---------- 永久被动「预知」占位（`#1893` E2 · 供 L5 的固定事件授予）----------
