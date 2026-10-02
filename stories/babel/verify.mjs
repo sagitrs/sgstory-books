@@ -1191,6 +1191,46 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 	if (map.locations.has(存位)) map.moveTo(存位);
 }
 
+/* ── ㉔ 守卫无副作用（`books#133` 笔 1；`dev-10` 的非阻断记录）─────────────
+ *
+ * 声明（`world/babel.js`：「守卫不得抽签 —— 那会让『看一眼』就抽」）此前**无判据**：
+ *   `dev-10` 把抽签搬进守卫后，验与驾驶层**都仍绿** ⇒ 声明与实现可差得很远而不出声。本格把它钉住：
+ *   ① 在**干净账**上「光看不动」—— 逐地点读 `text`／`when`／`availableActions`（这正是一切渲染
+ *     路径对动作对象的读法）⇒ 账须**仍为空**（✗ 一次抽都不许在这条路径上发生）；
+ *   ② 真 `moveTo` 一层 ⇒ **只有该层**的键出现（✗ 顺手给别的层抽）。
+ * ⚠ 读 `text`／`when` 会**建采集点节点**（`nodeAt` 的 `??=`）⇒ 节点账也须存-复原。 */
+head('㉔ 守卫无副作用（`books#133` 笔 1）');
+{
+	const 存账 = State.variables.span1Events;
+	const 存位 = map.current;
+	const 存节点 = State.variables.gatherNodes;
+	let 读了 = 0;
+	try {
+		State.variables.span1Events = {};
+		for (const [, loc] of map.locations) {
+			for (const a of loc.actions) {
+				读了 += 1;
+				if (typeof a.text === 'function') a.text();
+				if (typeof a.when === 'function') a.when();
+			}
+			loc.availableActions;                  // ★渲染路径真走的就是它（`MapScene` 的 actions 面）
+		}
+		const 看后 = Object.keys(State.variables.span1Events);
+		ok(看后.length === 0,
+			`★「光看不抽」被破：只读了守卫与文案 ⇒ 账里出现 ${看后.length} 个键（${看后.join('／')}）`);
+		map.moveTo('L5');
+		const 键 = Object.keys(State.variables.span1Events);
+		ok(键.length === 1 && 键[0] === 'L5',
+			`★真进层后账里应**只有** L5（实得 ${JSON.stringify(键)}）——多键＝有别的路径在抽`);
+		console.log(`  守卫无副作用：读 ${读了} 条动态动作（含 availableActions）⇒ 账键 ${看后.length} 个`
+			+ `${看后.length === 0 ? ' ✓' : ' ✗'}｜真进层后 ${JSON.stringify(键)}`);
+	} finally {
+		State.variables.span1Events = 存账;
+		State.variables.gatherNodes = 存节点;
+		if (map.locations.has(存位)) map.moveTo(存位);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
