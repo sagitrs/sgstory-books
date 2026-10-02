@@ -97,7 +97,15 @@ export function setStateVars(session, patch) {
 /** 面板文本（缺宿主 ⇒ **抛**，与 `panels()` 同取向）。 */
 export const panelText = (session, id) => panels(session, [id])[id];
 
-/* ── CLI ── */
+/* ── CLI ──
+ * ★**CLI 守卫**（本件此前**没有** ⇒ 形实不符：文件头自称「只 import，不复制」，而它自己**不能被 import**）：
+ *   · 无守卫时：`import('./tools/e2e-drive.mjs')` 会**执行整个驾驶体**——且因 import 方通常没传 `--engine`
+ *     ⇒ 它 `exit 2` 报「缺 `--engine`」 ⇒ **复核者看到的是「他自己的脚本失败」**（★归因误导，✗ 只是噪音）。
+ *   · 现形：顶层具名块 ＋ 早退 ⇒ **零重排**（✗ 缩进整档 —— 那会把 diff 涨到数百行，评审看不见真改动）。
+ *   ⚠ 块内保留顶层 `await`／`process.exit` 语义（两者在块内合法）；原语定义段在本块**之前** ⇒
+ *     若将来要供 import 复用，只需给那几个声明加 `export`（本笔不预加 —— ✗ 无消费者的导出面）。 */
+cli: {
+if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
 	console.log('  硬判面：R 读档往返·导航形');
@@ -194,3 +202,4 @@ console.log('');
 for (const f of fails) console.log(`  ✗ ${f}`);
 console.log(fails.length === 0 ? '✓ e2e 驾驶层通过' : `✗ e2e 驾驶层失败 ${fails.length} 条`);
 process.exit(fails.length === 0 ? 0 : 1);
+}   // ← cli 块结束（★守卫：import 时上面整段不执行）
