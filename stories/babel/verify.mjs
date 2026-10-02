@@ -819,8 +819,33 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 		ok(l1.when && !l1.when(), '★拾起后动作**没消失**（应一次性）');
 	}
 	/* ── L4：必掉钥匙（表）＋ 宝箱三路（钥匙开／硬开成功／硬开失败**不可逆**） */
+	/* ★「必掉」须断**真给**（✗ 只断声明常量）—— 这是 `dev-10` 对本笔的 RC：
+	 *   原两行只读 `setup.BABEL.弧必掉` 这张**表**，而「战后真给」在 `world/encounters.js` 的循环里
+	 *   ⇒ **删掉那个循环，本格照样绿**（＝「声称覆盖而无判据」）。
+	 * ⇒ 现形：**格内覆写遭遇表**换成软目标（hp1／AC1）＋ rng 定值 ⇒ **必胜** ⇒ 断**战后背包真含**该物。 */
+	{
+		const 原表 = R.encounterTables.span1;
+		R.defCharacter({
+			id: 'verify-drop-dummy', name: '（装置）软目标',
+			hp: 1, maxHp: 1,
+			stats: setup.DND3.stats({ ac: 1, str: 4, dex: 4, bab: 0 }),
+			items: [{ id: 'badger-claw', equipped: true }],
+		});
+		for (const [层, 物] of [['L2', 'bandage'], ['L4', 'iron-key']]) {
+			R.registerEncounterTable('span1', Object.assign({}, 原表, {
+				[层]: { encounters: [{ ref: 'verify-drop-dummy', weight: 1 }], loot: [] },   // ★空随机掉落 ⇒ 断的就是「必掉面」
+			}));
+			State.variables.inventory = [];
+			map.moveTo(层);
+			D.Player.hp = D.Player.maxHp;
+			R.rng.set(() => 0.99);                       // 必中重击 ⇒ 软目标一击毙
+			await B.fight({ interactive: false });
+			R.rng.reset();
+			ok(R.has(物), `★${层} 战后背包里**没有** ${物} ⇒ 「必掉」只写在表上、**没有真给**（dev-10 RC）`);
+		}
+		R.registerEncounterTable('span1', 原表);
+	}
 	ok(JSON.stringify(setup.BABEL.弧必掉?.L2) === JSON.stringify(['bandage']), '★L2 必掉表不是绷带（`books#132`：战后 100%）');
-	ok(JSON.stringify(setup.BABEL.弧必掉?.L4) === JSON.stringify(['iron-key']), '★L4 必掉表不是铁钥匙');
 	const l4acts = map.locations.get('L4').actions.map((a) => String(typeof a.text === 'function' ? a.text() : a.text));
 	ok(l4acts.some((t) => t.includes('铁钥匙')), '★L4 没有「用铁钥匙开箱」动作');
 	ok(l4acts.some((t) => t.includes('硬开')), '★L4 没有「硬开」动作');
