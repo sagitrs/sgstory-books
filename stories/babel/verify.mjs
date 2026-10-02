@@ -113,6 +113,7 @@ State.variables.inventory = [];
 State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1' };
 State.variables.babelGiven = {};
 State.variables.span1Arc = {};   // ★`books#132` L1–L9 弧的本局账（与 `meta/init.twee` 逐项同形）
+State.variables.span1Events = {}; // ★`books#133` 笔 1：选择制事件账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Farms = 0;
 State.variables.span1Harvests = 0;
 
@@ -808,30 +809,39 @@ head('⑲b 保存域登记（`#1902`／`#1903`：`$span1Arc` 进 `envelope().dom
 			: `  域登记：domains **不含** span1Arc（${域.length} 个域）｜实得 ${JSON.stringify(域)}`);
 		ok(含, `★\`span1Arc\` 不在 \`envelope().domains\`（实得：${JSON.stringify(域)}）⇒ 故事侧新键未登记`);
 	}
-	ok(R.save.declareDomain('inventory', 'byPack') === false, '★内置键（inventory）被故事侧覆盖了，护栏失效');
+	/* ★`dev-9` NIT-3：本行曾为**裸调用** ⇒ 接口缺席时抛 `TypeError`、脚本**从 ⑲b 崩掉**，
+	 *   其后各格一条不跑（新头 0 格 / 上一头 2 格）。⇒ 包一层能力判，缺席时**只记不可判**，✗ 崩。 */
+	if (typeof R.save?.declareDomain === 'function') {
+		ok(R.save.declareDomain('inventory', 'byPack') === false, '★内置键（inventory）被故事侧覆盖了，护栏失效');
+	} else {
+		console.log('  （接口缺席 ⇒ 护栏面不可判，✗ 崩）');
+	}
 	/* ★**阻断的刀**（`dev-9`：可选调用在缺席时静默 ⇒ 出声支是死支）——
 	 *   把接口临时撤掉，**真调用**登记函数，断言告警出现；复原后再调一次，断言不再出现。 */
 	{
 		const 存 = R.save.declareDomain;
 		const 告警 = []; const 原warn = console.warn;
 		console.warn = (m) => 告警.push(String(m));
+		/* ★两向结果须在 `try` **之外**可见（块外要印）；✗ 在 try 内 `const`（块外引用即 ReferenceError）。 */
+		let 缺席告警 = false, 归因ok = false;
 		try {
 			R.save.declareDomain = undefined;
 			setup.BABEL.登记域();
-			ok(告警.some((m) => m.includes('保存域登记口缺席')),
-				'★接口缺席时**没有出声**（登记函数在缺席支不出声 ⇒ 声明与实现不符）');
+			缺席告警 = 告警.some((m) => m.includes('保存域登记口缺席'));
+			ok(缺席告警, '★接口缺席时**没有出声**（登记函数在缺席支不出声 ⇒ 声明与实现不符）');
 			R.save.declareDomain = 存;
 			const 前 = 告警.length;
 			setup.BABEL.登记域();
 			/* ★在场时**会**出声，但必须是**另一条**（重复登记）：`declareDomain` 对同名重复返回 `false`
 			 *   ⇒ 本条区分「缺席」与「已登记」两种 false，✗ 只看「有没有出声」。 */
 			const 新 = 告警.slice(前).join('｜');
-			ok(新.includes('已登记过') && !新.includes('缺席'),
-				`★接口在场时的出声归因错（应说「已登记」，实得：${新 || '（无）'}）`);
+			归因ok = 新.includes('已登记过') && !新.includes('缺席');
+			ok(归因ok, `★接口在场时的出声归因错（应说「已登记」，实得：${新 || '（无）'}）`);
 		} finally {
 			R.save.declareDomain = 存; console.warn = 原warn;
 		}
-		console.log(`  缺席/在场两向：告警 ${告警.length} 条 ✓`);
+		/* ★`dev-9` NIT-5：本行的 `✓` 原为**无条件**印（臂 D 下也照印「告警 0 条 ✓」）⇒ 改为按两向结果条件印。 */
+		console.log(`  缺席/在场两向：告警 ${告警.length} 条${缺席告警 && 归因ok ? ' ✓' : ' ✗'}`);
 	}
 }
 
@@ -1040,6 +1050,75 @@ head('㉑ 读档进场 ⇒ 场景头重印（`books#136` F4）');
 		'★F4：同地点读档后场景头**没有重印**（读档后屏幕上只有选项、没有地点名与描述）');
 	console.log(`  读档进场：换层 ${印了(去, '第 2 层 · 倒木坡')} ✓｜回 L1 ${印了(回, '第 1 层 · 苏醒之地')} ✓｜`
 		+ `同地点读档后重印 ${印了(再入, '第 1 层 · 苏醒之地')}`);
+}
+
+/* ── ㉒ 选择制事件账（`books#133` 笔 1）─────────────────────────────
+ *
+ * 它回答的问题：**「每层一次抽签、结果入档」这条不变式成立吗？**
+ *   设计稿 §3.2：抽签必须每层一次且入档 —— 若每次重绘都抽，玩家每点一下都换选项，读档后还会变样。
+ *   本格断五件：①池 ∧ 取二（两类互异、皆在池内、`已用` 为空）②**接线**（进层即抽，`onEnter` 真路径）
+ *   ③**幂等**（离层再回不重抽）④**确定性**（同随机源 ⇒ 同结果，两臂可分辨）
+ *   ⑤**入档**（域契约含本键；未进过的层无键）与**择一即关闭**（两类一起退场，且不重抽）。
+ *
+ * ⚠ 装置：本格自建一个**干净的账**（本局账是逐域可重置的纯数据 ⇒ 可存-复原），
+ *   ✗ 不用上游各格遗留的抽签结果（那会把「本格的读数」变成「上游跑到哪了」的函数）。 */
+head('㉒ 选择制事件账（`books#133` 笔 1）');
+{
+	const 存账 = State.variables.span1Events;
+	const 存位 = map.current;
+	State.variables.span1Events = {};                     // 干净起手（存-复原见本格末）
+
+	ok(!('L5' in State.variables.span1Events), '★起手：未进入的层不得有账键（否则「首次进入才抽」无从判）');
+	map.moveTo('L5');                                     // 真路径：进层 ⇒ `onEnter` ⇒ `ensureDraw`
+	const 甲账 = State.variables.span1Events['L5'];
+	ok(!!甲账, '★进层后**没有**事件账 ⇒ `onEnter` 的抽签接线断了');
+	if (甲账) {
+		const 池 = B.EVENT_KINDS;
+		ok(Array.isArray(甲账.抽中) && 甲账.抽中.length === 2, `★抽中不是两类（实得 ${JSON.stringify(甲账.抽中)}）`);
+		ok(new Set(甲账.抽中).size === 2, `★抽中两类**互异**（实得 ${JSON.stringify(甲账.抽中)}）`);
+		ok(甲账.抽中.every((k) => 池.includes(k)), `★抽中类越池（池 ${池.join('／')}；实得 ${JSON.stringify(甲账.抽中)}）`);
+		ok(甲账.已用 === null, `★新账的「已用」须为空（实得 ${JSON.stringify(甲账.已用)}）`);
+		const 首抽 = JSON.stringify(甲账.抽中);
+		map.moveTo('L6'); map.moveTo('L5');               // 离层再回
+		ok(JSON.stringify(State.variables.span1Events['L5'].抽中) === 首抽,
+			'★**重抽**了（离层再回后抽中变了 ⇒ 「每层一次」不成立）');
+	}
+
+	/* 确定性：**两臂**须可分辨（✗ 只断一条：一条可能碰巧中） */
+	R.rng.setSequence([0, 0]);
+	const 甲抽 = B.drawTwo();
+	R.rng.setSequence([0.99, 0.99]);
+	const 乙抽 = B.drawTwo();
+	R.rng.reset();
+	ok(JSON.stringify(甲抽.抽中) !== JSON.stringify(乙抽.抽中),
+		`★确定性两臂**不可分辨**（不同随机源却同结果 ${JSON.stringify(甲抽.抽中)}）`);
+	ok(JSON.stringify(甲抽.抽中) === JSON.stringify(['chest', 'gather']),
+		`★注入序列 [0,0] 的抽中与手算不符（手算 ['chest','gather']；实得 ${JSON.stringify(甲抽.抽中)}）`);
+
+	/* 入档：域契约含本键（同 `span1Arc` 的面；`#116` 披露的审计缺口不得再漏） */
+	const 域 = R.save?.envelope?.()?.domains ?? [];
+	ok(域.includes('span1Events'), `★\`span1Events\` 不在 \`envelope().domains\`（实得 ${JSON.stringify(域)}）⇒ 审计缺口`);
+
+	/* 择一即关闭：两类**一起**退场，且**不重抽**（⚠ 无账时**不崩**：只印一句，红由上一条具名承担） */
+	{
+		const 账 = State.variables.span1Events['L5'];
+		if (!账) {
+			console.log('  （本层无事件账 ⇒ 「择一面」不可判，红在上一条具名断言）');
+		} else {
+			const 首抽 = JSON.stringify(账.抽中);
+			B.markUsed('L5', 账.抽中[0]);
+			ok(B.eventPending('L5', 'chest') === false && B.eventPending('L5', 'gather') === false
+				&& B.eventPending('L5', 'battle') === false,
+				'★择一之后本层仍有事件待选（两类的守卫须一起变假）');
+			ok(B.eventPending('L6', 'chest') === true || B.eventPending('L6', 'gather') === true
+				|| B.eventPending('L6', 'battle') === true, '★择一**串层**：另一层的待选面被关掉了（账须逐层独立）');
+			ok(JSON.stringify(State.variables.span1Events['L5'].抽中) === 首抽, '★择一之后**重抽**了');
+		}
+	}
+
+	console.log(`  事件账：取二 ${JSON.stringify(甲账?.抽中 ?? null)}｜重抽 false ✓｜两臂可分辨 ✓｜域含本键 ${域.includes('span1Events')}`);
+	State.variables.span1Events = 存账;                   // 复原（✗ 把本格的账留给下游格）
+	if (map.locations.has(存位)) map.moveTo(存位);
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
