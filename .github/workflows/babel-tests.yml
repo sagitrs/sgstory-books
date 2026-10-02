@@ -62,6 +62,9 @@ jobs:
           case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
           echo "引擎 pin = $ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          # ★`#1879` D9：版本徽标取值**一处定义**（job 级＝写 `$GITHUB_ENV` ⇒ 后续各步皆可见）。
+          #   ✗ 各步自算：`--version` 加参只改一处 ⇒ 「★构建可复现」步不带参重建 ⇒ sha1 异 ⇒ 误报「构建不确定」。
+          echo "VER=v0.0.1·$(cut -c1-8 <<<"$ref")" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
         with:
@@ -97,7 +100,9 @@ jobs:
           # ★故事目录必须给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**（`ROOT / story_dir`）
           #   ⇒ 相对形会把引擎仓里的同名故事编掉（实测踩过：产物落在 engine/stories/babel 而非本仓）。
           STORY="$GITHUB_WORKSPACE/books/stories/babel"
-          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html || {
+          # ★`#1879` D9：版本徽标 —— `$VER` 由**第一步**写入 job 级 env（`$GITHUB_ENV`，源头＝本仓声明的 pin），
+          #   本步与「★构建可复现」步**共用同一值** ✓（一处定义两处用 ⇒ 防同族复发：加参只改一处）。
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" || {
             echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本 PR 的 pin 编不动这个故事**"
             echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
           # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算
@@ -106,6 +111,13 @@ jobs:
           n=$({ grep -oE '(src|href)="(https?:|//|[^#][^"]*\.(js|css|png|jpg|svg))"' "$STORY/babel-trial.html" || true; } | wc -l)
           [ "$n" -eq 0 ] || { echo "::error title=babel-attribution::(b) story-face — 产物有外部依赖 $n 条 ⇒ 不是单文件"; exit 1; }
           echo "产物：$(du -h "$STORY/babel-trial.html" | cut -f1)（外部依赖 0 条 ✓）"
+          # ★`#1879` D9（本席教训的机械固化）：构建后**断**「注入串在产物里**恰 1 次**」——
+          #   ✗ 只断 rc：`--version` 若被**静默忽略**（引擎 `build.py` 落后旧 pin ⇒ 不认该参数）⇒ rc 仍 0 而版本行缺 ✗（本席亲历 ✗）。
+          got=$(grep -c -F "buildVersion to \"$VER\"" "$STORY/babel-trial.html" || true)
+          if [ "$got" != "1" ]; then
+            echo "::error title=babel-attribution::(b) D9 注入串在产物里命中 $got 次（须恰 1）—— 查引擎 pin 是否已升（`--version` 是否被静默忽略）"; exit 1
+          fi
+
 
       - name: ★构建可复现（同 pin 同故事 ⇒ 逐字节相同）
         working-directory: books
@@ -113,7 +125,8 @@ jobs:
           set -euo pipefail
           STORY="$GITHUB_WORKSPACE/books/stories/babel"
           cp "$STORY/babel-trial.html" /tmp/first.html
-          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html >/dev/null
+          # ★同参重建：`--version "$VER"` 与首建**逐字相同**（漏参 ⇒ sha1 异 ⇒ 误报「构建不确定」；`#1879` 亲历）
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" >/dev/null
           a=$(sha1sum /tmp/first.html | cut -d' ' -f1)
           b=$(sha1sum "$STORY/babel-trial.html" | cut -d' ' -f1)
           [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }

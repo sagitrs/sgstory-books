@@ -21,6 +21,8 @@
 	effects: []
 }>>
 <<set $inventory to []>>
+/* ★`#1879` D9：**版本徽标缺省值** —— 此串即 `build.py --version` 的**唯一替换目标**（✗ 改源树）。 */
+<<set $buildVersion to "—">>
 <<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1" }>>
 <<set $babelGiven to {}>>
 /* ★`#116`：**地点节点账**（采集点挂地点，✗ 背包）—— 键＝地点 id，值＝节点快照（含 charges）。
