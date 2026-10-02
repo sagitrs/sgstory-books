@@ -16,7 +16,11 @@
  *   git -C <engine> checkout "$(jq -r .ref <books>/.github/engine-ref.json)"
  *   node tools/check-refs-recheck.mjs --engine <engine>                 # 复算 ＋ 清点
  *   node tools/check-refs-recheck.mjs --engine <engine> --compare        # ＋ 与 check-refs.mjs 对账
- *   node tools/check-refs-recheck.mjs --selftest                         # 刀（正例档＋反例档＋唯一变量）
+ *   node tools/check-refs-recheck.mjs --selftest --engine <engine>       # 刀（正例档＋反例档＋唯一变量）
+ * ★引擎根的两种给法都行（**参数优先、回落 `ENGINE`**，与姊妹件 `e2e-drive.mjs` 同约定）：
+ *     `--engine <dir>` ｜ `ENGINE=<dir> …`
+ *   ⇒ 不带引擎根跑 `--selftest` 是**用法错** ⇒ **具名 rc=2**（✗ 栈回溯）——
+ *     否则「崩」在用户视角与「脚本坏了」同形，而本件的双态设计正是「✗ 静默跳过 ⇒ 会让复算变装饰」。
  * 退出码：0 全通过；1 有「应红」或**对账不符**；2 用法／环境错（缺引擎检出 ⇒ 具名，✗ 静默跳过）。
  *
  * ⚠ **本件不判「闸」**（✗ 不改 `check-refs.mjs`、✗ 不使它失效）：它是**第二双眼睛**。
@@ -154,13 +158,20 @@ function report(name, doc, engine, quiet = false) {
 
 /* ── 刀：正例档 ＋ 反例档 ＋ **唯一变量**（`#300` 条款⑤「对照档」） ── */
 function selftest() {
+	/* ★用法守卫（与主路径同形，✗ 只住 CLI 分支）：`--selftest` 现在走**单一解析源 `ENGINE`**
+	 *   ⇒ 缺引擎根时若不放行，会崩在 `fs.readdirSync(undefined)`（`ERR_INVALID_ARG_TYPE` 栈回溯）。
+	 *   崩溃 ≠ 报错：用户视角与「脚本坏了」同形 ⇒ 必须**具名 rc=2**。 */
+	if (!ENGINE) { console.error('✗ 缺 `--engine <引擎检出目录>`（或 `ENGINE=<dir>`）—— `--selftest` 也要引擎树（夹具＝pin 产物的一部分）'); return 2; }
+	if (!fs.existsSync(ENGINE)) { console.error(`✗ 引擎检出不存在：${ENGINE}`); return 2; }
 	const K = [];
 	const tmpDir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'recheck-'));
 	const mk = (obj) => { const p = path.join(tmpDir, 'f.json'); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); return p; };
 	const base = (render) => ({ 场景: [{ id: 'fx', 主锚: 'sagitrs/sgstory#1', 断言: { 渲染: render } }] });
-	/* 夹具指向**引擎树里真实存在**的文件（夹具＝pin 产物的一部分）；此处用引擎树内一条稳定行 */
+	/* ★夹具指向**引擎树里真实存在**的文件（夹具＝pin 产物的一部分）；此处用引擎树内一条稳定行 */
 	const TGT = 'core/05-dice.js';
-	const engineTree = process.env.ENGINE;
+	/* ★用**已解析的常量** `ENGINE`（✗ `process.env.ENGINE`）：后者使 `--engine` 对 `--selftest` 完全无效
+	 *   ⇒ 「照文件头声明跑」与「带参数跑」行为不同（本席原版即此错，dev-10 锚出）。 */
+	const engineTree = ENGINE;
 	const resolve0 = makeResolver(engineTree);
 	const hit = resolve0(TGT);
 	if (!hit || hit.ambiguous) { console.error(`✗ selftest 夹具前提不成立：引擎树里 «${TGT}» 应唯一命中（实得 ${JSON.stringify(hit)}）`); return 2; }
@@ -185,10 +196,27 @@ function selftest() {
 	K.push([F2.unscanned.length === 1 && F2.应红.length === E2.应红.length,
 		'★唯一变量 · 实验档：只**加一条未扫字段里的引用** ⇒ 未扫面 = 1 而**应红数不变**（＝缺口**不判红**这一事实本身）']);
 	const G = run(base('`' + TGT + '` 第 ' + okLine + ' 行'));
-	K.push([G.应红.length >= 1 && G.应红[0].includes('散文形'), '③ 散文形 ⇒ **红**']);
-	/* ④ 降级面：符号声明放在窗口之外 ⇒ 计入「降级」而非「仅范围核」 */
+	K.push([G.应红.length >= 1 && G.应红[0].includes('散文形'), '③ 散文形 ⇒ **红**']);	/* ④ 降级面：符号声明放在窗口之外 ⇒ 计入「降级」而非「仅范围核」 */
 	const H = run(base(`\`${TGT}:${okLine}\`` + '　'.repeat(45) + `（\`RPG.rng\`）`));
 	K.push([H.degraded.length === 1, `④ 符号声明落在 ${SYM_WINDOW} 字符窗口之外 ⇒ 计入**降级面**（实得 ${H.degraded.length}）`]);
+	/* ⑤ ★**两件约定同形**（dev-10 `#98` RC 的那条）：裸 `--selftest`（无引擎根）须**具名 rc=2**，✗ 栈回溯。
+	 *   这是**真子进程**刀（✗ 读码）：夹具＝本件与姊妹件，调用形＝**真命令行**。
+	 *   ★该刀能红：把 `selftest()` 开头的 `!ENGINE ⇒ 2` 守卫删掉 ⇒ 裸形当下游 `readdirSync(undefined)` 崩（rc=1 栈回溯） ⇒ 本刀红。 */
+	/* ★**禁止递归**：⑤b 的子进程本身也会进 `selftest()`，若不加哨兵则**无限 spawn**（本席实测：
+	 *   `--selftest --engine <dir>` 挂死至超时 —— 递归是本刀自造的，✗ 被验对象的问题）。
+	 *   哨兵只给 `--engine` 那一次（裸子进程在守卫处就返回 2，✗ 到不了这里）。 */
+	if (process.env.RECHECK_SELFTEST_CHILD !== '1') {
+		for (const [file, tag] of [['check-refs-recheck.mjs', '本件'], ['e2e-drive.mjs', '姊妹件']]) {
+			const bare = spawnSync(process.execPath, [path.join(HERE, file), '--selftest'], { encoding: 'utf8', env: { ...process.env, ENGINE: '' } });
+			const bo = (bare.stdout ?? '') + (bare.stderr ?? '');
+			K.push([bare.status === 2 && /缺 .--engine/.test(bo),
+				`⑤a ★两件约定同形 · ${tag} 裸 \`--selftest\`（无引擎根）⇒ **具名 rc=2**（✗ 栈回溯）—— 实得 rc=${bare.status}｜${bo.trim().split('\n').pop()?.slice(0, 46) ?? ''}`]);
+			const withArg = spawnSync(process.execPath, [path.join(HERE, file), '--selftest', '--engine', ENGINE],
+				{ encoding: 'utf8', env: { ...process.env, ENGINE: '', RECHECK_SELFTEST_CHILD: '1' } });
+			K.push([withArg.status === 0,
+				`⑤b ★两件约定同形 · ${tag} \`--selftest --engine <dir>\`（**参数优先**，无 env）⇒ rc=0 —— 实得 rc=${withArg.status}`]);
+		}
+	}
 	fs.rmSync(tmpDir, { recursive: true, force: true });
 	let bad = 0;
 	for (const [okk, name] of K) { if (!okk) bad++; console.log(`  ${okk ? '✓' : '✗'} ${name}`); }
@@ -196,15 +224,12 @@ function selftest() {
 	return bad === 0 ? 0 : 1;
 }
 
-/* ── CLI ── */
-if (!has('--selftest')) {
-	if (!ENGINE) { console.error('✗ 缺 `--engine <引擎检出目录>`（✗ 不可静默跳过本核 —— 那会让复算变装饰）'); process.exit(2); }
-	if (!fs.existsSync(ENGINE)) { console.error(`✗ 引擎检出不存在：${ENGINE}`); process.exit(2); }
-	const JSONF = argv.find((a) => a.endsWith('.json')) ?? DEFAULT_JSON;
-}
+/* ── CLI 派发：`--selftest` 与主路径**同一解析源**（`ENGINE` ＝ 参数优先、回落 env）── */
 let rc = 0;
 if (has('--selftest')) rc = selftest();
 else {
+	if (!ENGINE) { console.error('✗ 缺 `--engine <引擎检出目录>`（✗ 不可静默跳过本核 —— 那会让复算变装饰）'); process.exit(2); }
+	if (!fs.existsSync(ENGINE)) { console.error(`✗ 引擎检出不存在：${ENGINE}`); process.exit(2); }
 	const JSONF = argv.find((a) => a.endsWith('.json')) ?? DEFAULT_JSON;
 	const R = report(path.relative(BOOKS, JSONF), JSON.parse(fs.readFileSync(JSONF, 'utf8')), ENGINE);
 	if (R.应红.length) rc = 1;

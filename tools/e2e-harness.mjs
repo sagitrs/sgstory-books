@@ -62,9 +62,11 @@ const has = (f) => process.argv.includes(f);
  * 一、环境解析（缺什么就**具名报错**，✗ 让它在别处崩）
  * ==========================================================================*/
 /** 解析引擎根与 jsdom。返回 `{ root, storyDir, htmlPath, JSDOM }` 或抛**具名**错。 */
-export function resolveEnv(engineArg) {
-	const root = engineArg ? path.resolve(engineArg) : null;
-	if (!root) throw new Error('缺 `--engine <引擎检出目录>`（jsdom 住在引擎树；books 零依赖是刻意的，见文件头）');
+export function resolveEnv(engineArg, env = process.env) {
+	/* ★参数优先、回落 `ENGINE`（两件姊妹件统一约定）—— 否则同一语法在两件上行为相反。 */
+	const given = engineArg ?? env?.ENGINE ?? null;
+	const root = given ? path.resolve(given) : null;
+	if (!root) throw new Error('缺 `--engine <引擎检出目录>`（或 `ENGINE=<dir>`）（jsdom 住在引擎树；books 零依赖是刻意的，见文件头）');
 	const shims = path.join(root, 'tests/unit/framework/shims.js');
 	if (!fs.existsSync(shims)) throw new Error(`引擎根不对：${root}\n  在该处找不到 ${path.relative(root, shims)}`);
 	/* jsdom 从引擎树解析（✗ 从本仓 —— 本仓无 node_modules，且**不该有**）。 */

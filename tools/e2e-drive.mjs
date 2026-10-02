@@ -1,7 +1,8 @@
 /* 真产物**驾驶层**（`#300` 条款⑤「两次法则」入册 · 本席在 `sgstory#1860`／`#1864`／`#1866`／`books#92`／`books#91` 五票用过的同族探针）
  *
  * 与 `tools/e2e-harness.mjs` 的分工（★**只 import，不复制**）：
- *   `e2e-harness.mjs` ＝ **引导 ＋ 点链接 ＋ 读面板**（已合的 10 刀件，本席 ✗ 动它）；
+ *   `e2e-harness.mjs` ＝ **引导 ＋ 点链接 ＋ 读面板**（已合的 10 刀件；★本笔**只动它一处**：`resolveEnv` 收 `env` 回落
+ *     并优先 `--engine`（见 `#98` 的 RC 折单）—— 除此**未动**其它行；其余照旧）；
  *   本件 ＝ 其**上层驾驶**：**读档往返**（`Save.slots.save/load` ＋ `Engine.show()`）、**自环就地重绘**（`.choice-box` 按钮）、
  *     **正文行读数**、**State 直铺**。复用点只有 `resolveEnv`／`boot`／`currentPassage`／`playPassage`／`panels` ⇒ `import` 即得
  *     （✗ 重写一份 `boot` —— 两份会漂，`#300` ⑦/⑧ 同族）。
@@ -16,6 +17,8 @@
  *   node tools/e2e-drive.mjs --engine <engine>                 # 稳定面（见下）
  *   node tools/e2e-drive.mjs --engine <engine> --require <面>   # 把**明账面**升为硬判（该面所属票修好后用）
  *   node tools/e2e-drive.mjs --engine <engine> --selftest       # 刀：证明本件**判得了**（正例档＋反例档＋唯一变量）
+ * ★引擎根两种给法都行（**参数优先、回落 `ENGINE`**，与姊妹件 `check-refs-recheck.mjs` 同约定）：
+ *     `--engine <dir>` ｜ `ENGINE=<dir> …`
  * 退出码：0 全通过；1 有红；2 用法/环境错（缺引擎／缺产物／jsdom 不可得 ⇒ **具名**）。
 
  * ── 面的**状态**（★`#300` ② 「不可解析须成明账」：✗ 把「本 pin 没修」与「判据不成立」混为一谈）──
@@ -104,7 +107,7 @@ if (has('--list')) {
 }
 
 let env;
-try { env = resolveEnv(argOf('--engine')); } catch (e) { bail(e.message, 2); }
+try { env = resolveEnv(argOf('--engine'), process.env); } catch (e) { bail(e.message, 2); }
 if (!fs.existsSync(env.htmlPath)) {
 	bail(`缺产物：${env.htmlPath}\n  先构建：python3 ${path.join(env.root, 'build.py')} ${env.storyDir} --out ${path.basename(env.htmlPath)}`);
 }
