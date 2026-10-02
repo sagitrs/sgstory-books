@@ -7,7 +7,8 @@ master/main 自本提交起重启为空干线。
 
 ## 测试工具
 
-**测试工具根**：[`tools/`](tools/)（引用核 `check-refs.mjs` · 浏览器 e2e `e2e-harness.mjs` · 工作流演练 `rehearse-workflow.py` 及配套刀与豁免）。
+测试工具根：tools/
+（明细见 [`tools/README.md`](tools/README.md)：6 件工具**逐件载四项**（清单／固定命令／期望读数／设立理由））。
 **根外具名例外**（✗ 假全称：反向搜索证实存在竞争根，共 **5** 处）：
 · [`tests/scenario/run.mjs`](tests/scenario/run.mjs) —— 场景链 runner（NOT_JUDGED 基线同处）；
 · [`stories/babel/verify.mjs`](stories/babel/verify.mjs) —— 故事侧装配自检；
