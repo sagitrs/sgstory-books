@@ -7,8 +7,8 @@
     "entryProse": 17,
     "semanticLogic": 18,
     "semanticRender": 18,
-    "stepUnjudged": 11
+    "stepUnjudged": 16
   },
-  "_bumpedAt": "e4079bce",
-  "_bumpedReason": "本次**同笔**更新（`#1814` (a) 拆字段）：①**新增类目 `stepUnjudged`**（流程级 `步骤` 面 ⇒ 本轮不判 ⇒ 显式登记，✗ 顺手新增未登记类目）；②**下压** `actionUnresolved`：7 条纯流程行拆出 `步骤` 后**不再进动作核** ⇒ 未判面**减少**（减少 ⇒ 绿但出声 ✓ 同时收紧棘轮 ✓）"
+  "_bumpedAt": "(本笔 C)",
+  "_bumpedReason": "本次**同笔**更新（`#113` C —— `#1814` (a) 拆字段的**数据层预备**）：①**上抬** `stepUnjudged` 11→16 —— 本笔按**真源字面**重分层：把 6 处**非地点级**文案（背包/道具按钮、面板级动作、`采集（<采集点标签>）` 运行时变量形）从 `动作` **迁入** `步骤`，并把 `地图动作「遭遇（往上走之前，先看有什么挡路）」` 从 `步骤` **迁回** `动作`（★它是 `L1` 的**真 availableActions 字面**，实测逐字命中 ⇒ 原归 `步骤` 是层级分错）⇒ `步骤` 条数增加。②**不变** `actionUnresolved=10` —— 18 条中可落地 fixture 仍为 2 条（`span2-l20-gate-chain`），其余 fixture 为散文 ⇒ 仍走 `entryProse`。③★本笔为**数据层预备**：随 `#1814` 甲案把 fixture 升为可落地态，`动作` 面判据即激活、`stepUnjudged` 自然递减。"
 }
