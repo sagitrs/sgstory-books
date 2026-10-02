@@ -95,11 +95,34 @@ export function resolveEnv(engineArg, env = process.env) {
  */
 export async function boot(env, { quiet = true } = {}) {
 	const html = fs.readFileSync(env.htmlPath, 'utf8');
+	/** ★D7 采集桶（`#105`）：产物在 boot 期及之后说过的每一句（`{kind,msg}`）。 */
+	const consoleMsgs = [];
 	const t0 = Date.now();
 	const dom = new env.JSDOM(html, {
 		runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/',
-		/* quiet：吞掉产物开局那一堆 `[RPG] 重复注册` 噪声（✗ 影响读数，且会让 CI 日志不可读）。 */
-		...(quiet ? { virtualConsole: new env.VirtualConsole() } : {}),
+		/* ★★`#105` D7：**采集**「未处理异常 / console 报错」——✗ 不再静默吞掉。
+		 *
+		 *   病灶（本席实测，`books#105` 底稿）：原形 `new VirtualConsole()` **无监听器** ⇒
+		 *   产物的 `console.error` 与未捕获异常**被静默丢弃** ⇒ 「D7 零未处理异常」**恒绿、
+		 *   ✗ 判不了**。实证：向会话注入 `throw new Error('…')` ⇒ `window.onerror` 确实收到，
+		 *   而 harness 的**任何读数里都没有它**。
+		 *
+		 *   ⇒ 现形：装**收集器**，把三面并成一个可得读数：
+		 *     · `jsdomError` —— 未捕获异常 / `Not implemented` 等（jsdom 的通道）
+		 *     · `error`      —— 产物 `console.error(...)`
+		 *     · `warn`       —— 产物 `console.warn(...)`（**只收不判**；§噪声白名单见下）
+		 *   ★**quiet 的语义**（原「吞掉噪声」）**保留**：把收集到的行**留在 `session.consoleMsgs`**，
+		 *     ✗ 不回声到 stderr —— 否则 CI 日志被产物开局那批 `[RPG] 重复注册` 淹掉。
+		 */
+		virtualConsole: (() => {
+			const vc = new env.VirtualConsole();
+			const push = (kind) => (...a) => {
+				const m = a.map((x) => (x && x.message) ? x.message : String(x)).join(' ');
+				consoleMsgs.push({ kind, msg: m });
+			};
+			for (const k of ['jsdomError', 'error', 'warn', 'info', 'log', 'debug']) vc.on(k, push(k));
+			return vc;
+		})(),
 	});
 	await new Promise((r) => setTimeout(r, 400));           // 给产物内联脚本落地的时间
 	const SC = dom.window.SugarCube;
@@ -160,7 +183,7 @@ export async function boot(env, { quiet = true } = {}) {
 	 *     控制住 yield 后，`dispatch`／`click`／`jQuery.trigger` **三者皆导航**（见 `--selftest` 的 K2）。
 	 *     真因是**同 tick**，✗ 机制。（教训：**探针相关性 ≠ 因果** —— 我先把「机制」当了因。） */
 	await new Promise((r) => setTimeout(r, 0));
-	return { dom, window: dom.window, SC, engine: E, doc: dom.window.document, bootMs: t1 - t0, playMs: Date.now() - t1, passage };
+	return { dom, window: dom.window, SC, engine: E, doc: dom.window.document, bootMs: t1 - t0, playMs: Date.now() - t1, passage, consoleMsgs };
 }
 
 /** 切到指定段落（✗ 点链接 —— 这是**导航原语**，用于铺前置状态）。 */
@@ -172,6 +195,36 @@ export async function playPassage(session, name) {
 
 /** 当前段落（可断言状态）。 */
 export const currentPassage = (session) => { try { return session.SC.State.passage; } catch { return null; } };
+
+/* ============================================================================
+ * 三·五、★D7「未处理异常」判据（`books#105`）—— 把采集变**可判**
+ * ==========================================================================*/
+/** ★噪声白名单 —— **按实测建的**，✗ 非猜。
+ *   实测（本席，冷 boot 一次）：`warn`×**11**（皆 `[RPG] …重复注册：已存在，将被覆盖。`）＋
+ *     `jsdomError`×**2**（皆 `Not implemented: Window's scroll() method`）。
+ *   前者＝产物**刻意**的重复注册提示（`#1863` 类），后者＝jsdom **未实现**的浏览器 API
+ *   —— 两者都**不是**本仓缺陷 ⇒ 白名单收这两种**形状**（✗ 不收任意 warn）。
+ *   ⚠ **白名单须窄**：宽到「凡 warn 皆放过」＝把判据变装饰（本舰队的恒绿门族）。 */
+export const CONSOLE_NOISE = [
+	/^\[RPG\] .*重复注册/,                    // 产物刻意的重复注册提示
+	/^Not implemented: Window's scroll\(\)/,   // jsdom 未实现的 API
+];
+
+/** D7 判据：**冷 boot 期**不得有「未处理异常」。
+ *  读数 = `session.consoleMsgs` 里 **`jsdomError`**（未捕获异常/未实现 API 走此通道）
+ *        ＋ **`error`**（产物 `console.error`）—— 两类**减去白名单**后须为空。
+ *  返回 `{bad, ignored}`：`bad` = 真异常（须空）；`ignored` = 被白名单放过者（**出声**，✗ 静默）。
+ *  ★**为何单列 `jsdomError` 而非「凡非空即红」**：白名单外的**任意** warn 也可能合法（如故事侧提示），
+ *    一律判红会**假红**；而「未捕获异常」有确定形状（jsdom 的通道）⇒ 判据落在**确定面**上。 */
+export function unhandledErrors(session) {
+	const bad = [], ignored = [];
+	for (const { kind, msg } of session.consoleMsgs) {
+		if (kind !== 'jsdomError' && kind !== 'error') continue;      // warn 不判（见上）
+		if (CONSOLE_NOISE.some((re) => re.test(msg))) { ignored.push(msg); continue; }
+		bad.push(`[${kind}] ${msg}`);
+	}
+	return { bad, ignored };
+}
 
 /* ============================================================================
  * 三、★点故事链接（**内建「导航确已发生」断言** —— 本件存在的核心理由）
@@ -358,6 +411,21 @@ if (import.meta.filename === process.argv[1]) {
 			const after = await clickPassage(s);
 			K.push([after !== before, 'K2 对照臂：默认机制**确实导航**（✗ 只测 K1 会把「全不导航」判成通过）', `${before} → ${after}`]);
 		}
+		/* K11（`books#105` D7 的**自证刀**）：注入一个未捕获异常 ⇒ `unhandledErrors` 须抓到它。
+		 *   ✗ 只证「采集桶非空」（那会被产物开局的 warn 满足）——须证**判据本身**认得出「未处理」。 */
+		{
+			const before = unhandledErrors(s).bad.length;
+			s.window.setTimeout(() => { throw new Error('K11-D7-PROBE'); }, 0);
+			await new Promise((r) => setTimeout(r, 60));
+			const after = unhandledErrors(s).bad;
+			K.push([after.length > before && after.some((m) => /K11-D7-PROBE/.test(m)),
+				'K11 ★D7：注入未捕获异常 ⇒ 判据须抓到（✗ 恒绿地放过）',
+				`注入前 ${before} ⇒ 后 ${after.length}｜${after.slice(-1)[0]?.slice(0, 60)}`]);
+			/* 对照臂：白名单本身须**只**放过形状内的东西 —— 拿一条**白名单外**的注入证明它不吞 */
+			K.push([!CONSOLE_NOISE.some((re) => re.test('Uncaught [Error: K11-D7-PROBE]')),
+				'K11b 对照臂：白名单**不吞**未捕获异常（✗ 宽到「凡 jsdomError 皆放过」即装饰）',
+				'K11-D7-PROBE 未被白名单匹配 ✓']);
+		}
 		await expectThrow('K3 找不到目标链接 ⇒ 须抛（✗ 静默用别的链接顶上）',
 			() => clickPassage(s, { to: '不存在的段落-xyz' }), '无可点故事链接');
 		await expectThrow('K4 面板缺失 ⇒ 须抛（✗ 静默返回空串 —— 那会把「面板没了」读成「面板是空的」）',
@@ -440,6 +508,13 @@ if (import.meta.filename === process.argv[1]) {
 			console.log(`  点击：${JSON.stringify(from)} → ${JSON.stringify(to)} ✓（导航已断言）`);
 		}
 	} catch (e) { fails.push(`出口可点性：${e.message}`); }
+	/* ★D7（`books#105`）：**未处理异常**——采集减去白名单后须为空 */
+	{
+		const { bad, ignored } = unhandledErrors(s);
+		if (ignored.length) console.log(`  D7 白名单放过：${ignored.length} 条（噪声，✗ 判红）`);
+		if (bad.length) fails.push(`D7 未处理异常 ${bad.length} 条：${bad.slice(0, 3).join(' ｜ ')}`);
+		else console.log(`  D7 未处理异常：0 ✓（采集 ${s.consoleMsgs.length} 条，白名单放过 ${ignored.length}）`);
+	}
 	/* 存读往返（P0-1 族的最小机械面：存储可用性） */
 	{
 		const ls = s.window.localStorage;
