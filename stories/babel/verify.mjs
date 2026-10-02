@@ -788,6 +788,9 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
  *   L1 空手可胜 ＋ 捡剑 ｜ L2 战后 100% 绷带 ｜ L3 一击必杀怪 ｜ L4 必掉钥匙 ＋ 宝箱三路（不可逆）。 */
 head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一击必杀／钥匙·宝箱）');
 {
+	/* ★**存-复原**（`dev-10` NIT · 非洁癖）：本段会**清背包／移动地图**，而 **L5–L9 的新格（㉑㉒…）**
+	 *   紧接着追加在本段之后 ⇒ 残留**马上会被继承**成下游假红。照 ⑤b 的形：进出各一次。 */
+	const 存弧 = { inv: (State.variables.inventory ?? []).slice(), 位: map.current, hp: D.Player.hp };   // ★存**副本**（✗ 引用：本段内若有 give 会就地改到它）
 	/* ── L1 表：**只出非 elite**（空手 1d3 可磨死）⇒ 这是「空手可胜」的**机械前提**（✗ 口号）。 */
 	const t1 = R.encounterTables?.span1;
 	ok(!!t1, '★遭遇表 `span1` 不在（弧的 L1–L3 覆写没生效？）');
@@ -910,6 +913,9 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 	}
 	console.log(`  弧：L1 表无 elite ✓｜L2 elite ✓｜L3 蓝苔蜂 hp=${wasp?.maxHp} ✓｜捡剑经动作 ✓｜`
 		+ `必掉 L2/L4 ✓｜宝箱三路（钥匙消耗／锁死不可逆／砸开得物）✓`);
+	State.variables.inventory = 存弧.inv;   // ★复原（✗ 留给下游格）
+	if (map.locations.has(存弧.位)) map.moveTo(存弧.位);
+	D.Player.hp = 存弧.hp;
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
