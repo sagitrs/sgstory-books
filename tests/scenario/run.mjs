@@ -65,7 +65,7 @@ export const panelRefs = (text) => {
 /**
  * 核心判据：喂「清单 ＋ 故事事实」⇒ 红面 ＋ 未判明账。
  * @param scenarios 场景数组（`scenarios.json` 的 `场景`）
- * @param facts     `{ locations:Set, actionsAt:(locId)=>string[], panels:Set, panelHTML:(id)=>string, engineFixtures:Set }`
+ * @param facts     `{ locations:Set, storyInit:Object|null, actionsAt:(locId)=>string[], panels:Set, panelHTML:(id)=>string, engineFixtures:Set }`
  * @returns `{ reds:[], notJudged:[], checked:number }`
  */
 export const judgeScenarios = (scenarios, facts) => {
@@ -80,7 +80,27 @@ export const judgeScenarios = (scenarios, facts) => {
 		/* ① 入口态：形如 id ⇒ **须实存**（地点 / 引擎夹具）；散文 ⇒ 明账 */
 		let locId = null;
 		if (looksLikeId(fixture)) {
-			if (facts.locations.has(fixture)) { locId = fixture; checked += 1; }
+			if (facts.locations.has(fixture)) {
+				locId = fixture;
+				checked += 1;
+				/* ★★**进得去才算落地**（本席实测：`fixture=L1` 【真地点 id】经「形如 id ⇒ 须实存」支后
+				 *   下游抛 `Cannot read properties of undefined (reading 'L1')`）——
+				 *   地点可达但**进不去**，等于该入口态**未落地**：
+				 *     · **无引擎 API** ⇒ 连试都不能试 ⇒ 明账（✗ 静默当已验证）
+				 *     · 有 API 却**抛** ⇒ **红**（带具名因 ＋ 那是措辞问题，✗ 只是运行期事故）
+				 *   `facts.storyInit == null` 时不试（判据取不到料须显形，✗ 静默当原地）。 */
+				if (facts.canEnter === true && facts.storyInit != null) {
+					try {
+						facts.enterLoc(fixture, facts.storyInit);
+						checked += 1;
+					} catch (e) {
+						reds.push(`[${id}] 入口态「${fixture}」是可落地地点，但**进不去**：${e?.message ?? e}`
+							+ ' ⇒ 入口态未落地（故事初始化变量缺项？）');
+					}
+				} else {
+					note('entryNoEnterApi', `[${id}] 入口态「${fixture}」是地点，但**无「进入」原语** ⇒ 未证其可落地（✗ 静默当已验证）`);
+				}
+			}
 			else if (facts.engineFixtures.has(fixture)) { checked += 1; }
 			else {
 				reds.push(`[${id}] 入口态「${fixture}」形如 id，但**故事里不存在** —— 既非地点（${facts.locations.size} 个）`
@@ -170,72 +190,6 @@ export const judgeNotJudged = (kinds, baseline) => {
 /* ============================================================================
  * 二、刀（`--selftest`）—— 每条判据**须能红**，且**断到「哪条红」**
  * ==========================================================================*/
-if (has('--selftest')) {
-	const F = {
-		locations: new Set(['L20-forge', 'L20-settlement']),
-		actionsAt: (id) => (id === 'L20-forge' ? ['锻造台', '走向料场'] : []),
-		panels: new Set(['location', 'notice', 'trauma', 'hp', 'inventory']),
-		panelHTML: (id) => `<div data-panel="${id}">…</div>`,
-		engineFixtures: new Set(['起手态']),
-		/* 入口 → 落点：`走向料场` 是**出边** ⇒ 落到 `L20-settlement`（K10 的链式刀靠它） */
-		stepOf: (locId, text) => (locId === 'L20-forge' && text === '走向料场' ? 'L20-settlement' : locId),
-	};
-	const mk = (o) => Object.assign({
-		id: 'x', 入口态: { fixture: 'L20-forge', 形: '裸状态形' }, 动作: ['走向料场'],
-		断言: { 逻辑: '甲', 渲染: '`.statusbar [data-panel="location"]`（`ui/ui.twee:4`）' },
-	}, o);
-	const knives = [
-		['K0 空刀：全合规 ⇒ 绿且 checked>0',
-			[F, mk({})], (r) => r.reds.length === 0 && r.checked >= 2],
-		['K1 ★动作**不是**该地真实入口 ⇒ 红（圣经↔故事漂移）',
-			[F, mk({ 动作: ['走向一个不存在的地方'] })], (r) => r.reds.length === 1 && /不是.*真实入口动作/.test(r.reds[0])],
-		['K2 ★入口态形如 id 却**实存不存在** ⇒ 红（✗ 静默放过）',
-			[F, mk({ 入口态: { fixture: 'L99-ghost', 形: '裸状态形' } })], (r) => r.reds.length === 1 && /形如 id/.test(r.reds[0])],
-		['K3 入口态是**散文** ⇒ 明账（✗ 红 —— 它不是缺陷，是未升级的料）',
-			[F, mk({ 入口态: { fixture: '二段遭遇态', 形: '裸状态形' } })], (r) => r.reds.length === 0 && r.notJudged.some((x) => /散文描述/.test(x))],
-		['K4 ★渲染断言点名**未注册**面板 ⇒ 红（指不出实体）',
-			[F, mk({ 断言: { 逻辑: '甲', 渲染: '`[data-panel="nosuch"]`（`a.js:1`）' } })], (r) => r.reds.length === 1 && /未注册/.test(r.reds[0])],
-		['K5 ★占位形 `data-panel="<名>"` **不算字面** ⇒ 不判（✗ 假红）',
-			[F, mk({ 断言: { 逻辑: '甲', 渲染: '`data-panel="<名>"`' } })], (r) => r.reds.length === 0],
-		['K6 ★面板渲染**抛错** ⇒ 红',
-			[Object.assign({}, F, { panelHTML: (id) => { if (id === 'location') throw new Error('炸了'); return '<i></i>'; } }), mk({})],
-			(r) => r.reds.length === 1 && /渲染抛错/.test(r.reds[0])],
-		['K7 引擎夹具名可落地 ⇒ 不红（入口态亦可是**引擎夹具**）',
-			[F, mk({ 入口态: { fixture: '起手态', 形: '具名' }, 动作: [] })], (r) => r.reds.length === 0],
-		['K8 ★语义断言**总**进明账（✗ 判不了却不说）',
-			[F, mk({})], (r) => r.notJudged.some((x) => /断言\.逻辑/.test(x)) && r.notJudged.some((x) => /断言\.渲染/.test(x))],
-		['K10 ★动作是**序列**：第二条只在**第二跳**合法 ⇒ **不红**（✗ 全在入口核 —— 那是把序列当集合）',
-			[Object.assign({}, F, {
-				locations: new Set(['A', 'B']),
-				actionsAt: (id) => (id === 'A' ? ['向东'] : ['向南']),
-				stepOf: (id, tx) => (id === 'A' && tx === '向东' ? 'B' : (id === 'B' && tx === '向南' ? 'B' : null)),
-			}), mk({ 入口态: { fixture: 'A', 形: '裸状态形' }, 动作: ['向东', '向南'] })],
-			(r) => r.reds.length === 0 && r.checked >= 2],
-		['K11 ★认得出是入口却**推不出落点** ⇒ 红（取料失败须显形，✗ 静默当原地）',
-			[Object.assign({}, F, { stepOf: () => null }), mk({ 动作: ['走向料场'] })],
-			(r) => r.reds.length === 1 && /推不出落点/.test(r.reds[0])],
-		['K12 ★未判面**增长** ⇒ 红（✗ 静默涨 —— dev-9 实证复制场景 58→60 仍 rc=0）',
-			[null, null], () => judgeNotJudged({ semanticLogic: 3 }, { semanticLogic: 2 }).reds.length === 1],
-		['K13 ★未判面**减少** ⇒ 绿但出声（★那是好事：`#1814` 甲落地后明账递减）',
-			[null, null], () => { const r = judgeNotJudged({ semanticLogic: 1 }, { semanticLogic: 2 }); return r.reds.length === 0 && r.notes.length === 1; }],
-		['K14 ★基线**缺失** ⇒ 红（✗ 静默放过 —— 缺基线时棘轮恒不生效）',
-			[null, null], () => judgeNotJudged({ semanticLogic: 1 }, null).reds.length === 1],
-		['K15 ★**新类目**未登记 ⇒ 红',
-			[null, null], () => judgeNotJudged({ brandNew: 1 }, { semanticLogic: 2 }).reds.some((x) => /不在基线/.test(x))],
-		['K9 `looksLikeId` 判据本身：id 形 ⇒ true；散文 ⇒ false',
-			[null, null], () => looksLikeId('L20-forge') && !looksLikeId('二段遭遇态') && !looksLikeId('取得 iron-ore ＋ 一张图纸的态')],
-	];
-	let n = 0;
-	for (const [name, args, ok] of knives) {
-		const r = args[0] == null ? null : judgeScenarios([args[1]], args[0]);   // ★判据吃**数组**（一条场景也要包）
-		const pass = !!ok(r);
-		n += pass ? 1 : 0;
-		console.log(`  ${pass ? '✓' : '✗'} ${name}`);
-		if (!pass && r) console.log(`      reds=${JSON.stringify(r.reds)}\n      notJudged=${r.notJudged.length}`);
-	}
-	console.log(n === knives.length ? `\n  ✓ ${n}/${knives.length} 刀全部如期` : `\n  ✗ ${n}/${knives.length} 刀如期`);
-	process.exit(n === knives.length ? 0 : 1);
-}
 
 /* ============================================================================
  * 三、主判定
@@ -327,12 +281,63 @@ const R = setup.RPG;
 const B = setup.BABEL;
 const map = B?.map;
 
+/* ---------- StoryInit（`src/meta/init.twee` 的 `<<set $x to …>>`）----------
+ * ★**run.mjs 原形根本不跑这份 init**（它只 eval `src/**.js`，✗ twee）——
+ *   于是 `State.variables.babelGiven` 是 `undefined`，而 `world/babel.js:84` 的
+ *   `when: () => … && !State.variables.babelGiven[L.id]` 会抛
+ *   `Cannot read properties of undefined (reading 'L1')`。
+ *   实测触发路：`入口态.fixture=L1`（**真层地点 id**）过「形如 id ⇒ 须实存」支
+ *   ⇒ 下游 `facts.actionsAt('L1')` 求值 `availableActions` ⇒ 崩。
+ *
+ * ★★两者均**从 `init.twee` 解析**（✗ 手抄）——`verify.mjs:104` 自陈其害：
+ *   「twee 不在本脚本里执行，故**手工摆上**」⇒ 手抄与 twee 一旦漂移，两边都不报。
+ *   ⇒ 本件只写**最小求值器**（`to` 后取 JSON 字面量，`setup.X.y(...)` 走简单路径）。
+ *   ⚠ 不支持更复杂的表达式 ⇒ **出声并记明账**（✗ 静默略过）。 */
+const INIT_TWEE = path.join(storySrc, 'meta', 'init.twee');
+const parseStoryInit = (file) => {
+	if (!fs.existsSync(file)) return { storyInit: null, unresolved: [], note: '无 init.twee' };
+	const storyInit = {};
+	const unresolved = [];
+	/* ★**全文匹配**（✗ 逐行）：`init.twee` 的 `$player` 是**多行** `<<set …>>` ⇒
+	 *   逐行扫描会**静默漏掉**它（本席实测：keys=inventory,… 而缺 `player`）。
+	 *   而 `$player` 被玩家/战斗访问器桥接（`dnd3/player.js`）⇒ 漏了它会在深处抛。 */
+	for (const m of fs.readFileSync(file, 'utf8').matchAll(/<<set\s+\$([\w.]+)\s+to\s+([\s\S]*?)>>/g)) {
+		const key = m[1];
+		const expr = m[2].trim();
+		try { storyInit[key] = new Function('setup', `return (${expr});`)(setup); }
+		catch { unresolved.push(`$${key}（表达式非字面量：${expr.slice(0, 50)}）`); }
+	}
+	return { storyInit, unresolved, note: null };
+};
+const initParsed = parseStoryInit(INIT_TWEE);
+{
+	/* ★**下限断言**（本席纪律：凡遍历/展开类判据，须同时断「**展开非空且达已知下限**」——
+	 *   否则漏解析会以「零条 ⇒ 全绿」的形静默通过）。`init.twee` 今日有 7 条 `<<set>>`。 */
+	const keys = Object.keys(initParsed.storyInit);
+	const FLOOR = 7;
+	if (keys.length < FLOOR) {
+		console.error(`✗ StoryInit 解析**未达下限**：解析出 ${keys.length} 条 < ${FLOOR}（${INIT_TWEE}）§ ${keys.join('／')}`);
+		process.exit(2);
+	}
+}
+for (const u of initParsed.unresolved) console.log(`  ⚠ StoryInit 未能解析 ⇒ 明账（✗ 静默略过）：${u}`);
+
 /* ---------- 故事事实（喂判据）---------- */
 const facts = {
 	locations: new Set(map ? [...map.locations.keys()] : []),
 	panels: new Set(R?.panels ? [...R.panels.keys()] : []),
 	engineFixtures: new Set(Object.keys(R?.__scenario?.fixtures ?? {})),
+	storyInit: initParsed.storyInit,                 // ★从 `init.twee` 解析（✗ 手抄）
 	panelHTML: (id) => R.panelHTML(id),
+	/* ★「进入地点」原语（因果链的**真驱动**）：把 init 变量采用为故事变量（shims 的 `State.set`）
+	 *   ⇒ 再 `map.moveTo(locId)` ⇒ 再求该地 `availableActions`（就是**崩过的那一步**）。
+	 *   ⚠ 每次都用**全新的 `storyInit` 拷贝**（✗ 复用被改脏的那份）—— 否则场景间相互污染。 */
+	canEnter: !!(map && typeof map.moveTo === 'function'),
+	enterLoc: (locId, vars) => {
+		State.set(JSON.parse(JSON.stringify(vars)));
+		map.moveTo(locId);
+		return path;                                     // 只作占位（调用方不看返回值）
+	},
 	actionsAt: (locId) => {
 		const loc = map?.locations?.get(locId);
 		if (!loc) return [];
@@ -366,6 +371,96 @@ const facts = {
 		return act ? locId : null;                        // 常驻动作 ⇒ 原地
 	},
 };
+
+if (has('--selftest')) {
+	const F = {
+		locations: new Set(['L20-forge', 'L20-settlement']),
+		actionsAt: (id) => (id === 'L20-forge' ? ['锻造台', '走向料场'] : []),
+		panels: new Set(['location', 'notice', 'trauma', 'hp', 'inventory']),
+		panelHTML: (id) => `<div data-panel="${id}">…</div>`,
+		engineFixtures: new Set(['起手态']),
+		/* 入口 → 落点：`走向料场` 是**出边** ⇒ 落到 `L20-settlement`（K10 的链式刀靠它） */
+		stepOf: (locId, text) => (locId === 'L20-forge' && text === '走向料场' ? 'L20-settlement' : locId),
+	};
+	/* ★夹具原形**不带 `storyInit`/`canEnter`** ⇒ 走「无进入原语 ⇒ 明账」支（K21）。
+	 *   带 `canEnter: true` 的夹具另建 `F2`（K22／K23 看「进得去 / 进不去」两臂）。 */
+	const F2 = Object.assign({}, F, {
+		canEnter: true,
+		storyInit: { demo: 1 },
+		enterLoc: (locId, vars) => {
+			if (locId === 'L20-forge' && vars.demo !== 1) throw new Error('vars 未传入');
+			if (locId === 'L20-boom') throw new Error("Cannot read properties of undefined (reading 'L20-boom')");
+			return null;
+		},
+	});
+	const mk = (o) => Object.assign({
+		id: 'x', 入口态: { fixture: 'L20-forge', 形: '裸状态形' }, 动作: ['走向料场'],
+		断言: { 逻辑: '甲', 渲染: '`.statusbar [data-panel="location"]`（`ui/ui.twee:4`）' },
+	}, o);
+	const knives = [
+		['K0 空刀：全合规 ⇒ 绿且 checked>0',
+			[F, mk({})], (r) => r.reds.length === 0 && r.checked >= 2],
+		['K1 ★动作**不是**该地真实入口 ⇒ 红（圣经↔故事漂移）',
+			[F, mk({ 动作: ['走向一个不存在的地方'] })], (r) => r.reds.length === 1 && /不是.*真实入口动作/.test(r.reds[0])],
+		['K2 ★入口态形如 id 却**实存不存在** ⇒ 红（✗ 静默放过）',
+			[F, mk({ 入口态: { fixture: 'L99-ghost', 形: '裸状态形' } })], (r) => r.reds.length === 1 && /形如 id/.test(r.reds[0])],
+		['K3 入口态是**散文** ⇒ 明账（✗ 红 —— 它不是缺陷，是未升级的料）',
+			[F, mk({ 入口态: { fixture: '二段遭遇态', 形: '裸状态形' } })], (r) => r.reds.length === 0 && r.notJudged.some((x) => /散文描述/.test(x))],
+		['K4 ★渲染断言点名**未注册**面板 ⇒ 红（指不出实体）',
+			[F, mk({ 断言: { 逻辑: '甲', 渲染: '`[data-panel="nosuch"]`（`a.js:1`）' } })], (r) => r.reds.length === 1 && /未注册/.test(r.reds[0])],
+		['K5 ★占位形 `data-panel="<名>"` **不算字面** ⇒ 不判（✗ 假红）',
+			[F, mk({ 断言: { 逻辑: '甲', 渲染: '`data-panel="<名>"`' } })], (r) => r.reds.length === 0],
+		['K6 ★面板渲染**抛错** ⇒ 红',
+			[Object.assign({}, F, { panelHTML: (id) => { if (id === 'location') throw new Error('炸了'); return '<i></i>'; } }), mk({})],
+			(r) => r.reds.length === 1 && /渲染抛错/.test(r.reds[0])],
+		['K7 引擎夹具名可落地 ⇒ 不红（入口态亦可是**引擎夹具**）',
+			[F, mk({ 入口态: { fixture: '起手态', 形: '具名' }, 动作: [] })], (r) => r.reds.length === 0],
+		['K8 ★语义断言**总**进明账（✗ 判不了却不说）',
+			[F, mk({})], (r) => r.notJudged.some((x) => /断言\.逻辑/.test(x)) && r.notJudged.some((x) => /断言\.渲染/.test(x))],
+		['K10 ★动作是**序列**：第二条只在**第二跳**合法 ⇒ **不红**（✗ 全在入口核 —— 那是把序列当集合）',
+			[Object.assign({}, F, {
+				locations: new Set(['A', 'B']),
+				actionsAt: (id) => (id === 'A' ? ['向东'] : ['向南']),
+				stepOf: (id, tx) => (id === 'A' && tx === '向东' ? 'B' : (id === 'B' && tx === '向南' ? 'B' : null)),
+			}), mk({ 入口态: { fixture: 'A', 形: '裸状态形' }, 动作: ['向东', '向南'] })],
+			(r) => r.reds.length === 0 && r.checked >= 2],
+		['K11 ★认得出是入口却**推不出落点** ⇒ 红（取料失败须显形，✗ 静默当原地）',
+			[Object.assign({}, F, { stepOf: () => null }), mk({ 动作: ['走向料场'] })],
+			(r) => r.reds.length === 1 && /推不出落点/.test(r.reds[0])],
+		['K12 ★未判面**增长** ⇒ 红（✗ 静默涨 —— dev-9 实证复制场景 58→60 仍 rc=0）',
+			[null, null], () => judgeNotJudged({ semanticLogic: 3 }, { semanticLogic: 2 }).reds.length === 1],
+		['K13 ★未判面**减少** ⇒ 绿但出声（★那是好事：`#1814` 甲落地后明账递减）',
+			[null, null], () => { const r = judgeNotJudged({ semanticLogic: 1 }, { semanticLogic: 2 }); return r.reds.length === 0 && r.notes.length === 1; }],
+		['K14 ★基线**缺失** ⇒ 红（✗ 静默放过 —— 缺基线时棘轮恒不生效）',
+			[null, null], () => judgeNotJudged({ semanticLogic: 1 }, null).reds.length === 1],
+		['K15 ★**新类目**未登记 ⇒ 红',
+			[null, null], () => judgeNotJudged({ brandNew: 1 }, { semanticLogic: 2 }).reds.some((x) => /不在基线/.test(x))],
+		['K9 `looksLikeId` 判据本身：id 形 ⇒ true；散文 ⇒ false',
+			[null, null], () => looksLikeId('L20-forge') && !looksLikeId('二段遭遇态') && !looksLikeId('取得 iron-ore ＋ 一张图纸的态')],
+		/* ── 入口态**可落地性**（本次 dev 实测的崩溃族：形如 id 的真地点过「须实存」后下游崩）── */
+		['K21 ★无「进入」原语 ⇒ **明账**（✗ 静默当已验证；夹具原形即此形）',
+			[F, mk({ 动作: [] })], (r) => r.reds.length === 0 && r.notJudged.some((x) => /未证其可落地/.test(x))],
+		['K22 ★可落地地点**真进得去** ⇒ **不红**（两臂的另一半；✗ 只测抛的那臂）',
+			[Object.assign({}, F2, { locations: new Set([...F.locations, 'L20-forge']) }), mk({ 动作: [] })],
+			(r) => r.reds.length === 0 && !r.notJudged.some((x) => /未证其可落地|进不去/.test(x))],
+		['K23 ★★入口态**崩了**（`Cannot read properties of undefined (reading …)`）⇒ **具名红**（✗ 让异常逃逸成脚本崩）',
+			[Object.assign({}, F2, {
+				locations: new Set([...F.locations, 'L20-boom']),
+				enterLoc: () => { throw new Error("Cannot read properties of undefined (reading 'L20-boom')"); },
+			}), mk({ 入口态: { fixture: 'L20-boom', 形: '裸状态形' }, 动作: [] })],
+			(r) => r.reds.length === 1 && /进不去/.test(r.reds[0])],
+	];
+	let n = 0;
+	for (const [name, args, ok] of knives) {
+		const r = args[0] == null ? null : judgeScenarios([args[1]], args[0]);   // ★判据吃**数组**（一条场景也要包）
+		const pass = !!ok(r);
+		n += pass ? 1 : 0;
+		console.log(`  ${pass ? '✓' : '✗'} ${name}`);
+		if (!pass && r) console.log(`      reds=${JSON.stringify(r.reds)}\n      notJudged=${r.notJudged.length}`);
+	}
+	console.log(n === knives.length ? `\n  ✓ ${n}/${knives.length} 刀全部如期` : `\n  ✗ ${n}/${knives.length} 刀如期`);
+	process.exit(n === knives.length ? 0 : 1);
+}
 
 const all = JSON.parse(fs.readFileSync(scenariosPath, 'utf8'))['场景'] ?? [];
 if (has('--list')) { for (const s of all) console.log(`  ${s.id}（${s.段}｜${s.层}）`); process.exit(0); }
