@@ -1161,8 +1161,10 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 
 	/* ② 强制抽签：未抽中的类（带 charges 的采集）仍不可选 */
 	State.variables.span1Events = {};
-	/* ★三级注入：进 L6（**危害层**）先掷危害 ①，再抽签 ②③ —— 危害那格取 0.99 ⇒ `index(6)=5 ≠ 触发格 0` ⇒ miss
-	 *  （若未来把危害挪到抽签之后，本行会**立刻红**——它同时钉住了「进层先结算危害」这个次序。） */
+	/* ★三级注入：进 L6（**危害层**）**先抽签 ①②、后掷危害 ③**（`onEnter` 的次序，witness 见 `world/babel.js`）
+	 *  —— ③ 取 0.99 ⇒ `index(6)=5 ≠ 触发格 0` ⇒ miss。
+	 *  ⚠ 本行**同时钉住次序**：把危害挪到抽签之前 ⇒ `ensureDraw` 的 `??=` 以为已抽过而不抽 ⇒ 立刻红。
+	 *  （首版本注释把次序写反了，dev-9 的 NIT① 抓到；实现一直是对的。） */
 	R.rng.setSequence([0.99, 0, 0.99]);     // 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 index(6)=5 ⇒ miss
 	map.moveTo('L6');
 	R.rng.reset();
@@ -1331,8 +1333,9 @@ head('㉕ 工具耐久制（`books#133` 笔 2）');
  *
  * 它回答的问题：**进层危害按表结算、每层每局一次、预知只加一句预警吗？**
  *   ① 命中：注入「命中格」⇒ 掉血**恰等于表里的伤害**（判据按表取读数）② **幂等**（同层再来一次 ⇒ `done`，
- *   不再掉血）③ **预知位**：在场时**多一句预警文案**、**结算不变**（两次对照掉血相同）④ 非危害层
- *   ⇒ `absent` 且**不耗随机单元**（与抽签同族的那条不变式）。
+ *   不再掉血）②b **miss 也封闭**（领队 2026-10-02 23:48 裁「封 miss」）⇒ 未命中后重进 ⇒ `done`、
+ *   **不重掷、不耗随机单元** ③ **预知位**：在场时**多一句预警文案**、**结算不变**（两次对照掉血相同）
+ *   ④ 非危害层 ⇒ `absent` 且**不耗随机单元**（与抽签同族的那条不变式）。
  *   ⚠ 读数取 host 输出归档（本格 `__host.install()`）—— 预警是 `perform` 出来的**屏上文案**。 */
 head('㉖ 层危害（`books#133` 笔 2）');
 {
@@ -1355,7 +1358,7 @@ head('㉖ 层危害（`books#133` 笔 2）');
 			R.rng.reset();
 			ok(P.hp === P.maxHp - cfg.伤害,
 				`★危害命中后掉血与表不符（表 ${cfg.伤害}；${P.maxHp} ⇒ ${P.hp}）`);
-			ok(State.variables.span1Events[层]?.危害 === true, `★命中后账里没有危害标记（${JSON.stringify(State.variables.span1Events[层])}）`);
+			ok(State.variables.span1Events[层]?.危害 === 'hit', `★命中后账里没有危害标记（应为 'hit'；实得 ${JSON.stringify(State.variables.span1Events[层])}）`);
 			/* ② 幂等：再来一次 ⇒ done，且不再掉血 */
 			const 前 = P.hp;
 			R.rng.setSequence([0.5, 0.5, 0]);                   // 就算掷中，也不该再触发
@@ -1363,6 +1366,20 @@ head('㉖ 层危害（`books#133` 笔 2）');
 			R.rng.reset();
 			ok(二 === 'done' && P.hp === 前,
 				`★同层第二次进仍结算（返回 ${二}，血 ${前} ⇒ ${P.hp}）—— 「每层每局至多一次」被破`);
+			/* ②b ★**miss 也封闭**（领队 2026-10-02 23:48 裁「封 miss」：「每层每局至多一次」按**字面**落）——
+			 *   未命中 ⇒ 账里记 `'miss'` ⇒ 再进返回 `done` 且**不重掷、不耗随机单元**。
+			 *   ⚠ 注入两值**互异**：同值看不出「有没有白耗」（本格 ④ 的同一条教训）。 */
+			State.variables.span1Events = {};
+			R.rng.setSequence([0.5, 0.5, 0.9]);                 // 抽签两格 + 危害**未命中**格（index(6)=5 ≠ 0）
+			map.moveTo(层);
+			R.rng.reset();
+			const 一态 = State.variables.span1Events[层]?.危害;
+			R.rng.setSequence([0.5, 0.9]);                      // 若重掷：第一个值即 0.5 ⇒ 命中
+			const 二进 = H.危害结算(层);
+			const 残余 = R.rng.index(3);                        // 若白耗一格：读到 0.9 ⇒ 2（✗ 1）
+			R.rng.reset();
+			ok(一态 === 'miss' && 二进 === 'done' && 残余 === 1,
+				`★miss 未封闭（账里 ${JSON.stringify(一态)}；再进返回 ${二进}）或重进白耗随机单元（index(3)=${残余}，应 1）`);
 			/* ③ 预知位：多一句预警、结算不变 */
 			State.variables.span1Events = {};
 			const 无预知 = (() => { P.lose?.('precognition'); P.hp = P.maxHp; const 起 = 行().length; R.rng.setSequence([0.5, 0.5, 0]); map.moveTo(层); R.rng.reset(); return { 掉血: P.maxHp - P.hp, 新行: 行().slice(起) }; })();
@@ -1382,7 +1399,7 @@ head('㉖ 层危害（`books#133` 笔 2）');
 			R.rng.reset();
 			ok(v === 'absent' && 单元 === 1,
 				`★非危害层未早退（返回 ${v}）或白耗随机单元（首个 index(3)=${单元}，应 1）`);
-			console.log(`  危害：${层} 命中掉 ${cfg.伤害}（表）✓｜二次 done 不掉血 ✓｜预知只加预警（掉血同 ${有预知.掉血}）✓｜非危害层 absent 且不耗随机单元 ✓`);
+			console.log(`  危害：${层} 命中掉 ${cfg.伤害}（表）✓｜二次 done 不掉血 ✓｜miss 也封闭（不重掷、不耗单元）✓｜预知只加预警（掉血同 ${有预知.掉血}）✓｜非危害层 absent 且不耗随机单元 ✓`);
 		} finally {
 			State.variables.span1Events = 存账;
 			if (map.locations.has(存位)) map.moveTo(存位);

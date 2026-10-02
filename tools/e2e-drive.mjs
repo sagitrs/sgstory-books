@@ -290,7 +290,8 @@ if (has('--selftest')) {
 	 * 两向：② 的对照是「未抽中的类**在别的层**确实可点」——✗ 只断「不可见」（那可能是按钮整体没了）。 */
 	s.SC.setup.BABEL.map.moveTo('L4');                 // 真 moveTo（⇒ L4 的抽签按活源取）
 	await playPassage(s, '探索'); await tick(300);     // 重画，落在 L4
-	/* ★三级注入：进 L5（**危害层**）先掷危害 ①，再抽签 ②③ —— ① 取 0.99 ⇒ `index(6)=5` ≠ 触发格 ⇒ miss */
+	/* ★三级注入：进 L5（**危害层**）**先抽签 ①②、后掷危害 ③**（`onEnter` 的次序）—— ③ ⇒ miss
+	 *  （首版本注释写反了，dev-9 的 NIT① 抓到；实现一直是对的。） */
 	s.SC.setup.RPG.rng.setSequence([0.99, 0, 0.99]);   // L5 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 miss
 	await driveButton(s, /向上，去第 5 层/, { read: lines });   // 出口导航 ⇒ moveTo('L5') ⇒ 抽签（就地重绘）
 	s.SC.setup.RPG.rng.reset();
