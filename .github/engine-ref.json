@@ -1,6 +1,6 @@
 {
   "ref": "99ded51c5d5a1b7d638887d445e549a6aa22615d",
   "branch": "main",
-  "why": "本次升级：`#1898` 自动路空手回退（两路收口单点 `#strikeCatching`＋判据连改＋isOut 判别力修[木桩 hp:0+断言面换 isOut]）——sgstory merge `99ded51c`（自上一 pin `50944035` 起 1 笔）。",
+  "why": "本次升级：`#1898` 自动路空手回退（两路收口单点 `#strikeCatching`＋判据连改＋isOut 判别力修[木桩 hp:0+断言面换 isOut]）——sgstory merge `99ded51c`（自上一 pin `50944035` 起 1 个 PR：`#1898`，含 2 个 commit——`5fc6172` 本体＋`99ded51` 折 dev-9 NIT）。",
   "checked": "本地核过（本笔；★引擎＝`99ded51c`）：\n① pin 值 40 位全写＝sgstory origin/main tip ✓；祖先性：`50944035` 为其祖先 ✓。\n② 新 pin 下三装置 rc=0：verify 装配自检 ✓｜scenario ✓｜check-refs「通过 46｜不符 0」✓（dev-10 另跑旧 pin 同 46/0 ⇒ 不引入回归；#141 在新 pin 上三件亦全绿 ⇒ 在飞件兼容）。\n③ CI「检出==pin」自证步在位且会红（`git rev-parse HEAD` vs `jq -r .ref`）。\n④ 尾换行 LF 在位；本笔只动本档。"
 }
