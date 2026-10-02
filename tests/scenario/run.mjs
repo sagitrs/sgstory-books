@@ -32,6 +32,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 const here = import.meta.dirname;                    // …/tests/scenario
 const repoRoot = path.resolve(here, '..', '..');     // books 仓根
+const scenariosDir = path.join(repoRoot, 'stories', 'babel', 'scenarios');
 const scenariosPath = path.join(repoRoot, 'stories', 'babel', 'scenarios', 'scenarios.json');
 const validatePath = path.join(repoRoot, 'stories', 'babel', 'scenarios', 'validate.mjs');
 const baselinePath = path.join(here, 'not-judged-baseline.json');
@@ -46,7 +47,7 @@ const dumpFactArg = process.argv.find((a) => a === '--dump-facts' || a.startsWit
 const hasDumpFacts = () => dumpFactArg !== undefined;
 export const FACES = {
 	locations:      { desc: '入口态落地点 id（`map.locations` 的键）',      values: (f) => f.locations },
-	engineFixtures: { desc: '引擎侧夹具名（`RPG.__scenario.fixtures` 的键）', values: (f) => f.engineFixtures },
+	engineFixtures: { desc: '引擎侧夹具名（`globalThis.__scenario.fixtures` 的键）', values: (f) => f.engineFixtures },
 	panels:         { desc: '已注册面板 id（`RPG.panels` 的键）',            values: (f) => f.panels },
 };
 export const formatFacts = (facts, names, faces = FACES) => {
@@ -99,9 +100,44 @@ export const judgeScenarios = (scenarios, facts) => {
 	for (const sc of scenarios) {
 		const id = sc?.id ?? '(无 id)';
 		const fixture = sc?.['入口态']?.['fixture'];
-		/* ① 入口态：形如 id ⇒ **须实存**（地点 / 引擎夹具）；散文 ⇒ 明账 */
+		const form = sc?.['入口态']?.['形'];
+		/* ★★`#1878` 折单⑤（`dev-10` 增量一）：**`形:'具名'` ⇒ 跳过 `looksLikeId` 判定、直接按具名核**。
+		 *
+		 * 病灶（dev-10 实测）：入口判定**只**按 `looksLikeId` 分岔，而中文名（`二段遭遇态`）**恒**不形如 id
+		 *   ⇒ 一律落进 `entryProse` 明账 ⇒ **登记了却永不消费**（夹具面的贡献＝0，隔离证明它）。
+		 *   ⇒ 清单侧显式声明 `形:'具名'` 即可跳过 id 形判定 —— 那时**名字里有没有中文都不影响**。
+		 *
+		 * ⚠ **`形` 缺席时行为逐字不变**（仍走 `looksLikeId`）—— 今日 18 条全是「裸状态形」⇒ 无回归；
+		 *   具名分支**今日在清单上不可达**（见 return 处的「盲区」注记），故本改动**不改任何现存读数**。
+		 * ★这是本仓那族的又一例：**判据只看「名字长什么样」，✗ 不看「清单声明它是什么形」**
+		 *   ⇒ 中文名被静默归入「散文」（读者会以为「作者没给可执行的料」，实为「判据看不见它」）。 */
+		const declaredNamed = form === '具名';
 		let locId = null;
-		if (looksLikeId(fixture)) {
+		if (declaredNamed) {
+			if (facts.engineFixtures.has(fixture)) {
+				if (facts.canResolveFixture === true) {
+					try {
+						const st = facts.resolveFixture(fixture);
+						if (st == null || typeof st !== 'object') {
+							reds.push(`[${id}] 入口态「${fixture}」声明**具名**且在册，但**求值不出对象**（收到 ${String(st)}）`
+								+ ' ⇒ 夹具构造坏了（✗ 名字在册不等于态能铺）');
+						} else {
+							State.set(st);          // ★直接赋值（不克隆）⇒ Symbol 随引用留住
+							checked += 1;
+						}
+					} catch (e) {
+						reds.push(`[${id}] 入口态「${fixture}」求值时**抛**：${e?.message ?? e} ⇒ 夹具本身坏了`);
+					}
+				} else {
+					note('fixtureNoResolve', `[${id}] 入口态「${fixture}」声明具名且在册，但引擎**无 resolveFixture**`
+						+ ' ⇒ 未证其能铺（✗ 静默当已验证）');
+				}
+			} else {
+				reds.push(`[${id}] 入口态「${fixture}」声明**具名**（形:'具名'），但**未登记** —— `
+					+ `已登记 ${facts.engineFixtures.size} 个（${[...facts.engineFixtures].slice(0, 6).join('／')}${facts.engineFixtures.size > 6 ? '…' : ''}）`
+					+ ' ⇒ **圣经与登记面漂移**（✗ 静默算作散文）');
+			}
+		} else if (looksLikeId(fixture)) {
 			if (facts.locations.has(fixture)) {
 				locId = fixture;
 				checked += 1;
@@ -123,7 +159,28 @@ export const judgeScenarios = (scenarios, facts) => {
 					note('entryNoEnterApi', `[${id}] 入口态「${fixture}」是地点，但**无「进入」原语** ⇒ 未证其可落地（✗ 静默当已验证）`);
 				}
 			}
-			else if (facts.engineFixtures.has(fixture)) { checked += 1; }
+			else if (facts.engineFixtures.has(fixture)) {
+				/* ★`#1878`：具名夹具 ⇒ **核它真建得出来**（✗ 只核名字在册 —— 那只证明「登记面接通」，
+				 *   不证明「这份态能铺」）。走 `resolveFixture`（**不克隆**）＋**直接赋给故事变量** ——
+				 *   这是**保住 Symbol pack 标记**的唯一路径（`loadFixture` 会 JSON 往返 ⇒ 标记丢，见 `#1888` 实测）。
+				 *   ⚠ 取不到 `resolveFixture`（旧引擎）⇒ **明账**（✗ 静默当已验证）。 */
+				if (facts.canResolveFixture === true) {
+					try {
+						const st = facts.resolveFixture(fixture);
+						if (st == null || typeof st !== 'object') {
+							reds.push(`[${id}] 入口态「${fixture}」在册，但**求值不出对象**（收到 ${String(st)}）`
+								+ ' ⇒ 夹具构造坏了（✗ 名字在册不等于态能铺）');
+						} else {
+							State.set(st);          // ★直接赋值（不克隆）⇒ Symbol 随引用留住
+							checked += 1;
+						}
+					} catch (e) {
+						reds.push(`[${id}] 入口态「${fixture}」求值时**抛**：${e?.message ?? e} ⇒ 夹具本身坏了`);
+					}
+				} else {
+					note('fixtureNoResolve', `[${id}] 入口态「${fixture}」在册，但引擎**无 resolveFixture** ⇒ 未证其能铺（✗ 静默当已验证）`);
+				}
+			}
 			else {
 				reds.push(`[${id}] 入口态「${fixture}」形如 id，但**故事里不存在** —— 既非地点（${facts.locations.size} 个）`
 					+ '亦非已注册引擎夹具 ⇒ **圣经与故事漂移**（✗ 静默放过）');
@@ -158,7 +215,8 @@ export const judgeScenarios = (scenarios, facts) => {
 		} else if (acts.length) {
 			note('actionUnresolved', `[${id}] 动作 ${acts.length} 条：入口态未落地 ⇒ 无法核「是否为该处真实入口」`);
 		}
-		/* ★`步骤`（流程级，`#1814` (a)）：✗ 进「是否为该处真实入口」判（流程面 ✗ 地点面）—— 但**进明账**
+		/* ★`步骤`（流程级，`#1814` (a)）—— **本块取自 `#113`**（rebase 时并入；`#113` 之外的 my 改动保持不变）：
+		 *   ✗ 进「是否为该处真实入口」判（流程面 ✗ 地点面）—— 但**进明账**
 		 *   ⇒ 有字段而空 ⇒ 出声；有内容 ⇒ 记「本轮不判」⇒ 未判面**可见**（✗ 静默吞面）。 */
 		const 步骤 = Array.isArray(sc?.['步骤']) ? sc['步骤'] : null;
 		if (步骤 !== null) {
@@ -204,14 +262,29 @@ export const judgeNotJudged = (kinds, baseline) => {
 	if (baseline == null || typeof baseline !== 'object') {
 		return { reds: ['缺 `NOT_JUDGED_BASELINE`（未判面上界）⇒ ✗ 静默放过：无法判「未覆盖面是否静默增长」'], notes };
 	}
-	for (const k of Object.keys(kinds).sort()) {
+	/* ★★`#1878` 折单（writer 发现 · 领队裁甲）：**遍历 kinds ∪ baseline 的并集**（✗ 只遍历 `kinds`）。
+	 *
+	 * 病灶（writer 实验实测）：原先只遍历**本次出现**的类目 ⇒ **类目整类消失时无红** ——
+	 *   把 `步骤` 处理整段删掉 ⇒ `stepUnjudged` 从 16 **静默变 0**（✗ 不出声、✗ 不红）。
+	 *   根因：`Object.keys(kinds)` 里**没有**那个键 ⇒ 循环体根本不执行 ⇒ 该类的「消失」不可见。
+	 *   ★这是棘轮**单向**的洞：它防「涨」，✗ 不防「整类归零」（而「归零」正是**删面**的形）。
+	 *
+	 * 折法：并集上遍历 ⇒ **基线有、本次无** ⇒ `got = 0` ⇒ 单列为**整类消失 ⇒ 红**；
+	 *   而 `0 < got < want`（**真·减少**，如 `#1814` 甲把散文升成可执行数据）⇒ 仍是**绿但出声**。
+	 *   ⇒ 两者判据不同：**「少了几条」是好事，「整类没了」是面被删／改名**（须显形）。
+	 *   ★与 `#1865`「过期豁免」两向纪律同源：**棘轮要两向都有判据**。 */
+	const cats = [...new Set([...Object.keys(kinds), ...Object.keys(baseline)])].sort();
+	for (const k of cats) {
 		const got = kinds[k] ?? 0, want = baseline[k];
 		if (want == null) {
 			reds.push(`未判面类目 \`${k}\`（${got} 项）**不在基线**里 ⇒ 新类目须登记（✗ 顺手新增未登记类目）`);
 			continue;
 		}
 		if (got > want) reds.push(`未判面 \`${k}\` **增长**：${want} → ${got} ⇒ 未覆盖面扩大了（须解释并同笔更新基线，✗ 静默涨）`);
-		else if (got < want) notes.push(`未判面 \`${k}\` 减少：${want} → ${got}（★好事 ⇒ 请刷新基线，否则棘轮松弛）`);
+		else if (got === 0 && want > 0) {
+			reds.push(`未判面类目 \`${k}\` **整类消失**（基线 ${want} ⇒ 本次 0）⇒ **该面被删或被改名**（✗ 静默归零）`
+				+ ' ⇒ 若有意删面，请**同笔**从基线移除该类目（✗ 让棘轮静默松弛）');
+		} else if (got < want) notes.push(`未判面 \`${k}\` 减少：${want} → ${got}（★好事 ⇒ 请刷新基线，否则棘轮松弛）`);
 	}
 	return { reds, notes };
 };
@@ -273,10 +346,6 @@ const load = (f) => eval(fs.readFileSync(f, 'utf8'));
 /* ---------- 第 0 步：**先跑 `validate.mjs`**（清单不合形 ⇒ 场景链不该开跑）----------
  *   ★用**子进程**（✗ import）：validate 自带 `--selftest` 与 `process.exit`；
  *     同进程调用会污染本进程的退出码与收集器。此处只要它的**裁决**。 */
-/* ★`--dump-facts` 是**只读测量口** ⇒ 跳过本步：它的 stdout 必须是**纯读数**
- *   （✗ 让消费者还去 `grep -v` 剔横幅；也✗ 让一个「只读导出」因清单不合形而拒出）。
- *   ⚠ 判据用 `hasDumpFacts()`（认 `=<面>` 形），✗ `has('--dump-facts')` —— 后者对 `=<面>` 形为 false
- *   ⇒ 横幅会漏进 stdout（本席实测：`--dump-facts=locations` 的前 2 行是横幅）。 */
 if (!hasDumpFacts()) {
 console.log('─ 第 0 步：场景清单自检（validate.mjs）');
 let vOut = '';
@@ -291,8 +360,8 @@ try {
 	 *   裸退出会让**恒绿门**兜底接管（「脚本正常结束但从未打印汇总」）⇒ 报**错误的归因**、
 	 *   把读者引向「恒绿门」而**真正的因**是「清单不合形」。归因错 ⇒ 排查方向错。 */
 	printSummary('✗ 场景链失败 1 条\n  ✗ ★清单自检（validate.mjs）未通过 ⇒ 场景链未开跑（先修清单）');
-}
 }   /* ← `if (!hasDumpFacts())` 的闭合：只读测量口跳过第 0 步（横幅 ✗ 进 stdout） */
+}
 
 /* ---------- 环境（**镜像** `stories/babel/verify.mjs` ＝ 镜像 `tests/unit/headless.mjs`）----------
  *   ⚠ `window` 必须在**装载任何引擎件之前**挂上：`bundle.js` 顶层即取 `window`／`document`
@@ -311,6 +380,14 @@ globalThis.__played = [];
 if (globalThis.SugarCube?.Engine) SugarCube.Engine.play = (name) => { globalThis.__played.push(name); };
 load(path.join(root, 'tests/unit/dist/bundle.js'));   // 引擎插件（`build.py` 产出）
 
+/* ---------- 场景框架（`#1878`：夹具登记面宿主）----------
+ *   ★**存在即加载**（同 `host.js` 的形）：旧引擎 ref 上没有这份档 ⇒ 照跑（`fixtures.js` 会报「无登记面」）。
+ *   ★顺序须是 `host.js → shims.js → bundle.js → scenario.js`（`scenario.js` 头两行就断言这个前提，
+ *     ✗ 顺序错会以「需要先加载 framework/host.js」收场 —— 那正是本档自己的显形）。 */
+const SCENARIO_JS = path.join(root, 'tests/unit/framework/scenario.js');
+const HAS_SCENARIO = fs.existsSync(SCENARIO_JS);
+if (HAS_SCENARIO) load(SCENARIO_JS);
+
 /* ---------- 装载故事侧脚本（与 `build.py` 同形：IIFE ＋ RPG 别名）---------- */
 const storySrc = path.join(repoRoot, 'stories', 'babel', 'src');
 const jsFiles = [];
@@ -327,6 +404,18 @@ for (const f of jsFiles) eval(`(function (RPG, $) {\n${fs.readFileSync(f, 'utf8'
 const R = setup.RPG;
 const B = setup.BABEL;
 const map = B?.map;
+
+/* ---------- 场景夹具登记（`#1878` 故事侧）----------
+ *   ★**层级**：机制在引擎（`__scenario.registerFixture`，sgstory `#1888`），**注册在故事侧**（本档）。
+ *   本档在 `scenarios/`（**测试侧**）✗ 不在 `src/**` —— 后者会被 `build.py` 内联进交付树（`babel-trial.html`），
+ *   而夹具依赖 `__scenario`（产品页面用不到它）。
+ *   ★**存在即装载**（✗ 写死）：引擎若回退到无 `registerFixture` 的旧形，本档自己出声（见档内）。 */
+const FIXTURES_JS = path.join(scenariosDir, 'fixtures.js');
+if (fs.existsSync(FIXTURES_JS)) {
+	eval(`(function (RPG) {\n${fs.readFileSync(FIXTURES_JS, 'utf8')}\n})(setup.RPG);`);
+} else {
+	console.log(`  ⚠ 无 ${FIXTURES_JS} ⇒ 具名夹具未登记（清单里的具名条目会退化判为散文）`);
+}
 
 /* ---------- StoryInit（`src/meta/init.twee` 的 `<<set $x to …>>`）----------
  * ★**run.mjs 原形根本不跑这份 init**（它只 eval `src/**.js`，✗ twee）——
@@ -371,10 +460,28 @@ const initParsed = parseStoryInit(INIT_TWEE);
 for (const u of initParsed.unresolved) console.log(`  ⚠ StoryInit 未能解析 ⇒ 明账（✗ 静默略过）：${u}`);
 
 /* ---------- 故事事实（喂判据）---------- */
+/* ★★`#1878` 取料读点（**在 `facts` 之前**定义 —— 它是对象外的一行，✗ 不能放进字面量里）：
+ *   `#103` 原读 `R.__scenario`（＝`setup.RPG.__scenario`），而引擎（`tests/unit/framework/scenario.js:216`）
+ *   把面挂在 **`root.__scenario`**（＝`globalThis`）—— 两者**不是同一个对象** ⇒ 原读法**恒空**
+ *   ⇒ `engineFixtures count=0`（本席实测：夹具已登记 15 条，而 `--dump-facts` 仍报 0）。
+ *   ⇒ 两处都取（`globalThis` 优先）＋面缺席时上层出**明账**（✗ 不让 `?? {}` 把「没有」和「空」合成一个值）。 */
+const SC_FACE = globalThis.__scenario ?? R?.__scenario ?? null;
+
 const facts = {
 	locations: new Set(map ? [...map.locations.keys()] : []),
 	panels: new Set(R?.panels ? [...R.panels.keys()] : []),
-	engineFixtures: new Set(Object.keys(R?.__scenario?.fixtures ?? {})),
+	/* ★★`#1878` 顺带修一处**取料读点错**：`#103` 原读 `R.__scenario`（＝`setup.RPG.__scenario`），
+	 *   而引擎（`tests/unit/framework/scenario.js:216`）把面挂在 **`root.__scenario`**（＝`globalThis`）——
+	 *   两者**不是同一个对象** ⇒ 原读法**恒空** ⇒ `engineFixtures count=0`（本席实测：夹具已登记 15 条，
+	 *   而 `--dump-facts=engineFixtures` 仍报 `count=0`）。
+	 *   ⇒ 两处都取（`globalThis` 优先），既修本读点，也兼容「未来的引擎把面挂到 `RPG` 上」那种形。
+	 *   ⚠ 这正是本仓反复在打的那族：**取料读点错了会静默读空**（`?? {}` 把「没有」和「空」合成一个值）。
+	 *     此处**不**留静默余地：面缺席时 `canResolveFixture=false` ⇒ 上层出**明账**。 */
+	engineFixtures: new Set(Object.keys(SC_FACE?.fixtures ?? {})),
+	/* ★`#1878`：具名夹具**真建得出来**的判据（✗ 只看名字在册）。
+	 *   ⚠ 取料失败要**显形**（`canResolveFixture=false` ⇒ 明账），✗ 默认空。 */
+	canResolveFixture: typeof SC_FACE?.resolveFixture === 'function',
+	resolveFixture: (name) => SC_FACE.resolveFixture(name),
 	storyInit: initParsed.storyInit,                 // ★从 `init.twee` 解析（✗ 手抄）
 	panelHTML: (id) => R.panelHTML(id),
 	/* ★「进入地点」原语（因果链的**真驱动**）：把 init 变量采用为故事变量（shims 的 `State.set`）
@@ -454,7 +561,9 @@ if (has('--selftest')) {
 		actionsAt: (id) => (id === 'L20-forge' ? ['锻造台', '走向料场'] : []),
 		panels: new Set(['location', 'notice', 'trauma', 'hp', 'inventory']),
 		panelHTML: (id) => `<div data-panel="${id}">…</div>`,
-		engineFixtures: new Set(['起手态']),
+		engineFixtures: new Set(['fixture-ok']),
+		/* ★ `#1878`：具名夹具的**求值面**。原形（`F`）**不带** ⇒ 走「无 resolveFixture ⇒ 明账」支（K26）。
+		 *   带它的夹具另建 `F3`（K27 看两臂）。 */
 		/* 入口 → 落点：`走向料场` 是**出边** ⇒ 落到 `L20-settlement`（K10 的链式刀靠它） */
 		stepOf: (locId, text) => (locId === 'L20-forge' && text === '走向料场' ? 'L20-settlement' : locId),
 	};
@@ -467,6 +576,17 @@ if (has('--selftest')) {
 			if (locId === 'L20-forge' && vars.demo !== 1) throw new Error('vars 未传入');
 			if (locId === 'L20-boom') throw new Error("Cannot read properties of undefined (reading 'L20-boom')");
 			return null;
+		},
+	});
+	/* ★`#1878`：带**夹具求值面**的夹具（K27 用）。`fixtures` 里 `坏夹具` 故意抛 ⇒ 看「求值失败」那臂。 */
+	const F3 = Object.assign({}, F, {
+		canResolveFixture: true,
+		resolveFixture: (name) => {
+			if (name === 'fixture-boom') throw new Error('夹具构造炸了');
+			if (name !== 'fixture-ok' && name !== '二段遭遇态') return null;   // ★'二段遭遇态' 供 K30（中文名＋具名）
+			const stats = { ac: 12 };
+			stats[Symbol.for('unit.pack')] = 'dnd3';      // 模拟 `DND3.stats()` 的 pack 标记
+			return { player: { hp: 18, stats }, inventory: [], babelRun: {} };
 		},
 	});
 	const mk = (o) => Object.assign({
@@ -490,7 +610,7 @@ if (has('--selftest')) {
 			[Object.assign({}, F, { panelHTML: (id) => { if (id === 'location') throw new Error('炸了'); return '<i></i>'; } }), mk({})],
 			(r) => r.reds.length === 1 && /渲染抛错/.test(r.reds[0])],
 		['K7 引擎夹具名可落地 ⇒ 不红（入口态亦可是**引擎夹具**）',
-			[F, mk({ 入口态: { fixture: '起手态', 形: '具名' }, 动作: [] })], (r) => r.reds.length === 0],
+			[F, mk({ 入口态: { fixture: 'fixture-ok', 形: '具名' }, 动作: [] })], (r) => r.reds.length === 0],
 		['K8 ★语义断言**总**进明账（✗ 判不了却不说）',
 			[F, mk({})], (r) => r.notJudged.some((x) => /断言\.逻辑/.test(x)) && r.notJudged.some((x) => /断言\.渲染/.test(x))],
 		['K10 ★动作是**序列**：第二条只在**第二跳**合法 ⇒ **不红**（✗ 全在入口核 —— 那是把序列当集合）',
@@ -511,6 +631,18 @@ if (has('--selftest')) {
 			[null, null], () => judgeNotJudged({ semanticLogic: 1 }, null).reds.length === 1],
 		['K15 ★**新类目**未登记 ⇒ 红',
 			[null, null], () => judgeNotJudged({ brandNew: 1 }, { semanticLogic: 2 }).reds.some((x) => /不在基线/.test(x))],
+		['K35 ★★**类目整类消失** ⇒ **红**（✗ 静默归零 —— writer 实测：删 `步骤` 面 ⇒ 16→0 不出声）',
+			[null, null], () => {
+				/* 基线里有 `stepUnjudged: 16`，本次 `kinds` **完全没有该键**（面被删）⇒ 须红。
+				 *   ★与 K13（**减少** ⇒ 绿但出声）**成对**：两者语义不同 —— 「少几条」是好事、「整类没了」是删面。 */
+				const r = judgeNotJudged({ semanticLogic: 1 }, { semanticLogic: 1, stepUnjudged: 16 });
+				return r.reds.length === 1 && /整类消失/.test(r.reds[0]);
+			}],
+		['K36 ★反向臂：**真·减少**（0 < got < want）⇒ **不红**、只出声（★好事，✗ 与「整类消失」混为一谈）',
+			[null, null], () => {
+				const r = judgeNotJudged({ semanticLogic: 1, stepUnjudged: 9 }, { semanticLogic: 1, stepUnjudged: 16 });
+				return r.reds.length === 0 && r.notes.some((x) => /减少/.test(x));
+			}],
 		['K9 `looksLikeId` 判据本身：id 形 ⇒ true；散文 ⇒ false',
 			[null, null], () => looksLikeId('L20-forge') && !looksLikeId('二段遭遇态') && !looksLikeId('取得 iron-ore ＋ 一张图纸的态')],
 		/* ── 入口态**可落地性**（本次 dev 实测的崩溃族：形如 id 的真地点过「须实存」后下游崩）── */
@@ -525,27 +657,30 @@ if (has('--selftest')) {
 				enterLoc: () => { throw new Error("Cannot read properties of undefined (reading 'L20-boom')"); },
 			}), mk({ 入口态: { fixture: 'L20-boom', 形: '裸状态形' }, 动作: [] })],
 			(r) => r.reds.length === 1 && /进不去/.test(r.reds[0])],
-		/* ── `#107` RC（dev-9 锚出）：**出口钩子会吞 `process.exit(N)`** ⇒ 那族 rc 须由刀守（✗ 靠肉眼）── */
-		['K24 ★★`--selftest` 的 rc **须为 0**（✗ 被出口钩子吞成 1＋误报「恒绿门」）',
-			[null, null], () => runSelf(['--selftest']).rc === 0],
-		['K25 ★★**硬错路径的 rc 须真为 2**（✗ 被吞成 1；★三格各给**自己的调用形**，★并断**真走到那条路**）',
-			[null, null], () => {
-				const bad = runSelf([], { engine: '/nonexistent-xyz' });          // 坏引擎根
-				const noOnly = runSelf(['--only', 'zzz-no-such-scenario']);        // 未知 --only
-				const floored = runSelf([], { FLOOR: 99 });                        // 下限未达
-				/* ★★dev-9 锚出的**本刀自身假绿**（已修）：临时副本若落在 `$TMPDIR`，其 `repoRoot` 解析错
-				 *   ⇒ rc=2 早退于「**缺场景清单**」，**永不到 FLOOR** ⇒ 这一格对它声称守的路**零判别力**。
-				 *   ⇒ 除 rc 外**另断「真走到那条路」**（✗ 只断 rc≠2 —— 那正是本假绿的形）。 */
-				return bad.rc === 2 && noOnly.rc === 2 && floored.rc === 2
-					&& /引擎根不对/.test(bad.out)
-					&& /没有匹配的场景/.test(noOnly.out)
-					&& /未达下限/.test(floored.out) && !/缺场景清单/.test(floored.out);
-			}],
-	]
-	/* ★哨兵置位 ⇒ **剔除** K24／K25（✗ 让它们返回假值 —— 那会让子进程 20/21、父进程 k24 看到 rc=1）。
-	 *   剔除后子进程跑 19 把、正常 rc=0；而 K25 的三个子进程各自走自己的硬错路（在到达刀表之前就退）。 */
-		.filter((k) => !(process.env.SCENARIO_SELFTEST_CHILD === '1' && /^K2[45]/.test(k[0])));
-	knives.push(
+		/* ── `#1878` 夹具登记面（领队点名三把）── */
+		['K29 ★具名夹具**在册但引擎无求值面** ⇒ 明账（✗ 静默当已验证）',
+			[F, mk({ 入口态: { fixture: 'fixture-ok', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 0 && r.notJudged.some((x) => /无 resolveFixture/.test(x))],
+		['K30 ★★具名夹具**真建得出来** ⇒ 不红，且落进故事变量（含两种失败臂）',
+			[F3, mk({ 入口态: { fixture: 'fixture-ok', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 0 && r.checked >= 2],
+		['K31 ★★「在册」**不等于**「能铺」：求值为 null ⇒ **具名红**（✗ 静默当已验证）',
+			[Object.assign({}, F3, { engineFixtures: new Set(['fixture-ok', 'fixture-empty']) }),
+				mk({ 入口态: { fixture: 'fixture-empty', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 1 && /求值不出对象/.test(r.reds[0])],
+		['K32 ★★夹具**构造抛错** ⇒ 具名红（✗ 让异常逃逸成脚本崩）',
+			[Object.assign({}, F3, { engineFixtures: new Set(['fixture-ok', 'fixture-boom']) }),
+				mk({ 入口态: { fixture: 'fixture-boom', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 1 && /求值时\*\*抛\*\*/.test(r.reds[0])],
+		/* ── `#1878` 折单⑤：**`形:'具名'` 跳过 `looksLikeId`**（中文名也真核 —— dev-10 增量一）── */
+		['K33 ★★中文名 ＋ `形:\'具名\'` ⇒ **真核**（✗ 落 entryProse「登记了却永不消费」）',
+			[Object.assign({}, F3, { engineFixtures: new Set(['二段遭遇态']) }),
+				mk({ 入口态: { fixture: '二段遭遇态', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 0 && r.checked >= 2
+				&& !r.notJudged.some((x) => /散文描述/.test(x))],
+		['K34 ★★声明具名但**未登记** ⇒ 具名红（✗ 静默算作散文）',
+			[F3, mk({ 入口态: { fixture: '从来没登记过的名', 形: '具名' }, 动作: [] })],
+			(r) => r.reds.length === 1 && /未登记/.test(r.reds[0])],
 		/* ── `--dump-facts`（只读测量口，`#103`）：纯函数刀 ＋ 一把**真子进程**整合刀 ──
 		 *   ★本组复归自 `#103` 那一笔（其 sha `65d5d2f` ✗ 是 main 祖先 —— main 走的是 `e4079bc`
 		 *   同内容版，其刀号 K16–K20 ↔ main 的 K21–K25），故按**本件现有结构**重接，✗ 照抄旧行号。 */
@@ -594,7 +729,26 @@ if (has('--selftest')) {
 				&& r.kinds.stepUnjudged === 1],
 		['K28 ★**无** `步骤` 字段 ⇒ 两者都**不出**（✗ 无字段也记明账 —— 那会把第三方场景污染）',
 			[F, mk({})], (r) => r.kinds.stepEmpty == null && r.kinds.stepUnjudged == null],
-	);
+		/* ── `#107` RC（dev-9 锚出）：**出口钩子会吞 `process.exit(N)`** ⇒ 那族 rc 须由刀守（✗ 靠肉眼）── */
+		['K24 ★★`--selftest` 的 rc **须为 0**（✗ 被出口钩子吞成 1＋误报「恒绿门」）',
+			[null, null], () => runSelf(['--selftest']).rc === 0],
+		['K25 ★★**硬错路径的 rc 须真为 2**（✗ 被吞成 1；★三格各给**自己的调用形**，★并断**真走到那条路**）',
+			[null, null], () => {
+				const bad = runSelf([], { engine: '/nonexistent-xyz' });          // 坏引擎根
+				const noOnly = runSelf(['--only', 'zzz-no-such-scenario']);        // 未知 --only
+				const floored = runSelf([], { FLOOR: 99 });                        // 下限未达
+				/* ★★dev-9 锚出的**本刀自身假绿**（已修）：临时副本若落在 `$TMPDIR`，其 `repoRoot` 解析错
+				 *   ⇒ rc=2 早退于「**缺场景清单**」，**永不到 FLOOR** ⇒ 这一格对它声称守的路**零判别力**。
+				 *   ⇒ 除 rc 外**另断「真走到那条路」**（✗ 只断 rc≠2 —— 那正是本假绿的形）。 */
+				return bad.rc === 2 && noOnly.rc === 2 && floored.rc === 2
+					&& /引擎根不对/.test(bad.out)
+					&& /没有匹配的场景/.test(noOnly.out)
+					&& /未达下限/.test(floored.out) && !/缺场景清单/.test(floored.out);
+			}],
+	]
+	/* ★哨兵置位 ⇒ **剔除** K24／K25（✗ 让它们返回假值 —— 那会让子进程 20/21、父进程 k24 看到 rc=1）。
+	 *   剔除后子进程跑 19 把、正常 rc=0；而 K25 的三个子进程各自走自己的硬错路（在到达刀表之前就退）。 */
+		.filter((k) => !(process.env.SCENARIO_SELFTEST_CHILD === '1' && /^K2[45]/.test(k[0])));
 	let n = 0;
 	for (const [name, args, ok] of knives) {
 		const r = args[0] == null ? null : judgeScenarios([args[1]], args[0]);   // ★判据吃**数组**（一条场景也要包）
