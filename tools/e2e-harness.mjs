@@ -605,7 +605,11 @@ if (import.meta.filename === process.argv[1]) {
 			await new Promise((r) => setTimeout(r, 40));
 			R.refreshPanels(['hp']);
 			const before = D.Player.hp;
-			D.Player.hp = before - 3 > 0 ? before - 3 : before;      // 只改状态，不刷面
+			/* ★NIT-1（`dev-9`）：✗ 用 `before - 3` —— `before ≤ 3` 时它**退化成 no-op**（值没变而判「判别力不足」）
+			 *   ⇒ 本格会**假红**。改成**必然不同**的量（−1；面板渲染 `hp / maxHp` ⇒ 任一变化皆改文本），
+			 *   并把「够不够改」**前置成断言**（✗ 静默退化）。 */
+			if (!(before > 1)) fails.push(`K14 前置：\`D.Player.hp\`=${before}（≤1）⇒ 造不出「必然不同」的读数（本格判别力面失效）`);
+			D.Player.hp = before > 1 ? before - 1 : before + 1;      // 两条路都**必然不同**（只改状态，不刷面）
 			const stale = !domHp().includes(String(D.Player.hp));
 			if (!stale) fails.push('K14 判别力不足：改了状态而未刷面，面板却已同步 ⇒ 本格**看不出不同步**（判据是装饰）');
 			R.events.emit('battle:turnEnd', Object.freeze({ round: 1 }));
