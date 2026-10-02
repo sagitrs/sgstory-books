@@ -19,3 +19,7 @@ master/main 自本提交起重启为空干线。
 ★**与票面启发式的对账**（✗ 让计数含糊）：`declare-root.mjs` 的「工具类」名单按**文件名特征**（`*.test.js`／`*.knives.sh`／`run.mjs`／`validate.mjs`／`verify.mjs`／`e2e-harness.mjs`／`rehearse-workflow.py`／`check-refs.mjs`）⇒ 其反向读数＝根外 **3** 处；
 本清单具名 **5** 处＝那 3 处 ＋ **同目录同族**的 `knives.sh`（刀）与 `render-table.mjs`（表渲染）—— 二者**不在该启发式名单内**，按「同目录同族一并具名」列出（★宁多列 ✗ 漏列）。
 工具退役或移动时须**同步本声明**（条款：gsvector-process#300 · tester.md「测试工具落盘与复用」）。
+
+**明细**（`#300` 条款⑤「两次法则」入册；用法逐件见各档文件头）：
+- [`check-refs-recheck.mjs`](tools/check-refs-recheck.mjs) —— **引用核的独立复算器**：同名判据的第二实现 ＋ **独立清点**（枚举整份清单，✗ 用被核对象的字段白名单）⇒ 对账差集即**覆盖缺口**；命令 `node tools/check-refs-recheck.mjs --engine <引擎检出@pin> --compare`。
+- [`e2e-drive.mjs`](tools/e2e-drive.mjs) —— **真产物驾驶层**（`import` 上者的 `boot()`）：读档往返（`Save.slots` ＋ `Engine.show`）／自环就地重绘／正文行读数；命令 `node tools/e2e-drive.mjs --engine <引擎检出@pin>`；`--require <面>` 把**明账面**升硬判。
