@@ -157,6 +157,9 @@ const eventPending = (layerId, kind) => {
  *   · ⚠ 文案一律**字面**（✗ 运行期值）：采集那条继承现制文案（它本来带「还可采 N 次」⇒ 该形
  *     已在清单的`步骤`面记账），其余两条全字面。 */
 const EVENT_LAYERS = Object.freeze(['L5', 'L6', 'L7', 'L8']);
+/** ★`books#133` 笔 2：**宝箱奖励表**（一处常量）。缺省＝该层采集点道具（笔 1 的形）；
+ *  领队确认「斧铲由 L5／L6 的宝箱事件按层位给」⇒ 两格覆写（其余层走缺省）。 */
+const 宝箱奖励 = Object.freeze({ L5: 'axe', L6: 'shovel' });
 /** 池里各类的**动作形**（`L` ⇒ action）。`chest` 的奖励取该层采集点道具：✗ 新数值面（笔 1 不引入）。 */
 const EVENT_ACTIONS = {
 	chest: (L) => ({
@@ -165,19 +168,29 @@ const EVENT_ACTIONS = {
 		when: () => eventPending(L.id, 'chest'),
 		action: () => {
 			markUsed(L.id, 'chest');
-			R.give(GATHER_OF[L.id]);
-			R.perform('箱盖一掀就开了，里头的干货还能用。');
+			const 奖 = 宝箱奖励[L.id] ?? GATHER_OF[L.id];
+			R.give(奖);
+			R.perform(宝箱奖励[L.id]
+				? '箱底压着件趁手的东西 —— 还算能用。'
+				: '箱盖一掀就开了，里头的干货还能用。');
 		},
 	}),
 	gather: (L) => ({
 		事件类: 'gather',       // ★判据按**结构**取类（✗ 按文案猜）
+		/* ★`books#133` 笔 2（工具耐久制）：文案带**工具读数**；`when` 多一道**工具门** ——
+		 *   没有对应工具就**不出按钮**（✗ 点进去才被告知没工具 = 假选项）。
+		 *   扣耐久在 `world/tools.js` 的采集外层（**采成才扣**，同 `#1801` 的口径）。 */
 		text: () => {
 			const n = nodeAt(L.id);
 			const left = n?.charges;
-			return left == null ? `采集（${L.gatherLabel}）`
-				: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
+			const 具 = setup.BABEL.工具?.工具读数?.(L.id) ?? null;
+			const 前缀 = 具 ? `用${具.name}采集` : '采集';
+			const 耐久 = 具?.charges != null ? `｜${具.name}耐久 ${具.charges}` : '';
+			return left == null ? `${前缀}（${L.gatherLabel}${耐久}）`
+				: `${前缀}（${L.gatherLabel}｜还可采 ${left} 次${耐久}）`;
 		},
-		when: () => eventPending(L.id, 'gather') && (nodeAt(L.id)?.charges ?? 0) > 0,
+		when: () => eventPending(L.id, 'gather') && (nodeAt(L.id)?.charges ?? 0) > 0
+			&& (setup.BABEL.工具?.可采?.(L.id) ?? true),
 		action: () => {
 			markUsed(L.id, 'gather');
 			setup.BABEL.gather();
@@ -241,6 +254,14 @@ const makeLayerLocation = (L) => new R.Location({
 		 *     （`RPG.rng` 是全仓唯一随机源：战斗选靶也走它 ⇒ 这是**全局**副作用，✗ 只在本层）。
 		 *     本席自己那个「只用了白名单」的声明因此**不实**，已由㉔格的两条新臂钉住。 */
 		if (EVENT_LAYERS.includes(L.id)) ensureDraw(L.id);
+		/* ★`books#133` 笔 2：**层危害**（进层按档位几率触发，每层每局至多一次；非危害层连随机单元都不读）。
+		 *   表与结算在 `world/hazards.js`（只 L5–L8；甲案首形，见该件头注）。
+		 *   ⚠⚠ **次序是承重的**：抽签**必须在前** —— 本局账是**一个对象**（`$span1Events[层]`），
+		 *     危害「命中才建键」；若危害先命中建了键，`ensureDraw` 的 `??=` 就会以为「已抽过」而**不抽**
+		 *     （本席落笔时实测撞到：㉒格报「抽中 undefined」，且是**概率性**的 —— 危害掷中才犯）。
+		 *     抽签先跑 ⇒ 账里已有 `抽中`，危害只往**同一个对象**上加 `危害` 标记 ✓。
+		 *     ⚠ 随机源的**消耗次序**因此是「先抽签（两格）后危害（一格）」——判据与 e2e 面的注入序列按此写。 */
+		setup.BABEL.危害?.危害结算?.(L.id);
 	},
 	actions: [
 		/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的基础采集退役** —— 采集在该四层改为「抽中的事件」，
@@ -329,6 +350,18 @@ map.locations.get('L1').actions.unshift({
 		R.give('sword');
 		R.equip('sword');
 		R.perform('你抽出那把剑。刃上有豁口，但比拳头强。');
+	},
+});
+
+/* ---------- L3 固定事件：拾起矿镐（`books#133` 笔 2；设计稿 §2 L3「捡到矿镐」）----------
+ * ★三件工具里唯一由**固定事件**给的一件（另两件按领队确认走 L5／L6 的宝箱表）。
+ *   `R.give` 对 `stackable` 的工具会**并入**（耐久相加）⇒ 重复拾取不会留两把（`world/tools.js`）。 */
+map.locations.get('L3').actions.unshift({
+	text: '拾起插在石缝里的矿镐',
+	when: () => !R.has('pick'),
+	action: () => {
+		R.give('pick');
+		R.perform('镐头没锈 —— 是有人留在这儿的，手柄上还缠着布条。');
 	},
 });
 
