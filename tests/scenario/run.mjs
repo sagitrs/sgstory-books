@@ -28,7 +28,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const here = import.meta.dirname;                    // …/tests/scenario
 const repoRoot = path.resolve(here, '..', '..');     // books 仓根
@@ -198,17 +198,27 @@ export const judgeNotJudged = (kinds, baseline) => {
  *   「正常结束却没打印汇总」= 断言全成装饰 ⇒ 强制红）。这两条守的是**门自己**。 */
 const fails = [];
 let summaryPrinted = false;
+/* ★★`#107` RC（dev-9 锚出，`error` 级）：**出口钩子会吞掉一切 `process.exit(N)`**。
+ *   `process.exit(2)` 发出后钩子照跑，钩子内 `process.exitCode = 1` **覆盖**掉刚定的码
+ *   （本席实测：`--selftest` 16/16 全绿 ⇒ rc=1；FLOOR 命中 ⇒ rc=1（✗ 声称的 2）；
+ *    坏引擎根／`--list`／未知 `--only` ⇒ **全被吞成 1**）。
+ *   ⇒ 引入 `cleanExit`：**凡“我已出声并有意定下退出码”的路径**先置真，钩子则**不接管**。
+ *   ⚠ 本变量**必须在钩子注册之前声明**（钩子闭包引用它）。 */
+let cleanExit = false;
+/** 声明「本进程已出声完毕、退出码已定下」⇒ 钩子不再改码。 */
+const markCleanExit = () => { cleanExit = true; summaryPrinted = true; };
 const printSummary = (msg) => {
 	if (summaryPrinted) return;
 	summaryPrinted = true;
 	if (msg) fails.push(msg);
 	console.log(msg ? `\n${msg}` : '');
+	cleanExit = true;                                  // ★★本函数自己定码 ⇒ 钩子勿接管
 	process.exit(fails.length === 0 ? 0 : 1);
 };
 process.on('uncaughtException', (e) => printSummary(`✗ 场景链失败 1 条\n  ✗ ★未捕获异常（脚本中途崩了）：${e?.message ?? e}`));
 process.on('unhandledRejection', (e) => printSummary(`✗ 场景链失败 1 条\n  ✗ ★未处理的拒绝：${e?.message ?? e}`));
 process.on('exit', () => {
-	if (!summaryPrinted) {
+	if (!cleanExit) {
 		console.log('\n✗ 场景链失败 1 条');
 		console.log('  ✗ ★恒绿门：脚本正常结束但从未打印汇总（`printSummary()` 被搬走/删掉）');
 		process.exitCode = 1;
@@ -221,10 +231,12 @@ const shimsPath = path.join(root, 'tests/unit/framework/shims.js');
 if (!fs.existsSync(shimsPath)) {
 	console.error(`✗ 引擎根不对：${root}\n  在该处找不到 ${path.relative(root, shimsPath)}`
 		+ '\n  ⇒ 拆分仓布局请显式给：node tests/scenario/run.mjs --engine <sgstory 检出目录>');
+	markCleanExit();
 	process.exit(2);
 }
 if (!fs.existsSync(scenariosPath)) {
 	console.error(`✗ 缺场景清单：${path.relative(repoRoot, scenariosPath)}`);
+	markCleanExit();
 	process.exit(2);
 }
 const load = (f) => eval(fs.readFileSync(f, 'utf8'));
@@ -317,6 +329,7 @@ const initParsed = parseStoryInit(INIT_TWEE);
 	const FLOOR = 7;
 	if (keys.length < FLOOR) {
 		console.error(`✗ StoryInit 解析**未达下限**：解析出 ${keys.length} 条 < ${FLOOR}（${INIT_TWEE}）§ ${keys.join('／')}`);
+		markCleanExit();                                 // ★★否则会被出口钩子吞成 rc=1（RC 的因）
 		process.exit(2);
 	}
 }
@@ -373,6 +386,22 @@ const facts = {
 };
 
 if (has('--selftest')) {
+	/* ★**真子进程**跑本件（✗ 读码）：rc 契约的刀（K24／K25）须看**真退出码**。
+	 *   `opts.FLOOR` ⇒ 临时把下限改成 99（写入**临时副本**，✗ 改本文件）。 */
+	const runSelf = (args = [], opts = {}) => {
+		/* ★★**哨兵防空递归**（本席实测踩过 **两次** 同一族）：
+		 *   K24 调 `runSelf(['--selftest'])` ⇒ 子进程又跑 `--selftest` ⇒ 又跑 K24 ⇒ **无限 fork**。
+		 *   ⚠ **实测后果**：不加哨兵时本刀会把机器打爆（本席开发中真的撞上系统 OOM ×3）。
+		 *   ★同族前例：`tools/check-refs-recheck.mjs` 的 `RECHECK_SELFTEST_CHILD`（#98 折单）。 */
+		let file = import.meta.filename;
+		if (opts.FLOOR != null) {
+			const tmp = path.join(fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'self-')), 'run.mjs');
+			fs.writeFileSync(tmp, fs.readFileSync(file, 'utf8').replace('const FLOOR = 7;', `const FLOOR = ${opts.FLOOR};`));
+			file = tmp;
+		}
+		const p = spawnSync(process.execPath, [file, ...(opts.engine === null ? [] : ['--engine', opts.engine ?? root]), ...args], { encoding: 'utf8', env: { ...process.env, SCENARIO_SELFTEST_CHILD: '1' } });
+		return { rc: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
+	};
 	const F = {
 		locations: new Set(['L20-forge', 'L20-settlement']),
 		actionsAt: (id) => (id === 'L20-forge' ? ['锻造台', '走向料场'] : []),
@@ -449,7 +478,20 @@ if (has('--selftest')) {
 				enterLoc: () => { throw new Error("Cannot read properties of undefined (reading 'L20-boom')"); },
 			}), mk({ 入口态: { fixture: 'L20-boom', 形: '裸状态形' }, 动作: [] })],
 			(r) => r.reds.length === 1 && /进不去/.test(r.reds[0])],
-	];
+		/* ── `#107` RC（dev-9 锚出）：**出口钩子会吞 `process.exit(N)`** ⇒ 那族 rc 须由刀守（✗ 靠肉眼）── */
+		['K24 ★★`--selftest` 的 rc **须为 0**（✗ 被出口钩子吞成 1＋误报「恒绿门」）',
+			[null, null], () => runSelf(['--selftest']).rc === 0],
+		['K25 ★★**硬错路径的 rc 须真为 2**（✗ 被吞成 1；★三格各给**自己的调用形**）',
+			[null, null], () => {
+				const bad = runSelf([], { engine: '/nonexistent-xyz' });          // 坏引擎根
+				const noOnly = runSelf(['--only', 'zzz-no-such-scenario']);        // 未知 --only
+				const floored = runSelf([], { FLOOR: 99 });                        // 下限未达
+				return bad.rc === 2 && noOnly.rc === 2 && floored.rc === 2;
+			}],
+	]
+	/* ★哨兵置位 ⇒ **剔除** K24／K25（✗ 让它们返回假值 —— 那会让子进程 20/21、父进程 k24 看到 rc=1）。
+	 *   剔除后子进程跑 19 把、正常 rc=0；而 K25 的三个子进程各自走自己的硬错路（在到达刀表之前就退）。 */
+		.filter((k) => !(process.env.SCENARIO_SELFTEST_CHILD === '1' && /^K2[45]/.test(k[0])));
 	let n = 0;
 	for (const [name, args, ok] of knives) {
 		const r = args[0] == null ? null : judgeScenarios([args[1]], args[0]);   // ★判据吃**数组**（一条场景也要包）
@@ -459,14 +501,15 @@ if (has('--selftest')) {
 		if (!pass && r) console.log(`      reds=${JSON.stringify(r.reds)}\n      notJudged=${r.notJudged.length}`);
 	}
 	console.log(n === knives.length ? `\n  ✓ ${n}/${knives.length} 刀全部如期` : `\n  ✗ ${n}/${knives.length} 刀如期`);
+	markCleanExit();                                   // ★★刀已出声 ⇒ 勿让出口钩子覆写 rc（RC 的因）
 	process.exit(n === knives.length ? 0 : 1);
 }
 
 const all = JSON.parse(fs.readFileSync(scenariosPath, 'utf8'))['场景'] ?? [];
-if (has('--list')) { for (const s of all) console.log(`  ${s.id}（${s.段}｜${s.层}）`); process.exit(0); }
+if (has('--list')) { for (const s of all) console.log(`  ${s.id}（${s.段}｜${s.层}）`); markCleanExit(); process.exit(0); }
 const only = argOf('--only');
 const scenarios = only ? all.filter((s) => s.id === only) : all;
-if (!scenarios.length) { console.error(`✗ 没有匹配的场景（--only ${only}）`); process.exit(2); }
+if (!scenarios.length) { console.error(`✗ 没有匹配的场景（--only ${only}）`); markCleanExit(); process.exit(2); }
 
 const { reds, notJudged, kinds, checked } = judgeScenarios(scenarios, facts);
 /* ★`#81` RC①：棘轮 —— 未判面**不得静默增长**（体例照 `#1823`）。基线住本目录同名的 JSON。 */
