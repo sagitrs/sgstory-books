@@ -78,6 +78,7 @@ for (const r of rows) {
 		}
 		const 存 = 逻辑['存档'];
 		if (存 == null || typeof 存 !== 'object' || Array.isArray(存)) bad('「断言.逻辑」对象形缺 `存档` 对象（`assertSave` 期望）');
+		else if (Object.keys(存).length === 0) bad('「断言.逻辑.存档」为**空对象** ⇒ `assertSave({})` **恒过** ＝ 形似可执行（✗ 空期望）');
 		else {
 			for (const k of ['state', 'saveVersion', 'version']) {
 				if (Object.prototype.hasOwnProperty.call(存, k)) bad(`「断言.逻辑.存档」含存档**信封**键 \`${k}\`（\`assertSave\` 期望的是**存档内路径**，✗ 信封）`);
