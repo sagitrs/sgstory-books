@@ -38,6 +38,23 @@ const baselinePath = path.join(here, 'not-judged-baseline.json');
 
 const argOf = (name) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
 const has = (f) => process.argv.includes(f);
+const dumpFactArg = process.argv.find((a) => a === '--dump-facts' || a.startsWith('--dump-facts='));
+export const FACES = {
+	locations:      { desc: '入口态落地点 id（`map.locations` 的键）',      values: (f) => f.locations },
+	engineFixtures: { desc: '引擎侧夹具名（`RPG.__scenario.fixtures` 的键）', values: (f) => f.engineFixtures },
+	panels:         { desc: '已注册面板 id（`RPG.panels` 的键）',            values: (f) => f.panels },
+};
+export const formatFacts = (facts, names, faces = FACES) => {
+	const bad = names.filter((n) => !(n in faces));
+	const lines = [];
+	for (const n of names) {
+		if (!(n in faces)) continue;
+		const vals = [...faces[n].values(facts)].map(String).sort();
+		lines.push(`#FACTS ${n} count=${vals.length}`);
+		for (const v of vals) lines.push(v);
+	}
+	return { lines, bad };
+};
 
 /* ============================================================================
  * 一、判据（**纯函数** ⇒ 刀可直喂；照 E2 子条「抽纯函数，✗ 埋 main()」）
@@ -525,6 +542,21 @@ if (has('--selftest')) {
 
 const all = JSON.parse(fs.readFileSync(scenariosPath, 'utf8'))['场景'] ?? [];
 if (has('--list')) { for (const s of all) console.log(`  ${s.id}（${s.段}｜${s.层}）`); markCleanExit(); process.exit(0); }
+	/* ★只读出口：拿到 `facts` 后立即按旗导出并退 —— **先于**判据/棘轮/基线（✗ 改 rc 语义）。 */
+	const dumpArg = dumpFactArg;
+	if (dumpArg) {
+		const want = dumpArg.includes('=') ? dumpArg.slice('--dump-facts='.length) : null;
+		const names = want ? [want] : Object.keys(FACES);
+		const { lines, bad } = formatFacts(facts, names);
+		if (bad.length) {
+			console.error(`✗ --dump-facts：未知面 ${bad.join('、')} ⇒ 可用面：${Object.keys(FACES).join('／')}`);
+			markCleanExit();                                  // ★是**有意的** rc=2，✗ 恒绿门覆写
+			process.exit(2);
+		}
+		for (const l of lines) console.log(l);
+		markCleanExit();
+		process.exit(0);
+	}
 const only = argOf('--only');
 const scenarios = only ? all.filter((s) => s.id === only) : all;
 if (!scenarios.length) { console.error(`✗ 没有匹配的场景（--only ${only}）`); markCleanExit(); process.exit(2); }
