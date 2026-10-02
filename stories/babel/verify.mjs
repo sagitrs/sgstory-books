@@ -649,6 +649,46 @@ head('⑯ 试玩终点（① 结算模板串 ＋ ② 真重开）');
 	console.log(`  结算屏：\`$\`前缀误用 ${bad.length} 处 ✓｜终点链调用 Engine.restart() ✓（真重开，✗ 段落跳转）`);
 }
 
+/* ---------- ⑰ D5-3① `give`/`take` 后重绘的**不变式**（T 席 `sagitrs-tester-3` 建议）----------
+ * T 席读数的要害：`give('coin')` 后**面板未变**，`refreshPanels` 后才变 ⇒ 现设计**依赖**
+ *   「所有给件路径都恰在**切段**处收尾（`:passagedisplay` 是唯一填充点）」这条**未来不变式**。
+ * ★本格把该依赖**写下来并钉住**（✗ 只是注释）：
+ *   ① 渲染**单点同形** —— 面板体（去标签）与 `inventoryLabel()` **逐字相同**（后缀共用 `itemCountSuffix`）；
+ *   ② `give`／`take` **本体不自刷新** —— 一旦有人给它们加自刷新，**本格变红** ⇒ 强迫**同笔**改判据
+ *      （✗ 静默改变「何时重绘」这条玩家可感语义）；填充点与局部刷新域的既有断言在 ⑮。
+ *   ⚠ 本格**不**声称「give 后面板会自动更新」—— 恰恰相反：它钉的是「**不**自动」这个事实与它的依赖。 */
+head('⑰ D5-3① give/take 后重绘的不变式（面板唯一填充点＝切段）');
+{
+	const invCore = fs.readFileSync(path.join(root, 'src', 'core', '30-inventory.js'), 'utf8');
+	const nRefresh = (invCore.match(/refreshPanels/g) ?? []).length;
+	ok(nRefresh === 0, `★\`give\`/\`take\` 所在档出现了 ${nRefresh} 处 refreshPanels —— 若**有意**改成自刷新，须**同笔**改本格与 ⑮（✗ 静默改变重绘时机）`);
+	R.give('coin');
+	const label = R.inventoryLabel();
+	const dom = String(R.panelHTML?.('inventory') ?? '').replace(/<[^>]*>/g, '').trim();
+	ok(dom === label, `★背包面板体与 \`inventoryLabel()\` **不同形**（多渲染点漂了）：DOM=${JSON.stringify(dom.slice(0, 60))}｜label=${JSON.stringify(label.slice(0, 60))}`);
+	ok(label.includes('×1'), '★充能件没带 `×1` 后缀（D5-3 的「含 ×1」面）');
+	console.log(`  面板体 ≡ label（逐字）✓｜give/take 本体不自刷新 ✓（refreshPanels 出现 ${nRefresh} 处）｜label=${JSON.stringify(label)}`);
+}
+
+/* ---------- ⑱ D5-3② 后缀**三类**其一：不充能件**恒无后缀**（T 席建议：防日后「统一加后缀」静默改文案）----------
+ * 三类（`RPG.itemCountSuffix` 单点给出）：不充能件 ⇒ **空串**｜采集点 ⇒ `（还可采 N 次）`｜其余充能件 ⇒ `×N`。
+ * ★本格专钉**第一类**：它最容易被「统一加后缀」的重构**静默**吃掉（那会改玩家可见文案 ⇒ 属语义变更）。
+ *   另两类在此**一并取真值**（✗ 只钉一类而另两类无据），并断两类**可分辨**（✗ 同形）。 */
+head('⑱ D5-3② 后缀三类（不充能件恒无后缀 · 采集点 · ×N）');
+{
+	const sfx = (id) => R.itemCountSuffix(R.createItem(id));
+	const 不充能 = ['club', 'wood-spear'];
+	const 充能件 = ['coin', 'iron-ore', 'herb-poultice'];
+	const 采集点 = ['stone-pile', 'dead-wood'];
+	for (const id of 不充能) {
+		ok(sfx(id) === '', `★不充能件 \`${id}\` 带了后缀 ${JSON.stringify(sfx(id))} —— 不充能件**恒无后缀**（✗ 日后「统一加后缀」会静默改文案）`);
+	}
+	for (const id of 充能件) ok(/^×\d+$/.test(sfx(id)), `★充能件 \`${id}\` 的后缀不是 \`×N\` 形：${JSON.stringify(sfx(id))}`);
+	for (const id of 采集点) ok(/^（还可采 \d+ 次）$/.test(sfx(id)), `★采集点 \`${id}\` 的后缀不是「（还可采 N 次）」形：${JSON.stringify(sfx(id))}`);
+	ok(!/^×/.test(sfx('stone-pile')), '★采集点用了 `×N` 形（与普通充能件**同形**⇒ 玩家分不出「还能采」与「库存 N」）');
+	console.log(`  不充能件 ${不充能.join('、')} ⇒ 空串 ✓｜充能件 ${充能件.map((i) => i + sfx(i)).join('、')}｜采集点 ${采集点.map((i) => i + sfx(i)).join('、')}｜两形可分辨 ✓`);
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
