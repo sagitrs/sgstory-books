@@ -111,14 +111,20 @@ export async function boot(env, { quiet = true } = {}) {
 		 *     · `jsdomError` —— 未捕获异常 / `Not implemented` 等（jsdom 的通道）
 		 *     · `error`      —— 产物 `console.error(...)`
 		 *     · `warn`       —— 产物 `console.warn(...)`（**只收不判**；§噪声白名单见下）
-		 *   ★**quiet 的语义**（原「吞掉噪声」）**保留**：把收集到的行**留在 `session.consoleMsgs`**，
-		 *     ✗ 不回声到 stderr —— 否则 CI 日志被产物开局那批 `[RPG] 重复注册` 淹掉。
+		 *   ★**`quiet` 仍是【活旋钮】**（两态各有用处，✗ 不可省 —— 见 `books#122` 折单）：
+		 *     · `quiet: true`（缺省，CI 用）⇒ 只**收集**、✗ 回显 —— 否则 CI 日志被产物开局那批
+		 *       `[RPG] 重复注册`（实测 11 行 `warn`）淹掉；
+		 *     · `quiet: false`（排障用）⇒ **同时回声到 stderr**（行为与改造前一致）。
+		 *     ⇒ ★**两态判据面相同**（`consoleMsgs` 都收全），差别**只在回显** ⇒ 判据不受 quiet 影响。
 		 */
 		virtualConsole: (() => {
 			const vc = new env.VirtualConsole();
 			const push = (kind) => (...a) => {
 				const m = a.map((x) => (x && x.message) ? x.message : String(x)).join(' ');
 				consoleMsgs.push({ kind, msg: m });
+				/* ★回声分支：`quiet: false` 时把每行原样写 stderr（✗ 用 `console.log` —— 那会
+				 *   经本收集器的 `log` 通道**回流**，自环）。⇒ 消费点在此，`quiet` 非死参数。 */
+				if (!quiet) process.stderr.write(`[${kind}] ${m}\n`);
 			};
 			for (const k of ['jsdomError', 'error', 'warn', 'info', 'log', 'debug']) vc.on(k, push(k));
 			return vc;
@@ -425,6 +431,29 @@ if (import.meta.filename === process.argv[1]) {
 			K.push([!CONSOLE_NOISE.some((re) => re.test('Uncaught [Error: K11-D7-PROBE]')),
 				'K11b 对照臂：白名单**不吞**未捕获异常（✗ 宽到「凡 jsdomError 皆放过」即装饰）',
 				'K11-D7-PROBE 未被白名单匹配 ✓']);
+		}
+		/* K12（`books#122` 折单的自证刀）：`quiet` 须是**活旋钮**（有消费点），✗ 死参数。
+		 *   病灶（dev-10 的 D RC，我实测复现）：采集器改造后 `quiet` **无消费点** ⇒ `quiet:false`
+		 *   与 `true` 行为**完全相同**（两臂 stderr 皆 0；改造前 `false` ⇒ 13 行产物输出）
+		 *   ＝「旋钮无消费点」⇒ 判据须证【两态行为真有差异】，✗ 只证"参数在签名里"。 */
+		{
+			const { spawnSync } = await import('node:child_process');
+			const probe = `const {resolveEnv,boot}=await import(${JSON.stringify(import.meta.url)});`
+				+ `const e=resolveEnv(${JSON.stringify(env.root)});`
+				+ `const s=await boot(e,{quiet:false});process.exit(s.consoleMsgs.length?0:1);`;
+			/* ★两臂：同探针、唯一变量 = quiet ⇒ stderr 长度须**不同** */
+			const run = (quietVal) => {
+				/* ★用 `spawnSync`（✗ `execFileSync`）：后者**只在非零退出时才带 stderr** ——
+				 *   本探针两臂都 exit 0 ⇒ stderr 恒空 ⇒ **刀会假红**（我首版即栽在此）。 */
+				const r = spawnSync(process.execPath, ['--input-type=module', '-e',
+					probe.replace('{quiet:false}', `{quiet:${quietVal}}`)],
+					{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000 });
+				return { out: r.stdout ?? '', err: r.stderr ?? '' };
+			};
+			const loud = run(false), hush = run(true);
+			K.push([loud.err.length > hush.err.length,
+				'K12 ★`quiet` 须是【活旋钮】：`quiet:false` 的回显须**多于** `true`（✗ 死参数 ⇒ 两态同形）',
+				`loud stderr=${loud.err.length}B ／ hush stderr=${hush.err.length}B`]);
 		}
 		await expectThrow('K3 找不到目标链接 ⇒ 须抛（✗ 静默用别的链接顶上）',
 			() => clickPassage(s, { to: '不存在的段落-xyz' }), '无可点故事链接');
