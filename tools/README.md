@@ -17,6 +17,7 @@
 | `tools/e2e-harness.mjs` | 浏览器 e2e（真 DOM） |
 | `tools/e2e-drive.mjs` | 真产物的**驾驶层** |
 | `tools/rehearse-workflow.py` | 工作流**拆分布局演练** |
+| `tools/rehearse-workflow.knives.sh` | 演练器的**正向刀**（`$GITHUB_ENV` 跨步语义） |
 
 ---
 
@@ -61,8 +62,9 @@
 | | |
 |---|---|
 | **清单** | 抽 CI 工作流的 `run:` 块，在**拆分仓布局**下按**同 flags** 逐条执行（兑现 `working-directory`），回答「工作流在拆分布局下能不能跑」。 |
-| **固定命令** | `ENGINE=<引擎检出> GITHUB_WORKSPACE=<工作区> python3 tools/rehearse-workflow.py` |
-| **期望读数** | 正：`── 工作流 run 块逐条演练：通过 N｜失败 0`（现读 **9/9**）＋ `✓ 引擎仓没被写脏（归因 (b)）`｜rc=0<br>反：任一步 rc≠0 ⇒ 失败计数＋1 |
+| **固定命令** | `ENGINE=<引擎检出> GITHUB_WORKSPACE=<工作区> python3 tools/rehearse-workflow.py`<br>`ENGINE=<检出> bash tools/rehearse-workflow.knives.sh`（3 刀） |
+| **期望读数** | 正：`── 工作流 run 块逐条演练：通过 N｜失败 0`（现读 **9/9**）＋ `✓ 引擎仓没被写脏（归因 (b)）`｜rc=0<br>反：任一步 rc≠0 ⇒ 失败计数＋1；**缺 `WF` 档／缺 `ENGINE` ⇒ 具名 rc=2**（✗ 栈回溯）<br>刀：`── 通过 3｜失败 0` |
+| **`$GITHUB_ENV` 语义** | 演练器提供 `$GITHUB_ENV` 档**并跨步回读**（＝真 GitHub：写入对**后续步**生效；每步一份新档）。★`#111` 同族：先前不设该变量 ⇒ `>> "$GITHUB_ENV"` 的步在 `set -u` 下**假红 3 步**（`读 pin`／`构建`／`★构建可复现`）；★**只给空档不够**（实测：读 pin 转绿而构建仍 `VER: unbound`）。 |
 | **设立理由** | pin 升版批的第③步（`#83` 体例）。★实证：`--dump-facts` 式的**只读开关 ✗ 可动 rc**；本演练曾**正确报红**（拿新检出而声明件仍旧 pin ⇒ 「核检出==pin 自证」当场判不一）⇒ 守卫有效。 |
 
 ## 6. `refs-exemptions.json` —— docs 面豁免清单（配置件）
