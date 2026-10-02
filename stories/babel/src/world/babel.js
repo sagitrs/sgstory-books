@@ -204,7 +204,7 @@ DND3.BlueMossWasp = R.defCharacter({
 		/* L1：**只出非 elite 獾** ⇒ 空手（1d3）可磨死 —— 设计「空手战斗能赢」的机械前提。 */
 		/* L1：**保持引擎的獾**（✗ 换 —— 实测：换掉会**打破创伤族既有格**，它们依赖 L1 獾的伤害型）。
 		 *   ⇒ 「空手可胜」的数值前提**另议**（见本笔报告：无头自动通路**测不出**空手，那是**交互选项**）。 */
-		L1: base.L1,
+		L1: { encounters: [{ ref: 'badger-cub', weight: 1 }], loot: base.L1?.loot ?? [{ id: 'coin', weight: 1 }] },
 		/* L2：**升 elite** ⇒ 空手明显吃力（设计「难度较高」）；掉落留给战后必掉面（见 `encounters.js`）。 */
 		L2: { encounters: [{ ref: 'badger', weight: 1, elite: true }], loot: base.L2?.loot ?? [{ id: 'coin', weight: 1 }] },
 		/* L3：换成蓝苔蜂（一击必杀／高敏／高伤）。 */
