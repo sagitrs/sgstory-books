@@ -210,3 +210,14 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
 });
 R.registerScene(new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' }));
+
+/* ---------- 永久被动「预知」占位（`#1893` E2 · 供 L5 的固定事件授予）----------
+ * ★**占位**：无任何效果（✗ 判定字段）—— 只提供挂载面，效果留待 0.0.2。
+ * `scope:'persistent'` ⇒ **跨场保留**；而**死亡清档照样清它**（`RPG.respawn` 的清档按角色实例的
+ *   `effects` 过滤，与「谁注册」无关 ⇒ 故事侧注册与引擎侧注册语义一致）。
+ * ★**注册即验**：未生效即抛（✗ 静默 —— 否则要到 L5 授予时才以「未知效果」暴露）。 */
+R.defEffect({
+	id: 'precognition', name: '预知', kind: 'buff', scope: 'persistent',
+	desc: '（占位：暂无效果）',
+});
+if (!R.effects.has('precognition')) throw new Error('[babel] precognition 注册未生效');
