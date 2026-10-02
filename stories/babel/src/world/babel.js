@@ -145,6 +145,80 @@ const eventPending = (layerId, kind) => {
 	return !!e && e.已用 === null && e.抽中.includes(kind);
 };
 
+/* ★`books#133` 笔 1 的**动作表**（领队 2026-10-02 裁：①陷阱**不入池**（层危害落笔 2）②**读法 (B) 替换**：
+ *   抽二择一**就是**该层的额外事件面；③抽签只管 **L5–L8**，L9＝固定 BOSS ＋ 唯一出口）。
+ *   · L5–L8 的**基础采集动作退役** ⇒ 采集改为「抽中的事件」（本笔先用**现制采集**占位：
+ *     该池位的正式形是**工具耐久制**、属笔 2 的面（领队原文「笔 1 先留位」）。
+ *     ⚠ 本席**不**把该位做成空挡：池三取二 ⇒ 约三分之一的层会抽到它，空挡＝玩家可见的**死格**。
+ *   · **基础遭遇（第一场战斗）保留**（三段都留）：池里的 `battle` 是「**第二场**战斗」——同一条
+ *     段落通道（`Engine.play('遭遇战')`），✗ 另一套战斗面。
+ *   · 三个类别的动作**全量入表**，由 `when: eventPending(…)` 筛出抽中的两类
+ *     ⇒ 动作表**静态**（✗ 依赖渲染时重算数组），而「哪两个按钮可见」完全由**入档的抽签**决定。
+ *   · ⚠ 文案一律**字面**（✗ 运行期值）：采集那条继承现制文案（它本来带「还可采 N 次」⇒ 该形
+ *     已在清单的`步骤`面记账），其余两条全字面。 */
+const EVENT_LAYERS = Object.freeze(['L5', 'L6', 'L7', 'L8']);
+/** 池里各类的**动作形**（`L` ⇒ action）。`chest` 的奖励取该层采集点道具：✗ 新数值面（笔 1 不引入）。 */
+const EVENT_ACTIONS = {
+	chest: (L) => ({
+		事件类: 'chest',       // ★判据按**结构**取类（✗ 按文案猜）
+		text: '打开墙角的箱子',
+		when: () => eventPending(L.id, 'chest'),
+		action: () => {
+			markUsed(L.id, 'chest');
+			R.give(GATHER_OF[L.id]);
+			R.perform('箱盖一掀就开了，里头的干货还能用。');
+		},
+	}),
+	gather: (L) => ({
+		事件类: 'gather',       // ★判据按**结构**取类（✗ 按文案猜）
+		text: () => {
+			const n = nodeAt(L.id);
+			const left = n?.charges;
+			return left == null ? `采集（${L.gatherLabel}）`
+				: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
+		},
+		when: () => eventPending(L.id, 'gather') && (nodeAt(L.id)?.charges ?? 0) > 0,
+		action: () => {
+			markUsed(L.id, 'gather');
+			setup.BABEL.gather();
+		},
+	}),
+	battle: (L) => ({
+		事件类: 'battle',       // ★判据按**结构**取类（✗ 按文案猜）
+		text: '再打一场（第二场战斗）',
+		when: () => eventPending(L.id, 'battle'),
+		action: () => {
+			markUsed(L.id, 'battle');
+			SugarCube.Engine.play('遭遇战');
+		},
+	}),
+};
+/** 基础采集（L1–L4 与 L9 与二段照旧；L5–L8 的采集位改由抽签决定，见上）。 */
+const 基础采集动作 = (L) => ({
+	/* ★`#116`：**单一采集动作**（✗ 原两段式「先翻找（发进背包）⇒ 再对背包里的节点采」）——
+	 *   采集点是**地点的特征**（一处碎石堆），✗ 可揣进背包的道具。
+	 *   · **可用性＝地点特征**：`charges` 取自**层节点账**（`nodeAt`）⇒ 采空（0）即动作**消失** ✓
+	 *   · **计数在文案上**（`#1887` 的消费面迁到这里）：「碎石堆还可采 N 次」✓
+	 *   · 产出进**玩家背包**、节点**留在账上**（`from = 玩家`／actor ＝ 临时 holder） */
+	text: () => {
+		const n = nodeAt(L.id);
+		const left = n?.charges;
+		return left == null ? `采集（${L.gatherLabel}）`
+			: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
+	},
+	when: () => (nodeAt(L.id)?.charges ?? 0) > 0,
+	action: () => setup.BABEL.gather(),
+});
+/** 基础遭遇（**第一场**；三段皆留）：地图 action 跳独立段落坐战。
+ * ⚠ 层读面（`RPG.inGradient`）来自 `#1784`）⇒ 在此**能力探测**：缺席时仍给入口
+ *   （点了**开发者通道**会报「装配缺口」、玩家层给白话提示；✗ 静默消失）——★`#1863`：
+ *   开发者信号走 `console.warn`（票号/源码路径是写给接线者的），玩家层只出白话。 */
+const 基础遭遇动作 = (L) => ({
+	text: '遭遇（往上走之前，先看有什么挡路）',
+	when: () => (typeof R.inGradient === 'function' ? R.inGradient(L.id) : true),
+	action: () => SugarCube.Engine.play('遭遇战'),
+});
+
 /**
  * 「层地点」的**唯一构造形**（一段与二段**共用** —— `babel2.js` 经 `setup.BABEL.makeLayerLocation` 复用）。
  * 三件事：① 采集点**发放**（`#1776` 明确「采集点须先在背包里」，投放归本集成票）
@@ -165,31 +239,12 @@ const makeLayerLocation = (L) => new R.Location({
 		ensureDraw(L.id);
 	},
 	actions: [
-		/* ★`#116`：**单一采集动作**（✗ 原两段式「先翻找（发进背包）⇒ 再对背包里的节点采」）——
-		 *   采集点是**地点的特征**（一处碎石堆），✗ 可揣进背包的道具。
-		 *   · **可用性＝地点特征**：`charges` 取自**层节点账**（`nodeAt`）⇒ 采空（0）即动作**消失** ✓
-		 *   · **计数在文案上**（`#1887` 的消费面迁到这里）：「碎石堆还可采 N 次」✓
-		 *   · 产出进**玩家背包**、节点**留在账上**（`from = 玩家`／actor ＝ 临时 holder） */
-		{
-			text: () => {
-				const n = nodeAt(L.id);
-				const left = n?.charges;
-				return left == null ? `采集（${L.gatherLabel}）`
-					: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
-			},
-			when: () => (nodeAt(L.id)?.charges ?? 0) > 0,
-			action: () => setup.BABEL.gather(),
-		},
-		/* 遭遇：地图 action 跳转到独立段落（战斗要全屏渲染，同旧宅 e2e 的形）。
-		 * ⚠ 层读面（`RPG.inGradient`）来自 `#1784`（`src/core/65-encounters.js`）⇒ 在此**能力探测**：
-		 *   缺席时仍给出入口（点了**开发者通道**会报「装配缺口」、玩家层给白话提示；✗ 静默消失）——
-		 *   ★`#1863`：开发者信号走 `console.warn`（票号/源码路径是写给接线者的），玩家层只出白话。
-		 *   这与「静默不触发」的失败形相反，见 encounters.js 的依赖声明。 */
-		{
-			text: '遭遇（往上走之前，先看有什么挡路）',
-			when: () => (typeof R.inGradient === 'function' ? R.inGradient(L.id) : true),
-			action: () => SugarCube.Engine.play('遭遇战'),
-		},
+		/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的基础采集退役** —— 采集在该四层改为「抽中的事件」，
+		 *   故此处**不入表**（其余层与二段照旧，`when` 仍管「采空即消失」）。 */
+		...(EVENT_LAYERS.includes(L.id) ? [] : [基础采集动作(L)]),
+		基础遭遇动作(L),                      // ★第一场战斗：三段皆留（裁 ②B 原文）
+		/* ★抽中的事件（三类的动作**全量入表**，由 `when` 筛：只有抽中的两类能真出现） */
+		...(EVENT_LAYERS.includes(L.id) ? EVENT_KINDS.map((k) => EVENT_ACTIONS[k](L)) : []),
 	],
 });
 
@@ -418,7 +473,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	commitNode,
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	/* ★`books#133` 笔 1：选择制的机器件导出（同 `登记域` 的理由：判据/刀要能**真调用**，✗ 只能静态核）。 */
-	EVENT_KINDS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
+	EVENT_KINDS, EVENT_LAYERS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
 	makeExploreScene,              // ★`books#136`：读档重注册用（`story/hooks.js` 消费；与下方注册同源）

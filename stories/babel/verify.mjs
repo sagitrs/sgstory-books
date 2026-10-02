@@ -137,8 +137,19 @@ for (const id of CLIMB_LAYERS) {
 	ok(!!loc, `缺层 ${id}`);
 	if (!loc) continue;
 	const acts = loc.availableActions.map((a) => (typeof a.text === 'function' ? a.text() : a.text));
-	ok(acts.some((t) => t.includes('采集')), `${id} 没有采集动作`);
-	ok(acts.some((t) => t.includes('遭遇')), `${id} 没有遭遇动作`);
+	/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的采集位改为「抽中的事件」** ⇒ 那四层不断无条件采集，
+	 *   改断「池里那三条事件动作**全在表**（由 when 筛）」＋ 未抽中时**不出现**（见㉓格）。
+	 *   ⚠ 这一格原本写「每层须有采集」，是**旧不变式**——裁定改了它，故同笔改到新形（✗ 删掉不测）。 */
+	const 事件层 = (B.EVENT_LAYERS ?? []).includes(id);
+	if (事件层) {
+		const 事件类 = B.EVENT_KINDS ?? [];
+		const 标 = loc.actions.filter((a) => a.事件类 != null);
+		ok(标.length === 事件类.length && 事件类.every((k) => 标.some((a) => a.事件类 === k)),
+			`${id} 的事件动作表不齐（池 ${事件类.join('／')}；入表 ${标.map((a) => a.事件类).join('／') || '（空）'}）`);
+	} else {
+		ok(acts.some((t) => t.includes('采集')), `${id} 没有采集动作`);
+	}
+	ok(acts.some((t) => t.includes('遭遇')), `${id} 没有遭遇动作（第一场战斗三段皆留）`);
 	ok(!!B.gatherOf(id), `${id} 没有配采集点`);
 	if (typeof R.layerOfLocation === 'function') ok(R.layerOfLocation(id)?.id === id, `${id} 判不出层（层表未配对？）`);
 	console.log(`  ${id}：采集点 ${B.gatherOf(id)}｜动作 ${acts.length} 个`);
@@ -1118,6 +1129,65 @@ head('㉒ 选择制事件账（`books#133` 笔 1）');
 
 	console.log(`  事件账：取二 ${JSON.stringify(甲账?.抽中 ?? null)}｜重抽 false ✓｜两臂可分辨 ✓｜域含本键 ${域.includes('span1Events')}`);
 	State.variables.span1Events = 存账;                   // 复原（✗ 把本格的账留给下游格）
+	if (map.locations.has(存位)) map.moveTo(存位);
+}
+
+/* ── ㉓ 选择制的**动作面**（`books#133` 笔 1）──────────────────────────
+ *
+ * ㉒ 判的是**账**（每层一次抽、入档、不漏），本格判的是**屏**：
+ *   ① **抽二 ⇒ 两个按钮**（可选的事件面（`availableActions` 里的`事件类`）恰等于抽中的两类）
+ *   ② **未抽中的类即便条件满足也不出现**（用 `setSequence` 强制抽到 ['battle','chest']
+ *     ⇒ 带 charges 的 `gather` 仍须**不可选**）——这一臂排掉「按条件而非按抽签筛」的伪实现
+ *   ③ **择一 ⇒ 两类一起退场**（领队裁 ②B：择一即本层的额外事件面用完）
+ *   ④ **基础遭遇（第一场战斗）不受抽签影响**（暂退场不得连带搞掉它）
+ *   ⑤ 择一之后**不重抽**（账不变）。 */
+head('㉓ 选择制动作面（`books#133` 笔 1）');
+{
+	const 存账 = State.variables.span1Events;
+	const 存位 = map.current;
+	const 存包 = State.variables.inventory;
+	State.variables.span1Events = {};
+	State.variables.inventory = [];
+	const 可事件 = (id) => map.locations.get(id).availableActions
+		.filter((a) => a.事件类 != null).map((a) => a.事件类).sort();
+
+	/* ① 真进层 ⇒ 可选面恰等于抽中的两类 */
+	map.moveTo('L5');
+	const 账5 = State.variables.span1Events['L5'];
+	const 甲可 = 可事件('L5');               // ★就地取读数（下方重置账后 L5 的账已被抹，不能再读）
+	ok(JSON.stringify(甲可) === JSON.stringify([...(账5?.抽中 ?? [])].sort()),
+		`★L5 可选的事件面 ≠ 抽中的两类（抽中 ${JSON.stringify(账5?.抽中)}；可选 ${JSON.stringify(甲可)}）`);
+
+	/* ② 强制抽签：未抽中的类（带 charges 的采集）仍不可选 */
+	State.variables.span1Events = {};
+	R.rng.setSequence([0.99, 0]);            // 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest
+	map.moveTo('L6');
+	R.rng.reset();
+	const 账6 = State.variables.span1Events['L6'];
+	ok(JSON.stringify(账6?.抽中) === JSON.stringify(['battle', 'chest']),
+		`★注入序列的抽中与手算不符（手算 ['battle','chest']；实得 ${JSON.stringify(账6?.抽中)}）`);
+	ok(!可事件('L6').includes('gather'), '★未抽中的类出现了（采集未在抽中却可选 ⇒ 按条件筛而非按抽签筛）');
+	ok(可事件('L6').length === 2, `★可选事件面不是两类（实得 ${JSON.stringify(可事件('L6'))}）`);
+
+	/* ③④⑤ 择一：两类一起退场；基础遭遇**不受影响**；账不变（不重抽） */
+	const loc6 = map.locations.get('L6');
+	const 选中 = loc6.actions.find((a) => a.事件类 === 可事件('L6')[0]);
+	ok(!!选中, '★取不到抽中类的动作对象（动作表与`事件类`标记不一致）');
+	if (选中) 选中.action();
+	const 遭遇形 = (a) => (typeof a.text === 'function' ? a.text() : a.text);
+	/* ★`dev-9` NIT-5 的同族：日志里的 `✓` 须**按读数条件**印（✗ 无条件印 —— 臂 B 下会照印「已清 ✓」） */
+	const 清 = 可事件('L6').length === 0;
+	const 遭遇在 = loc6.availableActions.some((a) => 遭遇形(a).includes('遭遇'));
+	const 账静 = JSON.stringify(State.variables.span1Events['L6'].抽中) === JSON.stringify(['battle', 'chest']);
+	ok(清, `★择一之后本层事件面没退场（还可选 ${JSON.stringify(可事件('L6'))}）`);
+	ok(遭遇在, '★择一之后**基础遭遇**也没了（第一场战斗须保留）');
+	ok(账静, '★择一之后重抽了');
+	console.log(`  事件面：L5 抽中 ${JSON.stringify(账5?.抽中)} ⇒ 可选 ${JSON.stringify(甲可)}｜`
+		+ `强制抽 ['battle','chest'] ⇒ 采集不可选${!可事件('L6').includes('gather') ? ' ✓' : ' ✗'}`
+		+ `｜择一后面已清${清 ? ' ✓' : ' ✗'}｜基础遭遇仍在${遭遇在 ? ' ✓' : ' ✗'}`);
+
+	State.variables.span1Events = 存账;
+	State.variables.inventory = 存包;
 	if (map.locations.has(存位)) map.moveTo(存位);
 }
 
