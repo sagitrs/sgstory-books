@@ -4,7 +4,7 @@
 
 ★真·演练：把 `babel-tests.yml` 里**每一步的 run 块**原样抽出、在**同样的 shell flags**（-euo pipefail）
 下逐条执行（✗ 手抄命令 —— 手抄会把 `-e` 这类差异抄没，本会话的假绿正是这么来的）。"""
-import os, re, subprocess, sys, pathlib
+import os, re, subprocess, sys, pathlib, tempfile, shutil
 
 BOOKS = os.environ.get('BOOKS') or str(pathlib.Path(__file__).resolve().parent.parent)
 # ★ENGINE 必给（✗ 不回落任何绝对路径 —— `#79` tester-4 RC 同族）：缺了要**具名报错**，✗ 抛裸 KeyError
@@ -43,19 +43,29 @@ def run_block(step):
     return '\n'.join(body).rstrip('\n') if inrun else None
 
 env = dict(os.environ)
-env['GITHUB_WORKSPACE'] = os.environ.get('GITHUB_WORKSPACE', '/tmp/gws')   # ${GITHUB_WORKSPACE}/books → BOOKS，/engine → ENGINE
-env['GITHUB_OUTPUT'] = '/tmp/gh_output.txt'
-open('/tmp/gh_output.txt','w').close()
+# ★`#124` 的并发缺陷（dev-10 RC）：先前用**固定** `/tmp/gh_env.txt`／`gh_output.txt`／`step.sh`
+#   ⇒ 两个同时跑的演练会互读互写（实测 A/B 假绿：A 的步在 sleep 期间被 B 覆写 `step.sh`
+#   ⇒ A「应红却报 ✓」；跨工作区亦可复现）。★本席**独立复现**：A 应红实报 `通过 1｜失败 0`。
+#   ⇒ 改**每次运行独占**的临时目录（`tempfile.mkdtemp`），退出时自动清理。
+SCRATCH = tempfile.mkdtemp(prefix='rehearse-')
+import atexit; atexit.register(shutil.rmtree, SCRATCH, True)
+STEP_SH = os.path.join(SCRATCH, 'step.sh')
+GH_ENV = os.path.join(SCRATCH, 'gh_env.txt')
+GH_OUT = os.path.join(SCRATCH, 'gh_output.txt')
+GH_SUM = os.path.join(SCRATCH, 'gh_summary.txt')
+env['GITHUB_WORKSPACE'] = os.environ.get('GITHUB_WORKSPACE', os.path.join(SCRATCH, 'gws'))
+env['GITHUB_OUTPUT'] = GH_OUT
+open(GH_OUT, 'w').close()
 # ★`#111` 同族修复：真 GitHub 里 `$GITHUB_ENV` 的写入对**后续步**生效（job 级 env）。
 #   本演练器先前**不设 `GITHUB_ENV`** ⇒ 任何 `>> "$GITHUB_ENV"` 的步在 `set -u` 下红在 `unbound variable`；
 #   而 `$VER` 正是这样跨步传递的（`#1879` D9「一处定义」）⇒ **3 步假红**（实测 `读 pin`/`构建`/`★构建可复现`）。
 #   ★只给**空档**不够（实测：读 pin 转绿而构建仍 `VER: unbound`）—— 必须按真语义**跨步回读**。
 #   同理一并提供 `GITHUB_STEP_SUMMARY`（真 CI 有值；`e2e-window.yml` 当时因裸引而不可演练，
 #   后已用 `${VAR:-/dev/null}` 兼容写法绕过 —— ★本演练器**不声称**能修该档：实测修前修后它都 7/7 绿）。
-env['GITHUB_ENV'] = '/tmp/gh_env.txt'
-env['GITHUB_STEP_SUMMARY'] = '/tmp/gh_summary.txt'
-open('/tmp/gh_env.txt','w').close()
-open('/tmp/gh_summary.txt','w').close()
+env['GITHUB_ENV'] = GH_ENV
+env['GITHUB_STEP_SUMMARY'] = GH_SUM
+open(GH_ENV, 'w').close()
+open(GH_SUM, 'w').close()
 
 def absorb_gh_env():
     """把本步写入 `$GITHUB_ENV` 的键值**吸收进 env**（＝真 GitHub 的「对后续步生效」）。
@@ -64,7 +74,7 @@ def absorb_gh_env():
     ★键名正则只作**语法**把关（防畸形行污染 env）；**✗ 不是安全守** —— `LD_PRELOAD` 这类合法键
       真 GitHub 同样允许（本席曾据「它拦投毒」写一刀 ⇒ 前提不实，已撤）。"""
     try:
-        for raw in open('/tmp/gh_env.txt', encoding='utf-8').read().split('\n'):
+        for raw in open(GH_ENV, encoding='utf-8').read().split('\n'):
             if '=' in raw and not raw.startswith('#'):
                 k, v = raw.split('=', 1)
                 if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', k): env[k] = v
@@ -84,9 +94,9 @@ for step in steps:
                   .replace('"$GITHUB_WORKSPACE/engine/"', f'"{ENGINE}/"')
                   .replace('$GITHUB_WORKSPACE/engine', ENGINE))
     # 工作流用 working-directory: books ⇒ 本排练也在 books 下跑
-    open('/tmp/step.sh','w').write('set -euo pipefail\n' + script + '\n')
-    open('/tmp/gh_env.txt','w').close()   # ★每步一份新档（✗ 跨步残留）—— 真 GitHub 语义
-    r = subprocess.run(['bash','/tmp/step.sh'], capture_output=True, text=True, cwd=wd, env=env)
+    open(STEP_SH,'w').write('set -euo pipefail\n' + script + '\n')
+    open(GH_ENV,'w').close()   # ★每步一份新档（✗ 跨步残留）—— 真 GitHub 语义
+    r = subprocess.run(['bash',STEP_SH], capture_output=True, text=True, cwd=wd, env=env)
     absorb_gh_env()          # ★本步写入 $GITHUB_ENV 的值 ⇒ 对**后续步**生效（真 GitHub 语义）
     tag = '✓' if r.returncode == 0 else '✗'
     print(f"  {tag} {step['name']}  (rc={r.returncode})")
