@@ -97,7 +97,9 @@ jobs:
           # ★故事目录必须给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**（`ROOT / story_dir`）
           #   ⇒ 相对形会把引擎仓里的同名故事编掉（实测踩过：产物落在 engine/stories/babel 而非本仓）。
           STORY="$GITHUB_WORKSPACE/books/stories/babel"
-          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html || {
+          # ★`#1879` D9：版本徽标 —— 从 `engine-ref.json` **现读 pin** 拼 `v0.0.1·<短sha>` 传入（✗ 硬编码 ✓）。
+          VER="v0.0.1·$(cut -c1-8 <<<"$(jq -r .ref "$GITHUB_WORKSPACE/books/.github/engine-ref.json")")"
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" || {
             echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本 PR 的 pin 编不动这个故事**"
             echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
           # 单文件判据：✗ 外部依赖（`src`/`href` 指向外部资源）；`href="#"` 这类站内锚不算

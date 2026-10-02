@@ -42,3 +42,9 @@ hr { border: 0; border-top: 1px solid #2d3440; }
 .rpg-notice-list li.rpg-notice-log { color: #7c8794; }
 .rpg-notice-ch { color: #a8c0d8; }
 small { color: #7c8794; }
+
+:: StoryCaption
+/* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
+ *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.1·<pin 短sha>` ✓。
+ *   ⚠ 判据：`<<if>>` 兜底（变量缺失 ⇒ 什么都不显 ⇒ 零噪声 ✓）。 */
+<<if $buildVersion>>版本 $buildVersion<</if>>
