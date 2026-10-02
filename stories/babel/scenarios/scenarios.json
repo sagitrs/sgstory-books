@@ -102,7 +102,7 @@
       },
       "层": "both",
       "守的面": "span2 pin 行数值覆盖（✗ 静默缺口）",
-      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:38`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
+      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:39`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
     },
     {
       "id": "span2-house-rule-stock-roundtrip",
@@ -403,7 +403,7 @@
       },
       "层": "both",
       "守的面": "一段 Animals 逐值覆盖（与 `span2-vermin-hp-ac-per-item` 成 canonical／非 canonical **对照**；两条并立才钉住这组对照）",
-      "备注": "pin 行 `engine/README.md:37`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
+      "备注": "pin 行 `engine/README.md:38`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
     },
     {
       "id": "span1-herb-poultice-house-rule-use",
@@ -431,7 +431,7 @@
       "层": "both",
       "守的面": "**house rule（非 SRD）件**的显式声明 ＋ 使用行为 ＋ 往返存活",
       "构造": "中间经 保存→读档 往返",
-      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证（按 writer `#1842` 更正：`:3220` 在 3E 面本就对，错在**短名**）**：3E 装备表该行给的是**工具**而非本件那种消耗品 —— 见 `engine/tests/gates/pin-cache/equipment-3e.md:3220`（`Healer's Kit`）（＝源路径 `Basic Rules and Legal/equipment.md`，3590 行／`44b0c09a7783c8d9`；见 `engine/README.md:34`（`Basic Rules and Legal/equipment.md`））。⚠ **短名陷阱**：pin-cache 里 `equipment.md` 是 **5E** 那份（2286 行、`b027bc54551bf66b`；其 `:741` 有 `Herbalism Kit`）——3E 那份的缓存名是 `equipment-3e.md`。本席曾按短名把 3E 的 `:3220` 判成「越界」，实为**引错文件名**，已更正。　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
+      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证（按 writer `#1842` 更正：`:3220` 在 3E 面本就对，错在**短名**）**：3E 装备表该行给的是**工具**而非本件那种消耗品 —— 见 `engine/tests/gates/pin-cache/equipment-3e.md:3220`（`Healer's Kit`）（＝源路径 `Basic Rules and Legal/equipment.md`，3590 行／`44b0c09a7783c8d9`；见 `engine/README.md:35`（`Basic Rules and Legal/equipment.md`））。⚠ **短名陷阱**：pin-cache 里 `equipment.md` 是 **5E** 那份（2286 行、`b027bc54551bf66b`；其 `:741` 有 `Herbalism Kit`）——3E 那份的缓存名是 `equipment-3e.md`。本席曾按短名把 3E 的 `:3220` 判成「越界」，实为**引错文件名**，已更正。　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
     },
     {
       "id": "cross-battle-end-victory",
