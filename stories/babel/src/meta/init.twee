@@ -29,15 +29,16 @@
 <<set $span1Farms to 0>>
 <<set $span1Harvests to 0>>
 
-/* ── P3-1：侧栏初始收展按**设备宽度**判断（窄屏不再挤碎正文）──────────────
- * ★实测更正（对应 `sgstory#1877` P3-1 的原始配方）：操作者给的
- *     `Config.ui.stowBarInitially = "device-size";`
- *   在**本引擎版本（SugarCube 2.37.3）会抛 TypeError** —— 其 setter 只接受
- *     **boolean 或非负整数**（引擎原文：`must be a boolean or non-negative integer (received: string)`），
- *   且抛错被 `<<script>>` 捕获后**静默记入控制台**（本席实测：`bad evaluation: …`）。
- *   ⇒ 语义等价形＝**数值阈值**：`UIBar.start()` 的判据是
- *     `typeof value === 'boolean' ? value : jQuery(window).width() <= value`
- *     ⇒ 写成 `800` 即「视口 ≤ 800px 时初始收起」（引擎默认值亦为 800，此处**显式写出**以免依赖默认）。 */
+/* ── P3-1：侧栏**初始收展**（窄屏不挤碎正文）────────────────────────────
+ * `sgstory#1877` 原配方：`Config.ui.stowBarInitially = "device-size";`
+ * ★**该配方在本引擎（SugarCube 2.37.3）不可用** —— setter 只接受 **boolean 或非负整数**
+ *   （引擎原文 `must be a boolean or non-negative integer (received: string)`），传字符串会抛
+ *   `TypeError`；而 `<<script>>` 会把它**捕获为「bad evaluation」只记控制台** ⇒ 页面照常 ⇒ **静默失效**。
+ * ★**结案（操作者复测，2026-10-02）**：375px 全新加载**本就默认收起**、布局正常
+ *   —— 「窄屏挤碎」是**桌面加载后缩窗不重载**的序列产物（`UIBar.start()` 只在启动时判一次）。
+ *   ⇒ **本行不是缺陷修复，而是「显式钉住期望值」**：把 P3-1 的意图（窄屏初始收起）落成
+ *     与引擎默认**同值**的显式声明，以免日后改默认／换版本时该意图**无声漂移**。
+ *   判据：`UIBar.start()` 用 `typeof v === 'boolean' ? v : jQuery(window).width() <= v` ⇒ `800` ＝ 「视口 ≤ 800px 时收起」。 */
 <<script>>
 Config.ui.stowBarInitially = 800;
 <</script>>
