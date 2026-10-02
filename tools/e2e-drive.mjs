@@ -25,6 +25,7 @@
  *   **R 读档往返·导航形**：**硬判**。存档 → **导航到别段** → 读档 ⇒ 段落须回存档刻。此形在 pin 上成立（导航会写 `_history`）。
  *   **L 同地点读档·场景头重印**：**硬判**（`books#136` F4 —— 修在本仓故事层，随本件同笔）。
  *     存档 → 读档（**位置不变**）⇒ 地图场景头（【层名】＋desc）须重印。
+ *   **N 工具门**：**硬判**（`books#133` 笔 2）。该层无对应工具 ⇒ 抽中的「采集」**不出按钮**；给上工具 ⇒ 出。
  *   **M L5 选择制事件面**：**硬判**（`books#133` 笔 1）。抽二择一：抽中的两类出现为**按钮**、
  *     未抽中的类**不**出现、择一后两个事件按钮**一起退场**（而基础遭遇仍在）。
  *     ⚠ 本面靠**注入随机源**把抽签钉死（✗ 靠「看起来随机」）⇒ 读数确定。
@@ -113,7 +114,7 @@ cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
-	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面（`books#133` 笔 1）');
+	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 1／笔 2）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
 	console.log('  原语：passageLines／choiceButtons／driveButton／saveAt／loadAt／setStateVars／panelText');
 	process.exit(0);
@@ -192,6 +193,24 @@ if (has('--selftest')) {
 	}
 	F('★面 M 两向：两个不同的注入源 ⇒ 两个不同的抽中集（读数随源而变，✗ 常量）', M甲 === 'chest／gather' && M乙 === 'battle／chest');
 	F('★面 M 负例臂：未抽中的类**不**待选（✗ 三类全待选 = 按条件筛而非按抽签筛）', M负 === true);
+
+	/* ★面 N 的**刀**（`books#133` 笔 2）：证明「无工具 ⇒ 该事件不出按钮，给上工具 ⇒ 出」这条**红得了** ——
+	 *   唯一变量＝**背包里那件工具**（其余全不动）：同一账、同一注入下读数**翻面**。 */
+	let N无工具 = null, N有工具 = null;
+	{
+		const B = s.SC.setup.BABEL, R = s.SC.setup.RPG;
+		const 包 = s.SC.State.variables.inventory;
+		if (Array.isArray(包)) 包.length = 0;
+		delete s.SC.State.variables.span1Events.L7;
+		R.rng.setSequence([0, 0, 0.99]);              // L7 手算：抽中 ['chest','gather']；危害 miss
+		B.map.moveTo('L7');
+		R.rng.reset();
+		const 采 = () => B.map.locations.get('L7').actions.find((a) => a.事件类 === 'gather');
+		N无工具 = 采().when() === false;
+		R.give('axe');
+		N有工具 = 采().when() === true;
+	}
+	F('★面 N 两向：同一注入下，无斧 ⇒ 不可选、给斧 ⇒ 可选（读数随**背包**翻面，✗ 恒定）', N无工具 === true && N有工具 === true);
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -271,7 +290,8 @@ if (has('--selftest')) {
 	 * 两向：② 的对照是「未抽中的类**在别的层**确实可点」——✗ 只断「不可见」（那可能是按钮整体没了）。 */
 	s.SC.setup.BABEL.map.moveTo('L4');                 // 真 moveTo（⇒ L4 的抽签按活源取）
 	await playPassage(s, '探索'); await tick(300);     // 重画，落在 L4
-	s.SC.setup.RPG.rng.setSequence([0.99, 0]);         // L5 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest
+	/* ★三级注入：进 L5（**危害层**）先掷危害 ①，再抽签 ②③ —— ① 取 0.99 ⇒ `index(6)=5` ≠ 触发格 ⇒ miss */
+	s.SC.setup.RPG.rng.setSequence([0.99, 0, 0.99]);   // L5 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 miss
 	await driveButton(s, /向上，去第 5 层/, { read: lines });   // 出口导航 ⇒ moveTo('L5') ⇒ 抽签（就地重绘）
 	s.SC.setup.RPG.rng.reset();
 	const 事件按钮 = (x) => choiceButtons(x).filter((t) => /打开墙角的箱子|^采集（|再打一场/.test(t));
@@ -289,11 +309,39 @@ if (has('--selftest')) {
 	const M后 = 事件按钮(s);
 	ok(M后.length === 0, `★面 M：择一之后事件按钮没退场（仍见 ${JSON.stringify(M后)}）`);
 	ok(M遭(), '★面 M：择一之后基础遭遇也被摘掉了（第一场战斗须保留）');
-	ok(passageLines(s).some((t) => t.includes('箱盖一掀就开了')), '★面 M：择一之后正文没有该动作的文案（读数疑似取自旧屏）');
+	/* ★`books#133` 笔 2 的**判据连改**：L5 的宝箱奖励改为斧头（`宝箱奖励` 表）⇒ 文案随之改（✗ 仍断旧句） */
+	ok(passageLines(s).some((t) => t.includes('箱底压着件趁手的东西')), '★面 M：择一之后正文没有该动作的文案（读数疑似取自旧屏）');
 	ok(s.SC.State.variables.span1Events?.L5?.已用 === 'chest', `★面 M：择一没有记入本层账（已用 ${JSON.stringify(s.SC.State.variables.span1Events?.L5?.已用)}）`);
 	if (JSON.stringify(M抽) === JSON.stringify(['battle', 'chest']) && M前.length === 2 && M后.length === 0 && M遭()) {
 		console.log(`  面 M ✓ L5 抽中 ${JSON.stringify(M抽)} ⇒ 事件按钮 ${JSON.stringify(M前)}；择一后事件按钮 0 个、遭遇仍在 ✓`);
 	}
+
+	/* ══ 面 N（**硬判**）：工具耐久制的**工具门**（`books#133` 笔 2）══════════════
+	 * 玩家可见的形＝**该层没有对应工具时，抽中的「采集」不出按钮**（✗ 点进去才被告知没工具）。
+	 * 两向＝**同一读数在给工具前后必须翻面**（✗ 只断「没有」—— 那可能是按钮整体没了，与本笔无关）。
+	 * ⚠ 抽签仍靠注入随机源钉死；⚠⚠ 注入次序是「**抽签两格 ⇒ 危害一格**」（`onEnter` 的次序，见 babel.js 注）。 */
+	s.SC.setup.BABEL.map.moveTo('L6');                        // 真 moveTo ⇒ L6 抽签（活源）
+	await playPassage(s, '探索'); await tick(250);
+	/* ⚠ 清背包须**就地清**（`.length = 0`）：赋一个 Node 侧的 `[]` 会跨实测域（jsdom 窗口的 `Array`
+	 *   不等于 Node 的 `Array`）⇒ SugarCube 的 `clone()` 在 `instanceof Array` 上判假而抛
+	 *   「attempted to clone unsupported type: Array」（本席实测撞到）。 */
+	const N包 = s.SC.State.variables.inventory;
+	if (Array.isArray(N包)) N包.length = 0;                   // 手上**没有**斧头（L7 要斧）
+	s.SC.setup.RPG.rng.setSequence([0, 0, 0.99]);             // L7 手算：index(3)=0 ⇒ chest；rest[gather,battle] index(2)=0 ⇒ gather；危害 miss
+	await driveButton(s, /向上，去第 7 层/, { read: lines });   // 进 L7 ⇒ 抽签 + 危害
+	s.SC.setup.RPG.rng.reset();
+	const 采按钮 = (x) => choiceButtons(x).filter((t) => /^用.*采集/.test(t));
+	const N账 = s.SC.State.variables.span1Events?.L7 ?? null;
+	const N无 = 采按钮(s);
+	ok(JSON.stringify(N账?.抽中 ?? null) === JSON.stringify(['chest', 'gather']),
+		`★面 N：注入后 L7 的抽中与手算不符（手算 ['chest','gather']；实得 ${JSON.stringify(N账?.抽中)}）`);
+	ok(N无.length === 0, `★面 N：手上**没有**铁斧，却出现了采集按钮（${JSON.stringify(N无)}）—— 工具门没生效`);
+	ok(choiceButtons(s).some((t) => t.includes('箱子')), '★面 N：另一类事件按钮（箱子）也不在 ⇒ 事件面本身没起来，本面读数不成立');
+	s.SC.setup.RPG.give('axe');
+	await playPassage(s, '探索'); await tick(250);            // 就地重画（同一段落、同一账）
+	const N有 = 采按钮(s);
+	ok(N有.length === 1, `★面 N：给了铁斧之后采集按钮仍不出现（实得 ${JSON.stringify(N有)}）—— 工具门接线断了`);
+	if (N有.length === 1 && N无.length === 0) console.log(`  面 N ✓ 工具门：无斧 ⇒ 采集按钮 0 个；给斧 ⇒ ${JSON.stringify(N有)}`);
 
 	s.dom.window.close();
 }

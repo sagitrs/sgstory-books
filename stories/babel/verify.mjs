@@ -1152,6 +1152,7 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 		.filter((a) => a.事件类 != null).map((a) => a.事件类).sort();
 
 	/* ① 真进层 ⇒ 可选面恰等于抽中的两类 */
+	R.give('pick');                          // ★笔 2 的工具门：L5 的采集要矿镐 ⇒ 不给就只剩另一类（见㉕⑥）
 	map.moveTo('L5');
 	const 账5 = State.variables.span1Events['L5'];
 	const 甲可 = 可事件('L5');               // ★就地取读数（下方重置账后 L5 的账已被抹，不能再读）
@@ -1160,7 +1161,9 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 
 	/* ② 强制抽签：未抽中的类（带 charges 的采集）仍不可选 */
 	State.variables.span1Events = {};
-	R.rng.setSequence([0.99, 0]);            // 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest
+	/* ★三级注入：进 L6（**危害层**）先掷危害 ①，再抽签 ②③ —— 危害那格取 0.99 ⇒ `index(6)=5 ≠ 触发格 0` ⇒ miss
+	 *  （若未来把危害挪到抽签之后，本行会**立刻红**——它同时钉住了「进层先结算危害」这个次序。） */
+	R.rng.setSequence([0.99, 0, 0.99]);     // 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 index(6)=5 ⇒ miss
 	map.moveTo('L6');
 	R.rng.reset();
 	const 账6 = State.variables.span1Events['L6'];
@@ -1243,6 +1246,147 @@ head('㉔ 守卫无副作用（`books#133` 笔 1）');
 		State.variables.span1Events = 存账;
 		State.variables.gatherNodes = 存节点;
 		if (map.locations.has(存位)) map.moveTo(存位);
+	}
+}
+
+/* ── ㉕ 工具耐久制（`books#133` 笔 2）─────────────────────────────
+ *
+ * 它回答的问题：**「工具三件 ⟹ 耐久 ⟹ 实例感知扣费」这条链走得通吗？**
+ *   ① 三件定义齐 ＋ **层-工具表** 的取值都在工具集里 ② 耐久初值按**表**（判据钉的是**表位置** ⇒ 平衡只改表）
+ *   ③ **拾取并入**（同类再拾 ⇒ 一个槽、耐久相加，✗ 两把） ④ ★**实例感知扣费**（手工构造两把不同耐久：
+ *   用掉的那把 −1、另一把**不动** —— 这正是 `sgstory#1905`／领队探针的形） ⑤ **采成才扣**（节点已空 ⇒ 不扣）
+ *   ⑥ **工具门**（该层没有对应工具 ⇒ 抽中的「采集」**不出按钮**；给上 ⇒ 出）。
+ */
+head('㉕ 工具耐久制（`books#133` 笔 2）');
+{
+	const T = B.工具;
+	const 存包 = State.variables.inventory;
+	const 存账 = State.variables.span1Events;
+	const 存位 = map.current;
+	ok(!!T, '★`setup.BABEL.工具` 未导出（`world/tools.js` 未装载？）');
+	if (T) {
+		try {
+			State.variables.inventory = [];
+			State.variables.span1Events = {};
+			const 三件 = ['pick', 'axe', 'shovel'];
+			ok(三件.every((id) => R.items.has(id)), `★工具三件未注册齐（缺 ${三件.filter((id) => !R.items.has(id)).join('／') || '（无）'}）`);
+			const 越集 = Object.entries(T.工具层表 ?? {}).filter(([, k]) => !三件.includes(k));
+			ok(越集.length === 0, `★层-工具表的取值不在工具集里：${JSON.stringify(越集)}`);
+
+			/* ② 耐久初值按**表**（✗ 不写死 6 —— 写死会让平衡改动在此静默失效） */
+			R.give('pick');
+			const 初 = State.variables.inventory.find((s) => s.id === 'pick')?.charges;
+			ok(初 === T.TOOL_CHARGES, `★耐久初值与表不符（表 ${T.TOOL_CHARGES}；实得 ${初}）`);
+
+			/* ③ 拾取并入 */
+			R.give('pick');
+			const 槽些 = State.variables.inventory.filter((s) => s.id === 'pick');
+			ok(槽些.length === 1 && 槽些[0].charges === T.TOOL_CHARGES * 2,
+				`★再拾同类没有并入（实得 ${JSON.stringify(槽些)}）⇒ 玩法里会出现两把同类工具`);
+
+			/* ④ ★实例感知：两把不同耐久 ⇒ 用掉那把 −1、另一把不动 */
+			State.variables.inventory = [
+				{ id: 'pick', charges: 2, equipped: false },
+				{ id: 'pick', charges: 9, equipped: false },
+			];
+			const 选中 = T.持工具('L5');
+			ok(选中 === State.variables.inventory[1], '★取工具没有按「同类别并存 ⇒ 取耐久最多」这把（规则变了？）');
+			T.扣耐久(选中);
+			const 两把读数 = State.variables.inventory.map((s) => `pick:${s.charges}`).join('／');   // ★就地取（末尾印会印到⑥之后的包）
+			ok(State.variables.inventory[0].charges === 2 && State.variables.inventory[1].charges === 8,
+				`★扣错那把（实得 ${JSON.stringify(State.variables.inventory)}）—— 这正是 sgstory#1905 与领队探针的形`);
+
+			/* ⑤ 采成才扣：节点已空时直调结算 ⇒ 不扣耐久（`#1801`「接受后才扣」的口径） */
+			State.variables.inventory = [{ id: 'axe', charges: 3, equipped: false }];
+			State.variables.span1Events = {};
+			const 存节点账 = State.variables.gatherNodes;     // ★整账存-复原（单对象复原会被 `commitNode` 换掉）
+			map.moveTo('L7');
+			State.variables.gatherNodes = { ...(存节点账 ?? {}), L7: { ...B.nodeAt('L7'), charges: 0 } };
+			B.gather();                                  // 直调（绕过 `when`）⇒ 节点空 ⇒ 不该扣耐久
+			const 耐久 = State.variables.inventory.find((s) => s.id === 'axe')?.charges;
+			ok(耐久 === 3, `★节点采空却扣了耐久（铁斧 3 ⇒ ${耐久}）—— 「采成才扣」被破`);
+			State.variables.gatherNodes = 存节点账;
+
+			/* ⑥ 工具门：抽中 gather 时，没工具 ⇒ 该动作**不可选**；给上工具 ⇒ 可选 */
+			State.variables.span1Events = {};
+			State.variables.inventory = [];
+			R.rng.setSequence([0, 0, 0.99]);             // L7：抽签 ⇒ ['gather','battle']（index(3)=0 ⇒ chest；rest[gather,battle] index(2)=0 ⇒ gather）
+			map.moveTo('L7');
+			R.rng.reset();
+			const 采动作 = () => (map.locations.get('L7').actions.find((a) => a.事件类 === 'gather'));
+			ok(!!采动作(), '★L7 的动作表里没有 `gather` 事件（动作表变了？）');
+			ok(采动作().when() === false, '★没有对应工具时 `gather` 仍可选（假选项：点进去才被告知没工具）');
+			R.give('axe');
+			ok(采动作().when() === true, '★手上有铁斧了，`gather` 仍不可选（工具门接线断了）');
+			console.log(`  工具：三件齐 ✓｜初值 ${T.TOOL_CHARGES}（表）✓｜同类并入 ✓｜实例感知扣费 ${两把读数}（应 2／8）｜采空不扣 ✓｜工具门 ✓`);
+		} finally {
+			State.variables.inventory = 存包;
+			State.variables.span1Events = 存账;
+			if (map.locations.has(存位)) map.moveTo(存位);
+		}
+	}
+}
+
+/* ── ㉖ 层危害（`books#133` 笔 2）─────────────────────────────
+ *
+ * 它回答的问题：**进层危害按表结算、每层每局一次、预知只加一句预警吗？**
+ *   ① 命中：注入「命中格」⇒ 掉血**恰等于表里的伤害**（判据按表取读数）② **幂等**（同层再来一次 ⇒ `done`，
+ *   不再掉血）③ **预知位**：在场时**多一句预警文案**、**结算不变**（两次对照掉血相同）④ 非危害层
+ *   ⇒ `absent` 且**不耗随机单元**（与抽签同族的那条不变式）。
+ *   ⚠ 读数取 host 输出归档（本格 `__host.install()`）—— 预警是 `perform` 出来的**屏上文案**。 */
+head('㉖ 层危害（`books#133` 笔 2）');
+{
+	const H = B.危害;
+	const P = D.Player;
+	const 存账 = State.variables.span1Events;
+	const 存位 = map.current;
+	ok(!!H && typeof H.危害结算 === 'function', '★`setup.BABEL.危害` 未导出（`world/hazards.js` 未装载？）');
+	if (H && typeof H.危害结算 === 'function') {
+		try {
+			globalThis.__host?.install?.();                     // 接住 `perform` 的输出（只读观察）
+			const 行 = () => (globalThis.__host?.host?.lines?.() ?? []);
+			const 层 = Object.keys(H.危害表)[0];
+			const cfg = H.危害表[层];
+			/* ① 命中 ⇒ 掉血恰为表里的伤害 */
+			State.variables.span1Events = {};
+			P.hp = P.maxHp;
+			R.rng.setSequence([0.5, 0.5, 0]);                   // 抽签两格（⇒ 含 gather）+ 危害命中格
+			map.moveTo(层);
+			R.rng.reset();
+			ok(P.hp === P.maxHp - cfg.伤害,
+				`★危害命中后掉血与表不符（表 ${cfg.伤害}；${P.maxHp} ⇒ ${P.hp}）`);
+			ok(State.variables.span1Events[层]?.危害 === true, `★命中后账里没有危害标记（${JSON.stringify(State.variables.span1Events[层])}）`);
+			/* ② 幂等：再来一次 ⇒ done，且不再掉血 */
+			const 前 = P.hp;
+			R.rng.setSequence([0.5, 0.5, 0]);                   // 就算掷中，也不该再触发
+			const 二 = H.危害结算(层);
+			R.rng.reset();
+			ok(二 === 'done' && P.hp === 前,
+				`★同层第二次进仍结算（返回 ${二}，血 ${前} ⇒ ${P.hp}）—— 「每层每局至多一次」被破`);
+			/* ③ 预知位：多一句预警、结算不变 */
+			State.variables.span1Events = {};
+			const 无预知 = (() => { P.lose?.('precognition'); P.hp = P.maxHp; const 起 = 行().length; R.rng.setSequence([0.5, 0.5, 0]); map.moveTo(层); R.rng.reset(); return { 掉血: P.maxHp - P.hp, 新行: 行().slice(起) }; })();
+			State.variables.span1Events = {};
+			const 有预知 = (() => { P.gain?.('precognition'); P.hp = P.maxHp; const 起 = 行().length; R.rng.setSequence([0.5, 0.5, 0]); map.moveTo(层); R.rng.reset(); return { 掉血: P.maxHp - P.hp, 新行: 行().slice(起) }; })();
+			P.lose?.('precognition');
+			ok(有预知.新行.some((s) => String(s).includes('你早知道这一层不对劲')),
+				`★预知在场时**没有**预警文案（新行：${JSON.stringify(有预知.新行)}）`);
+			ok(有预知.掉血 === 无预知.掉血 && 无预知.新行.every((s) => !String(s).includes('你早知道这一层不对劲')),
+				`★预知位改了**结算**（掉血 ${无预知.掉血} vs ${有预知.掉血}）或**不在场也出声** —— 本笔的口径是「只加一句预警、结算不变」`);
+			/* ④ 非危害层：absent 且不耗随机单元 */
+			/* ★注入**两个不同**的值：若 `危害结算` 在非危害层白掷一次，`index(3)` 会读到 0.9 ⇒ 2（✗ 1）
+			 *   —— 两个同值会**看不出来**（本席首版即栽在此：注入 [0.5,0.5] ⇒ 白耗也读 1）。 */
+			R.rng.setSequence([0.5, 0.9]);
+			const v = H.危害结算('L1');
+			const 单元 = R.rng.index(3);
+			R.rng.reset();
+			ok(v === 'absent' && 单元 === 1,
+				`★非危害层未早退（返回 ${v}）或白耗随机单元（首个 index(3)=${单元}，应 1）`);
+			console.log(`  危害：${层} 命中掉 ${cfg.伤害}（表）✓｜二次 done 不掉血 ✓｜预知只加预警（掉血同 ${有预知.掉血}）✓｜非危害层 absent 且不耗随机单元 ✓`);
+		} finally {
+			State.variables.span1Events = 存账;
+			if (map.locations.has(存位)) map.moveTo(存位);
+		}
 	}
 }
 
