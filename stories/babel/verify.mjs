@@ -247,8 +247,12 @@ console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/$
 /* ---------- ⑤b 死亡回起点层（票面「死亡回 1」这一步，强制走一次）----------
  * ★本格要测的是「**死亡 → 重生/清档/跳段**」这条面，✗ 不是「本层的怪打不打得死人」。
  * ★重搭（裁 (a)）：**格内作用域覆写遭遇表** —— 本层临时换成一只「必杀怪」，
- *   其两个关键量都取**普通字段**（`hp` ＋ 攻击件的**平值** `atkBonus`）⇒ **过得了** `fresh()` 的
- *   `toJSON()` 序列化快照（`world/encounters.js:35`）；跑完**恢复原表**（✗ 污染后续段落）。
+ *   ★**快照的真实边界**（`dev-10` 侦察 RC 更正，本席原措辞说错了）：`fresh()`（`world/encounters.js:35`）
+ *   走 `revive(JSON.parse(JSON.stringify(proto.toJSON())))` ⇒ **过得了快照的是【角色级】的普通字段**
+ *   （`hp`／`maxHp`／`stats`）；而 `items` 在快照里**只带引用**（`{id, equipped}`，**不含 stats**）——
+ *   攻击数值的**权威在注册表**：`combat.js:67` 按 **id** 去解析 `item.stats.atkBonus`。
+ *   ⇒ 故本格成立**靠的是** `badger-claw` **注册表项**自带攻击；★**若换成一个没注册的自造 item id，这里会断**
+ *     （记：**item 的权威在注册表，快照只带引用**）。跑完**恢复原表**（✗ 污染后续段落）。
  *   ⇒ 死亡分支／`respawn`／跳段**全走真路**，且**零设计数值依赖**。
  * ★为何不能省（本席三次落空的实测）：旧形把「必死」赌在**本层怪的数值**上
  *   （引擎獾 **AC 15** ⇒ 玩家 auto 通路打不中 ⇒ 它活到出手；换成 AC 12 的弱怪 ⇒ 两下被打死 ⇒
@@ -259,9 +263,11 @@ map.moveTo('L1');
 	const 原表 = R.encounterTables.span1;
 	R.defCharacter({
 		id: 'verify-lethal-foe', name: '（装置）必杀怪',
-		hp: 999, maxHp: 999,                                   // ★普通字段 ⇒ 过快照
+		hp: 999, maxHp: 999,                                   // ★**角色级**普通字段 ⇒ 过快照（见上：item 不走这条）
 		stats: setup.DND3.stats({ ac: 30, str: 10, dex: 10, bab: 0 }),   // AC 30 ⇒ 玩家打不中它
-		items: [{ id: 'badger-claw', equipped: true }],         // 平值 `atkBonus 4` ⇒ 过快照、对 AC 12 必中
+		/* ★攻击数值来自**注册表**（`combat.js:67` 按 id 解析 `stats.atkBonus`），✗ 不走快照；
+		 *   本格**必须**用已注册的件（用自造 id 会断）。`atkBonus 4` ⇒ 对 AC 12 必中。 */
+		items: [{ id: 'badger-claw', equipped: true }],
 	});
 	R.registerEncounterTable('span1', Object.assign({}, 原表, {
 		L1: { encounters: [{ ref: 'verify-lethal-foe', weight: 1 }], loot: 原表.L1?.loot ?? [] },
