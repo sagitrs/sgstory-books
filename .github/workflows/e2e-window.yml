@@ -139,11 +139,14 @@ jobs:
           t0=$(date +%s)
           node tools/e2e-harness.mjs --engine "$GITHUB_WORKSPACE/engine" | tee /tmp/smoke.out
           t1=$(date +%s)
-          # ★boot 时长由共享件自己打印（「boot(含 5 步) Nms」）—— 那是**甲路线三项未测**之一，
+          # ★boot 时长由共享件自己打印（「boot Nms」）—— 那是**甲路线三项未测**之一，
           #   此处把它并成一行汇总，供裁甲/乙时直接引用。
-          boot=$(grep -oE 'boot\(含 5 步\) [0-9]+ms' /tmp/smoke.out | head -1 || true)
+          # ⚠ `#91` 修正后共享件的输出形由「boot(含 5 步) Nms」⇒「boot Nms」：**模式变了却不报错**
+          #   就会静默退化成「未打印」（旧形 `|| true` 正是如此）⇒ 故此处**取不到即红**（✗ 不吞）。
+          boot=$(grep -oE 'boot [0-9]+ms' /tmp/smoke.out | head -1 || true)
+          [ -n "$boot" ] || { echo "::error title=e2e-window::共享件未打印 boot 时长（输出形恐已变 ⇒ 见 tools/e2e-harness.mjs 的打印行）"; exit 1; }
           echo "冒烟总时长 $((t1-t0))s ｜ $boot"
-          { echo "- 冒烟: $((t1-t0))s ｜ ${boot:-（未打印）}"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+          { echo "- 冒烟: $((t1-t0))s ｜ $boot"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
