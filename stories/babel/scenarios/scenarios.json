@@ -433,7 +433,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "胜后掉落结算完成（`RPG.rollLoot` 走完）且角色仍在场；★**双向**：未胜时**不得**出现胜利出口；★实指：`world/encounters.js:102`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:69` 有该上限的说明）",
+          "说明": "胜后掉落结算完成（`RPG.rollLoot` 走完）且角色仍在场；★**双向**：未胜时**不得**出现胜利出口；★实指：`world/encounters.js:126`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:93` 有该上限的说明）",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
@@ -480,7 +480,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "败后走死亡回溯：回落到起始层（`RPG.respawn` 语义），角色可继续；★实指：`world/encounters.js:102`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:69` 有该上限的说明）",
+          "说明": "败后走死亡回溯：回落到起始层（`RPG.respawn` 语义），角色可继续；★实指：`world/encounters.js:126`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:93` 有该上限的说明）",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
@@ -527,7 +527,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "到回合上限后战斗**必然收敛**（✗ 无限对峙）；收敛后角色状态可继续；★实指：`world/encounters.js:102`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:69` 有该上限的说明）",
+          "说明": "到回合上限后战斗**必然收敛**（✗ 无限对峙）；收敛后角色状态可继续；★实指：`world/encounters.js:126`（`await new R.Battle(8, …)` ＝ **8 回合上限**出处；文件头 `:93` 有该上限的说明）",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
