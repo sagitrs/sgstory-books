@@ -25,6 +25,10 @@
 <<set $buildVersion to "—">>
 <<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1" }>>
 <<set $babelGiven to {}>>
+/* ★`books#132` L1–L9 弧的**本局账**（宝箱态…；L5+ 的事件抽签也将落这里）。
+ * ⚠ **须登记进引擎 `DOMAINS`**（`#116` 的教训：story 裸键不进 `envelope().domains`）
+ *   —— 引擎侧由 dev-9 于 `sgstory#1893` 同期核（`#132` 票面 16:31 裁）。 */
+<<set $span1Arc to {}>>
 /* ★`#116`：**地点节点账**（采集点挂地点，✗ 背包）—— 键＝地点 id，值＝节点快照（含 charges）。
  *   与 `babelGiven` 的分工：`babelGiven` 是「该层发放过没有」的 **bool 账**（旧两段式用）；
  *   本键是**节点本体**（per-run：新局 ⇒ 新节点；旧档遗留的 `babelGiven` 留着不管＝兼容）。
