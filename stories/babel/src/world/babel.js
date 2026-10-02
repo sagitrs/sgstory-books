@@ -357,7 +357,20 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
+
 });
+
+	/* ★`#1902`／`#1903`：把本弧的**本局账**登记进保存域契约（引擎 `RPG.save.declareDomain`）。
+	 *   动机：`#116` 起就存在的缺口 —— story 侧新建的裸键**不进** `envelope().domains`，逐域往返面也看不到它；
+	 *   后果是**审计缺口**（✗ 不是丢档，进档由序列化宿主完成）。
+	 *   形状标记沿用既有 `span1Farms`／`span1Harvests` 的 `byPack` 约定。
+	 *   ⚠ 须在**导出面之后**调用（✗ 文件前部：那时 `setup.BABEL` 尚不存在，同 `nodeAt` 的实测教训）。 */
+	try {
+		R.save?.declareDomain?.('span1Arc', 'byPack');
+	} catch (e) {
+		/* 接口缺席（旧引擎）⇒ 静默降级为**未登记**（✗ 抛错拦住整个故事）—— 明账见 verify 的对应格。 */
+		console.warn('[BABEL] 保存域登记口缺席：span1Arc 未登记（候 #1903 的 `RPG.save.declareDomain`）');
+	}
 R.registerScene(new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' }));
 
 /* ---------- 永久被动「预知」占位（`#1893` E2 · 供 L5 的固定事件授予）----------

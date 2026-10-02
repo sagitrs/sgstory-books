@@ -792,6 +792,18 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
 const 刀前背包 = State.variables.inventory;
 State.variables.inventory = [{ id: 'heavy-steel-shield', charges: null, equipped: false }];
 globalThis.__arcEntry = { pos: map.current, hp: D.Player.hp };
+head('⑲b 保存域登记（`#1902`／`#1903`：`$span1Arc` 进 `envelope().domains`）');
+{
+	const en = R.save?.envelope?.();
+	ok(!!en, '`RPG.save.envelope()` 不在');
+	if (en) {
+		ok((en.domains ?? []).includes('span1Arc'),
+			`★\`span1Arc\` 不在 \`envelope().domains\`（实得：${JSON.stringify(en.domains)}）⇒ 故事侧新键未登记`);
+		console.log(`  域登记：domains 含 span1Arc ✓（${(en.domains ?? []).length} 个域）`);
+	}
+	ok(R.save?.declareDomain?.('inventory', 'byPack') === false, '★内置键（inventory）被故事侧覆盖了，护栏失效');
+}
+
 head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一击必杀／钥匙·宝箱）');
 {
 	/* ★**存-复原**（`dev-10` NIT · 非洁癖）：本段会**清背包／移动地图**，而 **L5–L9 的新格（㉑㉒…）**
