@@ -153,6 +153,13 @@ export const judgeScenarios = (scenarios, facts) => {
 		} else if (acts.length) {
 			note('actionUnresolved', `[${id}] 动作 ${acts.length} 条：入口态未落地 ⇒ 无法核「是否为该处真实入口」`);
 		}
+		/* ★`步骤`（流程级，`#1814` (a)）：✗ 进「是否为该处真实入口」判（流程面 ✗ 地点面）—— 但**进明账**
+		 *   ⇒ 有字段而空 ⇒ 出声；有内容 ⇒ 记「本轮不判」⇒ 未判面**可见**（✗ 静默吞面）。 */
+		const 步骤 = Array.isArray(sc?.['步骤']) ? sc['步骤'] : null;
+		if (步骤 !== null) {
+			if (步骤.length === 0) note('stepEmpty', `[${id}] 有 \`步骤\` 字段但**为空** ⇒ 流程面无内容`);
+			else note('stepUnjudged', `[${id}] 步骤 ${步骤.length} 条（流程级）⇒ 本轮**不判**`);
+		}
 		/* ③ 渲染面：点名的面板须已注册且打得出来（串级结构断言的前提） */
 		const refd = panelRefs(sc?.['断言']?.['渲染']);
 		for (const p of refd) {

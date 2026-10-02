@@ -3,11 +3,12 @@
   "_seededAt": "81d3a4b7",
   "_seededReason": "#1814 末件首落：此时 scenarios.json 的 入口态/断言 两栏是散文 ⇒ 语义面判不了；本基线把「当前未覆盖面」钉住，使其✗不能无声扩大。",
   "未判": {
-    "actionUnresolved": 17,
+    "actionUnresolved": 10,
     "entryProse": 17,
     "semanticLogic": 18,
-    "semanticRender": 18
+    "semanticRender": 18,
+    "stepUnjudged": 11
   },
-  "_bumpedAt": "abc23517",
-  "_bumpedReason": "本次**同笔**上调（+3 ×4 类）：新增**战斗三终点**（胜／败／僵持，操作者令）三条 —— 它们与既有条同样处于「散文形」态（`入口态` 是描述、`断言` 是句子）⇒ 四类未判面各 +3。★**这不是静默涨**：三条是**主动**新增的场景，其可执行化（`#1814` 甲案）随下一笔 ⇒ 届时本基线**逐条递减**。"
+  "_bumpedAt": "e4079bce",
+  "_bumpedReason": "本次**同笔**更新（`#1814` (a) 拆字段）：①**新增类目 `stepUnjudged`**（流程级 `步骤` 面 ⇒ 本轮不判 ⇒ 显式登记，✗ 顺手新增未登记类目）；②**下压** `actionUnresolved`：7 条纯流程行拆出 `步骤` 后**不再进动作核** ⇒ 未判面**减少**（减少 ⇒ 绿但出声 ✓ 同时收紧棘轮 ✓）"
 }
