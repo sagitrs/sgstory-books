@@ -245,23 +245,35 @@ console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/$
 	+ `｜创伤 [${D.Player.effects.filter((e) => D.Traumas[e]).join(',')}]`);
 
 /* ---------- ⑤b 死亡回起点层（票面「死亡回 1」这一步，强制走一次）----------
- * 构造：玩家体力压到 1 ＋ 把注册面单例临时配成「重甲般能打」（副本会继承）＋ rng 定值 ⇒
- *   第 1 回合必被击倒 ⇒ 走 `RPG.respawn` 的死亡分支。跑完复原单例，✗ 污染后续段落。 */
+ * ★本格要测的是「**死亡 → 重生/清档/跳段**」这条面，✗ 不是「本层的怪打不打得死人」。
+ * ★重搭（裁 (a)）：**格内作用域覆写遭遇表** —— 本层临时换成一只「必杀怪」，
+ *   其两个关键量都取**普通字段**（`hp` ＋ 攻击件的**平值** `atkBonus`）⇒ **过得了** `fresh()` 的
+ *   `toJSON()` 序列化快照（`world/encounters.js:35`）；跑完**恢复原表**（✗ 污染后续段落）。
+ *   ⇒ 死亡分支／`respawn`／跳段**全走真路**，且**零设计数值依赖**。
+ * ★为何不能省（本席三次落空的实测）：旧形把「必死」赌在**本层怪的数值**上
+ *   （引擎獾 **AC 15** ⇒ 玩家 auto 通路打不中 ⇒ 它活到出手；换成 AC 12 的弱怪 ⇒ 两下被打死 ⇒
+ *   **没机会出手** ⇒ 死亡不发生；而直接 `hp=0` 置倒虽能过 deaths/跳段，但**击倒处理不触发** ⇒ 体力/创伤两红）。 */
 head('⑤b 死亡回起点层（强制）');
 map.moveTo('L1');
-const proto = R.characters.get('badger');
-const savedItems = proto.items;
-const savedBab = proto.stats.bab;
-proto.items = [{ id: 'club', equipped: true }];
-proto.stats.bab = 20;
-D.Player.hp = 1;
-D.Player.gain('bleeding');           // 顺手验「死亡清档」也清 persistent 创伤
-R.rng.set(() => 0.5);                // d20=11、伤害骰中值 ⇒ 一击必倒、必中
-globalThis.__played.length = 0;
-await B.fight({ interactive: false });
-R.rng.reset();
-proto.items = savedItems;
-proto.stats.bab = savedBab;
+{
+	const 原表 = R.encounterTables.span1;
+	R.defCharacter({
+		id: 'verify-lethal-foe', name: '（装置）必杀怪',
+		hp: 999, maxHp: 999,                                   // ★普通字段 ⇒ 过快照
+		stats: setup.DND3.stats({ ac: 30, str: 10, dex: 10, bab: 0 }),   // AC 30 ⇒ 玩家打不中它
+		items: [{ id: 'badger-claw', equipped: true }],         // 平值 `atkBonus 4` ⇒ 过快照、对 AC 12 必中
+	});
+	R.registerEncounterTable('span1', Object.assign({}, 原表, {
+		L1: { encounters: [{ ref: 'verify-lethal-foe', weight: 1 }], loot: 原表.L1?.loot ?? [] },
+	}));
+	D.Player.hp = 1;
+	D.Player.gain('bleeding');           // 顺手验「死亡清档」也清 persistent 创伤
+	R.rng.set(() => 0.5);                // d20=11：怪命中值 11+4=15 ≥ AC12 ⇒ 必中；玩家对 AC30 必不中
+	globalThis.__played.length = 0;
+	await B.fight({ interactive: false });
+	R.rng.reset();
+	R.registerEncounterTable('span1', 原表);   // ★恢复（✗ 污染后续段落）
+}
 const r2 = State.variables.babelRun;
 ok(r2.deaths === 1, `应记 1 次死亡，实为 ${r2.deaths}`);
 ok(map.current === 'L1', `死亡后应回起点层 L1，实为 ${map.current}`);
@@ -370,7 +382,20 @@ head('⑩ 创伤：真实暴露 ＋ 跨场存活（钝击 ⇒ 骨裂）');
 	 *   取 1d6=3 ⇒ 伤害 2×3 = 6（≥3、<10）⇒ 提序在位才得骨裂，退回原序会得失血。 */
 	const q = [0.99, 0.99, 0.4];    // 重击威胁 20／确认 20／伤害骰 1d6=3
 	R.rng.set(() => (q.length ? q.shift() : 0.01));
-	R.createItem('club').used(D.Player, { stats: { bab: 20, str: 10 } });   // club: type=bludgeoning
+	/* ★**本格须自足**（✗ 依赖「上一个格子恰好把手里的家伙掉了」）——
+	 *   实测：`meleeAttack` 在**手里已握别件**时走「腾不出手」分支 `return false`（`combat.js:42-51`）
+	 *   ⇒ 合成这一击**打不出去** ⇒ 创伤面整段假红。本席首版正是据此误判（并差一点按「迁层」改，✗ 治本）。
+	 *   而与 `item.id` 相同的那件（如手里也是 club）**不会被拒**（判据是 `held.id !== item.id`）
+	 *   ⇒ 故此前它**靠意外**绿：一旦前置格的结局变了（我换弱 L1 怪 ⇒ 那场从「败」变「胜」⇒ 家伙留手上），本格即红。
+	 *   ⇒ 显式把这一件标为**已握** ⇒ 跳过「拔出/腾不出手」整支 ⇒ 本格**与前置状态解耦**。 */
+	/* ★**前提自设**（✗ 依赖前置格留下的体力/结局）—— 实测（本席 DBG 取样）：
+	 *   本格此前**恰好**靠前面那场仗**打输⇒重生满血**才好使；我把 L1 的怪换弱之后那场**打赢了**
+	 *   ⇒ 玩家**残血（3/20）**来到本格 ⇒ 这一击的创伤分支变了 ⇒ 本格**整段假红**。
+	 *   ⇒ 显式把体力摆满（本格测的是**创伤面**，✗ 不是「上场的收尾」）⇒ 与前置状态**解耦**。 */
+	D.Player.hp = D.Player.maxHp;
+	const 合成锤 = R.createItem('club');
+	合成锤.equipped = true;   // ★跳过「腾不出手」拒绝（上注）
+	合成锤.used(D.Player, { stats: { bab: 20, str: 10 } });   // club: type=bludgeoning
 	R.rng.reset();
 	ok(D.Player.contains('fracture'), '★钝击重击没有致骨裂（真实路径不通）');
 	ok(!D.Player.contains('bleeding'), '★骨裂被失血遮蔽（判据提序失效）');
@@ -667,6 +692,9 @@ head('⑰ D5-3① give/take 后重绘的不变式（面板唯一填充点＝切�
 	const invCore = fs.readFileSync(path.join(root, 'src', 'core', '30-inventory.js'), 'utf8');
 	const nRefresh = (invCore.match(/refreshPanels/g) ?? []).length;
 	ok(nRefresh === 0, `★\`give\`/\`take\` 所在档出现了 ${nRefresh} 处 refreshPanels —— 若**有意**改成自刷新，须**同笔**改本格与 ⑮（✗ 静默改变重绘时机）`);
+	/* ★**先清背包**：本格断的是「充能件带 `×1`」（渲染单点），✗ 不是「上一格剩了几枚硬币」——
+	 *   不清则硬币**并入既有堆** ⇒ 标签成 `×N` ⇒ 本格假红（实测；同 ⑩ 那族的**前提依赖**）。 */
+	State.variables.inventory = [];
 	R.give('coin');
 	const label = R.inventoryLabel();
 	const dom = String(R.panelHTML?.('inventory') ?? '').replace(/<[^>]*>/g, '').trim();
