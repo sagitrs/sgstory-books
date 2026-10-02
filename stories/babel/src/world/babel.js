@@ -64,6 +64,42 @@ const map = new R.WorldMap({ id: 'babel' });
 const GATHER_OF = {};
 for (const L of LAYERS) GATHER_OF[L.id] = L.gather;
 
+/* ---------- 层节点账（`#116`：采集点**挂地点**，✗ 进背包）----------
+ * ## 为何要新键（✗ 复用 `babelGiven`）
+ *   `babelGiven` 是**一次性事实**的 bool 账（语义＝「该层发放过没有」）——
+ *   把 charges 快照塞进去会把**两种语义混进一个键**（领队 `#116` 裁甲）。
+ *   ⇒ 本键只存**节点快照**（item JSON，含 `charges`），per-run 语义对齐 `babelRun` 族：
+ *     新局 ⇒ 新节点；旧档里遗留的 `babelGiven` **留着不管**（= 兼容，✗ 迁移）。
+ * ## 语义
+ *   · 每层一份（`key = 层 id`）⇒ **隔层不携带** ✓
+ *   · `charges` 扣在**本账里的快照**上 ⇒ **按层持久** ✓（采空即 0 ⇒ 动作消失）
+ */
+/* ⚠ **键名说明**：领队 `#116` 裁甲原名 `span1Nodes`；因**(乙)** 把料场也纳入同一模型
+ *   （`L20-settlement` 也持一个 `dead-wood` 节点）⇒ 键名改 **span-中性** `gatherNodes`
+ *   （**实质不变**：独立新键 · 存快照 · per-run；仅名字不再暗示「一段专属」）。 */
+const nodesOf = () => (State.variables.gatherNodes ??= {});
+/** 取该层节点**快照**（首次进层时按 `defItem` 建一份；✗ 共享定义实例）。
+ *  ★读的是**共用表** `setup.BABEL.gatherPoints`（一段、二段各层、料场都登记在此）
+ *    ⇒ 同一 helper 服务所有「持节点的地点」（`#116` 目标模型）。
+ *  @returns 节点快照 `{id, charges, equipped}` 或 `null`（该处无采集点） */
+const nodeAt = (layerId) => {
+	const pointId = setup.BABEL?.gatherPoints?.[layerId] ?? GATHER_OF[layerId];
+	if (!pointId) return null;
+	const bag = nodesOf();
+	return (bag[layerId] ??= R.createItem(pointId).toJSON());
+};
+/** 单点写回收口：**采完把 holder 里的快照 charges 写回本账**。
+ *  ⚠ 为何必须写回：`RPG.act` 的 commit 只写 **actor 的槽**，而这里 actor 是**临时 holder**
+ *    （伪容器）⇒ 不写回则 charges 每次都从账里取旧值 ⇒ **表面「采了不耗」**（本席 `#116` 勘察实测到该形）。
+ *  ★收口成**一个 helper**（✗ 各动作散写）：将来改载体（如并入引擎）只改这一处。 */
+const commitNode = (layerId, holder) => {
+	const pointId = setup.BABEL?.gatherPoints?.[layerId] ?? GATHER_OF[layerId];
+	const slot = (holder?.items ?? []).find((s) => s.id === pointId);
+	if (!slot) return null;
+	nodesOf()[layerId] = slot;
+	return slot;
+};
+
 /**
  * 「层地点」的**唯一构造形**（一段与二段**共用** —— `babel2.js` 经 `setup.BABEL.makeLayerLocation` 复用）。
  * 三件事：① 采集点**发放**（`#1776` 明确「采集点须先在背包里」，投放归本集成票）
@@ -79,19 +115,19 @@ const makeLayerLocation = (L) => new R.Location({
 		if (r) r.deepest = L.id;
 	},
 	actions: [
+		/* ★`#116`：**单一采集动作**（✗ 原两段式「先翻找（发进背包）⇒ 再对背包里的节点采」）——
+		 *   采集点是**地点的特征**（一处碎石堆），✗ 可揣进背包的道具。
+		 *   · **可用性＝地点特征**：`charges` 取自**层节点账**（`nodeAt`）⇒ 采空（0）即动作**消失** ✓
+		 *   · **计数在文案上**（`#1887` 的消费面迁到这里）：「碎石堆还可采 N 次」✓
+		 *   · 产出进**玩家背包**、节点**留在账上**（`from = 玩家`／actor ＝ 临时 holder） */
 		{
-			text: `在${L.gatherLabel}边翻找（找采集点）`,
-			when: () => !R.has(L.gather) && !State.variables.babelGiven[L.id],
-			action: () => {
-				R.give(L.gather);
-				State.variables.babelGiven[L.id] = true;
-				R.perform(`你在一堆${L.gatherLabel}里挑了个能下手的角落。`);
+			text: () => {
+				const n = nodeAt(L.id);
+				const left = n?.charges;
+				return left == null ? `采集（${L.gatherLabel}）`
+					: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
 			},
-		},
-		/* 采集本体：走 `#1776` 的 `RPG.gather`（缺省取玩家背包语义）。 */
-		{
-			text: `采集（${L.gatherLabel}）`,
-			when: () => R.has(L.gather),
+			when: () => (nodeAt(L.id)?.charges ?? 0) > 0,
 			action: () => setup.BABEL.gather(),
 		},
 		/* 遭遇：地图 action 跳转到独立段落（战斗要全屏渲染，同旧宅 e2e 的形）。
@@ -116,10 +152,15 @@ for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
  * 唯一的故事侧补丁是 `onEnter` 读数钩子（记录 `deepest`）；**✗ 直接改包里的实例**
  * （那会连带污染包自己那张图）。
  */
-const adoptHub = (target, hub) => {
+const adoptHub = (target, hub, patch = {}) => {
 	for (const loc of hub.locations.values()) {
 		target.addLocation(new R.Location({
-			id: loc.id, name: loc.name, desc: loc.desc, actions: loc.actions,
+			id: loc.id, name: loc.name, desc: loc.desc,
+			/* ★`#116`：`patch[locId]` 可**替换**该地点的动作表（`(原表) => 新表`）——
+			 *   为何要这个口（✗ 直接改 `loc.actions`）：包里那张图与故事侧**共享同一批实例**
+			 *   （本函数上方注：「✗ 直接改包里的实例 —— 那会连带污染包自己那张图」）。
+			 *   ⇒ 经本参**只改故事侧这一份**（原表按引用传入 ⇒ patch 可读它、✗ 必须用它）。 */
+			actions: patch[loc.id] ? patch[loc.id](loc.actions) : loc.actions,
 			onEnter: () => {
 				const r = State.variables.babelRun;
 				if (r) r.deepest = R.layerOfLocation(loc.id)?.id ?? loc.id;
@@ -158,7 +199,12 @@ if (problems.length > 0) throw new Error(`[babel] 一段图不合法：${problem
 /* ---------- 注册为可玩的 MapScene ---------- */
 setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	map,
-	gatherPoints: GATHER_OF,       // 层 id → 该层采集点道具 id（遭遇/采集桥读它）
+	gatherPoints: GATHER_OF,       // 地点 id → 该处采集点道具 id（遭遇/采集桥读它；`#116` 起含 L20-settlement）
+	/* ★`#116`：地点节点 helper（**在此挂出**，✗ 文件前部 —— 那时 `setup.BABEL` 尚不存在，
+	 *   实测：提前赋值 ⇒ `TypeError: Cannot set properties of undefined (setting 'nodeAt')`
+	 *   ⇒ 整个 IIFE 抛错 ⇒ `setup.BABEL` 从未注册 ⇒ 故事起不来）。 */
+	nodeAt,
+	commitNode,
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
