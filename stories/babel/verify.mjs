@@ -693,6 +693,35 @@ head('⑱ D5-3② 后缀三类（不充能件恒无后缀 · 采集点 · ×N）
 	console.log(`  不充能件 ${不充能.join('、')} ⇒ 空串 ✓｜充能件 ${充能件.map((i) => i + sfx(i)).join('、')}｜采集点 ${采集点.map((i) => i + sfx(i)).join('、')}｜两形可分辨 ✓`);
 }
 
+/* ---------- ⑲ 永久被动「预知」占位（`#1893` E2 · books#132 甲裁定）----------
+ * ★四条语义各断一处：**注册生效** · **授予** · **跨场保留** · **存读档往返仍在**。
+ * ★反向刀（甲裁定「跨场 ✗ 跨死亡」）：**死亡清档后 ✗ 残留** —— 若误断成「跨死亡永久」会在此被抓住。
+ * ★往返走引擎自陈的**同一条通路**（`world/encounters.js:24`）：`toJSON → JSON → Character.revive`。 */
+head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 · 死亡✗残留）');
+{
+	const def = R.effectOf('precognition');
+	ok(!!def, '★`precognition` 未注册（`R.effectOf` 取不到）');
+	ok(def?.name === '预知', `名应为「预知」，实为 ${JSON.stringify(def?.name)}`);
+	ok(def?.scope === 'persistent', `scope 应为 persistent，实为 ${JSON.stringify(def?.scope)}`);
+	/* 占位 ⇒ **不得带判定字段**（防日后被顺手加上效果 ⇒ 静默改判定） */
+	ok(def && !('selfRollMode' in def) && !('targetRollMode' in def) && !('inactive' in def),
+		'★占位件不得带判定字段（否则会参与 rollMode／canAct 派生）');
+	D.Player.lose('precognition');            // 干净起点（防前序格残留）
+	D.Player.gain('precognition');
+	ok(D.Player.contains('precognition'), '授予后应持有');
+	R.events.emit('battle:end', { players: [D.Player], enemies: [] });
+	ok(D.Player.contains('precognition'), '★跨场保留：战斗结束后应仍在（scope=persistent）');
+	const round = R.Character.revive(JSON.parse(JSON.stringify(D.Player.toJSON())));
+	ok(round.contains('precognition'), '★存读档往返后应仍在（同 encounters.js:24 的往返通路）');
+	/* 反向刀：死亡清档 ⇒ 须清（甲裁定「✗ 跨死亡」） */
+	D.Player.hp = 0;
+	D.Player.gain(R.death.id);
+	const res = R.respawn(D.Player, { map });
+	ok(!D.Player.contains('precognition'),
+		`★死亡清档后仍残留 —— 甲裁定是「跨场 ✗ 跨死亡」（respawn 清档应清它；实见 ${JSON.stringify(D.Player.effects)}）`);
+	console.log(`  注册/授予/跨场/往返 ✓｜死亡清档 cleared=${res.cleared} ⇒ ✗残留 ✓`);
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
