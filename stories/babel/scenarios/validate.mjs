@@ -8,6 +8,15 @@ const fail = [];
 const ok = [];
 const file = process.argv[2] ?? path.join(import.meta.dirname, 'scenarios.json');
 const 形 = new Set(['裸状态形', '具名']);
+/* ★存档**信封**键黑名单（`#1814` 笔；`#106` dev-9 MINOR 折单）—— **唯一一处**定义，✗ 再手写第二份。
+ *   权威面（引擎 `src/core/80-save.js` 的 `envelope()`）＝ `saveVersion | pack | domains | at` ＋ **保留键** `rpgSave`。
+ *   ⚠ 本表是**手写副本**（甲形「引擎导出权威表 ⇒ 跨仓引用」留待引擎侧下次动 `80-save` 时顺路）⇒ **目前须人工同步**；
+ *     同步信号＝刀的 K14–K18：**任一权威键被从本表删去 ⇒ 对应刀当场红**（✗ 静默不跟）。
+ *   ⚠ `state`／`version` **不是**信封字段（历次误列 ⇒ `version` 已删；`state` 保留见下）。
+ *   ★`state` 为何仍在表里：`loadFixture`（`tests/unit/framework/scenario.js`）**把含 `state` 键的对象当存档对象形**
+ *     ⇒ 走 `Save.onLoad` 契约（而入口态**不是存档**，`#1806` 笔 1）⇒ 它虽非 `envelope()` 字段，仍是**本仓判据真正要拦**的形
+ *     ⇒ 故保留，并在此**注明来历**（✗ 不明不白地留着）。 */
+const SAVE_ENVELOPE_KEYS = ['state', 'saveVersion', 'pack', 'domains', 'at', 'rpgSave'];
 const 层 = new Set(['logic', 'render', 'both']);
 const 段 = new Set(['span1', 'span2', 'cross']);
 
@@ -40,7 +49,7 @@ for (const r of rows) {
 	 *   （fixture 为**具名字符串**时无此面；只有 inline `数据` 才可判 ⇒ 有则必判。） */
 	if (r['入口态']?.['数据'] != null) {
 		const 数据 = r['入口态']['数据'];
-		for (const k of ['state', 'saveVersion', 'version']) {
+		for (const k of SAVE_ENVELOPE_KEYS) {
 			if (Object.prototype.hasOwnProperty.call(数据, k)) {
 				bad(`入口态.数据 含存档信封键 \`${k}\` ⇒ 会被当**存档对象形**（入口态是**裸状态**，✗ 信封）`);
 			}
@@ -80,7 +89,7 @@ for (const r of rows) {
 		if (存 == null || typeof 存 !== 'object' || Array.isArray(存)) bad('「断言.逻辑」对象形缺 `存档` 对象（`assertSave` 期望）');
 		else if (Object.keys(存).length === 0) bad('「断言.逻辑.存档」为**空对象** ⇒ `assertSave({})` **恒过** ＝ 形似可执行（✗ 空期望）');
 		else {
-			for (const k of ['state', 'saveVersion', 'version']) {
+			for (const k of SAVE_ENVELOPE_KEYS) {
 				if (Object.prototype.hasOwnProperty.call(存, k)) bad(`「断言.逻辑.存档」含存档**信封**键 \`${k}\`（\`assertSave\` 期望的是**存档内路径**，✗ 信封）`);
 			}
 		}
