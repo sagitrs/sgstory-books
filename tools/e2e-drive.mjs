@@ -25,6 +25,9 @@
  *   **R 读档往返·导航形**：**硬判**。存档 → **导航到别段** → 读档 ⇒ 段落须回存档刻。此形在 pin 上成立（导航会写 `_history`）。
  *   **L 同地点读档·场景头重印**：**硬判**（`books#136` F4 —— 修在本仓故事层，随本件同笔）。
  *     存档 → 读档（**位置不变**）⇒ 地图场景头（【层名】＋desc）须重印。
+ *   **M L5 选择制事件面**：**硬判**（`books#133` 笔 1）。抽二择一：抽中的两类出现为**按钮**、
+ *     未抽中的类**不**出现、择一后两个事件按钮**一起退场**（而基础遭遇仍在）。
+ *     ⚠ 本面靠**注入随机源**把抽签钉死（✗ 靠「看起来随机」）⇒ 读数确定。
  *   **S 自环就地重绘·面板跟随**：**明账**（属 `sagitrs/sgstory#1859` ⇒ 修 `#1864`，**未合**）。`--require self-loop` 升硬判。
  *   **I 故事页点道具不穿 DOM**：**明账**（属 `sagitrs/sgstory#1857` ⇒ 修 `#1866`，**未合**）。`--require item-click` 升硬判。
  *   ⇒ ★明账面**每次运行都打印**（含归属票号）—— `#300` ⑧「非空≠存在」的同族：✗ 让「没跑」与「跑过且未修」同形。
@@ -110,7 +113,7 @@ cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
-	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）');
+	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面（`books#133` 笔 1）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
 	console.log('  原语：passageLines／choiceButtons／driveButton／saveAt／loadAt／setStateVars／panelText');
 	process.exit(0);
@@ -172,6 +175,23 @@ if (has('--selftest')) {
 	F('★面 L 两向 · 正例臂：未清处理器时走到 L2 ⇒ 头**看得见**（✗ 看不见则本面判不了）', L正 === true);
 	F('★面 L 唯一变量：只清 `Save.onLoad` 处理器（清前 ' + L处理器数 + ' 条）⇒ 同地点读档后头**确不重印**（判据红得了）', L反 === true);
 	F('★面 L 反例臂仍有效：清处理器后读档**照常回滚**（✗ 则上一条是「读档坏了」造的假刀）', L回滚 === true);
+
+	/* ★面 M 的**刀**（`books#133` 笔 1）：证明「抽中的两类才在」这条**红得了** ——
+	 *   唯一变量＝**注入的随机源**（其余全不动）：两个源给出两个**不同**的抽中集，
+	 *   并各断一条「未抽中的类**不**待选」（✗ 只断「抽中的在」—— 那可能是三类全在）。 */
+	let M甲 = null, M乙 = null, M负 = null;
+	{
+		const B = s.SC.setup.BABEL, R = s.SC.setup.RPG;
+		const 清L5 = () => { delete s.SC.State.variables.span1Events.L5; };
+		清L5(); R.rng.setSequence([0, 0]);                 // 手算：['chest','gather']
+		M甲 = B.ensureDraw('L5').抽中.join('／');
+		M负 = !B.eventPending('L5', 'battle');             // 未抽中的类不待选
+		清L5(); R.rng.setSequence([0.99, 0]);              // 手算：['battle','chest']
+		M乙 = B.ensureDraw('L5').抽中.join('／');
+		R.rng.reset();
+	}
+	F('★面 M 两向：两个不同的注入源 ⇒ 两个不同的抽中集（读数随源而变，✗ 常量）', M甲 === 'chest／gather' && M乙 === 'battle／chest');
+	F('★面 M 负例臂：未抽中的类**不**待选（✗ 三类全待选 = 按条件筛而非按抽签筛）', M负 === true);
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -243,6 +263,37 @@ if (has('--selftest')) {
 	ok(采回 !== 采后, `★面 L 两向②：读档后采集次数没回滚（${采后} → ${采回}）⇒ 读档未生效／屏幕未重画，本面结论不成立`);
 	ok(头回, '★面 L：同地点读档后场景头**没有重印**（读档后屏幕上只有选项、没有地点名与描述）');
 	if (头首见 && 采回 !== 采后 && 头回) console.log(`  面 L ✓ 同地点读档：${采后} → 读档 → ${采回}，场景头重印 ✓`);
+
+	/* ══ 面 M（**硬判**）：L5 选择制的事件面（`books#133` 笔 1）══════════════════
+	 * 设计稿 §3：每层**抽二择一**。本面在**真 DOM** 上核三件（无头版是同仓 `verify.mjs` 的㉓格）：
+	 *   ① 抽中的两类出现为**按钮** ② **未抽中的类不出现** ③ **择一即退场**（两类一起），而基础遭遇仍在。
+	 * ⚠ **抽签须钉死**：本面在**进 L5 之前**注入随机源（抽签发生在进层那一刻）⇒ 读数确定。
+	 * 两向：② 的对照是「未抽中的类**在别的层**确实可点」——✗ 只断「不可见」（那可能是按钮整体没了）。 */
+	s.SC.setup.BABEL.map.moveTo('L4');                 // 真 moveTo（⇒ L4 的抽签按活源取）
+	await playPassage(s, '探索'); await tick(300);     // 重画，落在 L4
+	s.SC.setup.RPG.rng.setSequence([0.99, 0]);         // L5 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest
+	await driveButton(s, /向上，去第 5 层/, { read: lines });   // 出口导航 ⇒ moveTo('L5') ⇒ 抽签（就地重绘）
+	s.SC.setup.RPG.rng.reset();
+	const 事件按钮 = (x) => choiceButtons(x).filter((t) => /打开墙角的箱子|^采集（|再打一场/.test(t));
+	const L5账 = s.SC.State.variables.span1Events?.L5 ?? null;
+	const M抽 = L5账?.抽中 ?? null;
+	const M前 = 事件按钮(s);
+	const M遭 = () => choiceButtons(s).some((t) => t.includes('遭遇（往上走之前'));
+	ok(JSON.stringify(M抽) === JSON.stringify(['battle', 'chest']),
+		`★面 M：注入随机源后 L5 的抽中与手算不符（手算 ['battle','chest']；实得 ${JSON.stringify(M抽)}）`);
+	ok(M前.length === 2 && M前.some((t) => t.includes('第二场战斗')) && M前.some((t) => t.includes('箱子')),
+		`★面 M：抽中的两类没有都出现为按钮（抽中 ${JSON.stringify(M抽)}；事件按钮 ${JSON.stringify(M前)}）`);
+	ok(!M前.some((t) => t.startsWith('采集')), '★面 M：未抽中的类出现了（采集未在抽中却给了按钮 ⇒ 按条件筛而非按抽签筛）');
+	ok(M遭(), '★面 M：基础遭遇（第一场战斗）不在（裁 ②B 要求保留）');
+	await driveButton(s, /打开墙角的箱子/, { read: (x) => 事件按钮(x).join('｜') });   // 择一（就地重绘；读数＝事件按钮集，必变）
+	const M后 = 事件按钮(s);
+	ok(M后.length === 0, `★面 M：择一之后事件按钮没退场（仍见 ${JSON.stringify(M后)}）`);
+	ok(M遭(), '★面 M：择一之后基础遭遇也被摘掉了（第一场战斗须保留）');
+	ok(passageLines(s).some((t) => t.includes('箱盖一掀就开了')), '★面 M：择一之后正文没有该动作的文案（读数疑似取自旧屏）');
+	ok(s.SC.State.variables.span1Events?.L5?.已用 === 'chest', `★面 M：择一没有记入本层账（已用 ${JSON.stringify(s.SC.State.variables.span1Events?.L5?.已用)}）`);
+	if (JSON.stringify(M抽) === JSON.stringify(['battle', 'chest']) && M前.length === 2 && M后.length === 0 && M遭()) {
+		console.log(`  面 M ✓ L5 抽中 ${JSON.stringify(M抽)} ⇒ 事件按钮 ${JSON.stringify(M前)}；择一后事件按钮 0 个、遭遇仍在 ✓`);
+	}
 
 	s.dom.window.close();
 }
