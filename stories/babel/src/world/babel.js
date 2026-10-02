@@ -341,6 +341,20 @@ const problems = map.validate();
 if (problems.length > 0) throw new Error(`[babel] 一段图不合法：${problems.join('；')}`);
 
 /* ---------- 注册为可玩的 MapScene ---------- */
+/** ★`books#136`（F4）：「探索」场景的**唯一构造形**。
+ *  两个消费者：①下方注册 ②**读档重注册**（`src/story/hooks.js` 的 `Save.onLoad` 钩子）。
+ *  ⇒ 共用本工厂（✗ 两处各写一份字面量：那样「新场景该带哪些参数」就有了两个权威源，
+ *    将来加一个参数（如 chain／onEnter）只改一处 ⇒ **静默漂移**）。
+ *
+ *  ★为何读档要**换实例**（✗ 「清掉那个记录」）：印过场景头的记录是引擎 `MapScene` 的**私有字段**
+ *  （`src/core/60-map.js` 的 `#headerLoc`）⇒ 故事侧**读不到也写不了**（本席实测：实例上
+ *  `getOwnPropertyNames` 只有公开字段）。而它**随实例存活**，`map.current` **随存档存活** ⇒
+ *  同地点读档时两者相等 ⇒ 场景头（【层名】＋desc）**不重印**：读档后屏幕上只剩选项。
+ *  ⇒ 读档＝换一个新实例（私有缓存归零）⇒ 场景头重印 ✓。
+ *  ⚠ **地图实例必须复用同一个**（`map`）—— 地点与边是构建期重放出来的代码面，
+ *    换图 ⇒ 位置/地点全丢（判据见 `verify.mjs` 的 ㉑）。 */
+const makeExploreScene = () => new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' });
+
 setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	map,
 	/* ★`#132` 战后**必掉**表（设计：L2 100% 绷带 ／ L4 固定掉钥匙）—— 由 `world/encounters.js` 的战后段消费。
@@ -357,6 +371,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
+	makeExploreScene,              // ★`books#136`：读档重注册用（`story/hooks.js` 消费；与下方注册同源）
 
 });
 
@@ -381,7 +396,7 @@ const 登记域 = () => {
 };
 登记域();
 setup.BABEL.登记域 = 登记域;   // ★导出以便判据可**真调用**（✗ 只能静态核）
-R.registerScene(new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' }));
+R.registerScene(makeExploreScene());
 
 /* ---------- 永久被动「预知」占位（`#1893` E2 · 供 L5 的固定事件授予）----------
  * ★**占位**：无任何效果（✗ 判定字段）—— 只提供挂载面，效果留待 0.0.2。

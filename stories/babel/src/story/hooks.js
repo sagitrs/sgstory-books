@@ -33,3 +33,31 @@ RPG.events.on('item:used', (e) => {
 	const r = State.variables.babelRun;
 	if (r) r.itemsUsed = (r.itemsUsed ?? 0) + 1;
 });
+
+/* ---------- ★`books#136`（F4）：读档 ⇒ 换一个「探索」场景实例（⇒ 场景头重印）----------
+ *
+ * 病灶：地图的**场景头**（【层名】＋desc）只在「进场」时印一次 —— 判据在引擎 `MapScene` 里比较
+ *   `map.current !== #headerLoc`（`src/core/60-map.js`）。`#headerLoc` 是**实例私有字段**
+ *   （故事侧不可达），而 `map.current` 住在**存档**里 ⇒ **同地点读档**（存档处＝最后一次印头的地点）
+ *   时两者相等 ⇒ 读档后屏幕上**只有选项、没有地点名与描述**（`#136` F4）。
+ *
+ * 修法：读档这一「进场」路径上**换一个新实例**（其私有缓存天然归零）⇒ 场景头重印。
+ *   · 工厂＝`world/babel.js` 的 `setup.BABEL.makeExploreScene`（与**注册处同源** ⇒ ✗ 两处字面量）
+ *   · 先 `delete` 再 `registerScene`：直接重复注册会被引擎打「重复注册：将被覆盖」告警
+ *     （`core/50-scene.js`）—— 那是给**误注册**的信号，而此处是**有意替换** ⇒ 先把旧条目撤下。
+ *
+ * ⚠ 取宿主走 `SugarCube.Save` 回落 `globalThis.Save`：与引擎 `core/80-save.js` 的 `install()` 同形。
+ *   ★**`Save` 裸名在本产物里是 `undefined`**（本席实测，jsdom 与无头两侧同）⇒ ✗ 写裸 `Save.onLoad`。
+ * ⚠ 只做「重注册」，**不读存档内容**：存档裁决与还原仍归引擎那条 onLoad（先注册）⇒ 两者无耦合。
+ * ⚠ 能力探测：装配未就绪（工厂缺席）或场景不在册（id 改名）⇒ 静默跳过（与 `refreshPanels?.` 同形）；
+ *   这两种缺口由 `verify.mjs` 的㉑格机械断（读档后场景头须重印）。 */
+{
+	const SC = globalThis.SugarCube ?? globalThis;
+	const saveFace = SC?.Save ?? globalThis.Save;
+	saveFace?.onLoad?.add?.(() => {
+		const make = setup.BABEL?.makeExploreScene;
+		if (typeof make !== 'function' || !RPG.scenes.has('babel-explore')) return;
+		RPG.scenes.delete('babel-explore');
+		RPG.registerScene(make());
+	});
+}

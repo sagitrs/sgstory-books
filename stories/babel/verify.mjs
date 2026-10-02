@@ -983,6 +983,65 @@ head('⑳b 存-复原（刀）');
 	State.variables.inventory = 刀前背包;
 }
 
+/* ── ㉑ 读档后「探索」场景头须重印（`books#136` F4）───────────────────────────
+ *
+ * 它回答的问题：**同地点读档后，玩家还看得见自己在哪一层吗？**
+ *   病灶：场景头（【层名】＋desc）只在「进场」时印一次，判据是引擎 `MapScene` 里的
+ *     `map.current !== #headerLoc`；而 `#headerLoc` 是**实例私有字段**（故事侧不可达、随实例存活），
+ *     `map.current` 随**存档**存活 ⇒ 同地点读档时两者相等 ⇒ 读档后屏幕上**只剩选项**。
+ *   修在故事侧（`src/story/hooks.js`：读档换一个新场景实例）⇒ 本格断的正是**该修的果**：
+ *     读档后再进场，场景头须**重印**。
+ *
+ * ⚠ 装置两面（先说清，✗ 含糊）：
+ *   · `choice` 桩成「永不 resolve」—— `#renderLocation` 走到「头已印、选项待选」那一刻停住；
+ *     不桩，本仓已有格记过「无头 await choice 永久挂起」那条。
+ *   · `perform` 按实例收到本格数组 —— 本脚本不装宿主输出归档，故就地收一次
+ *     （影子 `Object.prototype.perform`，只影响本格这二三个实例）。
+ *   ★本格**两向**（开跑前先断「装置看得见头」）：先走 L1→L2→L1 两跳，**两跳都须印头**；
+ *     若这两臂不成立（装置看不见头），后面那条读档断言就成了「碰巧绿」⇒ 具名报出来。 */
+head('㉑ 读档进场 ⇒ 场景头重印（`books#136` F4）');
+{
+	const ID = 'babel-explore';
+	ok(R.scenes.get(ID) instanceof R.MapScene, `★「${ID}」未注册为 MapScene（读档重注册的前提）`);
+
+	/** 驱动一次**真渲染**，返回本次印出的正文行。
+	 *  ★与 `Scene.play` 同形：`execute()` 是 async 且 fire-and-forget（✗ 在此 await —— 它永不返回）。 */
+	const 渲染一次 = async () => {
+		const scene = R.scenes.get(ID);
+		const 行 = [];
+		scene.perform = (t) => { if (typeof t === 'string') 行.push(t); };
+		scene.choice = () => new Promise(() => {});
+		scene.execute();
+		await new Promise((r) => setTimeout(r, 0));
+		return 行;
+	};
+	const 印了 = (行, 层名) => 行.some((t) => t.includes(`【${层名}】`));
+
+	map.moveTo('L1');                              // 先把「印过的地点」钉到 L1（上游各格动过位置）
+	await 渲染一次();
+	map.moveTo('L2');
+	const 去 = await 渲染一次();
+	ok(印了(去, '第 2 层 · 倒木坡'),
+		'★两向①（装置自证）：换层后场景头没印 ⇒ 本格判不了 F4（✗ 把它读成 F4 结论）');
+	map.moveTo('L1');
+	const 回 = await 渲染一次();
+	ok(印了(回, '第 1 层 · 苏醒之地'),
+		'★两向②（装置自证）：回到 L1 后场景头没印 ⇒ 本格判不了 F4');
+
+	/* 存档（此刻 current＝L1）→ 读档（**同地点**）→ 再进场：场景头须重印。
+	 * 走 host 的真实存/读面（含 `Save.onSave`／`Save.onLoad` 处理器）⇒ 断的是**接线**，✗ 不是工厂直调。 */
+	const 存档 = Save.make();
+	Save.load(存档);
+	const 新场景 = R.scenes.get(ID);
+	ok(新场景 instanceof R.MapScene && 新场景.map === map && 新场景.startId === 'L1',
+		'★读档后重注册的场景不是「同一张图 ＋ 同一起点」的 MapScene ⇒ 位置与地点会丢');
+	const 再入 = await 渲染一次();
+	ok(印了(再入, '第 1 层 · 苏醒之地'),
+		'★F4：同地点读档后场景头**没有重印**（读档后屏幕上只有选项、没有地点名与描述）');
+	console.log(`  读档进场：换层 ${印了(去, '第 2 层 · 倒木坡')} ✓｜回 L1 ${印了(回, '第 1 层 · 苏醒之地')} ✓｜`
+		+ `同地点读档后重印 ${印了(再入, '第 1 层 · 苏醒之地')}`);
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
