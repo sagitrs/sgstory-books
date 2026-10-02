@@ -91,22 +91,76 @@
 	}));
 
 	/* F5/F6/F7 战斗三终点（★与 `cross-battle-end-*` 同源）——
-	 *   三者**只差对手强弱**，而「强弱」由**遭遇表**（层表驱动）决定 ⇒ 夹具不直接给对手，
-	 *   给的是「在哪一层 + 打第几场」。⇒ 出场对手由 `RPG.rollEncounter` 抽（真路径）。
-	 *   ⚠ 本席**不**在此手搓怪物实例：那会绕开层表，测的就不是产品的抽法了。 */
-	S.registerFixture('战斗态·可胜', () => 态({
+	 *
+	 * ## ★①「当前层」必须是**夹具给的**（`#117` 折单①）
+	 *   病灶：三夹具原先**只**给 `$babelRun.deepest`，✗ 给 `$mapCurrent` ⇒ `setup.BABEL.layerOf()`
+	 *   （读 `map.current`）拿到的仍是**上一场留下的位置**（或 null）⇒ `fight()` 一开头
+	 *   `const layer = setup.BABEL.layerOf(); if (!layer) return R.perform('这里没有可遭遇的东西。')`
+	 *   ⇒ **早退**、根本不抽遭遇 ⇒ 「战斗三终点」的场景**跑了一场空的**
+	 *   （`tester-4` 实跑 `deaths 0/0/0` 正是这个早退产物，✗ 真读数）。
+	 *   ⇒ 键名**现读确认**（✗ 凭记忆）：`src/core/60-map.js` 的 `current` getter 读
+	 *     `State.variables[this._stateKey()]` ＝ **`$mapCurrent`**。★且 `set current` **不写档**
+	 *     （写点单点＝`moveTo`）⇒ 夹具只能给**状态变量** `mapCurrent`，✗ 给实例字段。
+	 *   ⚠ 其它夹具（F3/F4 等）**不动** —— 它们不跑战斗。
+	 *
+	 * ## ★★★①′ 键名**不是** `mapCurrent`（本席首版即栽此 ⇒ 病灶复发一次，记之）
+	 *   `WorldMap._stateKey()` 是**依图 id 生成**的：`!this.id || this.id === 'world' ? 'mapCurrent' : \`mapCurrent_${this.id}\``。
+	 *   本图 `setup.BABEL.map.id === 'babel'` ⇒ 真键是 **`mapCurrent_babel`**。
+	 *   ⇒ 本席首版按记忆写 `mapCurrent: 'L11'` ⇒ `map.current` **仍为 null** ⇒ `layerOf()` null
+	 *     ⇒ 三态**全部走早退** —— 与「不修」同效（★这就是「键名现读确认，✗ 凭记忆名」的字面实例）。
+	 *   ⇒ 折法：键名**现读**自 `map._stateKey()`（✗ 硬编 `_babel` 后缀 —— 图换 id 即失准）。
+	 *
+	 * ## ★②三态分化＝**走玩家侧参数**（✗ 手搓怪物实例）
+	 *   对手由 `RPG.rollEncounter(layer, {count:1})` 抽（层表驱动，**真路径**）——
+	 *   手搓怪物实例会绕开层表 ⇒ 测的就不是产品的抽法了（writer-2 诊断，本席照此）。
+	 *   L11 今日抽到 `fire-beetle`（hp 4／ac 16／咬 2d4+1）。
+	 *
+	 * ## ★★③一个**实跑才暴露的结构事实**（本席读数，✗ 读码）
+	 *   **自动通路（`interactive:false`）的玩家若空手 ⇒ 永不出手。**
+	 *   `BattleTurn.execute()` 第一行是 `const weapon = attacker.contains(['weapon','equipped'])`，
+	 *   为 `null` ⇒ 直接 `return { status:'rejected', reason:'no-weapon' }`。
+	 *   而 `#1854` 的**空手打击**只在**交互**通路（`buildPlayerOptions` ⇒ `#playerAction`）里出现
+	 *   ⇒ 无头场景（`{interactive:false}`）里，空手玩家**打不动任何东西**（实测：`foe.hp` 恒不变）。
+	 *   ⇒ 故「可胜／久战」两态**须给一件装备的武器**（那是**玩家侧参数**，✗ 手搓怪）——本席实测：
+	 * ```
+	 *   ⚠ RNG **未播种** ⇒ 单次读数不可作准；本席按 **100 次**取分布定形：
+	 * ```
+	 *   可胜(club,str20,ac40,hp20)  ⇒ d0/k1 ×100/100
+	 *   久战(club,str1,ac40,hp20)   ⇒ d0/k0 ×100/100   ← str1⇒atk −5 恒不中；ac40⇒甲虫亦不中 ⇒ 8 回合上限
+	 *   必败(hp1,空手,**ac12**)      ⇒ d1/k0 ×99／d0/k0 ×1   ← ★**1% 尾失**（甲虫 8 回合全失手）⇒ 不采
+	 *   必败(hp1,空手,**ac0**)       ⇒ d1/k0 ×100/100  ← ★采此：**防御为零 ⇒ 必挨打** ⇒ 确定
+	 * ```
+	 *   ★两条实测教训（正是「须实测成立」的意思，✗ 读码投影）：
+	 *     · 「必败」**给 club** ⇒ 实测 `d0/k1` 15/100 ⇒ **不是稳定必败**（甲虫 hp 4、`club` 1d6+1 一击即破）
+	 *       ⇒ 故**空手**（自动通路无武器 ⇒ 不出手，与 `verify.mjs:211` 的既有注同形）。
+	 *     · 「必败」**ac12** ⇒ 有 **1% 尾失**（甲虫 8 回合全失手概率 ≈ 0.5⁸）⇒ 改 **ac 0** 消掉该尾。
+	 *   ⚠ 「可胜」的 `kills=1` 是 100/100，但**断言只查 `deaths`**（0）⇒ 即使玩家 8 回合全失手也只是
+	 *     `d0/k0`（平局）⇒ `deaths=0` **恒成立** ⇒ 该断言对 RNG **稳**。 */
+	/** ★当前层的**状态键名** —— **现读**自 `WorldMap._stateKey()`（✗ 硬编）：
+	 *   本图 `id='babel'` ⇒ **`mapCurrent_babel`**（✗ `mapCurrent` —— 那只对 `id` 空/'world' 的图）。 */
+	const 层键 = () => setup.BABEL?.map?._stateKey?.() ?? 'mapCurrent';
+	const 战斗态 = (over = {}) => 态(Object.assign({
+		[层键()]: 'L11',                         // ★当前层（`map.current` 的 State 源）
 		babelRun: 默认局({ deepest: 'L11' }),
-		player: 默认玩家({ hp: 20, maxHp: 20 }),
+	}, over));
+	/** 一件**已装备**的武器快照（`contains(['weapon','equipped'])` 要求两者皆真）。 */
+	const 武器件 = (id) => ({ id, charges: null, equipped: true });
+	/* 可胜：**有武器 ＋ 高力 ＋ 高防** ⇒ 一击破 4hp；甲虫 ac 打不穿 ⇒ d0/k1 */
+	S.registerFixture('战斗态·可胜', () => 战斗态({
+		player: 默认玩家({ hp: 20, maxHp: 20, stats: setup.DND3.stats({ ac: 40, str: 20, dex: 12, heal_bonus: 0 }) }),
+		inventory: [武器件('club')],
 	}));
-	S.registerFixture('战斗态·必败', () => 态({
-		babelRun: 默认局({ deepest: 'L11' }),
-		player: 默认玩家({ hp: 1, maxHp: 20 }),
+	/* 必败：**1 血 ＋ 空手**（自动通路无武器 ⇒ 不出手）⇒ 挨一下即倒 ⇒ d1/k0 */
+	S.registerFixture('战斗态·必败', () => 战斗态({
+		/* ★ac **0**（✗ 默认 12）：默认 ac 下甲虫有 ≈0.5⁸ 的概率 8 回合全失手 ⇒ 实测 **1% 尾失**；
+		 *   防御为零 ⇒ **必挨打** ⇒ 100/100 确定。 */
+		player: 默认玩家({ hp: 1, maxHp: 20, stats: setup.DND3.stats({ ac: 0, str: 12, dex: 12, heal_bonus: 0 }) }),
 	}));
-	S.registerFixture('战斗态·久战不决', () => 态({
-		babelRun: 默认局({ deepest: 'L11' }),
-		player: 默认玩家({ hp: 20, maxHp: 20 }),
+	/* 久战不决：**有武器但极低力（atk −5 恒不中）＋ 高防（甲虫亦不中）** ⇒ 8 回合上限 ⇒ d0/k0 */
+	S.registerFixture('战斗态·久战不决', () => 战斗态({
+		player: 默认玩家({ hp: 20, maxHp: 20, stats: setup.DND3.stats({ ac: 40, str: 1, dex: 12, heal_bonus: 0 }) }),
+		inventory: [武器件('club')],
 	}));
-
 	/* F8 持草药×1 且 HP 未满 */
 	S.registerFixture('持草药×1 且 HP 未满', () => 态({
 		player: 默认玩家({ hp: 12, maxHp: 20 }),
