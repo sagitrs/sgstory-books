@@ -20,6 +20,7 @@ echo "=== 刀（须红且红在对的支）==="
 knife "K1 行号越界"  "d['场景'][0]['备注']+='　\`src/core/70-ui.js:99999\`（\`esc\`）'" "行号越界"
 knife "K2 符号不符"  "d['场景'][0]['备注']+='　\`src/core/70-ui.js:69\`（\`绝无此符号xyz\`）'" "不含**其声明的符号"
 knife "K3 路径不存在" "d['场景'][0]['备注']+='　\`src/core/no-such-file.js:1\`（\`x\`）'" "文件不存在"
+knife "K6 ★对象形内引用须被扫到" "d['场景'][0]['断言']['逻辑']={'说明':'　\`src/core/70-ui.js:99999\`（\`esc\`）'}" "行号越界"
 knife "K4 引用有歧义" "d['场景'][0]['备注']+='　\`README.md:1\`（\`x\`）'" "引用有歧义"
 knife "K5 散文形引用" "d['场景'][0]['备注']+='　\`src/core/70-ui.js\` 第 69 行'" "散文形"
 echo "=== 引擎缺失（须 rc=2 具名，✗ 静默跳过）==="
@@ -28,4 +29,15 @@ echo "$out" | grep -qF "引擎检出不存在" && { echo "  ✓ rc=$rc 具名"; 
 echo "=== 复原（原件须绿）==="
 cp "$B" "$J"; out=$(node tools/check-refs.mjs --engine "$ENGINE" 2>&1); rc=$?
 [ $rc -eq 0 ] && { echo "  ✓ 复原 rc=0"; pass=$((pass+1)); } || { echo "  ✗ 复原 rc=$rc"; echo "$out" | tail -3; fail=$((fail+1)); }
+echo "=== ★独立复算器对账（`#117` 折单：本笔此面须 rc=0）==="
+# ★为何在本脚本里守它：`check-refs.mjs` 的抽取面（`rawOf`）与复算器**各自实现** ⇒
+#   两者一旦分叉就是「判据面覆盖差」（`dev-10` 铁证：`断言.逻辑` 转对象形后 门 43 ／ 复算器 46）。
+#   ⚠ 该复算器**不在 CI**（`trial.yml` 无它）⇒ 本地刀是它唯一常跑的看护面；
+#     纳入 CI 须 T 席批准改 workflow ⇒ ✗ 本笔擅自加。
+out=$(node tools/check-refs-recheck.mjs --engine "$ENGINE" --compare 2>&1); rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -qF "复算：与 check-refs.mjs 一致"; then
+  echo "  ✓ --compare rc=0（抽取面与复算器一致）"; pass=$((pass+1));
+else
+  echo "  ✗ --compare rc=$rc（抽取面分叉 ⇒ 判据面覆盖差）"; echo "$out" | tail -4; fail=$((fail+1));
+fi
 rm -f "$B"; echo "  ── 通过 $pass｜失败 $fail"; exit $((fail>0))

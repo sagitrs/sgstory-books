@@ -111,7 +111,37 @@ const PROSE = /`([\w./-]+\.(?:js|mjs|twee|json|md|html))`\s*第\s*(\d+)\s*行/g;
 const SYM = /（`([^`]{2,80})`）/;   // 紧随引用之后的**显式符号声明**
 
 const FIELDS = ['断言', '备注', '守的面', '构造', '动作'];
-const rawOf = (r, field) => (field === '断言' ? Object.values(r['断言'] ?? {}).join('\n') : String(r[field] ?? ''));
+/**
+ * 取某字段的**可扫文本**（供 `CIT` 正则抽引用）。
+ *
+ * ★★`#117` 折单（`dev-10` D RC 铁证）：**须递归取「字符串叶子」，✗ 用 `Object.values().join('\n')`**。
+ *
+ * 病灶：旧形对 `断言` 用 `Object.values(断言).join('\n')` —— 而 `JS` 的 `join` 会把**对象叶子**
+ *   转成字符串 `"[object Object]"` ⇒ ★**对象内部的引用整片进不了扫描**。
+ *   本笔把 `断言.逻辑` 由**散文串**改成**对象形**（`{说明, 步骤, 存档}`）⇒ `:102` 三处实指**当场从扫描面消失**：
+ * ```
+ *   门（check-refs.mjs）见 43 处 ｜ 递归取叶子 = 46 处 ⇒ **差 3**（正是 `逻辑.说明` 里的三条 `:102`）
+ *   同仓独立复算器 check-refs-recheck.mjs --compare：**本头 rc=1**（它 35／我 38 ★覆盖差）｜**main rc=0**
+ * ```
+ *   ⇒ ★这是**预存盲区**（`join` 一直在那里）被**首个对象形**触发 ⇒ 覆盖**净减由本笔引入**（✗ 凭空冒出）。
+ *   ⚠ 未修则**甲案对象形只会更多** ⇒ 此后每笔都在**无声打折**（引用核看不见新写的引用）。
+ *
+ * 折法：**递归取字符串叶子**（`string` ⇒ 收；`array`／`object` ⇒ 下钻）＋ `join('\n')`。
+ *   ⇒ 对**散文串**字段（`备注`／`动作`…）行为逐字不变（`typeof v === 'string'` 直返）⇒ 无回归。
+ */
+const rawOf = (r, field) => {
+	const v = r[field];
+	if (v == null) return '';
+	if (typeof v === 'string') return v;
+	const out = [];
+	const walk = (x) => {
+		if (typeof x === 'string') out.push(x);
+		else if (Array.isArray(x)) x.forEach(walk);
+		else if (x != null && typeof x === 'object') Object.values(x).forEach(walk);
+	};
+	walk(v);
+	return out.join('\n');
+};
 
 let 处 = 0, 符号核 = 0, 仅范围核 = 0;
 for (const r of 场景) {
