@@ -100,6 +100,51 @@ const commitNode = (layerId, holder) => {
 	return slot;
 };
 
+/* ---------- L5+ 选择制：**每层一次**抽签（`books#133` 笔 1）----------
+ * 设计稿（`#132` 的 `writer` 稿）§3.2：抽签必须「**每层一次、结果入档**」——
+ *   若每次重绘都抽 ⇒ 玩家**每点一下**（乃至每次进层）都换选项，且**读档后变样**（那正是 bug）。
+ * ⇒ 本局账 `$span1Events`＝`{ 层 id: { 抽中: [类,类], 已用: 类|null } }`：
+ *   · **只在该层首次进入时抽**（`ensureDraw`，由 `onEnter` 调；`??=` ⇒ 只抽一次）
+ *   · 随机一律走 **`RPG.rng`**（全仓唯一随机入口）⇒ 判据与刀可 `set()`／`setSequence()` 定值
+ *     ⇒ 「同随机源 ⇒ 同结果」可**机械复现**（✗ 靠“看起来随机”目测）
+ *   · ⚠ 故事侧裸键**不进** `envelope().domains`（`#116` 披露过的审计缺口）⇒ 本键**同笔登记**
+ *     （见文件尾部 `登记域` 的键表）
+ *
+ * ★池子定形（`writer` 稿 §1 的**推荐案甲**）：三个**正向类**取二（宝箱／采集／第二场战斗）。
+ *   陷阱**不入池**（「抽到灾祸」不该是一个可以点的按钮 ⇒ 那是**死格**）
+ *   ⇒ 陷阱作为「层危害」落到笔 2（与工具耐久同笔——拆解要用工具）。
+ *   ⚠ 本池是**一处常量**（`EVENT_KINDS`）：若领队裁乙或丙，只改这一行 ＋ 笔 2 的处置动作，机制件不动。 */
+const EVENT_KINDS = Object.freeze(['chest', 'gather', 'battle']);
+/** 本局事件账（**只读**，✗ 在此抽：守卫函数（`when`）不得有抽签副作用 —— 那会让「看一眼」就抽）。 */
+const eventsOf = () => (State.variables.span1Events ??= {});
+/** 抽二（**不放回**，走 `RPG.rng.index`）：**同随机源 ⇒ 同结果**；池不足二 ⇒ 显式报错（✗ 静默少抽）。 */
+const drawTwo = (pool = EVENT_KINDS) => {
+	if (!Array.isArray(pool) || pool.length < 2) {
+		throw new Error(`[babel] 抽签池不足二（实得 ${Array.isArray(pool) ? pool.length : typeof pool}）`);
+	}
+	const rest = pool.slice();
+	const first = rest.splice(RPG.rng.index(rest.length), 1)[0];
+	const second = rest.splice(RPG.rng.index(rest.length), 1)[0];
+	return { 抽中: [first, second], 已用: null };
+};
+/** 该层**首次进入**时抽一次并登记入档；已有则**原样返回**（幂等，✗ 重抽）。
+ *  @returns 该层的事件账（`{抽中,已用}`） */
+const ensureDraw = (layerId) => {
+	const bag = eventsOf();
+	return (bag[layerId] ??= drawTwo());
+};
+/** 择一：记下用了哪一类（`已用` 非空 ⇒ 同一层的另一个选项 `when` 变假 ⇒ 两个按钮一起退场）。 */
+const markUsed = (layerId, kind) => {
+	const e = ensureDraw(layerId);
+	e.已用 = kind;
+	return e;
+};
+/** 守卫读数：该层抽中 `kind` 且**尚未用过任何一类**（✗ 在此抽签——见 `eventsOf` 的说明）。 */
+const eventPending = (layerId, kind) => {
+	const e = eventsOf()[layerId];
+	return !!e && e.已用 === null && e.抽中.includes(kind);
+};
+
 /**
  * 「层地点」的**唯一构造形**（一段与二段**共用** —— `babel2.js` 经 `setup.BABEL.makeLayerLocation` 复用）。
  * 三件事：① 采集点**发放**（`#1776` 明确「采集点须先在背包里」，投放归本集成票）
@@ -115,6 +160,9 @@ const makeLayerLocation = (L) => new R.Location({
 		/* ★`#135` ②a：**max** 语义（✗ 无条件赋值 —— 从 L20 退回 L19 会把「最深」写小；
 		 *   `babel2.js:147` 确有该回边）。层号由 id 取（`L19`／`L20-forge` 皆可）⇒ ✗ 字符串直比。 */
 		if (r && Number(String(L.id).match(/L(\d+)/)?.[1] ?? 0) > Number(String((r.deepest ?? '')).match(/L(\d+)/)?.[1] ?? 0)) r.deepest = L.id;
+		/* ★`books#133` 笔 1：**首次进入该层 ⇒ 抽一次**（幂等：已有则原样返回，✗ 重抽）。
+		 *   位置就在「进层即记 deepest」同一钩子里（设计稿 §3.2：同处扩展）。 */
+		ensureDraw(L.id);
 	},
 	actions: [
 		/* ★`#116`：**单一采集动作**（✗ 原两段式「先翻找（发进背包）⇒ 再对背包里的节点采」）——
@@ -369,6 +417,8 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	nodeAt,
 	commitNode,
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
+	/* ★`books#133` 笔 1：选择制的机器件导出（同 `登记域` 的理由：判据/刀要能**真调用**，✗ 只能静态核）。 */
+	EVENT_KINDS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
 	makeExploreScene,              // ★`books#136`：读档重注册用（`story/hooks.js` 消费；与下方注册同源）
@@ -384,15 +434,20 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
  *   故旧的 `try/catch` 对缺席支**永不参与**、那条 `console.warn` 是死支（声明与实现不符）。
  *   现形：`typeof` 显式判 ⇒ 缺席支**真的出声**。函数挂在 `setup.BABEL.登记域` 上 ⇒ **可被调用**（刀用）。 */
 const 登记域 = () => {
+	/* ★键表**一处定义**（`books#133` 笔 1 加 `span1Events`）：新键加在这里，✗ 再写一段登记代码。 */
+	const keys = ['span1Arc', 'span1Events'];
 	if (typeof R.save?.declareDomain !== 'function') {
-		console.warn('[BABEL] 保存域登记口缺席：span1Arc 未登记（候 `sgstory#1903` 的 `RPG.save.declareDomain`）');
+		console.warn(`[BABEL] 保存域登记口缺席：${keys.join('／')} 未登记（候 \`sgstory#1903\` 的 \`RPG.save.declareDomain\`）`);
 		return false;
 	}
-	if (!R.save.declareDomain('span1Arc', 'byPack')) {
-		console.warn('[BABEL] span1Arc 未登记：与内置键同名或已登记过（引擎返回 false）');
-		return false;
+	let all = true;
+	for (const k of keys) {
+		if (!R.save.declareDomain(k, 'byPack')) {
+			console.warn(`[BABEL] ${k} 未登记：与内置键同名或已登记过（引擎返回 false）`);
+			all = false;
+		}
 	}
-	return true;
+	return all;
 };
 登记域();
 setup.BABEL.登记域 = 登记域;   // ★导出以便判据可**真调用**（✗ 只能静态核）
