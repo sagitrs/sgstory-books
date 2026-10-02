@@ -56,9 +56,9 @@
      成品面＝有装备槽（`iron-lineage.js:33` `slot:'weapon'` 等）⇒ 加 `s.slot`（原料无槽）。 -->
 <!-- ★`#135` ②b（RC 修）：**判据层错**在先 —— 背包条目形={id,charges,equipped}，`slot` 只在**定义**上
      ⇒ `s.slot` 恒 undefined ⇒ 铁器计数**恒 0**（比原缺陷更糟且玩家可见）。
-     正解：过引擎自己的取数口 `RPG.reviveItem(s)`（`equippedIn` 同源，见 `30-inventory.js:145-146`）
+     正解：过引擎自己的取数口 `setup.RPG.reviveItem(s)`（`equippedIn` 同源，见 `30-inventory.js:145-146`）
      ⇒ 取定义的 `slot`（成品面）；仍保留 `iron-` 前缀以限定「铁」器（✗ 木盾等也带槽）。 -->
-<<set _iron to ($inventory || []).filter(function (s) { return s.id && s.id.indexOf('iron-') === 0 && RPG.reviveItem(s)?.slot; }).length>>
+<<set _iron to ($inventory || []).filter(function (s) { return s.id && s.id.indexOf('iron-') === 0 && setup.RPG.reviveItem(s)?.slot; }).length>>
 你在第 20 层的城墙下站住。头顶那道光对面，是别人的地界 —— 这门现在还不通。
 
 ''这一局你爬了：''
