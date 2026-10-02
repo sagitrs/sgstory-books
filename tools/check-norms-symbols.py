@@ -11,11 +11,14 @@
   · **例外第五类不动**：围栏代码块｜行内反引号｜`>` 引用行｜行内「」『』引号。
   · 机读 token（`[verified]` / `References #N` / 裸 `#N`）在别处**逐字保留**，本器不判它们，只提示票号变化。
 
-用法：
-    python3 tools/check-norms-symbols.py --body <正文档>          # 单篇正文读数
-    python3 tools/check-norms-symbols.py <base树> <new树> [文件…]  # 两树比对（同底版用法）
-    python3 tools/check-norms-symbols.py --selftest               # 判别力自证（本席加）
-退出码：0 全过；1 有残余须人核；2 用法错。
+用法（★本器只做**单篇正文**一路）：
+    python3 tools/check-norms-symbols.py --body <正文档>   # 单篇正文读数
+    python3 tools/check-norms-symbols.py --selftest        # 判别力自证（本席加）
+退出码：0 全过；1 有残余须人核；2 用法错（含「传了两树」）。
+★两树比对请用底版（`gsvector` 仓开发者席的 `check1899v2.py`）。本器**不声称**支持那一
+  路：本席首版曾照底版写了一行两树用法的说法，而实现只读新树、基座树从未读入 ⇒ 那是一句
+  **可证伪的声明**（评审实测：把基座换成两棵内容截然不同的树，读数不变）。撤掉该路并让它
+  **如实报错**，比留着一句做不到的用法更诚实。
 """
 import re
 import sys
@@ -144,21 +147,11 @@ def main():
         print(f'【读数】须清零 {clear}（应为 0）')
         return 1 if clear else 0
     if len(args) >= 2:
-        # 两树比对：委托同族底版逻辑（此处只做读数汇总，细则见底版）
-        base, new = pathlib.Path(args[0]), pathlib.Path(args[1])
-        files = args[2:] or [str(p.relative_to(new)) for p in sorted(new.rglob('*.md'))]
-        hard = 0
-        for f in files:
-            pn = new / f
-            if not pn.exists():
-                print(f'  ✗ {f}: 新档不存在')
-                hard += 1
-                continue
-            keep, clear, _ = body_counts(pn.read_text(encoding='utf-8'))
-            print(f'── {f}\n   判定面勾叉 {keep}（保留）｜ 须清零符号 {clear}（须 0）')
-            hard += 1 if clear else 0
-        print(f'\n【硬项】{hard}')
-        return 1 if hard else 0
+        print('✗ 本器不支持「两树比对」这一路（只做单篇正文读数）。')
+        print('  两树比对请用底版：gsvector 仓开发者席的 check1899v2.py。')
+        print('  本席首版曾照底版写下一行两树用法的说法，而实现从未读入基座树 ⇒ 那是一句可证伪的声明。')
+        print('  本器现按「做不到就如实报错」处理，退出码为 2。')
+        return 2
     print(__doc__)
     return 2
 
