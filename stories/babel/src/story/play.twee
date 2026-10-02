@@ -52,7 +52,9 @@
 
 :: 试玩终点
 <<set _r to $babelRun>>
-<<set _iron to ($inventory || []).filter(function (s) { return s.id && s.id.indexOf('iron-') === 0; }).length>>
+<!-- ★`#135` ②b：铁矿（原料）与铁器（成品）**同前缀** `iron-` ⇒ 前缀独判会把 `iron-ore` 计成铁器。
+     成品面＝有装备槽（`iron-lineage.js:33` `slot:'weapon'` 等）⇒ 加 `s.slot`（原料无槽）。 -->
+<<set _iron to ($inventory || []).filter(function (s) { return s.id && s.slot && s.id.indexOf('iron-') === 0; }).length>>
 你在第 20 层的城墙下站住。头顶那道光对面，是别人的地界 —— 这门现在还不通。
 
 ''这一局你爬了：''

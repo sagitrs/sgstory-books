@@ -119,8 +119,11 @@ map.addLocation(new R.Location({
 	actions: [
 		/* N-2（dev-9）：换装要有 `perform` —— 盾占同一槽（`slot:'shield'`）⇒ 换装是**互斥切槽**，
 		 *   玩家若不被告知，会以为「新盾没拿到」。 */
-		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); R.perform('你把小圆盾扣在左臂上。'); } },
-		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); R.perform('你换下旧的，扛起一面重木盾 —— 沉，但挡得住。'); } },
+		/* ★`#135` ③：`slotEquip` 同槽被占即**拒绝**（`src/core/30-inventory.js:110-124`），旧 action 却
+		 *   **无视返回值**无条件印「你换下旧的…」⇒ 玩家同时看到两句相反的话。修法＝文案与**实际结果同源**：
+		 *   读 `equippedIn('shield')`（返回**对象** ⇒ 比 `.id`）⇒ 印「换成了」或「收进背包（槽被占）」✓ */
+		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); R.perform(RPG.equippedIn('shield')?.id === 'buckler' ? '你把小圆盾扣在左臂上。' : '小圆盾收进了背包 —— 盾槽被占着，先卸下旧的再换。'); } },
+		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); R.perform(RPG.equippedIn('shield')?.id === 'heavy-wooden-shield' ? '你换下旧的，扛起一面重木盾。' : '重木盾收进了背包 —— 盾槽被占着，先卸下旧的再换。'); } },
 	],
 }));
 map.addLocation(new R.Location({
@@ -150,6 +153,10 @@ map.addPath({ from: 'L20-settlement', to: 'L20-armory', text: '去军械堆' });
 map.addPath({ from: 'L20-armory', to: 'L20-settlement', text: '回料场' });
 map.addPath({ from: 'L20-settlement', to: 'L20-stable', text: '去马厩' });
 map.addPath({ from: 'L20-stable', to: 'L20-settlement', text: '回料场' });
+/* ★`#135` ①（dev-10 预研）：补 **料场 → 炉边** 回边 —— 引擎 hub 两条边皆**单向**
+ *   （`src/dnd/dnd3/scenes/span2-hub.js:115-116`：炉边→料场→石门）⇒ 领图后回不了炉边锻造
+ *   （README 承诺链路断）。加在**故事侧**（✗ 改引擎）✓ */
+map.addPath({ from: 'L20-settlement', to: 'L20-forge', text: '回炉边' });
 /* ★ `span2GateExit()`（20→21）**只定义不挂图**——`L21` 属三段。下行的「定义存在」断言在 verify.mjs §③。 */
 
 /* ---------- 收尾：终点评语（试玩版到 L20-gate 为止）---------- */
