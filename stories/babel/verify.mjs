@@ -642,10 +642,14 @@ head('⑯ 试玩终点（① 结算模板串 ＋ ② 真重开）');
 	const bad = [...playTwee.matchAll(/\$_\w+\./g)].map((m) => m[0]);
 	ok(bad.length === 0, `★\`play.twee\` 里有 \`$\` 前缀的临时变量引用（会向玩家**印出模板串**）：${bad.join('、')}`);
 	ok(playTwee.includes('_r.deepest') && playTwee.includes('_r.gathered'), '★结算屏的读数引用不见了（`_r.deepest`／`_r.gathered`）');
-	/* ② 终点链须**真重开**：断「调到 `Engine.restart()`」，✗ 断「段落是『开始』」（后者状态全留）。 */
-	const term = playTwee.slice(playTwee.indexOf(':: 试玩终点'));
+	/* ② 终点链须**真重开**：断「调到 `Engine.restart()`」，✗ 断「段落是『开始』」（后者状态全留）。
+	 * ★★**须先剥注释再断**（`dev-10` RC · `#131`）：本段上方的说明性注释里**就有** `Engine.restart()` 这串
+	 *   ⇒ 直接断子串会被**注释满足**（旧形 `term.includes('Engine.restart()')` ⇒ 把链改回段落跳转也**仍绿**）。
+	 *   ⇒ 两向都收紧：① 判据只核**代码**（**剥块注释**）② 断言**调用形** `<<run Engine.restart()>>`（✗ 松散子串）。
+	 *   ⚠ 本条注释**不得**写出块注释的**结束定界符** —— 本席首版在此写了字面量 ⇒ **提前终结注释** ⇒ 整档 `SyntaxError`（讽刺地正属本格要防的「注释/代码混淆」族）。 */
+	const term = playTwee.slice(playTwee.indexOf(':: 试玩终点')).replace(/\/\*[\s\S]*?\*\//g, '');
 	ok(!/\[\[再爬一次[^\]]*\]\]/.test(term), '★终点链仍是**段落跳转**形（`[[…|开始]]`）⇒ 背包/位置/状态全留，「新一局」不成立');
-	ok(term.includes('Engine.restart()'), '★终点链没有调 `Engine.restart()`（`≈books#130` ②：须真重开）');
+	ok(term.includes('<<run Engine.restart()>>'), '★终点链没有调 `Engine.restart()`（`≈books#130` ②：须真重开；断的是**调用形**，✗ 松散子串）');
 	console.log(`  结算屏：\`$\`前缀误用 ${bad.length} 处 ✓｜终点链调用 Engine.restart() ✓（真重开，✗ 段落跳转）`);
 }
 
