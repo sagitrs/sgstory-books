@@ -39,6 +39,11 @@ const baselinePath = path.join(here, 'not-judged-baseline.json');
 const argOf = (name) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
 const has = (f) => process.argv.includes(f);
 const dumpFactArg = process.argv.find((a) => a === '--dump-facts' || a.startsWith('--dump-facts='));
+/** ★`--dump-facts` 的判定须**同时认**裸形与 `=<面>` 形 —— ✗ 用 `has()`（它是**全等**匹配）：
+ *   `has('--dump-facts')` 对 `--dump-facts=locations` 为 **false** ⇒ 第 0 步横幅混进 stdout、
+ *   且 rc 语义走错路。★本席实测踩过（裸形绿、`=<面>` 形髒）。
+ *   ⇒ 单一判定源在此，两处（stdout 纯化与导出分支）共用。 */
+const hasDumpFacts = () => dumpFactArg !== undefined;
 export const FACES = {
 	locations:      { desc: '入口态落地点 id（`map.locations` 的键）',      values: (f) => f.locations },
 	engineFixtures: { desc: '引擎侧夹具名（`RPG.__scenario.fixtures` 的键）', values: (f) => f.engineFixtures },
@@ -153,6 +158,13 @@ export const judgeScenarios = (scenarios, facts) => {
 		} else if (acts.length) {
 			note('actionUnresolved', `[${id}] 动作 ${acts.length} 条：入口态未落地 ⇒ 无法核「是否为该处真实入口」`);
 		}
+		/* ★`步骤`（流程级，`#1814` (a)）：✗ 进「是否为该处真实入口」判（流程面 ✗ 地点面）—— 但**进明账**
+		 *   ⇒ 有字段而空 ⇒ 出声；有内容 ⇒ 记「本轮不判」⇒ 未判面**可见**（✗ 静默吞面）。 */
+		const 步骤 = Array.isArray(sc?.['步骤']) ? sc['步骤'] : null;
+		if (步骤 !== null) {
+			if (步骤.length === 0) note('stepEmpty', `[${id}] 有 \`步骤\` 字段但**为空** ⇒ 流程面无内容`);
+			else note('stepUnjudged', `[${id}] 步骤 ${步骤.length} 条（流程级）⇒ 本轮**不判**`);
+		}
 		/* ③ 渲染面：点名的面板须已注册且打得出来（串级结构断言的前提） */
 		const refd = panelRefs(sc?.['断言']?.['渲染']);
 		for (const p of refd) {
@@ -261,6 +273,11 @@ const load = (f) => eval(fs.readFileSync(f, 'utf8'));
 /* ---------- 第 0 步：**先跑 `validate.mjs`**（清单不合形 ⇒ 场景链不该开跑）----------
  *   ★用**子进程**（✗ import）：validate 自带 `--selftest` 与 `process.exit`；
  *     同进程调用会污染本进程的退出码与收集器。此处只要它的**裁决**。 */
+/* ★`--dump-facts` 是**只读测量口** ⇒ 跳过本步：它的 stdout 必须是**纯读数**
+ *   （✗ 让消费者还去 `grep -v` 剔横幅；也✗ 让一个「只读导出」因清单不合形而拒出）。
+ *   ⚠ 判据用 `hasDumpFacts()`（认 `=<面>` 形），✗ `has('--dump-facts')` —— 后者对 `=<面>` 形为 false
+ *   ⇒ 横幅会漏进 stdout（本席实测：`--dump-facts=locations` 的前 2 行是横幅）。 */
+if (!hasDumpFacts()) {
 console.log('─ 第 0 步：场景清单自检（validate.mjs）');
 let vOut = '';
 try {
@@ -275,6 +292,7 @@ try {
 	 *   把读者引向「恒绿门」而**真正的因**是「清单不合形」。归因错 ⇒ 排查方向错。 */
 	printSummary('✗ 场景链失败 1 条\n  ✗ ★清单自检（validate.mjs）未通过 ⇒ 场景链未开跑（先修清单）');
 }
+}   /* ← `if (!hasDumpFacts())` 的闭合：只读测量口跳过第 0 步（横幅 ✗ 进 stdout） */
 
 /* ---------- 环境（**镜像** `stories/babel/verify.mjs` ＝ 镜像 `tests/unit/headless.mjs`）----------
  *   ⚠ `window` 必须在**装载任何引擎件之前**挂上：`bundle.js` 顶层即取 `window`／`document`
@@ -527,6 +545,56 @@ if (has('--selftest')) {
 	/* ★哨兵置位 ⇒ **剔除** K24／K25（✗ 让它们返回假值 —— 那会让子进程 20/21、父进程 k24 看到 rc=1）。
 	 *   剔除后子进程跑 19 把、正常 rc=0；而 K25 的三个子进程各自走自己的硬错路（在到达刀表之前就退）。 */
 		.filter((k) => !(process.env.SCENARIO_SELFTEST_CHILD === '1' && /^K2[45]/.test(k[0])));
+	knives.push(
+		/* ── `--dump-facts`（只读测量口，`#103`）：纯函数刀 ＋ 一把**真子进程**整合刀 ──
+		 *   ★本组复归自 `#103` 那一笔（其 sha `65d5d2f` ✗ 是 main 祖先 —— main 走的是 `e4079bc`
+		 *   同内容版，其刀号 K16–K20 ↔ main 的 K21–K25），故按**本件现有结构**重接，✗ 照抄旧行号。 */
+		['K16 `formatFacts`：每面出行头 + **逐项一行**，且 **count 与实际行数一致**',
+			[null, null], () => {
+				const { lines, bad } = formatFacts({ locations: new Set(['B', 'A']), engineFixtures: new Set(['启始']), panels: new Set(['hp']) }, ['locations']);
+				return bad.length === 0 && lines[0] === '#FACTS locations count=2' && lines.slice(1).join(',') === 'A,B';
+			}],
+		['K17 ★**空面**也须出 `count=0` 行头（✗ 让「没有」与「没跑」同形 —— 本仓老失效形）',
+			[null, null], () => formatFacts({ locations: new Set() }, ['locations']).lines.join('|') === '#FACTS locations count=0'],
+		['K18 只导**点名**的面（✗ 顺带全导 ⇒ 消费者解析面被污染）',
+			[null, null], () => {
+				const { lines } = formatFacts({ locations: new Set(['A']), panels: new Set(['hp']) }, ['panels']);
+				return lines.includes('#FACTS panels count=1') && !lines.some((l) => l.includes('locations'));
+			}],
+		['K19 ★未知面 ⇒ 进 `bad`（调用方须 rc=2，✗ 静默导空）',
+			[null, null], () => formatFacts({ locations: new Set(['A']) }, ['locations', 'nosuch']).bad.join(',') === 'nosuch'],
+		['K20 ★**真子进程**整合：裸形与 `=<面>` 形**都** rc=0 ｜ stdout 纯读数（★总行数守恒）｜ locations **非空**',
+			[null, null], () => {
+				const eng = argOf('--engine');
+				/* ★**三种形都要测** —— 实测踩过：守卫只看裸形时，`=<面>` 形的第 0 步横幅会混进 stdout。 */
+				const forms = [['--dump-facts', 3], ['--dump-facts=locations', 1], ['--dump-facts=panels', 1]];
+				return forms.every(([flag, wantHeads]) => {
+					const out = execFileSync(process.execPath, [import.meta.filename, flag, ...(eng ? ['--engine', eng] : [])], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+					const ls = out.trim().split('\n');
+					const heads = ls.filter((l) => l.startsWith('#FACTS '));
+					if (heads.length !== wantHeads) return false;
+					/* ★**总行数守恒**（✗ 只逐面 span）：混入的非读数行若落在**首个行头之前**
+					 *   ⇒ 逐面 span **看不出来**（实测：加回横幅后只逐面判仍绿 ⇒ 假绿）。 */
+					const sum = heads.reduce((a, h) => a + Number(h.split('count=')[1]), 0);
+					if (ls.length !== heads.length + sum) return false;
+					/* ★**非空下限**：凡含 locations 的面就须 > 0（展开为空却全绿是本仓老失效形）。 */
+					const loc = heads.find((h) => h.startsWith('#FACTS locations '));
+					return !loc || Number(loc.split('count=')[1]) > 0;
+				});
+			}],
+		/* ── `步骤`（流程级，`#1814` (a)）：三格（★派单 B）──
+		 *   ✗ 回退到「插进 `else if (acts.length)` 内」的**旧错形** —— 那会让步骤面只在
+		 *   「入口态未落地」时才跑 ＝ **静默半守卫**（本笔首版即此形，已移到**行级**）。 */
+		['K26 ★`步骤: []` ⇒ `stepEmpty` **出声**（明账可见，✗ 静默吞面）',
+			[F, mk({ 步骤: [] })], (r) => r.kinds.stepEmpty === 1 && r.notJudged.some((m) => m.includes('但**为空**'))],
+		['K27 ★`步骤: [a,b]` ⇒ **两条各记一次**（`notJudged` 有 2 条该面文案，✗ 合并成一条）',
+			[F, mk({ 步骤: ['探索（进图）', '段落「遭遇战」'] })],
+			(r) => r.notJudged.filter((m) => /步骤 2 条（流程级）/.test(m)).length === 1
+				&& r.notJudged.filter((m) => /步骤/.test(m)).length === 1
+				&& r.kinds.stepUnjudged === 1],
+		['K28 ★**无** `步骤` 字段 ⇒ 两者都**不出**（✗ 无字段也记明账 —— 那会把第三方场景污染）',
+			[F, mk({})], (r) => r.kinds.stepEmpty == null && r.kinds.stepUnjudged == null],
+	);
 	let n = 0;
 	for (const [name, args, ok] of knives) {
 		const r = args[0] == null ? null : judgeScenarios([args[1]], args[0]);   // ★判据吃**数组**（一条场景也要包）
