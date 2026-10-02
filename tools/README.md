@@ -3,6 +3,21 @@
 ★本件是**根下索引件**（顶层 README 的 `测试工具根：tools/` 由此**一步到达明细**）。
 每条按 `tester.md`「工具的 README 条目**必载四项**」：**清单**（它是什么）｜**固定命令**（怎么跑，可复制）｜**期望读数**（多少＝绿）｜**设立理由**（为什么有它）。
 
+## 工具清单（路径形 · 机读索引）
+
+> ★本表供**机械校验**读（表格首列的**仓内路径**；见 `tester.md` §5「明细可由根一步到达」与 §10「扫描面」）。
+> 明细见下方各节（每节载四项）。
+
+| 路径 | 一句话用途 |
+|---|---|
+| `tools/check-refs.mjs` | 引用核：清单 ↔ 实存逐引用核 |
+| `tools/check-refs.knives.sh` | 引用核的**正向刀**（每刀须红在对的支） |
+| `tools/check-refs-docs.knives.sh` | docs 报告态的**负向刀** |
+| `tools/check-refs-recheck.mjs` | 引用核的**独立复算器**（第二双眼睛） |
+| `tools/e2e-harness.mjs` | 浏览器 e2e（真 DOM） |
+| `tools/e2e-drive.mjs` | 真产物的**驾驶层** |
+| `tools/rehearse-workflow.py` | 工作流**拆分布局演练** |
+
 ---
 
 ## 1. `check-refs.mjs` —— 引用核（清单 ↔ 实存）
