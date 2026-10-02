@@ -1,4 +1,12 @@
 :: StoryInit
+/* ── 0.0.1 发布件 · sgstory#1877 批次 A（P3-1 ＋ P2-4）──────────────────────────
+ * P3-1（窄屏）：375px 视口下侧栏默认展开会把正文挤成一条 ⇒ 改为**按设备宽度**决定初始收展。
+ *   SugarCube 值域：true（展开）｜false（收起）｜"device-size"（视口 ≤ 800px 时初始收起）。
+ * P2-4（本地化）：引擎自带的**侧栏按钮与系统弹窗**文案取自 `l10nStrings`（英文）
+ *   ⇒ 此处整表覆盖为中文。★只覆盖玩家会看见的键：
+ *     · 不覆盖 `debugBar*`（调试栏，仅在 `Config.debug` 打开时出现）
+ *     · `saveError*` / `warning*` 一并译（**故障通道**：读档失败 / 存档不可用的提示也须可读）
+ *   ⚠ `{textIdentity}` 是引擎占位符（渲染为「回合」或「段落」）⇒ **保留原样**，✗ 不要替换。 */
 /* 试玩版初始化（#1746）。
  *
  * ★ `$player` **必须在这里给全**（`dnd3/player.js` 的 DEFAULTS 只是兜底，且它的 `effects` 字段
@@ -20,3 +28,117 @@
 /* 一段的资源/聚落计数（`#1776` 的 `farmCount()` 读这两个键；此处显式归零，避免 undefined 语义） */
 <<set $span1Farms to 0>>
 <<set $span1Harvests to 0>>
+
+/* ── P3-1：侧栏**初始收展**（窄屏不挤碎正文）────────────────────────────
+ * `sgstory#1877` 原配方：`Config.ui.stowBarInitially = "device-size";`
+ * ★**该配方在本引擎（SugarCube 2.37.3）不可用** —— setter 只接受 **boolean 或非负整数**
+ *   （引擎原文 `must be a boolean or non-negative integer (received: string)`），传字符串会抛
+ *   `TypeError`；而 `<<script>>` 会把它**捕获为「bad evaluation」只记控制台** ⇒ 页面照常 ⇒ **静默失效**。
+ * ★**结案（操作者复测，2026-10-02）**：375px 全新加载**本就默认收起**、布局正常
+ *   —— 「窄屏挤碎」是**桌面加载后缩窗不重载**的序列产物（`UIBar.start()` 只在启动时判一次）。
+ *   ⇒ **本行不是缺陷修复，而是「显式钉住期望值」**：把 P3-1 的意图（窄屏初始收起）落成
+ *     与引擎默认**同值**的显式声明，以免日后改默认／换版本时该意图**无声漂移**。
+ *   判据：`UIBar.start()` 用 `typeof v === 'boolean' ? v : jQuery(window).width() <= v` ⇒ `800` ＝ 「视口 ≤ 800px 时收起」。 */
+<<script>>
+Config.ui.stowBarInitially = 800;
+<</script>>
+
+/* ── P2-4：引擎 UI 文案中文化（侧栏按钮 ＋ 系统弹窗）────────────────────── */
+<<script>>
+Object.assign(l10nStrings, {
+	/* 占位符与通用词（`{textIdentity}` 展开为它 ⇒ 须译，否则侧栏/提示里夹英文） */
+	textIdentity: "游戏",
+	textAbort: "中止",
+	textAborting: "正在中止",
+	textCancel: "取消",
+	textClear: "清除",
+	textClose: "关闭",
+	textDelete: "删除",
+	textExport: "导出",
+	textImport: "导入",
+	textLoad: "载入",
+	textOff: "关",
+	textOk: "确定",
+	textOn: "开",
+	textSave: "保存",
+	textTurn: "回合",
+	macroBackText: "返回",
+	macroReturnText: "返回",
+	/* 侧栏按钮与无障碍标签 */
+	uiBarLabelToggle: "切换侧栏",
+	uiBarLabelBackward: "在当前{textIdentity}历史内后退",
+	uiBarLabelForward: "在当前{textIdentity}历史内前进",
+	uiBarLabelJumpto: "跳到{textIdentity}历史中的指定位置",
+	/* 重新开始／通用提示框 */
+	restartTitle: "重新开始",
+	restartMesgPrompt: "尚未保存的进度会全部丢失。确定要重新开始吗？",
+	continueTitle: "继续",
+	alertTitle: "提示",
+	errorViewTitle: "错误",
+	errorViewLabelToggle: "切换错误视图",
+	errorNonexistentPassage: "段落「{passage}」不存在",
+	/* 自动存档 */
+	autoloadTitle: "自动存档",
+	autoloadMesgPrompt: "有一份自动存档。现在载入，还是从开头重新开始？",
+	autoloadTextOk: "载入自动存档",
+	autoloadTextCancel: "从头开始",
+	/* 存档面板 */
+	savesTitle: "存档",
+	savesHeaderBrowser: "浏览器内",
+	savesHeaderDisk: "磁盘上",
+	savesLabelBrowserClear: "清空全部浏览器存档",
+	savesLabelBrowserExport: "把浏览器存档导出为文件",
+	savesLabelBrowserImport: "从文件导入浏览器存档",
+	savesLabelDiskLoad: "从磁盘载入",
+	savesLabelDiskSave: "存到磁盘",
+	savesTextBrowserAuto: "自动",
+	savesTextBrowserSlot: "槽位",
+	savesTextNoDate: "日期未知",
+	/* 设置／分享／跳转 */
+	settingsTitle: "设置",
+	settingsTextReset: "恢复默认",
+	shareTitle: "分享",
+	jumptoTitle: "跳转",
+	jumptoMesgUnavailable: "当前没有可跳转的位置……",
+	/* 存档故障通道与降级警告 */
+	saveErrorNonexistent: "存档不存在",
+	saveErrorIdMismatch: "该存档来自另一个{textIdentity}",
+	saveErrorInvalidData: "存档缺少必需数据，可能已损坏",
+	saveErrorDecodeFail: "存档无法解码，可能已损坏",
+	saveErrorDiskLoadFail: "从磁盘载入存档失败",
+	saveErrorLoadTooEarly: "现在还不能载入存档",
+	saveErrorDisallowed: "当前不允许保存。",
+	warningNoSaves: "本会话缺少存档所需的能力，存档已停用。",
+	warningNoStorage: "可用的存储接口都不可用（可能是第三方 cookie 被禁用）。本会话无法存档。",
+	warningNoWebStorage: "浏览器不支持网页存储 ⇒ 本次{textIdentity}以降级方式运行，无法存档。",
+	warningDegraded: "本{textIdentity}缺少部分能力，以降级方式运行（存档等功能可能不可用）。"
+});
+
+/* ★侧栏的**菜单文案**须就地重贴（✗ 仅设 `l10nStrings` 不够）。
+ *   缘由（引擎源码定序，非猜测）：SugarCube 的启动次序为
+ *     `Dialog.init() → **UIBar.init()** → Engine.init() → Engine.runUserScripts() → StoryInit → UIBar.start()`
+ *   ⇒ 侧栏 DOM 在**本脚本之前**就已按**默认英文**构建；`UIBar.start()` 只重设各按钮的 `aria-label`
+ *     （`L10n.get("uiBarLabel*")`）与初始收展，**不回填菜单项文本** ⇒ 那几项须在此改。
+ *   ⇒ 只改 5 个菜单项；工具栏按钮的 aria 由随后的 `UIBar.start()` 按新 `l10nStrings` 自动重设 ✓ */
+Object.entries({
+	'menu-item-continue': 'continueTitle',
+	'menu-item-saves': 'savesTitle',
+	'menu-item-settings': 'settingsTitle',
+	'menu-item-restart': 'restartTitle',
+	'menu-item-share': 'shareTitle'
+}).forEach(function (pair) {
+	var a = document.querySelector('#' + pair[0] + ' a');
+	if (a) a.textContent = SugarCube.L10n.get(pair[1]);
+});
+/* 工具栏四个按钮的 aria/title 同理。⚠ 真浏览器里随后的 `UIBar.start()` 本就会按新 `l10nStrings`
+ *   重设它们（其 `ariaClick({label: L10n.get(...)})`）⇒ 此处贴齐只为**与启动先后无关**（且可被无头自检直证）。 */
+[['ui-bar-toggle', 'uiBarLabelToggle'], ['history-backward', 'uiBarLabelBackward'],
+ ['history-jumpto', 'uiBarLabelJumpto'], ['history-forward', 'uiBarLabelForward']].forEach(function (pair) {
+	var el = document.getElementById(pair[0]);
+	if (!el) return;
+	var text = SugarCube.L10n.get(pair[1]);
+	el.setAttribute('aria-label', text);
+	el.setAttribute('title', text);
+});
+
+<</script>>
