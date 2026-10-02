@@ -5,17 +5,21 @@
  *
  * ★★**为何是「共享件」而非某一路的私有脚本**（票面 ① 的裁）：
  *   `books#90` 的四路（甲 Playwright／乙 npm-jsdom／丙 nightly 窗口／丁 本地）**都要这套知识**：
- *   boot（★`#91` 后为 **`start()`＋`play(start)`** —— 原「5 步」有装置偏差，见文件头 ④′／①）
+ *   boot（★`#91` 后为 **`runUserInit()`＋`start()`＋`play(start)`** —— 原「5 步」有装置偏差，见文件头 ④′／①）
  *     ＋ 点故事链接（**机制错会静默不导航**）＋ 面板读取。
  *   ⇒ 把它**写一次**放仓内（形同 `tools/rehearse-workflow.py`：**仓内工具、暂不接 CI**），
  *     四路各自去调它 ⇒ **知识成本只付一次**，且换路**不必重写**。
  *
  * ★★**本文件承载的「踩坑读数」**（每条都是我实测踩出来的，✗ 猜想）：
- *   ① **boot＝`start()` ＋ `play(start)` 两步**（★`#91` 修正，见 ④′——原写「5 步」，那形有装置偏差）。
+ *   ① **boot＝`runUserInit()` ＋ `start()` ＋ `play(start)`**（★`#91` 修正，见 ④′——原写「5 步」，那形有装置偏差）。
  *      产物**加载期已自跑** `Engine.init()` ＋ `Engine.runUserScripts()`（SugarCube 的 jQuery-ready 序列，
  *      **实测**：t=0.2s 起 `Engine.state === 'init'`、用户脚本束已执行、`document` 上已有 1 个 `.rpg-item-link` 委托）。
- *      ⇒ 本装置只须补 **`start()`**（把引擎带出 `init`）＋ **`play(Config.passages.start)`**（落到可断言 DOM）。
- *      （漏 `runUserInit()` ⇒ `StoryInit` 不跑 —— 但那已由产物自己的序列跑掉；见 ④′ 的读数。）
+ *      ⇒ 该两步**不可重跑**（重跑＝用户脚本束二次执行 ⇒ 计数类断言恒 2×）。
+ *      ★但 **`runUserInit()` 必须显式补**：`Engine.start()` 体内**不含**它
+ *      （机械核实 `vendor/format.js` 的 `start:{value:function` 体：含 `State.restore()`，**无** `runUserInit`）；
+ *      产物自身那段 `runUserInit() → start()` 挂在 `$window.width() && LoadScreen.size<=1` 的 interval 上，
+ *      **jsdom 下 `width()===0` ⇒ 该 `.then()` 永不 resolve** ⇒ 指望产物代跑会**静默丢 StoryInit**。
+ *      ⇒ 本装置须：**`runUserInit()`**（StoryInit ⇒ 基线变量）＋ **`start()`**（带出 `init`）＋ **`play(start)`**（落到可断言 DOM）。
  *   ② ★**点链接有「静默不导航」的形**：对同一故事链接，
  *      `el.dispatchEvent(new MouseEvent('click'))` **不导航、不报错**（我实测：`开始 → 开始`）；
  *      而 `el.click()`／`jQuery(el).trigger('click')`／`Engine.play(data-passage)` **都导航**。
@@ -30,7 +34,8 @@
  *      再跑一遍 ⇒ 用户脚本束重执行 ⇒ `RPG.bindItemLinks()` 再绑一次，而守卫（`__itemLinksBound`）挂在
  *      **每次重执行都新建的 `setup.RPG`** 上 ⇒ 归零、拦不住。委托计数**恒 2×**（真浏览器＝1）。
  *      ⇒ **凡计数类断言（绑定／注册／define）在旧形装置上都会读成 2×** ⇒ 是**装置造出来的**，✗ 产品缺陷。
- *      **修正**：boot 只跑 `start()` ＋ `play(start)`（见 ① 与 `boot()` 注释）。
+ *      **修正**：boot 跑 `runUserInit()` ＋ `start()` ＋ `play(start)`（见 ① 与 `boot()` 注释）——
+ *      ★**勿只跑 `start()`**：它不含 `runUserInit`（我曾据此写错，见 §教训）。
  *      **教训（一般化）**：**装置多跑一步，就会多造一份「一次性副作用」，而这份多出来的量看起来像真读数。**
  *
  * 用法（**先构建产物**：`python3 <引擎>/build.py <本仓故事> --out babel-trial.html`）：
@@ -80,7 +85,7 @@ export function resolveEnv(engineArg) {
 }
 
 /* ============================================================================
- * 二、boot（★`start()` ＋ `play(start)` —— 产物加载期已自跑 `init`／`runUserScripts`；见文件头 ④′）
+ * 二、boot（★`runUserInit()` ＋ `start()` ＋ `play(start)`；`init`／`runUserScripts` 由产物加载期自跑，见文件头 ④′）
  * ==========================================================================*/
 /**
  * 装产物并 boot 到**可断言状态**（已 `play(start)`）。
@@ -98,7 +103,7 @@ export async function boot(env, { quiet = true } = {}) {
 	const SC = dom.window.SugarCube;
 	if (!SC?.Engine) throw new Error('产物里取不到 `SugarCube.Engine` ⇒ 产物不完整或 jsdom 未跑脚本');
 	const E = SC.Engine;
-	/* ★★`#91` 修正：**boot ＝ `start()` ＋ `play(start)`**。
+	/* ★★`#91` 修正：**boot ＝ `runUserInit()` ＋ `start()` ＋ `play(start)`**。
 	 *
 	 *   病灶（原形＝`for (init, runUserScripts, runUserInit, start)`）：**装置偏差 —— 用户脚本束被跑第二遍**。
 	 *   产物**加载期已自跑** `Engine.init()` ＋ `Engine.runUserScripts()`（SugarCube 的 jQuery-ready 序列）；
@@ -113,17 +118,25 @@ export async function boot(env, { quiet = true } = {}) {
 	 *     本装置 新形（`start` ＋ `play`）         ⇒ 委托 **1** ✓ ——与真浏览器**一致**。
 	 *   ★除该计数外**全同**：`state=idle`／`passage=开始`／五面板俱在／正文长度**逐字节相同**。
 	 *
-	 *   ⚠ **为何只调 `start()` 即可**（✗ 「跑得越全越保险」）：`init`／`runUserScripts` 已由产物跑过；
-	 *     `runUserInit`（⇒ `StoryInit`）反之**必须跑**，而 `start()` 的路径已含之
-	 *     （产物自己的序列是 `runUserInit() → start()`）。重跑用户脚本的**唯一效果**就是造出那个第二份。
+	 *   ⚠ **为何是「`runUserInit` ＋ `start`」这两个**（✗ 「跑得越全越保险」／✗ 「只跑 start 就够」）：
+	 *     · `init`／`runUserScripts` **不可重跑**（产物已跑）⇒ 重跑的**唯一效果**就是造出那个第二份；
+	 *     · `runUserInit`（⇒ `StoryInit`）**必须显式跑** —— `Engine.start()` 体内**不含它**
+	 *       （机械核实 `vendor/format.js` 的 `start` 体：有 `State.restore()`、**无** `runUserInit`），
+	 *       而产物自身那段挂在 `$window.width()` 上、**jsdom 下永不 resolve**。
+	 *   ★**本席曾在此写错并被打红**（`#109` 首版只跑 `start()`）：`StoryInit` 静默没跑 ⇒
+	 *     基线变量只有 3 个（正常 8）、`babelGiven=undefined` ⇒ 消费方（`#98` 的 `e2e-drive`）在 L1 抛
+	 *     `Cannot read properties of undefined (reading 'L1')`。**装置少跑一步与多跑一步同样致命**，
+	 *     而**这两种错都静默**（多跑 ⇒ 计数 2×；少跑 ⇒ 变量缺）。
 	 *   ⚠ **若产物**将来**不再在加载期自跑**（例如换构建器／换 SugarCube 版本）⇒ 本形会退化成
 	 *     「引擎停在 `init`、段落空」⇒ **下面那道 `Engine.state` 断言会当场报红**（✗ 静默退让）——
 	 *     此处选**报红**而非「探测后二选一」：二选一会在两形都不对时**静默挑一个**，而报红能立刻指认前提变了。 */
-	const r0 = E.start();
+	const r0 = E.runUserInit();          // ★须**显式**跑：`start()` 体内**不含** runUserInit（见下）
 	if (r0?.then) await r0;
+	const r1 = E.start();
+	if (r1?.then) await r1;
 	if (E.state === 'init') {
 		throw new Error('`Engine.start()` 后仍在 `init` ⇒ 产物可能**不再在加载期自跑**用户脚本（前提变了）'
-			+ '—— 见本函数注释 `#91`：此时应改为显式跑 `init()/runUserScripts()/runUserInit()`（✗ 静默二选一）');
+			+ '—— 见本函数注释 `#91`：此时应显式补 `init()/runUserScripts()`（✗ 静默二选一）');
 	}
 	const start = SC.Config?.passages?.start;
 	if (!start) throw new Error('取不到 `Config.passages.start`（产物异常）');
@@ -310,6 +323,18 @@ if (import.meta.filename === process.argv[1]) {
 				K.push([rpg !== undefined, 'K9a 对照臂：`setup.RPG` 可得（✗ 取不到时 K9b 的读数不可信）', String(typeof rpg)]);
 				K.push([sel === 1, 'K9b ★装置**不得重跑用户脚本束**（`.rpg-item-link` 委托须 = 1；真浏览器读数；旧 5 步形 ⇒ 2）', `委托=${sel}`]);
 				K.push([ev !== undefined, 'K9c 对照臂：jQuery 事件表可读（✗ 读到 undefined 时 K9b 的 0/1 无意义）', String(ev === undefined)]);
+				/* ★K9d（tester-4 RC 后补）：**断 StoryInit 变量在位** —— K9a/b/c 断的是 `setup.RPG`／委托／事件表，
+				 *   **无一断变量** ⇒ 首版「只跑 `start()`」（漏 `runUserInit`）时 **13 刀全绿而程序是坏的**
+				 *   （`babelGiven=undefined` ⇒ 消费方在 L1 抛）。**这正是缺的那一格。**
+				 *
+				 *   判据取**两点**，因为单点都能被「另一种坏法」骗过：
+				 *     (a) 变量**总数** —— 首版实测 3（正常 8）⇒ 断 `>= 8`（✗ 断 `=== 8`：产品加变量不应假红）
+				 *     (b) **StoryInit 特有的键**在位且非 undefined —— `babelGiven`（故事侧 `StoryInit` 写的）
+				 *   ⚠ 对照臂：同时印出实得键集，使「少跑 StoryInit」与「改了变量名」**输出上可分辨**。 */
+				const vars = s2.SC?.State?.variables ?? {};
+				const nv = Object.keys(vars).length;
+				K.push([nv >= 8, 'K9d ★`StoryInit` 须真跑（变量数 ≥8；漏 `runUserInit` 时实测 3）', `变量=${nv}`]);
+				K.push([vars.babelGiven !== undefined, 'K9e ★`StoryInit` 写的键在位（`babelGiven`；✗ undefined ⇒ 消费方如 `#98` 的 e2e-drive 会在 L1 抛）', JSON.stringify(Object.keys(vars))]);
 			} finally { s2.dom.window.close(); }
 		}
 		/* ★K1／K1b：**直喂纯函数** `assertNavigated`（✗ 靠会话构造 —— `State.passage` 只有 getter，
