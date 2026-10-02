@@ -62,6 +62,9 @@ jobs:
           case "$ref" in *[!0-9a-f]*) fail "钉的 ref 含非十六进制字符：$ref" ;; esac
           echo "引擎 pin = $ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          # ★`#1879` D9：版本徽标取值**一处定义**（job 级＝写 `$GITHUB_ENV` ⇒ 后续各步皆可见）。
+          #   ✗ 各步自算：`--version` 加参只改一处 ⇒ 「★构建可复现」步不带参重建 ⇒ sha1 异 ⇒ 误报「构建不确定」。
+          echo "VER=v0.0.1·$(cut -c1-8 <<<"$ref")" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
         with:
@@ -97,8 +100,8 @@ jobs:
           # ★故事目录必须给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**（`ROOT / story_dir`）
           #   ⇒ 相对形会把引擎仓里的同名故事编掉（实测踩过：产物落在 engine/stories/babel 而非本仓）。
           STORY="$GITHUB_WORKSPACE/books/stories/babel"
-          # ★`#1879` D9：版本徽标 —— 从 `engine-ref.json` **现读 pin** 拼 `v0.0.1·<短sha>` 传入（✗ 硬编码 ✓）。
-          VER="v0.0.1·$(cut -c1-8 <<<"$(jq -r .ref "$GITHUB_WORKSPACE/books/.github/engine-ref.json")")"
+          # ★`#1879` D9：版本徽标 —— `$VER` 由**第一步**写入 job 级 env（`$GITHUB_ENV`，源头＝本仓声明的 pin），
+          #   本步与「★构建可复现」步**共用同一值** ✓（一处定义两处用 ⇒ 防同族复发：加参只改一处）。
           python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" || {
             echo "::error title=babel-attribution::(b) story-face — 构建失败 ⇒ **本 PR 的 pin 编不动这个故事**"
             echo "  （常见＝pin 早于故事用到的新能力：先升 `.github/engine-ref.json` 的 ref 再重跑）"; exit 1; }
@@ -122,7 +125,8 @@ jobs:
           set -euo pipefail
           STORY="$GITHUB_WORKSPACE/books/stories/babel"
           cp "$STORY/babel-trial.html" /tmp/first.html
-          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html >/dev/null
+          # ★同参重建：`--version "$VER"` 与首建**逐字相同**（漏参 ⇒ sha1 异 ⇒ 误报「构建不确定」；`#1879` 亲历）
+          python3 "$GITHUB_WORKSPACE/engine/build.py" "$STORY" --out babel-trial.html --version "$VER" >/dev/null
           a=$(sha1sum /tmp/first.html | cut -d' ' -f1)
           b=$(sha1sum "$STORY/babel-trial.html" | cut -d' ' -f1)
           [ "$a" = "$b" ] || { echo "::error title=babel-attribution::(b) story-face — 两次构建产物不同（sha1 $a vs $b）⇒ 构建不确定"; exit 1; }
