@@ -323,7 +323,7 @@
       "层": "both",
       "守的面": "段内定标 CR 带逐层递增且不越段（✗ 「未成文的隐藏判据」）",
       "构造": "逐层扫描（1–9 全层）",
-      "备注": "`SPAN1_SCALING` 显式 `kind:'house-rule'`（`core/climb.js:19-34`，crBand 九层：0.5/0.5/1/1/2/2/2/2/2）；锚 `#1729` 裁定②。★**真实入口实指**（本节 §③ 回问的答复）：`world/babel.js:103-105`（地图动作 ⇒ `Engine.play('遭遇战')`）→ `story/play.twee:30-31`（`BABEL.fight()`）→ `world/encounters.js:112-121`（`const layer = setup.BABEL.layerOf();`）；该动作带 `R.inGradient(L.id)` 守卫 ⇒ **两段层皆可用**"
+      "备注": "`SPAN1_SCALING` 显式 `kind:'house-rule'`（`core/climb.js:19-34`，crBand 九层：0.5/0.5/1/1/2/2/2/2/2）；锚 `#1729` 裁定②。★**真实入口实指**（本节 §③ 回问的答复）：`world/babel.js:103-105`（地图动作 ⇒ `Engine.play('遭遇战')`）→ `story/play.twee:30-31`（`BABEL.fight()`）→ `world/encounters.js:112-121`（`BABEL.layerOf()`）；该动作带 `R.inGradient(L.id)` 守卫 ⇒ **两段层皆可用**"
     },
     {
       "id": "span1-farm-harvest-bare-key-roundtrip",
