@@ -35,6 +35,17 @@ knife "K10 分案面逐字相同"   "[r for r in d['场景'] if r['id']=='cross-
 knife "K11 分案指错锚"       "[r for r in d['场景'] if r['id']=='cross-pkg-same-name-shadow'][0]['同锚分案']={'同锚':'#1743-WRONG','面':'x'}" "≠ 主锚"
 knife "K12 信封形 fixture"   "[r for r in d['场景'] if r['id']=='span1-herb-poultice-house-rule-use'][0]['入口态']['数据']={'state':{}}" "存档信封键"
 knife "K13 渲染缺实指"      "[r for r in d['场景'] if r['id']=='cross-gather-state-machine'][0]['断言']['渲染']='活行随状态变'" "缺**实指**"
+# ★信封键面（`#106` dev-9 MINOR 折单）：权威四键 ＋ `rpgSave` —— **每个键一把刀**
+#   （✗ 只一刀——那样删掉表中某个键时，只测别的键的刀仍绿 ⇒ 静默不跟）
+#   入口态侧（`validate.mjs` 的「入口态.数据」支）：K12 已盖 `state`，下列盖其余四键：
+knife "K14 信封 pack"        "[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['入口态']['数据']={'pack':'x'}" "存档信封键"
+knife "K15 信封 domains"     "[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['入口态']['数据']={'domains':{}}" "存档信封键"
+knife "K16 信封 at"          "[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['入口态']['数据']={'at':1}" "存档信封键"
+knife "K17 信封 rpgSave"     "[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['入口态']['数据']={'rpgSave':{}}" "存档信封键"
+#   ★K19：`saveVersion` —— dev-9 逐键撤验发现**它漏了刀**（撤该键 ⇒ 20/0 全绿 ✗）⇒ 补上（照 K14 形）：
+knife "K19 信封 saveVersion"  "[r for r in d['场景'] if r['id']=='span2-l20-gate-chain'][0]['入口态']['数据']={'saveVersion':3}" "存档信封键"
+#   逻辑侧（`断言.逻辑.存档` 支）—— ★此形即 MINOR 里「刀 E 实证判绿」的那条（`存档:{pack:'x'}` ⇒ 旧表未盖 `pack` ⇒ 假绿）：
+knife "K18 逻辑.存档 信封 pack" "[r for r in d['场景'] if r['id']=='cross-battle-end-victory'][0]['断言']['逻辑']={'步骤':['loadFixture','Battle.execute({interactive:false})'],'存档':{'pack':'x'}}" "存档**信封**键"
 echo "=== 路径不存在（同一具名支）==="
 out=$(node $V /tmp/does-not-exist.json 2>&1); rc=$?
 echo "$out" | grep -qF "★未捕获异常" && { echo "  ✓ 路径错 ⇒ rc=$rc，红在 uncaughtException 具名支"; pass=$((pass+1)); } || { echo "  ✗ 路径错未具名"; fail=$((fail+1)); }
