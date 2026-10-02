@@ -122,8 +122,8 @@ map.addLocation(new R.Location({
 		/* ★`#135` ③：`slotEquip` 同槽被占即**拒绝**（`src/core/30-inventory.js:110-124`），旧 action 却
 		 *   **无视返回值**无条件印「你换下旧的…」⇒ 玩家同时看到两句相反的话。修法＝文案与**实际结果同源**：
 		 *   读 `equippedIn('shield')`（返回**对象** ⇒ 比 `.id`）⇒ 印「换成了」或「收进背包（槽被占）」✓ */
-		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); R.perform(RPG.equippedIn('shield')?.id === 'buckler' ? '你把小圆盾扣在左臂上。' : '小圆盾收进了背包 —— 盾槽被占着，先卸下旧的再换。'); } },
-		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); R.perform(RPG.equippedIn('shield')?.id === 'heavy-wooden-shield' ? '你换下旧的，扛起一面重木盾。' : '重木盾收进了背包 —— 盾槽被占着，先卸下旧的再换。'); } },
+		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); if (RPG.equippedIn('shield')?.id === 'buckler') R.perform('你把小圆盾扣在左臂上。'); } },
+		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); if (RPG.equippedIn('shield')?.id === 'heavy-wooden-shield') R.perform('你换下旧的，扛起一面重木盾。'); } },
 	],
 }));
 map.addLocation(new R.Location({
