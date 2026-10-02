@@ -1218,12 +1218,27 @@ head('㉔ 守卫无副作用（`books#133` 笔 1）');
 		const 看后 = Object.keys(State.variables.span1Events);
 		ok(看后.length === 0,
 			`★「光看不抽」被破：只读了守卫与文案 ⇒ 账里出现 ${看后.length} 个键（${看后.join('／')}）`);
+
+		/* ★★`dev-9` 的阻断 RC（`dev-10` 同步复现）：白名单**之外**的层不得开抽、**也不得耗随机单元**。
+		 *   病灶：`onEnter` 原为无条件 `ensureDraw(L.id)` ⇒ 进 L1／L9／L11 也开账（押反裁 ③），
+		 *   且每进一层吃掉 `RPG.rng` 的两个单元（战斗选靶也走它 ⇒ **全局**副作用）。
+		 *   ⚠ 本格的②臂原指向**事件层** L5 ⇒ 必然绿，✗ 拦不住这条（`dev-9` 把它改成 L1 即当场红）。 */
+		R.rng.setSequence([0.5, 0.5, 0.9]);      // 若进层未耗单元 ⇒ 下面第一个 index(3) 读到 0.5（⇒ 1）
+		map.moveTo('L1');
+		const 单元 = R.rng.index(3);
+		R.rng.reset();
+		const 白外 = Object.keys(State.variables.span1Events);
+		ok(白外.length === 0, `★白名单**之外**也开了抽：进 L1 ⇒ 账 ${JSON.stringify(白外)}（裁 ③：L9 无抽签、L1 更无）`);
+		ok(单元 === 1, `★进非事件层吃了随机单元：注入 [0.5,0.5,0.9] 后首个 index(3) 应读 0.5（⇒1），实得 ${单元}`);
+
+		/* 白名单**之内**：真进 L5 ⇒ 账里**只有**该层 */
 		map.moveTo('L5');
 		const 键 = Object.keys(State.variables.span1Events);
 		ok(键.length === 1 && 键[0] === 'L5',
-			`★真进层后账里应**只有** L5（实得 ${JSON.stringify(键)}）——多键＝有别的路径在抽`);
+			`★真进事件层后账里应**只有** L5（实得 ${JSON.stringify(键)}）——多键＝有别的路径在抽`);
 		console.log(`  守卫无副作用：读 ${读了} 条动态动作（含 availableActions）⇒ 账键 ${看后.length} 个`
-			+ `${看后.length === 0 ? ' ✓' : ' ✗'}｜真进层后 ${JSON.stringify(键)}`);
+			+ `${看后.length === 0 ? ' ✓' : ' ✗'}｜进非事件层(L1) ⇒ 账 ${白外.length} 个、耗单元 ${单元 === 1 ? '0 ✓' : '≠0 ✗'}`
+			+ `｜进事件层(L5) ⇒ ${JSON.stringify(键)}`);
 	} finally {
 		State.variables.span1Events = 存账;
 		State.variables.gatherNodes = 存节点;
