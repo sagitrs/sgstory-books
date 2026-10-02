@@ -3,6 +3,8 @@
  * 口径（领队 2026-10-02 23:27 依操作者原文确认，两处微调之一）：**进入该层时按层档位几率触发**，
  *   走 `RPG.rng`（可复现），**每层每局至多一次**（免来回走刷），伤害走 `RPG.applyDamage`（**致命**）；
  *   `预知` 在场时**只多一句预警文案**、结算不变（其效果留 0.0.2，✗ 在此造死支）。
+ *   ⚠ 「至多一次」按**字面**落（领队 2026-10-02 23:48 裁「封 miss」）：**命中或 miss 都封闭**该层该局
+ *     ⇒ 重进**不重掷、不耗随机单元**（✗ 只封命中 —— 那会让「免来回走刷」这句空话，本笔首版即如此）。
  *   ⚠ 次形（「潜伏在采集／开箱动作里」，会用到引擎既有的 `trap-fire/needle/shock` 三件）随 **0.0.2** 再议。
  *
  * 覆盖范围：**只 L5–L8**（与事件抽签同一组层）。L1–L4／L9／二段**不在表内** ⇒ 结算早退、
@@ -25,25 +27,28 @@ const 危害表 = Object.freeze({
 const 触发格 = 0;
 
 const eventsOf = () => (State.variables.span1Events ??= {});
-/** 该层的危害账（**与事件账同册**）。
- *  ⚠ **命中才建键**：本函数不得 `??=` 造空键 —— 那会先占住 `$span1Events[层]`，
- *  使 `ensureDraw`（笔 1）的 `??=` 以为「已抽过」而**不抽**（本席落笔时实测撞到：㉒格报抽中 undefined）。
- *  ⇒ 读用 `?.`；写只在命中那一刻。 */
+/** 该层的危害账（**与事件账同册**：`{抽中, 危害}`）。
+ *  ⚠ 建键本身**许可**（危害是同一册的另一栏），禁的是**时机**：不得早于 `ensureDraw`（笔 1）——
+ *   两者同册而 `ensureDraw` 用 `??=`，先建键会让它以为「已抽过」而**不抽**（本席落笔实测撞到：
+ *   ㉒格报「抽中 undefined」）。⇒ 次序由层地点的 `onEnter` 保证：**抽签在前、危害在后**；
+ *   本函数只在**掷完之后**写（读一律用 `?.`，✗ 掷前造键）。
+ *  ⚠ 自 miss 也封闭之后，**任何一次结算都会建键**（三态）⇒ 上述次序从「命中才咬」变成**无条件承重**。 */
 const 危害账 = (layerId) => (eventsOf()[layerId] ??= {});
-/** 本层本局是否已触发过（**只读**，✗ 不建键）。 */
-const 已遇 = (layerId) => eventsOf()[layerId]?.危害 === true;
+/** 本层本局是否已结算过（**只读**，✗ 建键）；命中与 miss **皆算已遇**。 */
+const 已遇 = (layerId) => eventsOf()[layerId]?.危害 != null;
 /** 该层是否配了危害（不在表内 ⇒ 无危害）。 */
 const 有危害 = (layerId) => 危害表[layerId] != null;
 
 /** 进层结算（由层地点的 `onEnter` 调；**幂等**：本层本局已触发过 ⇒ 早退，✗ 再掷）。
- *  @returns 'absent'（该层无危害）｜'done'（本局已遇过）｜'miss'（这次没踩上）｜'hit'（踩上了） */
+ *  @returns 'absent'（该层无危害）｜'done'（本局已结算过，**含 miss**）｜'miss'（这次没踩上，此后封闭）｜'hit' */
 const 危害结算 = (layerId) => {
 	const cfg = 危害表[layerId];
 	if (!cfg) return 'absent';                 // ★先把非危害层挡在**掷骰之前**（✗ 白耗随机单元）
-	if (已遇(layerId)) return 'done';
+	if (已遇(layerId)) return 'done';          // ★命中或 miss 都算已结算 ⇒ 重进不重掷（封 miss）
 	const 抽 = R.rng.index(cfg.档位);          // ★全仓唯一随机源 ⇒ 判据／刀可 set()／setSequence() 定值
-	if (抽 !== 触发格) return 'miss';
-	危害账(layerId).危害 = true;
+	const 结果 = 抽 === 触发格 ? 'hit' : 'miss';
+	危害账(layerId).危害 = 结果;               // ★**掷完就记**（三态都记）⇒ 「每层每局至多一次」按字面成立
+	if (结果 === 'miss') return 'miss';
 	const P = D.Player;
 	/* ★预知位：**只加一句预警，结算不变**（`contains` 能力探测 —— 效果面未落地时不炸）。 */
 	if (typeof P?.contains === 'function' && P.contains('precognition')) {

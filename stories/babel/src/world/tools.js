@@ -92,7 +92,14 @@ const 扣耐久 = (slot) => {
  * ★为何不重写采集本体：`#116` 的节点账（临时 holder ＋ `commitNode` 写回）已经过两轮评审；
  *   工具制只是**前面加一道门、后面加一次扣费**（采成**才**扣 —— 同 `#1801`「接受后才扣」的口径）。
  * ★为何 `when` 也要工具：否则按钮会点进去才被告知没工具（那是「假选项」）；现在**没有工具就不出按钮**。 */
+/* ⚠ **加载次序依赖（dev-9 NIT④）**：本文件按 `sorted(rglob("*.js"))` 装载（`build.py`），
+ *   定义现制采集的 `world/encounters.js` 必排在 `world/tools.js` **之前**（`e` < `t`）⇒ 此刻它应当已在。
+ *   若日后次序变动使这条捕获拿到 `undefined`，用**具名抛错当场炸掉**（✗ 静默降级成「没有工具制」——
+ *   那会让工具门悄悄消失，而判据仍绿：比崩掉更坏）。 */
 const 现制采集 = setup.BABEL.gather;
+if (typeof 现制采集 !== 'function') {
+	throw new Error('tools.js：`#116` 的现制采集缺席（`world/encounters.js` 必须排在 `world/tools.js` 之前装载）');
+}
 setup.BABEL.gather = () => {
 	const layer = setup.BABEL.map?.current ?? null;
 	const kind = 需要工具(layer);
