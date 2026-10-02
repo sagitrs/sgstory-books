@@ -394,13 +394,25 @@ if (has('--selftest')) {
 		 *   ⚠ **实测后果**：不加哨兵时本刀会把机器打爆（本席开发中真的撞上系统 OOM ×3）。
 		 *   ★同族前例：`tools/check-refs-recheck.mjs` 的 `RECHECK_SELFTEST_CHILD`（#98 折单）。 */
 		let file = import.meta.filename;
+		let tmpFile = null;
 		if (opts.FLOOR != null) {
-			const tmp = path.join(fs.mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'self-')), 'run.mjs');
-			fs.writeFileSync(tmp, fs.readFileSync(file, 'utf8').replace('const FLOOR = 7;', `const FLOOR = ${opts.FLOOR};`));
-			file = tmp;
+			/* ★★临时副本**必须落在仓内**（✗ `$TMPDIR`）——dev-9 锚出的**本刀自身假绿**：
+			 *   原形写 `$TMPDIR/self-XXXX/run.mjs` ⇒ 该副本的 `repoRoot = dirname(import.meta)·../..`
+			 *   变成 `$TMPDIR` ⇒ `scenariosPath` 不存在 ⇒ **rc=2 早退于「缺场景清单」（:238）**，
+			 *   **根本到不了 FLOOR（:330）** ⇒ 这一格守的是**已知的缺清单分支**，
+			 *   对它所声称守的 FLOOR 路**零判别力**（把 FLOOR 处的 `markCleanExit()` 撤掉，它也不红）。
+			 *   ⇒ 写在 `tests/scenario/` 内（与本体同目录 ⇒ `repoRoot` 解析正确），跑完**删掉**。
+			 *   ★同族：本席自己在 `#98`／`#103`／`#107` 三次踩的「子进程跑的路，须真是它以为的那条路」。 */
+			tmpFile = path.join(here, `.tmp-run-${process.pid}-${Math.floor(Math.random() * 1e9)}.mjs`);
+			fs.writeFileSync(tmpFile, fs.readFileSync(file, 'utf8').replace('const FLOOR = 7;', `const FLOOR = ${opts.FLOOR};`));
+			file = tmpFile;
 		}
-		const p = spawnSync(process.execPath, [file, ...(opts.engine === null ? [] : ['--engine', opts.engine ?? root]), ...args], { encoding: 'utf8', env: { ...process.env, SCENARIO_SELFTEST_CHILD: '1' } });
-		return { rc: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
+		try {
+			const p = spawnSync(process.execPath, [file, ...(opts.engine === null ? [] : ['--engine', opts.engine ?? root]), ...args], { encoding: 'utf8', env: { ...process.env, SCENARIO_SELFTEST_CHILD: '1' } });
+			return { rc: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
+		} finally {
+			if (tmpFile) { try { fs.unlinkSync(tmpFile); } catch { /* 清不掉不影响读数 */ } }
+		}
 	};
 	const F = {
 		locations: new Set(['L20-forge', 'L20-settlement']),
@@ -481,12 +493,18 @@ if (has('--selftest')) {
 		/* ── `#107` RC（dev-9 锚出）：**出口钩子会吞 `process.exit(N)`** ⇒ 那族 rc 须由刀守（✗ 靠肉眼）── */
 		['K24 ★★`--selftest` 的 rc **须为 0**（✗ 被出口钩子吞成 1＋误报「恒绿门」）',
 			[null, null], () => runSelf(['--selftest']).rc === 0],
-		['K25 ★★**硬错路径的 rc 须真为 2**（✗ 被吞成 1；★三格各给**自己的调用形**）',
+		['K25 ★★**硬错路径的 rc 须真为 2**（✗ 被吞成 1；★三格各给**自己的调用形**，★并断**真走到那条路**）',
 			[null, null], () => {
 				const bad = runSelf([], { engine: '/nonexistent-xyz' });          // 坏引擎根
 				const noOnly = runSelf(['--only', 'zzz-no-such-scenario']);        // 未知 --only
 				const floored = runSelf([], { FLOOR: 99 });                        // 下限未达
-				return bad.rc === 2 && noOnly.rc === 2 && floored.rc === 2;
+				/* ★★dev-9 锚出的**本刀自身假绿**（已修）：临时副本若落在 `$TMPDIR`，其 `repoRoot` 解析错
+				 *   ⇒ rc=2 早退于「**缺场景清单**」，**永不到 FLOOR** ⇒ 这一格对它声称守的路**零判别力**。
+				 *   ⇒ 除 rc 外**另断「真走到那条路」**（✗ 只断 rc≠2 —— 那正是本假绿的形）。 */
+				return bad.rc === 2 && noOnly.rc === 2 && floored.rc === 2
+					&& /引擎根不对/.test(bad.out)
+					&& /没有匹配的场景/.test(noOnly.out)
+					&& /未达下限/.test(floored.out) && !/缺场景清单/.test(floored.out);
 			}],
 	]
 	/* ★哨兵置位 ⇒ **剔除** K24／K25（✗ 让它们返回假值 —— 那会让子进程 20/21、父进程 k24 看到 rc=1）。
