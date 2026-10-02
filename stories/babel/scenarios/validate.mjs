@@ -65,6 +65,26 @@ for (const r of rows) {
 		const 有选择器 = /(^|[\s（(])[.#][\w-]+|\[[^\]]+\]/.test(渲染);
 		if (!有文件行 && !有选择器) bad('「断言.渲染」缺**实指**（须带 `文件:行` 或选择器 —— 指不出 ⇒ 断言未成立）');
 	}
+	/* ★「须可执行」**形核**（`#1814` 甲案首笔）：对象形**出现时**须满足该形的**最低要件** ⇒ 防「**形似可执行**」（写个 `{}` 就算升过）。
+	 *   ★本笔**只**判 `断言.逻辑`。`断言.渲染` 的**对象形暂不上判** —— 它须与 T 席 `tests/scenario/run.mjs` 的 `panelRefs`
+	 *   **对象形升级同批**：现实现是 `String(断言.渲染)` 扫 `data-panel="…"` ⇒ 先改对象形 ⇒ `String({})` ＝ `[object Object]`
+	 *   ⇒ **面板核静默掉核**（✗ 无声）—— 见 `sagitrs/sgstory#1814` 的「顺序约束（双向）」①②。 */
+	const 逻辑 = (r['断言'] ?? {})['逻辑'];
+	if (逻辑 != null && typeof 逻辑 === 'object') {
+		const 步 = 逻辑['步骤'];
+		if (!Array.isArray(步) || 步.length === 0) bad('「断言.逻辑」对象形缺非空 `步骤` 数组');
+		else if (!步.some((s) => /loadFixture|dispatch|rollEncounter|Battle|act\(/.test(String(s)))) {
+			bad('「断言.逻辑.步骤」未含**真实动作**（须含 `loadFixture`／`dispatch`／`rollEncounter`／`Battle` 之一 —— 形似可执行不算）');
+		}
+		const 存 = 逻辑['存档'];
+		if (存 == null || typeof 存 !== 'object' || Array.isArray(存)) bad('「断言.逻辑」对象形缺 `存档` 对象（`assertSave` 期望）');
+		else if (Object.keys(存).length === 0) bad('「断言.逻辑.存档」为**空对象** ⇒ `assertSave({})` **恒过** ＝ 形似可执行（✗ 空期望）');
+		else {
+			for (const k of ['state', 'saveVersion', 'version']) {
+				if (Object.prototype.hasOwnProperty.call(存, k)) bad(`「断言.逻辑.存档」含存档**信封**键 \`${k}\`（\`assertSave\` 期望的是**存档内路径**，✗ 信封）`);
+			}
+		}
+	}
 	if (!fail.length || !fail.some((f) => f.startsWith(at))) ok.push(r.id);
 }
 
