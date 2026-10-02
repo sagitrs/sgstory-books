@@ -54,14 +54,38 @@ setup.BABEL.layerOf = () => {
 /** 该层的采集点 id */
 setup.BABEL.gatherOf = (layerId) => setup.BABEL.gatherPoints?.[layerId] ?? null;
 
-/* ---------- 采集（#1776）----------
- * 入口只有一条：`RPG.gather(pointId)`（缺省取玩家背包语义）。本桥只记读数。
+/* ---------- 采集（`#116`：节点挂地点，✗ 进背包）----------
+ * ## 与旧形的差别（旧＝`#1776`「采集点须先在背包里」）
+ *   旧：`RPG.gather(pointId)` 缺省取**玩家背包**语义 ⇒ 须先「翻找」把节点 `R.give` 进包。
+ *   新：节点存在**层节点账**（`babel.js` 的 `span1Nodes`），**玩家背包里永无采集点**。
+ * ## 怎么做到（★引擎零改动 —— `#116` 勘察实证）
+ *   `RPG.act(actor, itemRef, target, action, from)` 的 `from` 是既有参数；而 `RPG.gatherFrom`
+ *   用 `who = from ?? that` 决定**产出进谁**、并把 charges 扣在 **actor 持有的那个实例**上。
+ *   ⇒ 用一个**临时 holder**（伪容器 `{ items: [节点快照] }`）当 actor，把 `from` 显式给**玩家**
+ *     ⇒ **节点留账**、**产出进玩家背包**、charges 扣在 holder 的实例上 ⇒ 再由 `commitNode` 写回账。
+ *   ⚠ 写回**必须**做：`act` 的 commit 只写 **actor 的槽**，而 actor 是临时 holder ⇒
+ *     不写回则每次采集都从账里读旧 charges ⇒ 表面「采了不耗」（本席勘察实测到该形）。
  */
 setup.BABEL.gather = () => {
-	const point = setup.BABEL.gatherOf(setup.BABEL.layerOf());
+	/* ★键须是**地点 id**（`map.current`），✗ 层元 id（`layerOf()`）。
+	 *   实测（本席 `#116` 落码时撞到）：`L20-settlement` 的 `layerOf()` ＝ **`'L20'`**（层元），
+	 *   而采集点登记在**地点** `'L20-settlement'` 上 ⇒ 用 `layerOf()` 取 ⇒ `gatherOf` 得 null
+	 *   ⇒ 动作早退（且若某层元下另有同名点会**取错点**）。
+	 *   ⇒ 采集点是**地点**的特征（本票的模型）⇒ 一律按**地点 id** 取。 */
+	const layer = setup.BABEL.map?.current ?? null;
+	const point = setup.BABEL.gatherOf(layer);
 	if (!point) return R.perform('这里没有可采的东西。');
-	const res = R.gather(point);
-	if (res && res.status === 'applied') run().gathered += 1;
+	const player = R.playerActor();
+	if (!player) return R.perform('你还没有身体可以采东西。');
+	/* 临时 holder：只为让 `act` 找得到「槽」（`RPG.act` 要求 itemRef ∈ actor.items）。
+	 * 用**账里快照的拷贝**（✗ 直接塞快照 —— 否则 act 内 `reviveItem` 的改动会先落到账上，
+	 * 而我们要的是「采成或拒绝**之后**统一写回」，保持单点收口）。 */
+	const held = { items: [{ ...setup.BABEL.nodeAt(layer) }] };
+	const res = R.act(held, point, player, 'gather', player);
+	if (res && res.status === 'applied') {
+		setup.BABEL.commitNode(layer, held);   // 单点写回（charges 已扣）
+		run().gathered += 1;
+	}
 	return res;
 };
 

@@ -72,9 +72,43 @@ for (const L of SPAN2_LAYERS) map.addLocation(makeLayerLocation(L));
 
 /* 二段各层的采集点登记进**共用表**（`gatherOf` 读它；一段在 `babel.js` 里登记自己的）。 */
 for (const L of SPAN2_LAYERS) setup.BABEL.gatherPoints[L.id] = L.gather;
+/* ★`#116` (乙)：**料场也持节点**（同构于层地点）⇒ 登记它的采集点。 */
+setup.BABEL.gatherPoints['L20-settlement'] = 'dead-wood';
 
-/* ---------- 第 20 层：整备区（取包里的实例 ⇒ 单一权威源）---------- */
-setup.BABEL.adoptHub(map, DND3.buildSpan2Hub());
+/* ---------- 第 20 层：整备区（取包里的实例 ⇒ 单一权威源）----------
+ * ★`#116` (乙)：料场（`L20-settlement`）改**地点节点形**——单一「采集」动作（✗ 原两段式
+ *   「翻找（发 dead-wood 进背包）⇒ 对背包里的节点采」）。经 `patch` 参替换动作表，
+ *   ✗ 改包里的实例（那会污染包自己那张图）。
+ *   ⚠ **图纸留在原动作**：图纸是**真·可携带道具**（`#1788` 的 6 张，用于锻造），
+ *     ✗ 不是地点特征 ⇒ 它**应当**进背包（本次只把**木料**改节点形）。 */
+setup.BABEL.adoptHub(map, DND3.buildSpan2Hub(), {
+	'L20-settlement': (原表) => 原表.map((a) => {
+		if (a.text === '在料场里翻找（图纸与木料）') {
+			return Object.assign({}, a, {
+				text: '在料场里翻找（找锻造图纸）',
+				action: () => {
+					const missing = DND3.span2Blueprints().filter((id) => !RPG.has(id));
+					for (const id of missing) RPG.give(id);
+					RPG.perform(missing.length > 0
+						? `你从料场翻出 ${missing.length} 张图纸。`
+						: '料场里只剩下碎木头 —— 图纸你都有了。');
+				},
+			});
+		}
+		if (a.text === '采集（枯倒的木料）') {
+			return Object.assign({}, a, {
+				text: () => {
+					const n = setup.BABEL.nodeAt('L20-settlement');
+					const left = n?.charges;
+					return left == null ? '采集（料场木料）' : `采集（料场木料｜还可采 ${left} 次）`;
+				},
+				when: () => (setup.BABEL.nodeAt('L20-settlement')?.charges ?? 0) > 0,
+				action: () => setup.BABEL.gather(),
+			});
+		}
+		return a;
+	}),
+});
 
 /* ---------- 故事侧补的两个 L20 地点（票面第 5 条的「可观察」）----------
  * 军械堆 ⇒ 盾（`shields.js`）；马厩 ⇒ 坐骑（`mounts.js`）。**house rule（非 SRD）**：发放即拾取。 */

@@ -168,19 +168,30 @@ ok(map.exitsFrom('L21').length === 0, 'L21 出现回边');
 console.log(`  L10-gate ⇒ ${gate.map((e) => e.to).join('、')}｜L11 回边 ${map.exitsFrom('L11').filter((e) => e.to.startsWith('L10')).length} 条`
 	+ `｜L20-gate 出口 ${map.exitsFrom('L20-gate').length} 条（L21 未挂 ✓）`);
 
-/* ---------- ④ 采集（#1776 的真 API）---------- */
-head('④ 采集闭环（L1 的碎石堆）');
+/* ---------- ④ 采集（`#116`：节点挂**地点**，✗ 进背包）---------- */
+head('④ 采集闭环（L1 的碎石堆 · 地点节点形）');
 map.moveTo('L1');
-ok(!R.has('stone-pile'), '起点背包里不该已经有采集点');
-const findAction = map.locations.get('L1').availableActions.find((a) => String(a.text).includes('翻找'));
-ok(!!findAction, 'L1 没有「翻找（找采集点）」动作');
-if (findAction) findAction.action();
-ok(R.has('stone-pile'), '翻找后采集点没进背包');
+const 采集点ids = ['stone-pile', 'dead-wood', 'flint-seam', 'wild-grain', 'copper-vein'];
+ok(!采集点ids.some((id) => R.has(id)), '起点背包里不该有采集点（`#116`：玩家不持有采集点）');
+/* ★新模型：**单一采集动作**（✗ 无「翻找」那一步）；可用性＝该处节点 charges。 */
+const 采集动作 = (locId) => map.locations.get(locId).availableActions
+	.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).startsWith('采集（'));
+ok(!!采集动作('L1'), 'L1 没有「采集（…）」动作（地点节点形）');
+const 节点账 = () => State.variables.gatherNodes ?? {};
+const 取账 = (locId) => 节点账()[locId];
+const 采前 = 取账('L1')?.charges ?? null;
 const before = State.variables.babelRun.gathered;
-B.gather();
+if (采集动作('L1')) 采集动作('L1').action();
 ok(State.variables.babelRun.gathered === before + 1, `采集读数没涨：${before} → ${State.variables.babelRun.gathered}`);
 ok(R.has('rock'), '采集没有产出石料（`yields` 未生效？）');
-console.log(`  背包：${R.inventoryLabel()}｜读数 gathered=${State.variables.babelRun.gathered}`);
+/* ★两向断：① 产出**进背包** ② 节点**留账**且 charges **扣了**（✗ 采了不耗）。 */
+ok(!采集点ids.some((id) => R.has(id)), `★采集后**背包里仍无**采集点（实得：${R.inventoryLabel()}）`);
+const 采后 = 取账('L1')?.charges ?? null;
+ok(采前 != null && 采后 === 采前 - 1, `★节点 charges 应扣 1（账：${采前} → ${采后}）`);
+/* 动作文案带次数（`#1887` 的显示面迁到这里） */
+const 文案 = String(typeof 采集动作('L1')?.text === 'function' ? 采集动作('L1').text() : 采集动作('L1')?.text);
+ok(/还可采 \d+ 次/.test(文案), `★动作文案应带剩余次数（实得：${文案}）`);
+console.log(`  背包：${R.inventoryLabel()}｜节点=${JSON.stringify(取账('L1'))}｜动作=「${文案}」`);
 
 /* ---------- ⑤ 遭遇 + 战斗（#1784 的 API 缺席 / 在场两种形）---------- */
 head('⑤ 遭遇 + 战斗');
@@ -378,18 +389,26 @@ head('⑩ 创伤：真实暴露 ＋ 跨场存活（钝击 ⇒ 骨裂）');
 head('⑪ 锻造闭环（料场 ⇒ 图纸 ⇒ 铁器）');
 {
 	map.moveTo('L20-settlement');
-	const yard = map.locations.get('L20-settlement').availableActions.find((a) => String(a.text).includes('料场'));
-	ok(!!yard, 'L20-settlement 没有「料场」动作（接线缺失）');
+	/* ★`#116` (乙)：料场动作已改口 —— 图纸仍在（真·可携带道具），但**木料改地点节点形**
+	 *   ⇒ 原「在料场里翻找（图纸与木料）」现为「在料场里翻找（找锻造图纸）」。 */
+	const yard = map.locations.get('L20-settlement').availableActions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('料场'));
+	ok(!!yard, 'L20-settlement 没有「找图纸」动作（接线缺失）');
 	if (yard) yard.action();
 	const bps = D.span2Blueprints();
 	ok(bps.length === 6, `图纸清单应为 6 张（从注册面派生），实为 ${bps.length}`);
 	ok(bps.every((id) => R.has(id)), `料场没把图纸发齐：缺 ${bps.filter((id) => !R.has(id)).join('、')}`);
-	/* ⚠ 判据要**从行首**匹配「采集」：料场那条动作的文本里也含「木料」（`…（图纸与木料）`），
-	 *   用 `includes('木料')` 会先命中它 ⇒ 二次调用料场（no-op）而**采不到木**（本笔实测踩过）。 */
-	const woodAction = map.locations.get('L20-settlement').availableActions.find((a) => String(a.text).startsWith('采集'));
-	ok(!!woodAction, 'L20-settlement 没有「采集（枯倒的木料）」动作');
+	/* ⚠ 判据要**从行首**匹配「采集」（✗ 用 `includes('木料')` —— 其它动作文本也可能含该词 ⇒ 误命中）。
+	 * ★`#116`：料场木料改**地点节点形** —— 单一采集动作 ＋ charges 记在**地点节点账**上。 */
+	const 文本 = (a) => String(typeof a.text === 'function' ? a.text() : a.text);
+	const woodAction = map.locations.get('L20-settlement').availableActions.find((a) => 文本(a).startsWith('采集'));
+	ok(!!woodAction, 'L20-settlement 没有「采集（料场木料｜还可采 N 次）」动作（地点节点形）');
+	const 木节点前 = State.variables.gatherNodes?.['L20-settlement']?.charges ?? null;
 	if (woodAction) woodAction.action();
 	ok(R.has('wood'), '采集木料没有产出木材（锻造的输入之一）');
+	/* ★两向断（`#116` 的核心）：节点**留账**且 charges 扣 1；产出**进背包**，节点**不进背包**。 */
+	const 木节点后 = State.variables.gatherNodes?.['L20-settlement']?.charges ?? null;
+	ok(木节点前 != null && 木节点后 === 木节点前 - 1, `★料场节点 charges 应扣 1（账：${木节点前} → ${木节点后}）`);
+	ok(!R.has('dead-wood'), '★料场采集后**背包里不该有采集点**（`#116`：玩家不持有采集点）');
 
 	const countOf = (id) => (State.variables.inventory ?? []).filter((s) => s.id === id)
 		.reduce((n, s) => n + (s.charges ?? 1), 0);
