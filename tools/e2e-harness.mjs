@@ -5,14 +5,17 @@
  *
  * ★★**为何是「共享件」而非某一路的私有脚本**（票面 ① 的裁）：
  *   `books#90` 的四路（甲 Playwright／乙 npm-jsdom／丙 nightly 窗口／丁 本地）**都要这套知识**：
- *   5 步 boot（易错，见下）＋ 点故事链接（**机制错会静默不导航**）＋ 面板读取。
+ *   boot（★`#91` 后为 **`start()`＋`play(start)`** —— 原「5 步」有装置偏差，见文件头 ④′／①）
+ *     ＋ 点故事链接（**机制错会静默不导航**）＋ 面板读取。
  *   ⇒ 把它**写一次**放仓内（形同 `tools/rehearse-workflow.py`：**仓内工具、暂不接 CI**），
  *     四路各自去调它 ⇒ **知识成本只付一次**，且换路**不必重写**。
  *
  * ★★**本文件承载的「踩坑读数」**（每条都是我实测踩出来的，✗ 猜想）：
- *   ① **boot 要 5 步**：`init() → runUserScripts() → runUserInit() → start()` **之后仍无段落**，
- *      必须再 `Engine.play(Config.passages.start)` ⇒ 才落到**可断言 DOM**。
- *      （漏 `runUserInit()` ⇒ `StoryInit` 不跑、数回合后才在别处报错 —— dev-10 的读数与我一致。）
+ *   ① **boot＝`start()` ＋ `play(start)` 两步**（★`#91` 修正，见 ④′——原写「5 步」，那形有装置偏差）。
+ *      产物**加载期已自跑** `Engine.init()` ＋ `Engine.runUserScripts()`（SugarCube 的 jQuery-ready 序列，
+ *      **实测**：t=0.2s 起 `Engine.state === 'init'`、用户脚本束已执行、`document` 上已有 1 个 `.rpg-item-link` 委托）。
+ *      ⇒ 本装置只须补 **`start()`**（把引擎带出 `init`）＋ **`play(Config.passages.start)`**（落到可断言 DOM）。
+ *      （漏 `runUserInit()` ⇒ `StoryInit` 不跑 —— 但那已由产物自己的序列跑掉；见 ④′ 的读数。）
  *   ② ★**点链接有「静默不导航」的形**：对同一故事链接，
  *      `el.dispatchEvent(new MouseEvent('click'))` **不导航、不报错**（我实测：`开始 → 开始`）；
  *      而 `el.click()`／`jQuery(el).trigger('click')`／`Engine.play(data-passage)` **都导航**。
@@ -20,7 +23,15 @@
  *        那会让调用方**对着过期 DOM 判**，与本舰队「绿而判据未执行」同族，且**无法分辨**）。
  *   ③ **故事链接的键是 `data-passage`**（✗ `href`）：按 `href` 选会**选到侧栏的
  *      Continue/Saves/Settings/Restart/Share** —— 我首版即栽在此（白测一轮）。
- *   ④ 单调摊销极好：boot（含 5 步）≈0.6s；每段 `play()` ≈8ms ⇒ **10+ 场景一循环足够**（✗ 每场景重启）。
+ *   ④ 单调摊销极好：boot ≈0.6s；每段 `play()` ≈8ms ⇒ **10+ 场景一循环足够**（✗ 每场景重启）。
+ *
+ *   ④′ ★**装置偏差（`#91` 修正 · 本文件历史上最重的一条读数）**：
+ *      **boot 跑「5 步」会多造一份「加载期一次性副作用」** —— 产物加载期已自跑 `init()`＋`runUserScripts()`，
+ *      再跑一遍 ⇒ 用户脚本束重执行 ⇒ `RPG.bindItemLinks()` 再绑一次，而守卫（`__itemLinksBound`）挂在
+ *      **每次重执行都新建的 `setup.RPG`** 上 ⇒ 归零、拦不住。委托计数**恒 2×**（真浏览器＝1）。
+ *      ⇒ **凡计数类断言（绑定／注册／define）在旧形装置上都会读成 2×** ⇒ 是**装置造出来的**，✗ 产品缺陷。
+ *      **修正**：boot 只跑 `start()` ＋ `play(start)`（见 ① 与 `boot()` 注释）。
+ *      **教训（一般化）**：**装置多跑一步，就会多造一份「一次性副作用」，而这份多出来的量看起来像真读数。**
  *
  * 用法（**先构建产物**：`python3 <引擎>/build.py <本仓故事> --out babel-trial.html`）：
  *     node tools/e2e-harness.mjs --engine <引擎检出>                 # 跑内置冒烟（P0/P1 机械子集）
@@ -69,7 +80,7 @@ export function resolveEnv(engineArg) {
 }
 
 /* ============================================================================
- * 二、boot（★5 步 —— 漏一步都到不了可断言状态）
+ * 二、boot（★`start()` ＋ `play(start)` —— 产物加载期已自跑 `init`／`runUserScripts`；见文件头 ④′）
  * ==========================================================================*/
 /**
  * 装产物并 boot 到**可断言状态**（已 `play(start)`）。
@@ -87,10 +98,32 @@ export async function boot(env, { quiet = true } = {}) {
 	const SC = dom.window.SugarCube;
 	if (!SC?.Engine) throw new Error('产物里取不到 `SugarCube.Engine` ⇒ 产物不完整或 jsdom 未跑脚本');
 	const E = SC.Engine;
-	/* ★① 5 步：前 4 步只把引擎带到 idle，**段落仍空**；第 5 步才落到可断言状态。 */
-	for (const fn of ['init', 'runUserScripts', 'runUserInit', 'start']) {
-		const r = E[fn].call(E);
-		if (r?.then) await r;
+	/* ★★`#91` 修正：**boot ＝ `start()` ＋ `play(start)`**。
+	 *
+	 *   病灶（原形＝`for (init, runUserScripts, runUserInit, start)`）：**装置偏差 —— 用户脚本束被跑第二遍**。
+	 *   产物**加载期已自跑** `Engine.init()` ＋ `Engine.runUserScripts()`（SugarCube 的 jQuery-ready 序列）；
+	 *   本装置再跑一遍 ⇒ 用户脚本束重执行 ⇒ 其内 `RPG.bindItemLinks()` 再绑一个委托，
+	 *   而 `RPG.__itemLinksBound` 是**挂在新建的 `setup.RPG` 上**的守卫（每次重执行都换来一个新对象，
+	 *   守卫随之归零）⇒ **守卫拦不住**（实测：`same obj=false`，`document` 上委托 **1 → 2**）。
+	 *   ⇒ 凡「加载期一次性副作用」的计数类断言（绑定／注册／define）在该装置上**恒 2×**。
+	 *
+	 *   ★**三向读数**（同产物，本席实测；A/B 只差 `runUserScripts` 一步）：
+	 *     真浏览器（Playwright chromium，玩家真实路径） ⇒ 委托 **1** ✓
+	 *     本装置 旧形（含 `runUserScripts`）      ⇒ 委托 **2** ✗（装置造出的第二份）
+	 *     本装置 新形（`start` ＋ `play`）         ⇒ 委托 **1** ✓ ——与真浏览器**一致**。
+	 *   ★除该计数外**全同**：`state=idle`／`passage=开始`／五面板俱在／正文长度**逐字节相同**。
+	 *
+	 *   ⚠ **为何只调 `start()` 即可**（✗ 「跑得越全越保险」）：`init`／`runUserScripts` 已由产物跑过；
+	 *     `runUserInit`（⇒ `StoryInit`）反之**必须跑**，而 `start()` 的路径已含之
+	 *     （产物自己的序列是 `runUserInit() → start()`）。重跑用户脚本的**唯一效果**就是造出那个第二份。
+	 *   ⚠ **若产物**将来**不再在加载期自跑**（例如换构建器／换 SugarCube 版本）⇒ 本形会退化成
+	 *     「引擎停在 `init`、段落空」⇒ **下面那道 `Engine.state` 断言会当场报红**（✗ 静默退让）——
+	 *     此处选**报红**而非「探测后二选一」：二选一会在两形都不对时**静默挑一个**，而报红能立刻指认前提变了。 */
+	const r0 = E.start();
+	if (r0?.then) await r0;
+	if (E.state === 'init') {
+		throw new Error('`Engine.start()` 后仍在 `init` ⇒ 产物可能**不再在加载期自跑**用户脚本（前提变了）'
+			+ '—— 见本函数注释 `#91`：此时应改为显式跑 `init()/runUserScripts()/runUserInit()`（✗ 静默二选一）');
 	}
 	const start = SC.Config?.passages?.start;
 	if (!start) throw new Error('取不到 `Config.passages.start`（产物异常）');
@@ -257,6 +290,28 @@ if (import.meta.filename === process.argv[1]) {
 			const p = currentPassage(s);
 			K.push([p === s.SC.Config.passages.start, 'K8 ★boot 须落在 `start` 段落（✗ 停在 idle 就空 → 见文件头 ①）', JSON.stringify(p)]);
 		}
+		/* ★K9（`#91` 新增）：**boot 不得重跑用户脚本束** —— 直接量「加载期一次性副作用」的**计数**。
+		 *
+		 *   为何非加不可：这是**装置自己造出来的假量**（文件头 ④′）。旧形 boot（含 `runUserScripts`）
+		 *   会把 `.rpg-item-link` 委托绑到 **2**，而真浏览器是 **1** ⇒ 一切计数类断言读成 **2×**。
+		 *   本刀**开一条新会话**（✗ 用共享的 `s` —— 计数须从加载瞬间起算，共享会话已经过导航）。
+		 *
+		 *   判据取「**有效**委托数」：同样 selector 的委托多于 1 条即说明用户脚本束被执行了不止一次。
+		 *   ⚠ **对照臂必需**：只断「=== 1」的话，**「selector 拼错 ⇒ 数到 0」也会″通过″吗？**不会（0≠1）——
+		 *     但「jQuery 内部结构变了 ⇒ 永远数到 0」会**假红**，故同时**断非 0** 与**断 === 1**，
+		 *     并把原给读数印出来，使「数不到」与「真的多绑了」**在输出上可分辨**。 */
+		{
+			const s2 = await boot(env);
+			try {
+				const jq = s2.window.jQuery;
+				const ev = jq?._data?.(s2.doc, 'events');
+				const sel = (ev?.click ?? []).filter((h) => String(h.selector ?? '').includes('rpg-item-link')).length;
+				const rpg = s2.SC?.setup?.RPG;
+				K.push([rpg !== undefined, 'K9a 对照臂：`setup.RPG` 可得（✗ 取不到时 K9b 的读数不可信）', String(typeof rpg)]);
+				K.push([sel === 1, 'K9b ★装置**不得重跑用户脚本束**（`.rpg-item-link` 委托须 = 1；真浏览器读数；旧 5 步形 ⇒ 2）', `委托=${sel}`]);
+				K.push([ev !== undefined, 'K9c 对照臂：jQuery 事件表可读（✗ 读到 undefined 时 K9b 的 0/1 无意义）', String(ev === undefined)]);
+			} finally { s2.dom.window.close(); }
+		}
 		/* ★K1／K1b：**直喂纯函数** `assertNavigated`（✗ 靠会话构造 —— `State.passage` 只有 getter，
 		 *   我首版想「人为把 passage 设回」⇒ `Cannot set property passage` ⇒ **构造无效**）。
 		 *   两向都要：**未变⇒抛**（本支）＋ **正常导航⇒不抛**（对照臂 K1b，✗ 只测一向会把「恒抛」判成通过）。 */
@@ -311,7 +366,7 @@ if (import.meta.filename === process.argv[1]) {
 		process.exit(0);
 	}
 	const s = await boot(env);
-	console.log(`  产物：${path.relative(repoRoot, env.htmlPath)}｜boot(含 5 步) ${s.bootMs}ms ＋ play ${s.playMs}ms`);
+	console.log(`  产物：${path.relative(repoRoot, env.htmlPath)}｜boot ${s.bootMs}ms ＋ play ${s.playMs}ms`);
 	console.log(`  boot 落点：段落 ${JSON.stringify(s.passage)}`);
 	{
 		const p = panels(s);
