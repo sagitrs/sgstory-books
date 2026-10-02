@@ -55,5 +55,37 @@ else
   echo "  ✗ K3 缺 WF 档（期望 rc=2 且具名，实 rc=$rc）"; nf=$((nf+1))
 fi
 
+# ── K4：**并发不得假绿**（`#124` RC：固定 `/tmp` 档 ⇒ 两个演练互读写）──
+# 刀法：A（慢、必红）与 B（快、应绿）同时起 ⇒ **A 必须仍然红**。
+# ★先把 A 的 sleep 换成足够长的窗，确保 B 确在 A 跑期间动手。
+cat > "$TMP/wfA.yml" <<'YML'
+jobs:
+  t:
+    steps:
+      - name: A应红
+        run: |
+          echo starting A
+          sleep 2
+          echo "::error::A 本该失败"; exit 1
+YML
+cat > "$TMP/wfB.yml" <<'YML'
+jobs:
+  t:
+    steps:
+      - name: B应绿
+        run: |
+          echo B ok
+YML
+ENGINE="$ENGINE" WF="$TMP/wfA.yml" python3 "$TOOL" >"$TMP/A.out" 2>&1 &
+_a=$!
+sleep 0.6
+ENGINE="$ENGINE" WF="$TMP/wfB.yml" python3 "$TOOL" >"$TMP/B.out" 2>&1
+wait "$_a"
+if grep -q "失败 1" "$TMP/A.out"; then
+  echo "  ✓ K4 并发：A 仍红（✗ 未被 B 覆写成假绿）"; np=$((np+1))
+else
+  echo "  ✗ K4 并发：A 被 B 影响 ⇒ 假绿（实读）"; tail -2 "$TMP/A.out" | sed 's/^/      /'; nf=$((nf+1))
+fi
+
 echo "  ── 通过 $np｜失败 $nf"
 exit $(( nf > 0 ))
