@@ -216,6 +216,17 @@ export const CONSOLE_NOISE = [
 	/^Not implemented: Window's scroll\(\)/,   // jsdom 未实现的 API
 ];
 
+/** ★`#141` ②b：从「试玩终点」段的**正文文本**里取铁器读数（**纯函数** ⇒ 刀可直喂，照 E2 子条）。
+ *  为何要它单独一格：该读数是**产物里的一个值**，而 `verify`／`scenario`／`check-refs` 判的是**结构·引用**，
+ *  **无一读它** ⇒ `#141` ②b 的两轮病根（判据面错／作用域错）能**全绿过关**。这类值型判据只能由渲染面守。
+ *  ⚠ 传**文本**而非 DOM：`#141` 的 `[undefined]` 是**渲染层**的形，取文本才判得到。
+ *  返回 `{ raw, n }`：`n === null` ＝ **没渲染成一个数字**（含 `[undefined]`／该行缺失／被改写）。 */
+export function ironReading(text) {
+	const raw = (String(text).match(/身上的铁器：[^（]*/) ?? [''])[0].trim();
+	const m = raw.match(/身上的铁器：\s*(\d+)\s*件/);
+	return { raw, n: m ? Number(m[1]) : null };
+}
+
 /** D7 判据：**冷 boot 期**不得有「未处理异常」。
  *  读数 = `session.consoleMsgs` 里 **`jsdomError`**（未捕获异常/未实现 API 走此通道）
  *        ＋ **`error`**（产物 `console.error`）—— 两类**减去白名单**后须为空。
@@ -455,6 +466,18 @@ if (import.meta.filename === process.argv[1]) {
 				'K12 ★`quiet` 须是【活旋钮】：`quiet:false` 的回显须**多于** `true`（✗ 死参数 ⇒ 两态同形）',
 				`loud stderr=${loud.err.length}B ／ hush stderr=${hush.err.length}B`]);
 		}
+		/* ★K13b：**刀直喂纯函数**（照 E2 子条：抽纯函数 ⇒ 刀不必造整场会话）——
+		 *   喂 `#141` 第二轮**真实出现过**的形，判据须**分别**判对（✗ 只喂好形 ＝ 装饰）。 */
+		{
+			const good = ironReading('身上的铁器：2 件（备注）');
+			const undef = ironReading('身上的铁器：[undefined] 件');
+			const missing = ironReading('这一局你爬了：最深处 L20');
+			const nonnum = ironReading('身上的铁器：零 件');
+			K.push([good.n === 2, 'K13b 好形：`身上的铁器：2 件` ⇒ 读出 2', `n=${good.n}`]);
+			K.push([undef.n === null, 'K13b ★`[undefined]` 形（`#141` 第二轮真形）⇒ 须报「不是数字」', `n=${undef.n}`]);
+			K.push([missing.n === null, 'K13b 该行缺失 ⇒ 须报「不是数字」（✗ 静默 0 ＝ 把「没渲染」读成「0 件」）', `n=${missing.n}`]);
+			K.push([nonnum.n === null, 'K13b 非阿拉伯数字 ⇒ 须报「不是数字」（✗ 只判存在性即可被非数值蒙混）', `n=${nonnum.n}`]);
+		}
 		await expectThrow('K3 找不到目标链接 ⇒ 须抛（✗ 静默用别的链接顶上）',
 			() => clickPassage(s, { to: '不存在的段落-xyz' }), '无可点故事链接');
 		await expectThrow('K4 面板缺失 ⇒ 须抛（✗ 静默返回空串 —— 那会把「面板没了」读成「面板是空的」）',
@@ -537,6 +560,62 @@ if (import.meta.filename === process.argv[1]) {
 			console.log(`  点击：${JSON.stringify(from)} → ${JSON.stringify(to)} ✓（导航已断言）`);
 		}
 	} catch (e) { fails.push(`出口可点性：${e.message}`); }
+	/* ★K13（`books#105` e2e 补口 · `#141` ②b 两轮 RC 之后）：**终点的读数须真的渲染成一个数字** ——
+	 *   动因：`#141` ②b 的两轮病根（第一轮＝判据取了一个**不承载该值的面**；第二轮＝`.twee` 里**裸 `RPG` 未绑定**）
+	 *   **都通过了全部结构门**（`verify`／`scenario`／`check-refs` 判装配·场景链·引用，**无一读这个值**）。
+	 *   ⇒ 这类**值型判据**只能由**渲染面**守。
+	 *   ★**两臂**（✗ 单臂）：背包只放原料 ⇒ 读 "0 件"；再加两件成品 ⇒ 读 "2 件"。
+	 *     若实现是**恒 0／常量／`[undefined]`** ⇒ **两臂必同形** ⇒ 本格红（`#141` 两轮都会在此被抓）。
+	 *   ★读数用 **`.textContent`**（✗ 只数 `<p>` —— 本仓段落正文走 `<br>` 与 `<li>`，只认 `<p>` 会**假空**）。 */
+	{
+		const R = s.SC.setup.RPG;
+		const ironLine = async () => {
+			await playPassage(s, '试玩终点');
+			await new Promise((r) => setTimeout(r, 60));
+			const t = ([...s.doc.querySelectorAll('#passages .passage')].pop()?.textContent ?? '');
+			return ironReading(t);
+		};
+		try {
+			const inv = s.SC.State.variables.inventory;
+			for (const x of [...inv]) if (String(x.id).startsWith('iron-')) inv.splice(inv.indexOf(x), 1);
+			R.give('iron-ore');
+			const a = await ironLine();
+			R.give('iron-longsword'); R.give('iron-battleaxe');
+			const b = await ironLine();
+			if (a.n === null || b.n === null)
+				fails.push(`K13 终点读数**未渲染成数字**：原料臂=${JSON.stringify(a.raw)} 成品臂=${JSON.stringify(b.raw)}`
+					+ '（⇒ `<<set>>` 求值失败／段落未渲染；★`#141` 第二轮的 `[undefined]` 即此形）');
+			else if (a.n !== 0 || b.n !== 2)
+				fails.push(`K13 终点读数**值不对**：原料臂应为 0、成品臂应为 2，实得 ${a.n}／${b.n}`
+					+ '（⇒ 判据面错[如取条目上不存在的字段] 或 未排除原料）');
+			else console.log(`  K13 终点读数：原料臂=${a.n} 件｜成品臂=${b.n} 件 ✓（两臂有差异 ⇒ 判据非装饰）`);
+		} catch (e) { fails.push(`K13 终点读数：${e.message}`); }
+	}
+	/* ★K14（同上）：**面板与状态同步**这条判据本身**看得见不同步**（`#134` 的运行时面）——
+	 *   动因：`verify.mjs` 自己声明「P1-3 运行时面**归 e2e**」，而 e2e 此前**无此例** ⇒ 「转包未兑现」。
+	 *   ★本格先证**判据有判别力**：故意只改状态、不刷面 ⇒ **须读出「不同步」**；
+	 *     再审**产品的同步通路**：发 `battle:turnEnd`（产品的挂点）⇒ 面板须**追平状态**。 */
+	{
+		const R = s.SC.setup.RPG, D = s.SC.setup.DND3;
+		const domHp = () => (panels(s, ['hp']).hp ?? '').replace(/\s+/g, ' ').trim();
+		try {
+			/* ★先回到 boot 落点段：面板宿主须在**当前段**（⚠ 本格曾因排在 K13 的导航之后而**假红** ——
+			 *   `refreshPanels` 对「宿主不在本段」的面是 **skip**，于是「没刷」被读成「订阅没生效」。见 K8 的同族注）。 */
+			await playPassage(s, s.SC.Config.passages.start);
+			await new Promise((r) => setTimeout(r, 40));
+			R.refreshPanels(['hp']);
+			const before = D.Player.hp;
+			D.Player.hp = before - 3 > 0 ? before - 3 : before;      // 只改状态，不刷面
+			const stale = !domHp().includes(String(D.Player.hp));
+			if (!stale) fails.push('K14 判别力不足：改了状态而未刷面，面板却已同步 ⇒ 本格**看不出不同步**（判据是装饰）');
+			R.events.emit('battle:turnEnd', Object.freeze({ round: 1 }));
+			const synced = domHp().includes(String(D.Player.hp));
+			if (stale && !synced) fails.push(`K14 ★面板未随 \`battle:turnEnd\` 追平状态：面板=${JSON.stringify(domHp())} 状态 hp=${D.Player.hp}`
+				+ '（⇒ 订阅未生效／写错标识符 —— `#137` 的 `R.refreshPanels?.()` 即此形）');
+			if (stale && synced) console.log(`  K14 面板：先读出不同步（判别力 ✓）⇒ 发 \`battle:turnEnd\` 后追平 ${D.Player.hp} ✓`);
+			D.Player.hp = before; R.refreshPanels(['hp']);
+		} catch (e) { fails.push(`K14 面板同步：${e.message}`); }
+	}
 	/* ★D7（`books#105`）：**未处理异常**——采集减去白名单后须为空 */
 	{
 		const { bad, ignored } = unhandledErrors(s);
