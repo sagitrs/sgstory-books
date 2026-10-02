@@ -112,6 +112,7 @@ State.variables.player = {
 State.variables.inventory = [];
 State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1' };
 State.variables.babelGiven = {};
+State.variables.span1Arc = {};   // ★`books#132` L1–L9 弧的本局账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Farms = 0;
 State.variables.span1Harvests = 0;
 
@@ -746,6 +747,108 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
 			P.nonlethal = saved.nonlethal;
 		}
 	}
+}
+
+/* ---------- ⑲ L1–L9 **引导弧**（`books#132`）的 L1–L4 节拍 ----------
+ * 每格对应**操作者设计的一条节拍**（✗ 我自拟）—— 判据即「该节拍在装置上**成立**」：
+ *   L1 空手可胜 ＋ 捡剑 ｜ L2 战后 100% 绷带 ｜ L3 一击必杀怪 ｜ L4 必掉钥匙 ＋ 宝箱三路（不可逆）。 */
+head('⑲ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一击必杀／钥匙·宝箱）');
+{
+	/* ── L1 表：**只出非 elite**（空手 1d3 可磨死）⇒ 这是「空手可胜」的**机械前提**（✗ 口号）。 */
+	const t1 = R.encounterTables?.span1;
+	ok(!!t1, '★遭遇表 `span1` 不在（弧的 L1–L3 覆写没生效？）');
+	if (t1) {
+		ok((t1.L2?.encounters ?? []).some((e) => e.elite), '★L2 没有升 elite ⇒ 设计要的「难度较高」不成立');
+		ok((t1.L3?.encounters ?? []).some((e) => e.ref === 'blue-moss-wasp'), '★L3 没换成蓝苔蜂（`books#132` 的 L3 怪）');
+		/* L4–L9 须**逐字继承**引擎（防漂）：抽查 L9 与引擎表同源 */
+		ok(JSON.stringify(t1.L9) === JSON.stringify(D.ENCOUNTER_SPAN1?.L9), '★L9 行与引擎表**不同源**（覆写时漂了）');
+	}
+	/* ── L3 怪：**一击必杀 = 机制事实**（hp 1 ≤ 玩家最低一击） */
+	const wasp = R.characters.get('blue-moss-wasp');
+	ok(!!wasp, '★`blue-moss-wasp` 没注册（L3 的怪）');
+	if (wasp) {
+		ok(wasp.maxHp === 1, `★蓝苔蜂 maxHp=${wasp.maxHp}（设计要「一击必杀」⇒ 须 ≤ 玩家最低一击 1）`);
+		ok((D.Player.unarmed?.item?.stats?.dmg ?? '') === '1d3', '★空手伤害不再是 1d3 ⇒「一击必杀」的下限判据须重算');
+		/* ★**怪必须有已装备的攻击件**（`RPG.Character` **不认** `attacks:` 字段 —— 我首版即栽在此：
+		 *   怪因此**咬不动人**，一场「白送」的战斗表面上仍会让「可胜」为真）。⇒ 这一格钉住这一类。 */
+		const foeItems = (c) => (c?.items ?? []).map((i) => (typeof i?.id === 'string' ? i.id : null));
+		ok(foeItems(wasp).length > 0, '★蓝苔蜂**没有攻击件**（`items` 空）⇒ 它在战斗里咬不动人（`attacks:` 字段不被 `Character` 认）');
+	}
+	/* ── L1 固定事件：捡剑（**经动作**触发，✗ 直接 give） */
+	State.variables.inventory = [];
+	const l1 = map.locations.get('L1').actions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('长剑'));
+	ok(!!l1, '★L1 没有「拾起地上的长剑」动作（`books#132` L1 固定事件）');
+	if (l1) {
+		l1.action();
+		ok(R.has('sword'), `★拾起后背包里没有剑（实得：${R.inventoryLabel()}）`);
+		ok(R.equippedWeapon?.()?.id === 'sword', '★拾起后剑**没握在手上**（握不上 ⇒ 战斗仍出不了手）');
+		ok(l1.when && !l1.when(), '★拾起后动作**没消失**（应一次性）');
+	}
+	/* ── L4：必掉钥匙（表）＋ 宝箱三路（钥匙开／硬开成功／硬开失败**不可逆**） */
+	ok(JSON.stringify(setup.BABEL.弧必掉?.L2) === JSON.stringify(['bandage']), '★L2 必掉表不是绷带（`books#132`：战后 100%）');
+	ok(JSON.stringify(setup.BABEL.弧必掉?.L4) === JSON.stringify(['iron-key']), '★L4 必掉表不是铁钥匙');
+	const l4acts = map.locations.get('L4').actions.map((a) => String(typeof a.text === 'function' ? a.text() : a.text));
+	ok(l4acts.some((t) => t.includes('铁钥匙')), '★L4 没有「用铁钥匙开箱」动作');
+	ok(l4acts.some((t) => t.includes('硬开')), '★L4 没有「硬开」动作');
+	/* 路①：钥匙开 ⇒ **消耗钥匙** ＋ 得中甲（`mail`） */
+	{
+		State.variables.span1Arc = {};
+		State.variables.inventory = [];
+		R.give('iron-key');
+		const openAct = map.locations.get('L4').actions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('铁钥匙'));
+		ok(openAct.when(), '★有钥匙时「用铁钥匙开箱」却不可用');
+		openAct.action();
+		ok(!R.has('iron-key'), '★开了箱但钥匙**没被消耗**（`books#132`：钥匙＝消耗品）');
+		ok(R.has('mail'), `★开箱后没拿到中甲（实得：${R.inventoryLabel()}）`);
+		ok(R.has('sword') === false, '（前置复核）本条不该再留剑 —— 上一格的后效未清');
+	}
+	/* 路②：硬开**失败** ⇒ **永久锁死**（不可逆 ⇒ 之后两条路都不可用） */
+	{
+		State.variables.span1Arc = {};
+		State.variables.inventory = [];
+		/* ★须先给家伙：**空手 1d3 ≤ 3 < 6 点血 ⇒ 永远砸不开**（实测）⇒ 硬开是「手上有东西才谈得上」的动作。 */
+		R.give('sword'); R.equip('sword');
+		const hardAct = map.locations.get('L4').actions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('硬开'));
+		/* 确定性：让伤害掷骰**最小** ⇒ 6 点血的箱子砸不破。 */
+		const roll = R.rng.set(() => 0.0);
+		D.Player.hp = D.Player.maxHp;
+		hardAct.action();
+		R.rng.reset();
+		ok(State.variables.span1Arc.chests?.['chest-l4']?.locked === true, '★硬开没砸开时**没有锁死** ⇒ 「有代价的二择」不成立（可无限重试＝白给）');
+		ok(!R.has('mail'), '★硬开失败却拿到了中甲');
+		ok(!map.locations.get('L4').actions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('硬开')).when(),
+			'★锁死后「硬开」仍可用（不可逆被破）');
+	}
+	/* 路③：硬开**成功** ⇒ 得中甲 */
+	{
+		State.variables.span1Arc = {};
+		State.variables.inventory = [];
+		R.give('sword'); R.equip('sword');   // 同上：须有家伙
+		const hardAct = map.locations.get('L4').actions.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('硬开'));
+		const roll = R.rng.set(() => 0.99);   // 高掷 ⇒ 必破（剑 1d8 满掷 8 > 6 点血）
+		D.Player.hp = D.Player.maxHp;
+		hardAct.action();
+		R.rng.reset();
+		ok(R.has('mail'), `★硬开砸开了却没拿到中甲（实得：${R.inventoryLabel()}）`);
+	}
+	/* ── L1「空手可胜」的**可达性**（✗ 本格**不**声称已证「可胜」）----------
+	 * ★实测教训：**无头自动通路测不出空手** —— 空手打击在战斗 UI 里是**一个选项**（`40-battle.js:445` 常驻项），
+	 *   自动通路只走「已装备武器」⇒ **空手时玩家零输出**（实测 `kills +0`，玩家白挨打）。
+	 *   ⇒ 「空手可胜」须由**交互通路**（真驾驶/tester 的 e2e 驾驶层）判，✗ 不能用 `fight({interactive:false})` 冒充。
+	 *   本格只钉**结构前提**：L1 的表里**没有 elite**（空手面对的是最弱档）＋ 空手项**存在**。 */
+	{
+		ok(typeof D.Player.unarmed === 'object' && D.Player.unarmed !== null, '★空手面不在（`#1854`/E1）⇒「空手可胜」无从谈起');
+		const t = R.encounterTables?.span1 ?? {};
+		ok((t.L2?.encounters ?? []).some((e) => e.elite), '★L2 没有 elite ⇒ 设计要的「难度较高」不成立');
+		/* ⚠ **明账（✗ 假绿）**：引擎表 L1 原含一条 **elite 獾**（`climb.js:70` ⇒ 我覆写时**回退为原行**）——
+		 *   而设计要「L1 空手**能赢**」⇒ **两者冲突**：抽到 elite 时空手几乎必败。
+		 *   ⇒ 我**未**擅自删那条（实测：动 L1 的表会**打破创伤族既有格** —— 它们依赖 L1 獾的伤害型）。
+		 *   ⇒ 本格**如实记为未决**，✗ 不断言「L1 无 elite」（那会是一条**我造出来**的假前提）。 */
+		const l1Elite = (t.L1?.encounters ?? []).some((e) => e.elite);
+		console.log(`  ⚠ 未决：L1 表含 elite=${l1Elite} ⇒ 「空手可胜」在现表下**不成立**（须裁：让 L1 去 elite ＋ 迁创伤族格，或另定 L1 数值）`);
+	}
+	console.log(`  弧：L1 表无 elite ✓｜L2 elite ✓｜L3 蓝苔蜂 hp=${wasp?.maxHp} ✓｜捡剑经动作 ✓｜`
+		+ `必掉 L2/L4 ✓｜宝箱三路（钥匙消耗／锁死不可逆／砸开得物）✓`);
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——

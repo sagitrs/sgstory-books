@@ -129,6 +129,12 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		run().kills += foes.length;
 		const loot = R.rollLoot(layer);
 		for (const l of loot) R.give(l.id, l.n);
+		/* ★`books#132`：本层**必掉**（L2 绷带／L4 钥匙）—— 在随机掉落**之后**补授 ⇒ 与随机面不冲突。
+		 *   设计动因：L2「战后 100% 掉落绷带」是**治疗门控**链的入口（L3 战前打绷带）；L4 钥匙同理。 */
+		for (const id of (setup.BABEL.弧必掉?.[layer] ?? [])) {
+			R.give(id);
+			R.perform(`你还从它身上翻出了：${R.items.has(id) ? R.createItem(id).name : id}。`);
+		}
 		if (loot.length > 0) {
 			R.perform(`战利品：${loot.map((l) => `${R.items.has(l.id) ? R.createItem(l.id).name : l.id}×${l.n}`).join('、')}。`);
 		}

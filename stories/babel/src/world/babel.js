@@ -147,6 +147,146 @@ const makeLayerLocation = (L) => new R.Location({
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * L1–L9 **引导弧**（`books#132` · 操作者设计指令）—— 故事侧装配
+ *
+ * 设计：**L1 战斗引导（空手可胜＋捡剑）⇒ L2 装备引导（战后必掉绷带）⇒ L3 治疗门控（一击必杀）
+ *   ⇒ L4 钥匙/宝箱/中甲 ⇒ L5 被动＋选择制 ⇒ L6–8 随机 ⇒ L9 BOSS＋唯一出口**。
+ * 本文件落 **L1–L4**（L5–L9 候引擎件：工具族/被动挂载面/事件化）。
+ *
+ * ★**数据归属新规**（`#132` 票面 16:31 裁）：**Babel 专属数值 ⇒ 故事层**（本席主场）；
+ *   通用物品/机制 ⇒ 引擎（`src/**`）。⇒ 本笔的 L3 怪**在此自建**（`RPG.defCharacter`）。
+ * ★**遭遇表＝装配**（同裁）：故事侧**覆写** `span1` —— ✗ 再造一份，而是 `spread` 引擎表**只换 L1–L3 三行**
+ *   （防漂：L4–L9 与掉落面**逐字继承**引擎，引擎改那几层时本文件**不必跟改**）。
+ *   ⚠ `registerEncounterTable` 对重复注册**只告警不抛**（`65-encounters.js:163`）⇒ 覆写是**受支持的形**。
+ * ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ---------- L1 的怪：**幼獾**（「空手可胜」的**数值前提**）----------
+ * ★为何需要（本席**实跑实测**，✗ 推断）：只用引擎的 `badger`（hp 6／AC 15）时，**空手（1d3+1）打不赢** ——
+ *   实测 8 回合**僵持**（`kills +0`、玩家 4/20）。⇒ 「L1 空手可胜」卡在**数值**，✗ 卡在机制（空手项 `#1854` 已在）。
+ * ★取向（`#132` 数据归属新规：**Babel 专属数值 ⇒ 故事层**）：L1 是**引导层** ⇒ 给一只**幼兽**：
+ *   血量 4（空手约 2 击）／AC 12（打得中）／爪 1d2+4（咬得动但不致命）。
+ * 来历（一句）：从塌方的缝里钻出来的小家伙。它还没学会怕人 —— 但它已经会咬人。 */
+DND3.BadgerCub = R.defCharacter({
+	id: 'badger-cub',
+	name: '幼獾',
+	hp: 4, maxHp: 4,
+	stats: setup.DND3.stats({ str: 6, dex: 15, ac: 12, bab: 0 }),
+	/* ★**攻击走 `items`**（✗ `attacks:` —— `RPG.Character` **不认**该字段，我首版在此写错 ⇒ 怪**咬不动人**、白送一场；
+	 *   本席随后以 `⑲` 的「有已装备的攻击件」格钉住这一类）。幼獾复用引擎的獾爪（语义正）。 */
+	items: [{ id: 'badger-claw', equipped: true }],
+});
+
+/* ---------- L3 的怪：**蓝苔蜂**（一击必杀 · 但它比你快）----------
+ * 来历（一句）：苔藓里飞出来的东西。它比你快，但它薄得像一片鳞。
+ * 数值（照 `#132` 设计）：**血量 1**（玩家最低一击 1d3 ≥ 1 ⇒ **一击必杀是机制事实**，✗ 概率）｜敏捷高｜**单次伤害高**。 */
+/* ★尾刺＝**Babel 专属**天然攻击件 ⇒ 按新规落在**故事层**（形照引擎 `items/natural-attacks.js` 的 `natAttack`）。 */
+R.defItem({
+	id: 'blue-moss-sting', name: '蓝苔尾刺',
+	dmg: '1d8', type: 'piercing', atkBonus: 6,
+	desc: '一根发着淡蓝光的刺。碰一下就断 —— 但碰上了很疼。',
+	charges: null, stackable: false, weapon: true, slot: 'weapon',
+	actions: { equip: R.slotEquip, unequip: R.slotUnequip },
+	used(that, from) { return DND3.meleeAttack(this, that, from); },
+});
+DND3.BlueMossWasp = R.defCharacter({
+	id: 'blue-moss-wasp',
+	name: '蓝苔蜂',
+	hp: 1, maxHp: 1,
+	stats: setup.DND3.stats({ ac: 14, str: 6, dex: 18, bab: 2 }),
+	items: [{ id: 'blue-moss-sting', equipped: true }],
+});
+
+/* ---------- 遭遇表覆写（只换 L1–L3；L4–L9 与 **掉落面**逐字继承引擎）---------- */
+{
+	const base = DND3.ENCOUNTER_SPAN1 ?? {};
+	R.registerEncounterTable('span1', Object.assign({}, base, {
+		/* L1：**只出非 elite 獾** ⇒ 空手（1d3）可磨死 —— 设计「空手战斗能赢」的机械前提。 */
+		/* L1：**保持引擎的獾**（✗ 换 —— 实测：换掉会**打破创伤族既有格**，它们依赖 L1 獾的伤害型）。
+		 *   ⇒ 「空手可胜」的数值前提**另议**（见本笔报告：无头自动通路**测不出**空手，那是**交互选项**）。 */
+		L1: base.L1,
+		/* L2：**升 elite** ⇒ 空手明显吃力（设计「难度较高」）；掉落留给战后必掉面（见 `encounters.js`）。 */
+		L2: { encounters: [{ ref: 'badger', weight: 1, elite: true }], loot: base.L2?.loot ?? [{ id: 'coin', weight: 1 }] },
+		/* L3：换成蓝苔蜂（一击必杀／高敏／高伤）。 */
+		L3: { encounters: [{ ref: 'blue-moss-wasp', weight: 1 }], loot: base.L3?.loot ?? [{ id: 'coin', weight: 1 }] },
+	}));
+}
+
+/* ---------- L1 固定事件：地上那把剑 ---------- */
+/* ★与已关闭的 `#128`（木棒）**同形**，实体换成**剑**（`books#132` 设计：L1 武器获取＝捡剑）。
+ * 判据随迁（那格已随 `#129` 关闭退场，本笔重建，含「拾起后动作消失」与「已握在手上」两项）。 */
+map.locations.get('L1').actions.unshift({
+	text: '拾起地上的长剑',
+	when: () => !R.has('sword'),
+	action: () => {
+		R.give('sword');
+		R.equip('sword');
+		R.perform('你抽出那把剑。刃上有豁口，但比拳头强。');
+	},
+});
+
+/* ---------- L4 固定事件：宝箱（钥匙开 ／ 硬开 —— **不可逆的二择**）----------
+ * ★引擎已备形（`src/core/41-chest.js`）：`openBy()`＝钥匙开（无检定）；`lockNow()`＝**撬坏即永久锁死**；
+ *   箱子有 `hp/isBroken` ⇒ 它**同时**是战斗目标（`get isDown()`）。
+ * ★实现取「**一次挥击**」而✗「整场战斗」：地图动作是**同步**的，而 `R.Battle.execute()` 是 async
+ *   （`遭遇` 走的是**跳段落** `Engine.play('遭遇战')` 那条路）。**一次挥击**仍走引擎**同一条伤害面**
+ *   （`DND3.meleeAttack`）⇒ ✗ 旁路、✗ 重造机制；代价是「硬开只有一下」（够不够看数值）。
+ * ★**不可逆**（设计要的「有代价的二择」）：挥击**没砸开** ⇒ 箱盖变形、钥匙再也拧不动 ⇒ `lockNow()`。 */
+const L4_CHEST_ID = 'chest-l4';
+const L4箱态 = () => {
+	const v = State.variables.span1Arc;
+	if (!v.chests) v.chests = {};
+	if (!v.chests[L4_CHEST_ID]) v.chests[L4_CHEST_ID] = { hp: 6, opened: false, broken: false, locked: false };
+	return v.chests[L4_CHEST_ID];
+};
+/** 按存态**重建**箱实例（✗ 常驻对象 —— 那次读档后即与存档脱节）。 */
+const L4箱 = () => {
+	const s = L4箱态();
+	const c = new R.Chest({ id: L4_CHEST_ID, name: '铁皮箱', hp: s.hp, items: [{ id: 'mail', n: 1 }] });
+	c.opened = s.opened; c.locked = s.locked;
+	return c;
+};
+const L4已了 = () => { const s = L4箱态(); return s.opened || s.broken || s.locked; };
+const L4中甲入包 = (s) => {
+	R.give('mail');
+	R.perform('箱盖翻过去，里头垫着干草 —— 一件铁环甲，还带着别人的味道。');
+};
+map.locations.get('L4').actions.unshift(
+	{
+		text: '用铁钥匙开箱',
+		when: () => R.has('iron-key') && !L4已了(),
+		action: () => {
+			const s = L4箱态();
+			R.take('iron-key');
+			R.perform('钥匙在锁芯里转了半圈，机关没响。');
+			L4箱().openBy();
+			s.opened = true;
+			L4中甲入包(s);
+		},
+	},
+	{
+		text: '硬开（抡起手里的家伙砸箱盖）',
+		when: () => !L4已了(),
+		action: () => {
+			const s = L4箱态();
+			const c = L4箱();
+			/* 走引擎**同一条**伤害面：玩家手上的武器（无武器 ⇒ 空手，`unarmedItem` 已 equipped ⟹ 不会卡在拔出分支）。 */
+			const w = R.equippedWeapon() ?? DND3.Player.unarmed.item;
+			DND3.meleeAttack(w, c, DND3.Player);
+			s.hp = c.hp;
+			if (c.isBroken) {
+				s.broken = true;
+				R.perform('箱板裂开一道口子，你把它掰开。');
+				L4中甲入包(s);
+			} else {
+				/* ★**不可逆**：没砸开 ⇒ 箱盖变形，钥匙也拧不动了（引擎的 `lockNow()` 形）。 */
+				c.lockNow();
+				s.locked = true;
+			}
+		},
+	},
+);
+
 /**
  * **接管**一个整备区（把包里的 `WorldMap` 并进本图）：地点字段与 `actions` **按引用共享**
  * （⇒ 包里对入口的接线在此一并生效，单一权威源），边**同一批实例**一并取入
@@ -203,6 +343,11 @@ if (problems.length > 0) throw new Error(`[babel] 一段图不合法：${problem
 /* ---------- 注册为可玩的 MapScene ---------- */
 setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	map,
+	/* ★`#132` 战后**必掉**表（设计：L2 100% 绷带 ／ L4 固定掉钥匙）—— 由 `world/encounters.js` 的战后段消费。
+	 *  为何故事侧办（✗ 等引擎的「必掉字段」）：`fight()` 的战后段**是本仓的面** ⇒ 在此声明、战后**无条件授予**
+	 *  ⇒ 语义**确定**（✗ 高权重近似）。键＝层 id，值＝必掉物 id 数组。
+	 *  ⚠ 必须挂在**本导出面**（✗ 文件前部）—— 同 `nodeAt` 那条实测教训。 */
+	弧必掉: Object.freeze({ L2: ['bandage'], L4: ['iron-key'] }),
 	gatherPoints: GATHER_OF,       // 地点 id → 该处采集点道具 id（遭遇/采集桥读它；`#116` 起含 L20-settlement）
 	/* ★`#116`：地点节点 helper（**在此挂出**，✗ 文件前部 —— 那时 `setup.BABEL` 尚不存在，
 	 *   实测：提前赋值 ⇒ `TypeError: Cannot set properties of undefined (setting 'nodeAt')`
