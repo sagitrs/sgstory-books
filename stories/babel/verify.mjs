@@ -629,6 +629,26 @@ head('⅖ `#1877` P1-3 面板重绘保留交互态 ／ P1-6 战斗出口时机')
 /* 汇总与崩溃兜底的**定义**在文件开头**（见「失败形」一节）—— 那两行 `process.on` 必须在
  * 任何可能抛错的语句之前注册，否则中途崩溃时兜底还没挂上（本笔 M9′ 刀实测踩过）。 */
 
+/* ---------- ⑯ 试玩终点的**结算与重开**（`books#130` ①②）----------
+ * 两处都是**玩家可见**面，且都**只能静态核**（本脚本不执行 twee —— 它手摆 StoryInit 变量）
+ * ⇒ 判据落在**源文本**上。★口径（`#130` 评论的装置辨析）：
+ *   restart 家族的判据一律断「**调用了什么**」，✗ 断「调用后世界变成什么样」——
+ *   因为 jsdom 的 `location.reload()` 是 **no-op**（实测 `"Not implemented: navigation to another Document"`），
+ *   断「reload 后状态」等于断一个**真浏览器不走的分支**。 */
+head('⑯ 试玩终点（① 结算模板串 ＋ ② 真重开）');
+{
+	const playTwee = fs.readFileSync(path.join(storySrc, 'story', 'play.twee'), 'utf8');
+	/* ① `$_r.` 是**故事变量**前缀，而 `_r` 是 `<<set>>` 出来的**临时变量** ⇒ 写 `$_r.` 会**原样印出模板串**。 */
+	const bad = [...playTwee.matchAll(/\$_\w+\./g)].map((m) => m[0]);
+	ok(bad.length === 0, `★\`play.twee\` 里有 \`$\` 前缀的临时变量引用（会向玩家**印出模板串**）：${bad.join('、')}`);
+	ok(playTwee.includes('_r.deepest') && playTwee.includes('_r.gathered'), '★结算屏的读数引用不见了（`_r.deepest`／`_r.gathered`）');
+	/* ② 终点链须**真重开**：断「调到 `Engine.restart()`」，✗ 断「段落是『开始』」（后者状态全留）。 */
+	const term = playTwee.slice(playTwee.indexOf(':: 试玩终点'));
+	ok(!/\[\[再爬一次[^\]]*\]\]/.test(term), '★终点链仍是**段落跳转**形（`[[…|开始]]`）⇒ 背包/位置/状态全留，「新一局」不成立');
+	ok(term.includes('Engine.restart()'), '★终点链没有调 `Engine.restart()`（`≈books#130` ②：须真重开）');
+	console.log(`  结算屏：\`$\`前缀误用 ${bad.length} 处 ✓｜终点链调用 Engine.restart() ✓（真重开，✗ 段落跳转）`);
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
