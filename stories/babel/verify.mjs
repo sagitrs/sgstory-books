@@ -126,6 +126,26 @@ if (map) {
 }
 console.log(`  地点 ${map.locations.size} 个｜边 ${map.exits.length} 条`);
 
+/* ---------- ①b 起手的武器来源（`books#128`）----------
+ * 缺口：武器此前**只能**从战斗掉落取 ⇒ 「持械才能打赢 ⇒ 打赢才拿到武器」**循环不可达**
+ *   （tester-4 实测：空手臂 0/78；持械臂才有胜面）。机制判据＝该动作**在图上**且**真给 club**。
+ * ★本段位于一切「清空背包」之前（② 起各段会重置）⇒ 读到的是故事侧**真实起手态**。 */
+head('①b 起手武器（`books#128`：空手打不出手 ⇒ 须有一条非战斗来源）');
+{
+	const acts1 = map.locations.get('L1').actions;
+	const txt1 = (a) => String(typeof a.text === 'function' ? a.text() : a.text);
+	const pick = acts1.find((a) => txt1(a).includes('木棒'));
+	ok(!!pick, '★`L1` 没有起手武器动作（`books#128`：武器只能靠战斗掉落 ⇒ 持械路径不可达）');
+	ok(!!pick && (pick.when ? pick.when() : true), '★起手武器动作在开局状态下**不可用**（`when` 把自己门掉了）');
+	if (pick) {
+		pick.action();
+		ok(R.has('club'), `★拾起后背包里没有木棒（实得：${R.inventoryLabel()}）`);
+		ok(pick.when && !pick.when(), '★拾起后动作**没消失**（应一次性：`when` 读「身上没有」）');
+		ok(R.equippedWeapon?.()?.id === 'club', '★拾起后木棒**没握在手上**（握不上＝战斗中仍出不了手）');
+		console.log(`  起手武器：「${txt1(pick)}」⇒ ${R.inventoryLabel()}｜握在手上 ${R.equippedWeapon?.()?.name}`);
+	}
+}
+
 /* ---------- ② 层与内容（1–9 层：采集点 ＋ 遭遇 ＋ 向上的路）---------- */
 head('② 全梯逐层（一段 1–9 ＋ 二段 11–19：采集点 ＋ 遭遇 ＋ 向上的路）');
 const CLIMB_LAYERS = [...Array(9).keys()].map((i) => `L${i + 1}`).concat([...Array(9).keys()].map((i) => `L${i + 11}`));
@@ -219,8 +239,13 @@ if (!encounterFaceReal) {
 	R.rollEncounter = (layer) => [{ ref: 'badger', elite: true, layer }];
 	R.rollLoot = (layer) => [{ id: 'coin', n: 1, layer }];
 }
-R.give('club');                                 // 与故事里 L1 的「拾起木棒」同形：没武器就出不了手
-R.equip('club');
+/* ★`books#128`：**✗ 再给一次** —— 本件该用的就是①b 从 **L1 故事动作**拿到的那件
+ *   （原写 `R.give('club')` 时故事侧还没这一手）。若在此再 `give`：`club` 是 non-stackable
+ *   ⇒ `RPG.give` 逐件建槽 ⇒ 背包里会出现**第二条木棒**（重复）⇒ “从战斗掉落以外的来源”这条链
+ *   就永远测的是**测试自备**的武器，✗ 不是故事给的那件。
+ *   ⇒ 此处只**断言**手上那件确实来自①b（真正走玩家路径），✗ 不再给。 */
+ok(R.has('club') && R.equippedWeapon?.()?.id === 'club',
+	`★本段开打前手上没有那根木棒（实得：${R.inventoryLabel()}）—— ①b 的故事路径没把武器带过来`);
 R.rng.set(() => 0.99);   // 确定性：重击频出 ⇒ 战斗必在回合上限内分出结果
 const protoHp = R.characters.get('badger').hp;
 const coins0 = State.variables.inventory.filter((s) => s.id === 'coin').length;
@@ -242,6 +267,22 @@ if (run.deaths > 0) {
 }
 console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/${D.Player.maxHp}`
 	+ `｜创伤 [${D.Player.effects.filter((e) => D.Traumas[e]).join(',')}]`);
+
+/* ---------- ⑤c 「战斗 → 掉落 → 锻造」的**缺环**（`books#128` ③）----------
+ * 上游已各有一头：①b＋⑤ 保证「有武器 ⇒ 打得赢」（本节上方实跑：kills=1）；
+ * ⑪ 保证「有铁矿 ⇒ 打得成器」。中间**这一跳**（赢 ⇒ 拿到铁矿）此前无判据 ⇒ 补在此。
+ * ✗ 用桩（桩恒返 coin ⇒ 本格就是假绿）：只在**真 API 在场**时判。 */
+if (encounterFaceReal) {
+	const oreLayer = 'L15';   // 表内含 iron-ore 的层（`climb2.js` 的二段 L13–L18；L19 表里没有）
+	let ore = 0;
+	for (let i = 0; i < 200 && ore === 0; i++) {
+		for (const x of (R.rollLoot(oreLayer) ?? [])) if (x.id === 'iron-ore') ore++;
+	}
+	ok(ore > 0, `★二段战斗掉落里取不到铁矿（${oreLayer}，200 次内）⇒ 「战斗 → 掉落 → 锻造」链断了`);
+	console.log(`  ★掉落链：${oreLayer} 胜后掉落可出 iron-ore ✓（进 ⑪ 的锻造台即闭环）`);
+} else {
+	console.log('  ★掉落链：遭遇面缺席（桩）⇒ 本格不判（✗ 把桩的读数当覆盖）');
+}
 
 /* ---------- ⑤b 死亡回起点层（票面「死亡回 1」这一步，强制走一次）----------
  * 构造：玩家体力压到 1 ＋ 把注册面单例临时配成「重甲般能打」（副本会继承）＋ rng 定值 ⇒

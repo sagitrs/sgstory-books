@@ -145,6 +145,25 @@ const makeLayerLocation = (L) => new R.Location({
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
 
+/* ★`books#128`：**起手的非战斗武器来源** ——
+ *   缺口：武器此前**只能**从战斗掉落取 ⇒ 「持械才能打赢 ⇒ 打赢才拿到武器」是个**闭环**
+ *   （tester-4 实测：空手臂 0/78；只有持械臂才有胜面）。本动作给出**开局即得**的第一件武器。
+ *   · **一次性**：`when` 读「身上没有」⇒ 拾起后动作**消失**（重开时 `$inventory` 清零 ⇒ 重新出现）
+ *   · **给＋握**同笔（`babel2.js` 的盾/马同形）：只给不握 ⇒ 战斗支仍取 `contains(['weapon','equipped'])`
+ *     而拒绝（`no-weapon`），玩家得再去点一次背包 ⇒ 「拾起」这一步就成了新坑。
+ *   · 与 `#1854` 的空手支**不互斥**（有武器时空手仍可选）—— 本笔✗动那一面。
+ *   ⚠ 放在 `babel.js`（**故事 JS**）而✗ `init.twee`：`verify.mjs` 不执行 twee（它手摆 StoryInit 变量）
+ *     ⇒ 放 twee 里则**只能静态核**；放这里则判据可**真调用**并在删掉时**变红**。 */
+map.locations.get('L1').actions.unshift({
+	text: '在碎石里摸到一根结实的木棒（拾起）',
+	when: () => !R.has('club'),
+	action: () => {
+		R.give('club');
+		R.equip('club');
+		R.perform('你从碎石下抽出一根结实的木棒，握在手里 —— 至少不是空手上路。');
+	},
+});
+
 /**
  * **接管**一个整备区（把包里的 `WorldMap` 并进本图）：地点字段与 `actions` **按引用共享**
  * （⇒ 包里对入口的接线在此一并生效，单一权威源），边**同一批实例**一并取入
