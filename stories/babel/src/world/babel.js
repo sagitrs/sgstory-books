@@ -532,7 +532,8 @@ DND3.BadgerCub = R.defCharacter({
 /* ★尾刺＝**Babel 专属**天然攻击件 ⇒ 按新规落在**故事层**（形照引擎 `items/natural-attacks.js` 的 `natAttack`）。 */
 R.defItem({
 	id: 'blue-moss-sting', name: '蓝苔尾刺',
-	dmg: '1d8', type: 'piercing', atkBonus: 6,
+	/* ★同上（`books#170`）：伤害块必须进 `stats`（✗ 顶层 —— 那会被 `Item` 构造静默丢掉，伤害骰恒 undefined）。 */
+	stats: { dmg: '1d8', type: 'piercing', atkBonus: 6 },
 	desc: '一根发着淡蓝光的刺。碰一下就断 —— 但碰上了很疼。',
 	charges: null, stackable: false, weapon: true, slot: 'weapon',
 	actions: { equip: R.slotEquip, unequip: R.slotUnequip },
