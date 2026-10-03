@@ -265,6 +265,37 @@ if (has('--selftest')) {
 		F('★面 Q 反例臂：换回真 `refreshPanels` ⇒ 同一操作**清得掉**（✗ 则上一条是「本来就空」造的假刀）', 清得掉 === true);
 	}
 
+	/* ★面 T 的**刀**（`books#200` P0）：唯一变量＝把引擎的 `applyHeal` 换回**P0 原形**
+	 *   （落值照夹 `maxHp`，但**返回名义量**、满血也不拒）⇒ 面 T 的三条臂应红。 */
+	{
+		const R = s.SC.setup.RPG, D = s.SC.setup.DND3, P = D.Player, V = s.SC.State.variables;
+		const 屏 = () => (s.doc.body.textContent ?? '').replace(/\s+/g, ' ');
+		const 屏上数 = () => { const m = [...屏().matchAll(/受到了(\d+)点治疗/g)]; return m.length ? Number(m[m.length - 1][1]) : null; };
+		const 件数 = (id) => V.inventory.filter((x) => x.id === id).reduce((a, x) => a + (x.charges ?? 1), 0);
+		const 真 = D.applyHeal;
+		/* 刀形＝`books#200` 之前的 `used()`：**印名义量**（落值仍被夹） */
+		D.applyHeal = (item, from, target) => {
+			const 量 = D.healAmount(item, from);
+			target.hp = Math.min(target.maxHp ?? Infinity, (target.hp ?? 0) + 量);
+			return 量;
+		};
+		const 试 = async (hp) => {
+			V.inventory.length = 0; R.give('herb-poultice');
+			P.hp = hp; R.refreshPanels?.(['inventory', 'hp']); await tick(150);
+			const a = [...s.doc.querySelectorAll('[data-item="herb-poultice"]')].pop();
+			const 前HP = P.hp, 前件 = 件数('herb-poultice');
+			a?.click(); await tick(200);
+			return { Δ: P.hp - 前HP, 件差: 件数('herb-poultice') - 前件, 数: 屏上数() };
+		};
+		const 近 = await 试(P.maxHp - 1);        // 刀下：Δ＝1 而屏上数＝2（不一致）
+		const 满 = await 试(P.maxHp);            // 刀下：满血仍「用掉」一件、仍印「受到了2点治疗」
+		const 刀红 = 近.数 !== 近.Δ && 满.件差 !== 0;
+		D.applyHeal = 真;
+		F('★面 T 唯一变量：把 `applyHeal` 换回 P0 原形（印名义量／满血不拒）⇒ 面 T 应红'
+			+ `｜实得 差1点满 Δ=${近.Δ}／屏上数=${近.数}（正例下须 1≠2）｜满血 件差=${满.件差}（正例下须 0）`,
+			刀红 === true);
+	}
+
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -522,9 +553,78 @@ if (has('--selftest')) {
 			console.log(`  面 Q ✓ 战斗面：敌「${有.敌}」；治疗「${有.治}」；战斗结束 ⇒ 两块清空 ✓`);
 		}
 	}
+	/* ★面 T（**硬判**，`books#200` P0）：**背包栏路径**的治疗件**对账** —— 正文说「受到了N点治疗」，
+	 *   N 必须 ＝ **实际回血**；满血 ⇒ **拒绝**（不扣件、出声）。
+	 *   唯一变量＝**起始血量**（三段：半血／差 1 点满／满血），点击走**真 DOM**（`[data-item]` 链接被 `click()`）
+	 *   —— 即操作者 15:07 那一按的同一通道（`bindItemLinks` ⇒ `RPG.itemClick` ⇒ `used()`）。
+	 *   ★为什么必须补这一面：`#188` 的「行为对账」只守了**战斗面板钮**（面 Q），**背包栏点击**当时**无对账格**
+	 *     ⇒ 操作者看到的「受到了2点治疗」而体力条不动，没有任何判据拦它。
+	 *   ⚠ 清背包须**就地清**（`.length = 0`）：赋一个 Node 侧的 `[]` 会跨实测域。 */
+	{
+		const R = s.SC.setup.RPG, D = s.SC.setup.DND3, P = D.Player;
+		const V = s.SC.State.variables;
+		const 屏 = () => (s.doc.body.textContent ?? '').replace(/\s+/g, ' ');
+		/** 屏上**最后一条**「受到了N点治疗」的 N（无则 null）—— 对账读**屏上的数**，✗ 源码字符串。 */
+		const 屏上数 = () => {
+			const m = [...屏().matchAll(/受到了(\d+)点治疗/g)];
+			return m.length ? Number(m[m.length - 1][1]) : null;
+		};
+		const 件数 = (id) => V.inventory.filter((x) => x.id === id).reduce((a, x) => a + (x.charges ?? 1), 0);
+		const 出声数 = () => (屏().match(/伤已无碍/g) ?? []).length;
+		/** 一档：铺血量 ⇒ **点背包栏那件**（真 DOM）⇒ 读「实回／件数／屏上数／出声」。 */
+		const 一档 = async (id, hp) => {
+			V.inventory.length = 0;
+			R.give(id);
+			P.hp = hp;
+			R.refreshPanels?.(['inventory', 'hp']);
+			await tick(150);
+			const a = [...s.doc.querySelectorAll(`[data-item="${id}"]`)].pop();
+			if (!a) throw new Error(`页面上找不到 [data-item="${id}"] 链接（前置态未铺成）`);
+			const 前HP = P.hp, 前件 = 件数(id), 前数 = 屏上数(), 前出声 = 出声数();
+			a.click();                                    // ★唯一动作：背包栏那一按
+			await tick(200);
+			return {
+				Δ: P.hp - 前HP, 件差: 件数(id) - 前件,
+				数: 屏上数(), 新数: 屏上数() !== 前数, 出新声: 出声数() - 前出声,
+			};
+		};
+		const 半 = await 一档('herb-poultice', P.maxHp - 3);     // 件 2 ⇒ 实回 2（未触顶）
+		const 近满 = await 一档('herb-poultice', P.maxHp - 1);   // ★名义 2 被夹 ⇒ 实回 1
+		const 满 = await 一档('herb-poultice', P.maxHp);         // ★满血 ⇒ 拒绝
+		P.hp = P.maxHp;
+		const 半臂 = 半.Δ === 2 && 半.数 === 2 && 半.件差 === -1;
+		const 近满臂 = 近满.Δ === 1 && 近满.数 === 1 && 近满.新数 === true;
+		const 满臂 = 满.Δ === 0 && 满.件差 === 0 && 满.出新声 >= 1 && 满.新数 === false;
+		ok(半臂, `★面 T 半血臂：文案数应 ＝ 实回 2（实得 Δ=${半.Δ}／屏上数=${半.数}／件差=${半.件差}）`);
+		ok(近满臂, `★面 T 差 1 点满臂：文案数应 ＝ 实回 **1**（✗ 名义 2）—— 实得 Δ=${近满.Δ}／屏上数=${近满.数}`);
+		ok(满臂, `★面 T 满血臂：应**拒绝**＋不扣件＋出声（实得 Δ=${满.Δ}／件差=${满.件差}／出声 ${满.出新声} 条）`);
+		/* ★同源臂：面板的「预计恢复」须 ＝ **引擎**的治疗量（`DND3.healAmount`）。读数取**面板渲染出来的数**，
+		 *   与「引擎那一份」分别取 —— 面板**自算一份**时，一旦引擎那侧改了（本票就是），两处就开始说两样。 */
+		const 有源 = typeof D.healAmount === 'function';
+		const 存加成 = P.stats.heal_bonus;
+		P.stats.heal_bonus = 3;                                   // ⇒ 8（自算式在同值点上也给 8 ⇒ 本臂判的是**同源**）
+		const 敌 = new (R.Character)({ name: '幼獾', hp: 4, maxHp: 6 });
+		V.inventory.length = 0;                                   // ★只留一件 ⇒ 面板那行就是它（✗ 否则取到上一臂的件）
+		P.items.push({ id: 'bandage', charges: 2 });
+		R.events.emit('battle:turnEnd', { actor: P, battle: { enemies: [敌], players: [P] } });
+		R.refreshPanels();
+		const 面板文 = (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ');
+		const 面板数 = Number((面板文.match(/恢复 (\d+)/) ?? [])[1] ?? NaN);
+		const 引擎数 = 有源 ? D.healAmount(R.reviveItem({ id: 'bandage', charges: 2 }), P) : NaN;
+		R.events.emit('battle:end', { players: [P], enemies: [敌] });
+		R.refreshPanels();
+		P.stats.heal_bonus = 存加成;
+		V.inventory.length = 0;
+		ok(有源 && 面板数 === 引擎数,
+			`★面 T 同源臂：面板「预计恢复」应 ＝ 引擎 \`DND3.healAmount\`（面板自算一份 ⇒ 引擎一改就漂）`
+			+ `—— 实得 面板 ${面板数}／引擎 ${引擎数}（接口在场 ${有源}）｜面板文「${面板文}」`);
+		if (半臂 && 近满臂 && 满臂 && 有源 && 面板数 === 引擎数) {
+			console.log(`  面 T ✓ 背包栏治疗件对账：半血 Δ=${半.Δ}／屏上数=${半.数}；差 1 点满 Δ=${近满.Δ}／屏上数=${近满.数}`
+				+ `；满血 ⇒ 拒绝 ＋ 不扣件 ＋ 出声；面板＝引擎同源（${面板数}）`);
+		}
+	}
 	s.dom.window.close();
 }
-
 console.log('');
 for (const f of fails) console.log(`  ✗ ${f}`);
 console.log(fails.length === 0 ? '✓ e2e 驾驶层通过' : `✗ e2e 驾驶层失败 ${fails.length} 条`);
