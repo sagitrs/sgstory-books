@@ -77,8 +77,52 @@ const 注册重开钩子 = (fn) => { 重开钩子.push(fn); jQuery(document).on(
  */
 setup.BABEL.头目策略 = Object.assign({ allowKnockoutClear: false }, setup.BABEL.头目策略 ?? {});
 /** 战果：`'victory' | 'stunned' | 'stalemate' | 'down'`（判定**只此一处**）。 */
-const 战果 = ({ foes, player } = {}) => {
+const 战果 = ({ foes, player, 战斗 = null } = {}) => {
 	const 敌 = foes ?? [];
+	/* ★`sgstory#1934`（`books#220` 同票）／doc-3 §6.3：判定**收并到引擎的解析器**（`RPG.outcomeResolver`）
+	 *   —— 故事侧只留**取名**（四臂名 → 引擎五战果的**投影**），✗ 不再自持一套次序。
+	 *   为什么值得收：旧形把「胜」写成 `敌.every(isDown)` 且与「玩家是否也倒了」**相邻且不互斥**
+	 *   （`books#180` 那起同归于尽事故的根）⇒ 次序由**引擎一处**给 ⇒ 故事侧按结果取名即可 ✓。
+	 *   ⚠ 引擎五名 → 故事四名（**名字变少不是丢信息**：「玩家出局」两因（`death`／`knockout`+`winner=enemies`）
+	 *     在故事侧同归 `down`（`§14` ⑦）；「敌方全出局且全晕」⇒ `stunned`（✗ 开门，`§14` ⑥）；
+	 *     引擎的 `retreat` 在**故事侧无流程**（下面 `retreatAccepted` 恒 `false` ⇒ 到不了）
+	 *     ⇒ 真到得了也按「收手」取名（**穷举**，✗ 留空洞）。 */
+	const 解析 = R.outcomeResolver?.resolve;
+	if (typeof 解析 === 'function') {
+		/* `completedRounds`／`roundLimit` 取**本场的回合预算**：故事侧的语义是「本场循环走完、双方仍在
+		 *   ⇒ 僵持」⇒ 拿 `战斗.rounds`（引擎 `Battle` 的回合数）当两者即可 ⇒ 与旧形**逐字同判** ✓。
+		 *   ⚠ 引擎判「还没打完」会返 `null` ⇒ 落到下面的**旧形回落** ✓（✗ 把 `null` 当僵持）。 */
+		const 解 = 解析({
+			players: player ? [player] : [],
+			enemies: 敌,
+			completedRounds: 战斗?.rounds ?? null,
+			roundLimit: 战斗?.rounds ?? null,
+			retreatAccepted: false,          // ★故事侧没有退却流程 ⇒ 这一支按设计到不了
+		}, {
+			/* ★**把故事侧「出局」的口径交给引擎**（✗ 在故事里再判一遍）：本仓的角色状态有两条来源 ——
+			 *   引擎的 `hp<=0 / isKnockedOut`（真打）与故事/桩里直接置的 `isDown`（判据与夹具）
+			 *   ⇒ 取**并集**当 `isOut` ⇒ 引擎的次序判得动故事侧认得的「全出局」✓（✗ 只认 hp 会让
+			 *   `isDown` 那一支漏过去 ⇒ 「同归于尽」被判成 `victory` ✗，本席首版实测正是如此 ✓）。 */
+			/* ⚠ **`isDown` 在场就以它为准**（✗ 取并集）：故事/桩里的对手**可能没有 `hp`**（判据与夹具
+			 *   常只置 `isDown`）⇒ 并集会把「没写 hp」读成 `0` ⇒ **活着的靶**被算成出局 ⇒ 僵持被判成
+			 *   `victory` ✗（本席实测：`尚活 = {isDown:false}` ⇒ 并集 ⇒ ③ 敌方全出局 ⇒ 误红 ✓）。
+			 *   `isDown` **缺席**（如引擎真角色只带 hp）时才退回 hp/KO 那条 ✓。 */
+			isOut: (a) => (typeof a?.isDown === 'boolean'
+				? a.isDown
+				: ((a?.hp ?? 0) <= 0 || R.isKnockedOut?.(a) === true)),
+		});
+		if (解 && typeof 解.outcome === 'string') {
+			if (解.outcome === 'death') return 'down';                                    // 主角死（§14 ⑦）
+			if (解.outcome === 'knockout' && 解.winner === 'enemies') return 'down';      // 玩家全出局（同归 `down`）
+			if (解.outcome === 'knockout') {                                              // 敌方全出局且全晕
+				return setup.BABEL.头目策略.allowKnockoutClear ? 'victory' : 'stunned';   // §14 ⑥：打晕不开门（可配置翻面）
+			}
+			if (解.outcome === 'victory') return 'victory';
+			return 'stalemate';              // `retreat`（到不了）／`stalemate` 同归「收手」
+		}
+	}
+	/* ★**旧 pin 的读回落**（老引擎没有 `outcomeResolver`）——一字不动地保留原四臂：
+	 *   `e2e`／跑分器在旧 pin 上跑时，判定必须**与老引擎逐字同** ✓（✗ 新面不在就换语义）。 */
 	const 全倒 = 敌.length > 0 && 敌.every((f) => f.isDown);
 	const 全晕 = 全倒 && 敌.every((f) => R.isKnockedOut?.(f) === true);
 	if (player?.isDown) return 'down';                       // 致命归零 **或** 非致命出局（§14 ⑦）

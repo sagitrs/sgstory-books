@@ -323,13 +323,20 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#178` P0：**战斗中禁存** —— 战前置位、`finally` 清零（异常路径也要清零，
 	 *   否则一次抛错会把「禁存」永久留在盘上，玩家此后哪都存不了）。 */
 	setup.BABEL.战中 = true;
+	/* ★`场` 声明在 `try` **之外**：战后段（`finally` 之后）要读它 ⇒ 放里面会 `场 is not defined`
+	 *   （本席首版就是这么写的 ✗ —— 由 `verify.mjs` 的「未捕获异常」当场抓住 ✓）。 */
+	let 场 = null;
 	try {
 		/* ★`sagitrs/sgstory#1934`（doc-3 §2.8）：**回合上限由遭遇声明**（层表行 ＋ 条目可覆写 ＋ 缺省 8）——
 		 *   原先把 `8` **写死**在故事侧 ⇒ 上一层想收短/放长（教学层 3 回合、硬层 12 回合）改不动。
 		 *   取源＝`rollEncounter` 返回的**条目自身**（引擎已把「条目 ⇒ 行 ⇒ 缺省」算好 ⇒ 故事侧只读一处）。
 		 *   ⚠ `?? 8` 是**旧 pin 的读回落**（老引擎的条目没有这个字段）⇒ ✗ 新面在位时一律走它。 */
 		const 限 = rolled[0].roundLimit ?? 8;
-		await new R.Battle(限, [DND3.Player], foes, interactive).execute();
+		/* ★`sgstory#1934`（`books#220` 同票）：**本场实例留给战后段** —— 战果判定已收并到引擎的
+		 *   解析器（`RPG.outcomeResolver`，`world/boss.js` 的 `战果` 只取名）⇒ 它要「本场的回合预算」
+		 *   才判得动「循环走完而双方仍在」那一支 ⇒ 这里把 `场` 交下去（✗ 让故事侧另存一份回合数）。 */
+		场 = new R.Battle(限, [DND3.Player], foes, interactive);
+		await 场.execute();
 	} finally {
 		setup.BABEL.战中 = false;
 	}
@@ -337,7 +344,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
 	 *   旧形把「胜」写成 `foes.every(isDown)`，与下面的「玩家是否也倒了」**相邻且不互斥** ⇒
 	 *   同归于尽时**先发了战利品**、再走失败流。现在：先取战果，各消费者按它分支。 */
-	const 果 = setup.BABEL.战果({ foes, player: DND3.Player });
+	const 果 = setup.BABEL.战果({ foes, player: DND3.Player, 战斗: 场 });   // ★`场` 可能是 null（异常路径）⇒ `战果` 里按旧形回落 ✓
 
 	if (果 === 'victory') {
 		run().kills += foes.length;
