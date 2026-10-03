@@ -353,8 +353,8 @@ const makeLayerLocation = (L) => new R.Location({
 		 *     抽签先跑 ⇒ 账里已有 `抽中`，危害只往**同一个对象**上加 `危害` 标记 ✓。
 		 *     ⚠ 随机源的**消耗次序**因此是「先抽签（两格）后危害（一格）」——判据与 e2e 面的注入序列按此写。 */
 		const 危害果 = setup.BABEL.危害?.危害结算?.(L.id);
-		/* ★`books#171`（源 `#170` 的 P0）：危害把人打死了且**已真结算**（位置已回起点层）⇒
-		 *   本层流程**到此为止**（✗ 继续跑下面的 L5 授予——那一层已经不是玩家所在层了）。 */
+		/* ★`books#171`／`#176`：危害把人打死了且**已进终局**（裁定②后**不复活**，位置留在死亡层）⇒
+		 *   本层流程**到此为止**（✗ 继续跑下面的 L5 授予——这一局已经结束了）。 */
 		if (危害果 === 'dead') return;
 		/* ★`books#164`：**L5 授予**永久被动「预知」（`books#139`／`#1893` 的挂载面在此接到活路径上）。
 		 *   ⚠ 幂等：`contains` 先判 ⇒ 重进 L5 **不重复授予、也不重复印**那句低语。
@@ -591,7 +591,7 @@ const adoptHub = (target, hub, patch = {}) => {
 			 *   为何要这个口（✗ 直接改 `loc.actions`）：包里那张图与故事侧**共享同一批实例**
 			 *   （本函数上方注：「✗ 直接改包里的实例 —— 那会连带污染包自己那张图」）。
 			 *   ⇒ 经本参**只改故事侧这一份**（原表按引用传入 ⇒ patch 可读它、✗ 必须用它）。 */
-			actions: patch[loc.id] ? patch[loc.id](loc.actions) : loc.actions,
+			actions: (patch[loc.id] ? patch[loc.id](loc.actions) : loc.actions).map(只给活人),   // ★`books#176`：hub 动作同挂闸门
 			onEnter: () => {
 				const r = State.variables.babelRun;
 				/* ★`#135` ②a（hub 接管面）：同 max 语义（✗ 无条件赋值）。 */
@@ -600,7 +600,17 @@ const adoptHub = (target, hub, patch = {}) => {
 			},
 		}));
 	}
-	for (const exit of hub.exits) target.addExit(exit);
+	/* ★`books#176`：hub 的**出边**来自包（不经 `边可否通行`）⇒ 在此按同一个「活着」语义包一层。
+	 *   ⚠ `addExit` 要的是 **`Exit` 实例**（✗ 裸对象 —— 本席首版即栽在此：`addExit 需要 Exit 实例`）
+	 *     ⇒ 按 `addPath` 的同形**新建**实例（✗ 改包里的那个：那会连带污染包自己那张图）。
+	 *   （hub 的**动作**已在上面 `actions:` 处走 `只给活人`；两样都是「接管面」自带的，故都在本函数内收口。） */
+	for (const exit of hub.exits) {
+		const w = exit.when;
+		target.addExit(new R.Exit({
+			from: exit.from, to: exit.to, text: exit.text, action: exit.action,
+			when: () => 活着() && (typeof w === 'function' ? w() : true),
+		}));
+	}
 };
 
 /* ---------- 第 10 层：整备区（取包里的实例 —— 单一权威源）---------- */
@@ -617,7 +627,7 @@ for (let i = 0; i < LAYERS.length - 1; i++) {
 /* ★`books#133` 笔 3：L9 的**唯一出口**＝前进（设计稿：「选项唯一＝前进进入 10 层」）。
  *   文案带上设计原词，让「前进」在**选项本身**上可见（✗ 只在文档里）。边照旧，守卫只说「就这一条」。 */
 map.addPath({ from: 'L9', to: 'L10-camp', text: '前进（钻进光里 · 第 10 层）', when: 边可否通行('L9', 'L10-camp') });
-map.addPath({ from: 'L10-camp', to: 'L9', text: '退回第 9 层（段内自由）' });
+map.addPath({ from: 'L10-camp', to: 'L9', text: '退回第 9 层（段内自由）', when: 边可否通行('L10-camp', 'L9') });
 for (let i = LAYERS.length - 1; i > 0; i--) {
 	const a = LAYERS[i].id;
 	const b = LAYERS[i - 1].id;
