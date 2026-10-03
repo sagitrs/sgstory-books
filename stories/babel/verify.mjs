@@ -930,6 +930,45 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 			stats: setup.DND3.stats({ ac: 1, str: 4, dex: 4, bab: 0 }),
 			items: [{ id: 'badger-claw', equipped: true }],
 		});
+		/* ★`books#180`（`dev-10` 的复核①）：**徒手路径**要有判据 —— `babel.js` 的设计原文是
+		 *   「L1 战斗引导（**空手可胜** ＋ 捡剑）」，而本笔引入的新口径改了它的**含义**：
+		 *   空手（DND3 的徒手攻击是**非致命**）⇒ 把对手**打晕**脱身，✗ 击杀取材。
+		 *   ⇒ 本臂断四件：`kills` 不涨／必掉不发（主依据＝引擎 `#1854`：非致命昏迷者不掉落，
+		 *   §14 ⑥ 只是头目门的旁证）／玩家活着能走／**回合数**钉住是「打晕」（✗ 僵持）。
+		 *   （✗ 与「僵持」同形 —— 两者都不发战利品，只靠后果分不出来）。 */
+		{
+			R.registerEncounterTable('span1', Object.assign({}, 原表, {
+				L2: { encounters: [{ ref: 'verify-drop-dummy', weight: 1 }], loot: [] },
+			}));
+			State.variables.inventory = [];
+			map.moveTo('L2');
+			D.Player.hp = D.Player.maxHp;
+			D.Player.nonlethal = 0;
+			const kills0 = Number(State.variables.babelRun?.kills ?? 0);
+			/* ⚠ 抓战斗日志要包 **`Battle.prototype.perform`**（✗ 故事侧的 `R.perform`）——
+			 *   战斗逐行走的是**实例方法**，故事侧包 `RPG.perform` 一行也看不到（本席首版就栽在此，
+			 *   回合数读成 0 ⇒ 那条断言**空过**）。 */
+			const 原BP = R.Battle.prototype.perform;
+			const 行 = [];
+			R.Battle.prototype.perform = function (t2, ...rest) { 行.push(String(t2)); return 原BP.call(this, t2, ...rest); };
+			try {
+				R.rng.set(() => 0.99);                    // 徒手必中 ⇒ 软目标被**非致命**打晕
+				await B.fight({ interactive: false });
+			} finally {
+				R.rng.reset();
+				R.Battle.prototype.perform = 原BP;
+			}
+			const kills1 = Number(State.variables.babelRun?.kills ?? 0);
+			ok(kills1 === kills0, `★徒手打晕却涨了 kills（${kills0} ⇒ ${kills1}）—— 打晕不是击杀`);
+			ok(!R.has('bandage'), '★徒手打晕却发了「必掉」的绷带 —— 非击杀不该结账（引擎 `#1854` 同规）');
+			ok(!D.Player.isDown, '★徒手打晕后玩家自己出局了（本臂的前提：空手也能脱身）');
+			/* ⚠ 分「打晕」与「僵持」不能靠结束行文案（`Battle` 的 `perform` 是引擎自己那条路，
+			 *   故事侧包不到）⇒ 改断**回合数**：僵持必然跑满 8 回合，打晕会提前收场。
+			 *   与上面两条合起来即充分：提前收场 ∧ 无 kills ∧ 无必掉 ∧ 玩家活着 ⇒ 只能是打晕。 */
+			const 回合数 = 行.filter((t2) => /【第 \d+ 回合】/.test(t2)).length;
+			ok(回合数 < 8, `★本臂没在回合上限前收场（跑满 ${回合数} 回合）—— 那更像僵持，本臂分不出打晕与僵持`);
+			console.log(`  徒手：kills ${kills0}⇒${kills1}｜绷带 ${R.has('bandage')}｜玩家出局 ${D.Player.isDown}｜提前收场（${回合数} < 8 回合）`);
+		}
 		for (const [层, 物] of [['L2', 'bandage'], ['L4', 'iron-key']]) {
 			R.registerEncounterTable('span1', Object.assign({}, 原表, {
 				[层]: { encounters: [{ ref: 'verify-drop-dummy', weight: 1 }], loot: [] },   // ★空随机掉落 ⇒ 断的就是「必掉面」
@@ -1868,7 +1907,9 @@ head('㉙ 战败终端＝游戏失败（`books#171`／`#176`）');
  *   ⑥**成本在选项文案上**（读 `text()`，✗ 只信文档 —— `tester-3` 在 `#179` 上指出的判据缺口）。
  * 刀：① 池内化（`when` 加 `eventPending`）⇒ 共存臂红；② 清全部 `effects` ⇒ 表外正面那条红；
  *   ③ 去非致命复位 ⇒ 范围臂红；④ 去时间记账 ⇒ 占位读数红；⑤ 回旧形（耐久回初值）⇒ ⑤红；
- *   ⑥ 文案里删掉分钟数 ⇒ ⑥红。
+ *   ⑥ 文案里删掉分钟数 ⇒ ⑥红；⑦ 把战后段的落点**调用**改成空操作 ⇒ ⑦红（消费点 —— `tester-3` 的 RC）；
+ *   ⚠ 刀③须用**保图合法**的拆法（下行边循环里跳过 `L9-camp`）—— 直接删那条边会先把准备区拆成**不可达**，
+ *     红落在**地图校验器**上（装置级红，说不清 ③ 判得了）。
  * ⚠ 装置：本格改 hp／nonlethal／effects／背包／账／位置 ⇒ 末了**存-复原**；抽签靠注入随机源。 */
 head('㉛ L8 温泉（`books#177`）');
 {
@@ -2005,6 +2046,33 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 		const 落点 = map.current;
 		ok(落了 && 落点 === 'L9-camp', `★非胜收场的落点不是准备区（落了 ${落了}／位置 ${落点}）`);
 		ok(B.落准备区?.('L5') === false, '★落点函数对**非战场**层也生效（应只对头目战场）');
+		/* ★`books#180`（`tester-3` 在 #181 上指出的缺口）：上面两条断的是**函数本身**，
+		 *   而 `fight()` 的**消费点**没人看着 —— 战后段哪天不再调用它，判据会全绿，而玩家
+		 *   「未胜却不回营地」（那支还带一句出声）。⇒ 本臂**真跑一次非胜收场**，断位置落到准备区。
+		 *   形：换一个打不死的靶（必僵持）＋ 把玩家血量抬高（防非致命出局把落点挡掉）。 */
+		{
+			const 原表2 = R.encounterTables.span1;
+			R.defCharacter({
+				id: 'verify-gate-dummy', name: '（装置）铁壁靶',
+				hp: 999, maxHp: 999,
+				stats: setup.DND3.stats({ ac: 99, str: 4, dex: 4, bab: 0 }),
+				items: [],
+			});
+			R.registerEncounterTable('span1', Object.assign({}, 原表2, {
+				L9: { encounters: [{ ref: 'verify-gate-dummy', weight: 1 }], loot: [] },
+			}));
+			const 存血 = { hp: D.Player.hp, maxHp: D.Player.maxHp, 非致命: D.Player.nonlethal ?? 0 };
+			D.Player.maxHp = 200; D.Player.hp = 200; D.Player.nonlethal = 0;
+			State.variables.babelRun.bosses = {};
+			map.moveTo('L9');
+			await B.fight({ interactive: false });
+			const 消费位 = map.current;
+			ok(消费位 === 'L9-camp', `★未胜收场**没有**回到准备区（位置 ${消费位}）—— 战后段没消费落点（函数在、消费点断了）`);
+			ok(State.variables.babelRun.bosses?.L9 !== 'victory', '★未胜收场却记了 victory（硬门会被自己派发的票打开）');
+			读数.消费位 = 消费位;
+			R.registerEncounterTable('span1', 原表2);
+			D.Player.maxHp = 存血.maxHp; D.Player.hp = 存血.hp; D.Player.nonlethal = 存血.非致命;
+		}
 
 		/* ③ 准备区可达温泉 */
 		const 备出 = map.exitsFrom('L9-camp').map((e) => e.to);

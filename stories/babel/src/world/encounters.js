@@ -16,6 +16,13 @@
 
 const DND3 = setup.DND3;
 const R = setup.RPG;
+/* ★`books#180`：战后段的**战果判定**是必需件（`world/boss.js` 的 `战果`）——装载期就查。
+ *   ⚠ **不接受回落旧形**（`foes.every(isDown)` 那条）：它会把「打晕／同归于尽」静默读成胜利，
+ *     而这条静默**没有判据看得见**（本席首版写成 `setup.BABEL.战果?.(...) ?? 旧形` ⇒ 真实战斗路
+ *     可以悄悄退回旧规则）。装载序：`world/boss.js` 在 `world/encounters.js` **之前**（按路径排序）。 */
+if (typeof setup.BABEL.战果 !== 'function') {
+	throw new Error('[encounters] 缺 `setup.BABEL.战果`（`world/boss.js` 未先装载？）—— 战后段不接受回落旧形');
+}
 
 const run = () => (State.variables.babelRun ??= { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 时间: 0 });
 
@@ -180,7 +187,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
 	 *   旧形把「胜」写成 `foes.every(isDown)`，与下面的「玩家是否也倒了」**相邻且不互斥** ⇒
 	 *   同归于尽时**先发了战利品**、再走失败流。现在：先取战果，各消费者按它分支。 */
-	const 果 = setup.BABEL.战果?.({ foes, player: DND3.Player }) ?? (foes.every((f) => f.isDown) ? 'victory' : 'stalemate');
+	const 果 = setup.BABEL.战果({ foes, player: DND3.Player });
 
 	if (果 === 'victory') {
 		run().kills += foes.length;
