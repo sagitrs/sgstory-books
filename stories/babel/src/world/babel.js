@@ -100,6 +100,20 @@ const commitNode = (layerId, holder) => {
 	return slot;
 };
 
+/* ---------- `books#176`：**终局位的闸门**（死亡＝游戏失败 ⇒ 尸体不得继续行动）----------
+ * 动机：失败面是**独立段落**，但 `MapScene` 的出口分支在 `moveTo` 之后会**无条件重绘**一屏
+ *   （引擎 `60-map.js:363-364`，那条路没有 `#leftPassage` 守卫）⇒ 死亡后那一屏会被画进失败页。
+ *   ⇒ 两处闸门把「死人的地图」关掉：**层动作**（`when`）与**出口边**（`when`）都要求「活着」。
+ *   ✗ 不指望引擎侧改（pin 已定）；这也是玩家侧真正的漏洞面：0 血还能点着走。 */
+const 活着 = () => DND3.Player?.isDown !== true;
+/** 动作的 `when` 合成：把「活着」与动作自己的条件**与**起来（✗ 两处各挂 —— `when` 只有一个位）。 */
+const 只给活人 = (a) => ({ ...a, when: () => 活着() && (typeof a.when === 'function' ? a.when() : true) });
+/** 边的 `when` 合成：同上（非头目层原本不挂守卫 ⇒ 现形一律挂，第一条就是「活着」）。 */
+const 边可否通行 = (from, to) => {
+	const w = 边守卫(from, to);
+	return () => 活着() && (w ? w() : true);
+};
+
 /* ---------- L5+ 选择制：**每层一次**抽签（`books#133` 笔 1）----------
  * 设计稿（`#132` 的 `writer` 稿）§3.2：抽签必须「**每层一次、结果入档**」——
  *   若每次重绘都抽 ⇒ 玩家**每点一下**（乃至每次进层）都换选项，且**读档后变样**（那正是 bug）。
@@ -364,7 +378,7 @@ const makeLayerLocation = (L) => new R.Location({
 		 *   持有者 ∧ 本层可预报 ∧ 尚未选过 ∧ 目标层未抽 —— 见 `可预知`）。
 		 *   ⚠ 三类**全量入表**（同事件动作的形），✗ 运行时算数组。 */
 		...(预报可选[L.id] ? EVENT_KINDS.map((k) => 预知动作(L, k)) : []),
-	],
+	].map(只给活人),                 // ★`books#176`：**死人的地图不给动作**（终局后那一屏不得可点）
 });
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
@@ -597,17 +611,17 @@ adoptHub(map, DND3.buildSpan1Hub());   // 包里已自带 `validate()`：不合�
 for (let i = 0; i < LAYERS.length - 1; i++) {
 	const a = LAYERS[i].id;
 	const b = LAYERS[i + 1].id;
-	const w = 边守卫(a, b);
+	const w = 边可否通行(a, b);   // ★`books#176`：合成「活着」
 	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层`, ...(w ? { when: w } : {}) });
 }
 /* ★`books#133` 笔 3：L9 的**唯一出口**＝前进（设计稿：「选项唯一＝前进进入 10 层」）。
  *   文案带上设计原词，让「前进」在**选项本身**上可见（✗ 只在文档里）。边照旧，守卫只说「就这一条」。 */
-map.addPath({ from: 'L9', to: 'L10-camp', text: '前进（钻进光里 · 第 10 层）', when: 边守卫('L9', 'L10-camp') ?? undefined });
+map.addPath({ from: 'L9', to: 'L10-camp', text: '前进（钻进光里 · 第 10 层）', when: 边可否通行('L9', 'L10-camp') });
 map.addPath({ from: 'L10-camp', to: 'L9', text: '退回第 9 层（段内自由）' });
 for (let i = LAYERS.length - 1; i > 0; i--) {
 	const a = LAYERS[i].id;
 	const b = LAYERS[i - 1].id;
-	const w = 边守卫(a, b);
+	const w = 边可否通行(a, b);   // ★`books#176`：合成「活着」
 	map.addPath({ from: a, to: b, text: `向下，回第 ${i} 层（段内自由）`, ...(w ? { when: w } : {}) });
 }
 /* ★ **10→11 单向门本体与 L11 实体均由 `babel2.js` 接**（`#1791`）：
@@ -653,7 +667,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	/* ★`books#164`：预知的机器件（同上理由）—— `预报可选`／`预报账`／`预报类`／`记预报`／`可预知`／`类名`。 */
 	预报可选, 预报账, 预报类, 记预报, 可预知, 类名, 预知动作, 预知授予层,
 	/* ★`books#133` 笔 3：头目弧的机器件（同上理由：判据/刀要能**真调用**）。 */
-	LAYER_META, 是头目层, 头目层前方, 边守卫,
+	LAYER_META, 是头目层, 头目层前方, 边守卫, 边可否通行, 活着,
 	宝箱奖励表: 宝箱奖励,    // ★`books#170` P1-6：判据按**表**取读数（✗ 在判据里重写一份）
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,

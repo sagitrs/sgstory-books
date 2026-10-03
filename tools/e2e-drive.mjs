@@ -40,7 +40,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveEnv, boot, currentPassage, playPassage, panels } from './e2e-harness.mjs';
+import { resolveEnv, boot, currentPassage, playPassage, panels, storyLinks } from './e2e-harness.mjs';
 
 const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
 const has = (f) => process.argv.includes(f);
@@ -379,43 +379,53 @@ if (has('--selftest')) {
 	ok(O9.length === 1 && /前进/.test(O9[0] ?? ''), `★面 O：L9 的出口不是「唯一的前进」（实得 ${JSON.stringify(O9)}）`);
 	if (O8.length === 2 && O9.length === 1) console.log(`  面 O ✓ 唯一出口：L8 对照 2 条 ${JSON.stringify(O8)}；L9 1 条 ${JSON.stringify(O9)}`);
 
-	/* ★面 P（**硬判**，`books#171`，源 `#170` 的 P0）：进层致命伤 ⇒ **停止原地点流程**。
+	/* ★面 P（**硬判**）：`books#171` 的统一结算入口 ＋ `books#176` 的终端语义 —— **进层致命伤 ⇒ 终局**。
 	 *   唯一变量＝**进层前的血量**（其余全不动）：同一次真点按钮、同一注入，1 血（危害命中）⇒
-	 *   位置回起点层、页面**不留** L5 的出口；满血 ⇒ 位置停在 L5、页面**就是** L5 的出口。
-	 *   ★两臂读数须翻面（✗ 只断「1 血不留在 L5」—— 「按钮压根没找到」也会绿）。 */
+	 *   段落＝`游戏失败`、两钮（读档／重开）在、位置**留在 L5**、页面**无**地图出口；
+	 *   满血 ⇒ 段落＝`探索`、位置 L5、地图出口在。两臂读数须翻面（✗ 只断「1 血不在探索」，
+	 *   那会把「按钮压根没找到」读成通过）。 */
 	{
 		const B = s.SC.setup.BABEL, R = s.SC.setup.RPG, P = s.SC.setup.DND3.Player;
+		/* ⚠ 失败面的两钮是 `<<link>>` **宏链**（SugarCube 不给它 `data-passage`）⇒ **不能**用姊妹件的
+		 *   `storyLinks()`（它按 `[data-passage]` 取，本面会取到空表 ⇒ 判据恒假红）。改读段落内全部 `<a>`。 */
+		const 链接文 = () => [...s.doc.querySelectorAll('#passages a')].map((el) => (el.textContent ?? '').trim()).filter(Boolean);
 		const 进层 = async (hp) => {
 			delete s.SC.State.variables.span1Events.L5;         // 该层危害每局一次 ⇒ 两臂各自可掷
+			s.SC.State.variables.babelRun.终局 = false;         // 终局账也是「每臂一次」
 			P.hp = hp;
 			B.map.moveTo('L4');
 			await playPassage(s, '探索'); await tick(300);
 			R.rng.setSequence([0, 0, 0]);                       // 抽两枚 ＋ 危害 `index(6)=0` ⇒ 命中
 			const 有钮 = choiceButtons(s).some((t) => /去第 5 层/.test(t));
-			if (有钮) await driveButton(s, /去第 5 层/, { read: (x) => choiceButtons(x).join('｜') });
+			/* ★致命臂：进层即触发终局 ⇒ 段落**会换**（探索 → 游戏失败）；对照臂同段落就地重绘。
+			 *   ⇒ `driveButton` 的 `expectNavigate` 必须**按臂给**（它缺省要求「不导航」）。 */
+			if (有钮) await driveButton(s, /去第 5 层/, {
+				read: (x) => choiceButtons(x).join('｜'), expectNavigate: hp === 1 ? '游戏失败' : null,
+			});
 			R.rng.reset();
 			await tick(300);
 			return {
-				有钮, 位: B.map.current, 钮: choiceButtons(s),
-				deaths: s.SC.State.variables.babelRun.deaths,
-				死行: passageLines(s).filter((l) => l.includes('你死在了第')).length,
+				有钮, 段: currentPassage(s), 位: B.map.current, 钮: choiceButtons(s), 链接: 链接文(),
+				战败: s.SC.State.variables.babelRun.deaths,
 			};
 		};
 		const 血前 = s.SC.State.variables.babelRun.deaths;
-		const 致命 = await 进层(1);          // 致命：1 血 ⇒ 危害命中
+		const 致命 = await 进层(1);          // 致命：1 血 ⇒ 危害命中 ⇒ 终局
 		const 对照 = await 进层(P.maxHp);    // 对照：满血 ⇒ 同一按钮、同一注入
 		P.hp = P.maxHp;
-		const 对照臂 = 对照.有钮 === true && 对照.位 === 'L5' && 对照.钮.some((t) => /去第 6 层/.test(t));
-		const 关键臂 = 致命.有钮 === true && 致命.位 === 'L1' && !致命.钮.some((t) => /去第 6 层/.test(t))
-			&& 致命.deaths === 血前 + 1 && 致命.死行 === 1 && 对照.deaths === 致命.deaths;
-		ok(对照臂, '★面 P 两向 · 对照臂：满血进 L5，位置须在 L5 且页面须是 L5 的出口（否则本面判不了）');
-		ok(关键臂, '★面 P 关键回归：1 血进 L5（危害命中）⇒ 位置回起点层、页面不留 L5 的出口、死亡恰计一次、死亡行恰一次（满血臂不再计）');
+		const 对照臂 = 对照.有钮 === true && 对照.段 === '探索' && 对照.位 === 'L5'
+			&& 对照.钮.some((t) => /去第 6 层/.test(t));
+		const 关键臂 = 致命.有钮 === true && 致命.段 === '游戏失败' && 致命.位 === 'L5'
+			&& 致命.链接.some((t) => /读档/.test(t)) && 致命.链接.some((t) => /重开/.test(t))
+			&& !致命.钮.some((t) => /去第 6 层/.test(t)) && !致命.链接.some((t) => /去第 6 层/.test(t))
+			&& 致命.战败 === 血前 + 1 && 对照.战败 === 致命.战败;
+		ok(对照臂, '★面 P 两向 · 对照臂：满血进 L5，段落须仍在「探索」、位置在 L5、地图出口在（否则本面判不了）');
+		ok(关键臂, '★面 P 关键回归：1 血进 L5（危害命中）⇒ 段落＝游戏失败、两钮（读档／重开）在、位置留在 L5、页面无地图出口、战败恰 +1');
 		if (对照臂 && 关键臂) {
-			console.log(`  面 P ✓ 进层致命伤：1 血 ⇒ 位置 ${JSON.stringify(致命.位)}、页面钮 ${JSON.stringify(致命.钮)}、deaths ${致命.deaths}`
-				+ `；满血对照 ⇒ 位置 ${JSON.stringify(对照.位)}、含「去第 6 层」${对照.钮.some((t) => /去第 6 层/.test(t))}`);
+			console.log(`  面 P ✓ 进层致命伤：1 血 ⇒ 段落 ${JSON.stringify(致命.段)}、位置 ${JSON.stringify(致命.位)}、链接 ${JSON.stringify(致命.链接)}、战败 ${致命.战败}`
+				+ `；满血对照 ⇒ 段落 ${JSON.stringify(对照.段)}、位置 ${JSON.stringify(对照.位)}、含「去第 6 层」${对照.钮.some((t) => /去第 6 层/.test(t))}`);
 		}
 	}
-
 	s.dom.window.close();
 }
 

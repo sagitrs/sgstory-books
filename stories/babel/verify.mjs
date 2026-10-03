@@ -76,7 +76,7 @@ if (fs.existsSync(path.join(root, 'tests/unit/framework/host.js'))) {
 }
 load(path.join(root, 'tests/unit/framework/shims.js'));
 
-/** 记录「跳到哪个段落」——战斗死亡会跳「死亡回溯」，本脚本据此判定走了哪条路 */
+/** 记录「跳到哪个段落」——战斗终局会跳「游戏失败」（`books#176` 后：死亡＝游戏失败），本脚本据此判定走了哪条路 */
 globalThis.__played = [];
 SugarCube.Engine.play = (name) => { globalThis.__played.push(name); };
 
@@ -110,7 +110,7 @@ State.variables.player = {
 	effects: [],
 };
 State.variables.inventory = [];
-State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1' };
+State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 终局: false };  // ★`books#176` 终局键
 State.variables.babelGiven = {};
 State.variables.span1Arc = {};   // ★`books#132` L1–L9 弧的本局账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Events = {}; // ★`books#133` 笔 1：选择制事件账（与 `meta/init.twee` 逐项同形）
@@ -238,6 +238,7 @@ R.equip('club');
 R.rng.set(() => 0.99);   // 确定性：重击频出 ⇒ 战斗必在回合上限内分出结果
 const protoHp = R.characters.get('badger').hp;
 const coins0 = State.variables.inventory.filter((s) => s.id === 'coin').length;
+const 层5 = map.current;                        // ★`books#176`：战败后位置须**留在原层**
 await B.fight({ interactive: false });   // 无头环境必须走自动通路（交互通路等 UI 选择 ⇒ 会挂起）
 R.rng.reset();
 const badger = R.characters.get('badger');
@@ -245,10 +246,11 @@ ok(badger.hp === protoHp, `注册面单例被战斗改写（hp ${protoHp} → ${
 const run = State.variables.babelRun;
 ok((run.kills > 0) !== (run.deaths > 0), `应恰好走一条路（胜/败），实测 kills=${run.kills} deaths=${run.deaths}`);
 if (run.deaths > 0) {
-	ok(map.current === 'L1', `死亡后应回起点层 L1，实为 ${map.current}`);
-	ok(D.Player.hp === D.Player.maxHp, `死亡重生后体力应满，实为 ${D.Player.hp}/${D.Player.maxHp}`);
-	ok(globalThis.__played.includes('死亡回溯'), '死亡后没有跳「死亡回溯」段落');
-	ok(D.Player.effects.length === 0, `重生后应清空效果，实为 [${D.Player.effects.join(',')}]`);
+	/* ★`books#176`：死亡＝**游戏失败**（不复活）⇒ 位置**不**回起点层、体力**不**复位、效果**不清**。 */
+	ok(map.current === 层5, `战败后位置应**留在原层**（${层5}），实为 ${map.current} —— 复活语义已废止`);
+	ok(D.Player.hp === 0, `战败后体力应仍为 0（不复活），实为 ${D.Player.hp}/${D.Player.maxHp}`);
+	ok(State.variables.babelRun.终局 === true, '战败后未置「本局终局」账（入口的幂等门）');
+	ok(globalThis.__played.includes('游戏失败'), `战败后应跳「游戏失败」，实测跳了 [${globalThis.__played.join(',')}]`);
 } else {
 	ok(State.variables.inventory.filter((s) => s.id === 'coin').length > coins0, '胜后没拿到掉落表的铜币');
 	ok(D.Player.contains('fracture') || D.Player.contains('bleeding') || D.Player.contains('concussion')
@@ -257,8 +259,10 @@ if (run.deaths > 0) {
 console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/${D.Player.maxHp}`
 	+ `｜创伤 [${D.Player.effects.filter((e) => D.Traumas[e]).join(',')}]`);
 
-/* ---------- ⑤b 死亡回起点层（票面「死亡回 1」这一步，强制走一次）----------
- * ★本格要测的是「**死亡 → 重生/清档/跳段**」这条面，✗ 不是「本层的怪打不打得死人」。
+/* ---------- ⑤b 战败终端＝游戏失败（`books#176`；强制走一次）----------
+ * ★本格要测的是「**死亡 → 终局/失败面/停手**」这条面，✗ 不是「本层的怪打不打得死人」。
+ * ★层选**非起点层**（L3）：这样「位置**不**回 L1」才是**可判**的（在 L1 上死的，回不回 L1 都一样），
+ *   顺带把「终局行须印**死亡层**号」这条也钉住（`tester-4` 的刀：层读数取错 ⇒ 文案印错层）。
  * ★重搭（裁 (a)）：**格内作用域覆写遭遇表** —— 本层临时换成一只「必杀怪」，
  *   ★**快照的真实边界**（`dev-10` 侦察 RC 更正，本席原措辞说错了）：`fresh()`（`world/encounters.js:35`）
  *   走 `revive(JSON.parse(JSON.stringify(proto.toJSON())))` ⇒ **过得了快照的是【角色级】的普通字段**
@@ -270,8 +274,8 @@ console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/$
  * ★为何不能省（本席三次落空的实测）：旧形把「必死」赌在**本层怪的数值**上
  *   （引擎獾 **AC 15** ⇒ 玩家 auto 通路打不中 ⇒ 它活到出手；换成 AC 12 的弱怪 ⇒ 两下被打死 ⇒
  *   **没机会出手** ⇒ 死亡不发生；而直接 `hp=0` 置倒虽能过 deaths/跳段，但**击倒处理不触发** ⇒ 体力/创伤两红）。 */
-head('⑤b 死亡回起点层（强制）');
-map.moveTo('L1');
+head('⑤b 战败终端＝游戏失败（强制）');
+map.moveTo('L3');
 {
 	const 原表 = R.encounterTables.span1;
 	R.defCharacter({
@@ -283,10 +287,11 @@ map.moveTo('L1');
 		items: [{ id: 'badger-claw', equipped: true }],
 	});
 	R.registerEncounterTable('span1', Object.assign({}, 原表, {
-		L1: { encounters: [{ ref: 'verify-lethal-foe', weight: 1 }], loot: 原表.L1?.loot ?? [] },
+		L3: { encounters: [{ ref: 'verify-lethal-foe', weight: 1 }], loot: 原表.L3?.loot ?? [] },
 	}));
+	globalThis.__host?.install?.();          // ★接住 `perform` 的输出（读终局行用；同㉖/㉙格的形）
 	D.Player.hp = 1;
-	D.Player.gain('bleeding');           // 顺手验「死亡清档」也清 persistent 创伤
+	D.Player.gain('bleeding');           // ★不复活 ⇒ 本格验的是「效果**不清**」（旧口径是清掉）
 	R.rng.set(() => 0.5);                // d20=11：怪命中值 11+4=15 ≥ AC12 ⇒ 必中；玩家对 AC30 必不中
 	globalThis.__played.length = 0;
 	await B.fight({ interactive: false });
@@ -294,12 +299,18 @@ map.moveTo('L1');
 	R.registerEncounterTable('span1', 原表);   // ★恢复（✗ 污染后续段落）
 }
 const r2 = State.variables.babelRun;
-ok(r2.deaths === 1, `应记 1 次死亡，实为 ${r2.deaths}`);
-ok(map.current === 'L1', `死亡后应回起点层 L1，实为 ${map.current}`);
-ok(D.Player.hp === D.Player.maxHp, `重生后体力应满，实为 ${D.Player.hp}/${D.Player.maxHp}`);
-ok(!D.Player.contains('bleeding'), '重生后跨场创伤（bleeding）应被清掉（#1760 裁定⑤）');
-ok(globalThis.__played.includes('死亡回溯'), `死亡后应跳「死亡回溯」，实测跳了 [${globalThis.__played.join(',')}]`);
-console.log(`  deaths=${r2.deaths}｜回层 ${map.current}｜体力 ${D.Player.hp}/${D.Player.maxHp}｜创伤 [${D.Player.effects.join(',')}]`);
+const 行5b = () => (globalThis.__host?.host?.lines?.() ?? []);
+const 终局行 = 行5b().filter((l) => String(l).includes('这一局到此为止')).join('｜');
+ok(r2.deaths === 1, `应记 1 次战败，实为 ${r2.deaths}`);
+ok(r2.终局 === true, '战败后未置「本局终局」账（入口的幂等门）');
+ok(map.current === 'L3', `战败后位置应**留在死亡层 L3**，实为 ${map.current} —— 复活语义已废止（不复活）`);
+ok(D.Player.hp === 0, `战败后体力应仍为 0，实为 ${D.Player.hp}/${D.Player.maxHp}`);
+ok(D.Player.contains('bleeding'), '不复活 ⇒ 效果**不清**（跨场创伤 bleeding 应仍在；清档属旧 respawn 语义）');
+ok(D.Player.contains(R.death.id), '不复活 ⇒ `death` 标记应仍在');
+ok(globalThis.__played.includes('游戏失败'), `战败后应跳「游戏失败」，实测跳了 [${globalThis.__played.join(',')}]`);
+/* ★`tester-4` 的刀所指向的那条契约：终局行须印**死亡层**号（✗ 起点层）—— 层读数取错即在此红。 */
+ok(/第\s*3\s*层/.test(终局行), `★终局行没印死亡层号（应含「第 3 层」；实得「${终局行}」）`);
+console.log(`  战败：deaths=${r2.deaths}｜位置 ${map.current}｜体力 ${D.Player.hp}/${D.Player.maxHp}｜death 标记 ${D.Player.contains(R.death.id)}｜跳段 [${globalThis.__played.join(',')}]`);
 
 /* ---------- ⑥ 第 10 层聚落（#1776 的建造/收获）---------- */
 head('⑥ 聚落闭环（L10）');
@@ -1702,66 +1713,19 @@ head('㉘ 预知实效（`books#164`）');
 	}
 }
 
-/* ── ㉚ 箱奖励表（`books#170` P1-6）──────────────────────────────
+/* ── ㉙ 战败终端＝游戏失败（`books#171` 的统一入口 ＋ `books#176` 的终端语义）────────
  *
- * 它回答的问题：**每个事件层的箱奖励是不是一件真物品、且不是该层的地点节点？**
- *   ① 表在且逐层配齐（缺格由装载期校验抛）② 奖励 id **已注册**（「须是物品」只靠名字看不出来）
- *   ③ 奖励**不是**该层 `gatherPoints` 里的**节点**（节点进背包不可用 —— 正是试玩报的形）
- *   ④ ★**逐层真开一次箱**：拿到配置里那一件，且**不得**含该层节点（判据钉行为，✗ 只核表）。
- *   ⚠ 抽签靠注入随机源（`index(3)=0 ⇒ chest`）＋账清空（同 ㉓／㉖ 的形）。 */
-head('㉚ 箱奖励表（`books#170` P1-6）');
-{
-	const 存账 = State.variables.span1Events;
-	/* ★存**副本**（✗ 引用）＋清时**赋新数组**（✗ 就地 `.length = 0`）—— `dev-10` 的装置瑕疵记录：
-	 *   首版两处都写成了「就地」，于是「复原」把**装了本格战利品**的那个数组又放回去了（他在票面给了探针读数）。
-	 *   今日无影响（本格是末格），但日后在其后加格会继承被污染的背包 ⇒ 按 ⑳ 的同族形改。 */
-	const 存包 = (State.variables.inventory ?? []).slice();
-	const 存位 = map.current;
-	try {
-		const 表 = B.宝箱奖励表;
-		ok(!!表, '★没导出 `宝箱奖励表`（`world/babel.js`）');
-		const 层 = B.EVENT_LAYERS ?? [];
-		const 缺 = 层.filter((id) => !表?.[id]);
-		ok(缺.length === 0, `★事件层缺箱奖励（${JSON.stringify(缺)}）—— 装载期校验该先抛`);
-		const 未注册 = 层.filter((id) => 表?.[id] && !R.items.has(表[id]));
-		ok(未注册.length === 0, `★箱奖励里有**未注册**的 id（${JSON.stringify(未注册.map((id) => `${id}→${表[id]}`))}）—— 「须是物品」只靠名字看不出来`);
-		const 是节点 = 层.filter((id) => !!B.gatherPoints?.[id] && B.gatherPoints[id] === 表?.[id]);
-		ok(是节点.length === 0, `★有层的箱奖励给的是**地点节点**（${JSON.stringify(是节点)}）—— 节点进背包不可用，正是 P1-6 的因`);
-		const 行 = [];
-		for (const id of 层) {
-			State.variables.span1Events = {};
-			State.variables.inventory = [];           // ★赋新数组（✗ 就地清空 —— 那会连存档一起清，见上注）
-			R.rng.setSequence([0, 0, 0.99]);          // index(3)=0 ⇒ 'chest'；rest index(2)=0 ⇒ 'gather'；危害 miss
-			map.moveTo(id);
-			R.rng.reset();
-			const 动 = map.locations.get(id)?.actions.find((a) => a.事件类 === 'chest');
-			if (!动) { 行.push([id, '无箱子动作']); continue; }
-			动.action();
-			const 得 = (State.variables.inventory ?? []).map((s2) => s2.id);
-			const 节点 = B.gatherPoints?.[id];
-			行.push([id, 表[id], 得.includes(表[id]) ? '✓' : '✗', 节点 && 得.includes(节点) ? '★含节点' : '']);
-		}
-		const 坏 = 行.filter((r) => r[2] !== '✓' || r[3] === '★含节点');
-		ok(坏.length === 0, `★逐层开箱不符（${JSON.stringify(坏)}）—— 应给配置里那一件，且**不得**给该层节点`);
-		console.log(`  箱奖励：${层.map((id) => `${id}→${表?.[id]}`).join('｜')}（逐层真开箱 ${行.map((r) => `${r[0]}${r[2]}${r[3] || ''}`).join(' ')}）`);
-	} finally {
-		State.variables.span1Events = 存账;
-		State.variables.inventory = 存包;
-		if (map.locations.has(存位)) map.moveTo(存位);
-	}
-}
-
-/* ── ㉙ 玩家受伤后的统一结算入口（`books#171`，源 `#170` 的 P0）────────
- *
- * 它回答的问题：**「致命伤 ⇒ 真的进了死亡/复活流吗？」**
- *   操作者试玩 03:20 报的形：层进入的危害把人打到 0 血 ⇒ `hp=0`、`isDown` 为真、而 **`death` 不在**
- *   ⇒ `RPG.respawn` 按契约**拒绝** ⇒ **0 血仍可移动**、死亡也不计数。
- * 本格断四件：①**致命进入 ⇒ 真结算**（hp 复位／位置回起点层／`deaths` 恰 +1／死亡行恰一次／`death` 已清）
- *   ②**原地点流程停止**（致命进入 L5 后 **不得**再跑 L5 的授予块 —— 那是「onEnter 没停手」的铁证）
- *   ③**幂等**（三源重复调用：`settled` 全假、状态无一变动） ④**非致命不结算**（倒下才进场）。
+ * 它回答的问题：**「致命伤 ⇒ 真的进了终局（而不是被吞掉、或被复活）吗？」**
+ *   两段来历：`books#171`（源 `#170` 的 P0）修的是「致命伤没能结算」；`books#176`（操作者裁定②
+ *   ·核心反转）把**终端**从「复活回起点层」改成「**游戏失败**（不复活）」—— 旧 `respawn` 循环废止。
+ * 本格断四件：①**致命进入 ⇒ 终局**（hp 仍 0／位置**留原层**／终局账置真／战败计数恰 +1／
+ *   终局行恰一次且**印死亡层号**／跳「游戏失败」／`death` 标记仍在）
+ *   ②**原地点流程停**（致命进入 L5 后 **不得**再跑 L5 的授予块 —— 那是「onEnter 没停手」的铁证）
+ *   ③**幂等**（三源重复调用：`settled` 全假、状态零变动） ④**非致命不结算**（倒下才进场）。
+ *   另加**静态段**：失败面两钮齐、且复活教学段 `:: 死亡回溯` 已删（裁定②要求废止 L1–9 的该口径）。
  * ⚠ 装置：本格只改 `hp/effects/账/位置`，末了**存-复原**；随机源按「抽签两枚 ＋ 危害一枚」注入。
  */
-head('㉙ 统一结算入口（`books#171`）');
+head('㉙ 战败终端＝游戏失败（`books#171`／`#176`）');
 {
 	const P = D.Player;
 	const 存 = {
@@ -1770,76 +1734,82 @@ head('㉙ 统一结算入口（`books#171`）');
 		run: { ...State.variables.babelRun },
 	};
 	const 行 = () => (globalThis.__host?.host?.lines?.() ?? []);
-	const 死亡行数 = () => 行().filter((l) => String(l).includes('你死在了第')).length;
-	let 死人后 = {};
+	const 终局行数 = () => 行().filter((l) => String(l).includes('这一局到此为止')).length;
+	let 死后 = {};
 	try {
 		globalThis.__host?.install?.();          // 接住 `perform` 的输出（只读观察）
-		/* ① 致命进入：L5 的危害打 2 点，玩家只剩 1 血 ⇒ 必命中 ⇒ 必真结算 */
+		/* ① 致命进入：L5 的危害打 2 点，玩家只剩 1 血 ⇒ 必命中 ⇒ 必进终局 */
 		P.effects = [];
 		P.hp = 1;
 		State.variables.babelRun.deaths = 0;
+		State.variables.babelRun.终局 = false;
 		State.variables.span1Events = {};
 		State.variables.span1Foresee = {};
-		const 起 = 死亡行数();
+		const 起 = 终局行数();
+		globalThis.__played.length = 0;
 		R.rng.setSequence([0, 0, 0]);            // 抽签两枚（⇒['chest','gather']）＋ 危害 `index(6)=0` ⇒ 命中
 		map.moveTo('L5');
 		R.rng.reset();
-		死人后 = {
+		const 本行 = 行().filter((l) => String(l).includes('这一局到此为止')).join('｜');
+		死后 = {
 			hp: P.hp, 位: map.current, deaths: State.variables.babelRun.deaths,
-			死亡行: 死亡行数() - 起, 残留死标: P.contains(R.death), 预知: P.contains('precognition'),
-			层读: setup.BABEL.layerOf?.() ?? null,
+			终局: State.variables.babelRun.终局, 终局行: 终局行数() - 起, 行文: 本行,
+			死标: P.contains(R.death), 预知: P.contains('precognition'),
+			跳段: (globalThis.__played ?? []).slice(),
 		};
-		ok(死人后.hp === P.maxHp, `★致命伤后 hp 未复位（实得 ${死人后.hp}／${P.maxHp}）—— 结算没走到 respawn（P0 原形：死亡态缺失 ⇒ 结算被拒）`);
-		ok(死人后.位 === 'L1', `★致命伤后位置未回起点层（实得 ${JSON.stringify(死人后.位)}）—— 0 血仍可移动（P0 原形）`);
-		ok(死人后.deaths === 1, `★死亡计数不是 1（实得 ${死人后.deaths}）—— 要么没计，要么重复计`);
-		ok(死人后.死亡行 === 1, `★死亡行不是恰一次（实得 ${死人后.死亡行}）`);
-		ok(死人后.残留死标 === false, '★结算后 `death` 标记未清（`respawn` 的④步应清它）');
-		ok(死人后.预知 === false,
+		ok(死后.hp === 0, `★不复活：hp 应仍为 0（实得 ${死后.hp}／${P.maxHp}）—— 复活语义已废止（裁定②）`);
+		ok(死后.位 === 'L5', `★位置应**留在死亡层 L5**（实得 ${JSON.stringify(死后.位)}）—— 不得回起点层`);
+		ok(死后.终局 === true, '★本局终局账未置真（入口的幂等门）');
+		ok(死后.deaths === 1, `★战败计数不是 1（实得 ${死后.deaths}）—— 要么没计，要么重复计`);
+		ok(死后.终局行 === 1, `★终局行不是恰一次（实得 ${死后.终局行}）`);
+		ok(/第\s*5\s*层/.test(死后.行文), `★终局行没印死亡层号（应含「第 5 层」；实得「${死后.行文}」）`);
+		ok(死后.死标 === true, '★不复活 ⇒ `death` 标记应仍在（旧 respawn 才清它）');
+		ok(死后.跳段.includes('游戏失败'), `★没跳「游戏失败」段（实测跳了 [${死后.跳段.join(',')}]）`);
+		ok(死后.预知 === false,
 			'★致命进入 L5 后仍跑了 L5 的授予块（拿到了「预知」）—— **原地点流程没停**，那正是验收里最关键的那条回归');
-		ok(死人后.层读 === 'L1', `★当前位置读数不是起点层（实得 ${JSON.stringify(死人后.层读)}）—— 紧随其后的重绘会画错层`);
 
-		/* ② 幂等：三源（进入／战斗／UI）重复调用 ⇒ 全报未结算、状态零变动 */
-		const 前三 = { deaths: State.variables.babelRun.deaths, hp: P.hp, 位: map.current, 行数: 死亡行数() };
+		/* ★终局位的**闸门**（`books#176`）：死人不得继续行动 —— 死亡层的地图须**无动作、无出口**。
+		 *   （引擎的出口分支在 `moveTo` 后无条件重绘，那一屏会被画进失败页 ⇒ 否则尸体还能接着玩。） */
+		const 死层动作 = map.locations.get('L5').availableActions.length;
+		const 死层出口 = map.exitsFrom('L5').length;
+		ok(死层动作 === 0, `★终局后死亡层仍给动作（实得 ${死层动作} 条）—— 尸体还能继续玩`);
+		ok(死层出口 === 0, `★终局后死亡层仍给出口（实得 ${死层出口} 条）—— 尸体还能继续走`);
+
+		/* ② 静态：失败面两钮齐；复活教学段已删（裁定②要求废止 L1–9 的「死亡清背包回 L1」口径） */
+		const twee = fs.readFileSync(new URL('./src/story/play.twee', import.meta.url), 'utf8');
+		ok(!/^:: 死亡回溯/m.test(twee), '★复活教学段 `:: 死亡回溯` 仍在（裁定②要求废止）');
+		ok(/^:: 游戏失败/m.test(twee), '★失败面无 `:: 游戏失败` 段');
+		const 面 = (twee.split(/^:: /m).find((b) => b.startsWith('游戏失败')) ?? '');
+		ok(/读档/.test(面), `★失败面缺「读档」钮（实得：${面.slice(0, 90)}）`);
+		ok(/重开/.test(面), `★失败面缺「重开」钮（实得：${面.slice(0, 90)}）`);
+		ok(/Engine\.restart\(\)/.test(面), '★「重开」钮不是真重开（应走 `Engine.restart()`）');
+		ok(/setup\.BABEL\.读档\(\)/.test(面), '★「读档」钮没走 `setup.BABEL.读档()`（能力探测入口）');
+
+		/* ③ 幂等：三源（进入／战斗／UI）重复调用 ⇒ 全报未结算、状态零变动 */
+		const 前三 = { deaths: State.variables.babelRun.deaths, hp: P.hp, 位: map.current, 行数: 终局行数() };
 		const 三次 = [
 			setup.BABEL.结算战败({ 源: '进入' }),
-			setup.BABEL.结算战败({ 源: '战斗', 导航: false }),
+			setup.BABEL.结算战败({ 源: '战斗' }),
 			setup.BABEL.结算战败({ 源: 'UI' }),
 		];
 		const 幂等 = 三次.every((r) => r.settled === false)
 			&& State.variables.babelRun.deaths === 前三.deaths && P.hp === 前三.hp
-			&& map.current === 前三.位 && 死亡行数() === 前三.行数;
-		ok(三次.every((r) => r.settled === false), `★已结算后仍报 settled（幂等破：${JSON.stringify(三次.map((r) => r.settled))}）`);
+			&& map.current === 前三.位 && 终局行数() === 前三.行数;
+		ok(三次.every((r) => r.settled === false), `★已终局后仍报 settled（幂等破：${JSON.stringify(三次.map((r) => r.settled))}）`);
 		ok(幂等, '★重复调用有副作用（计数／血／位置／输出里有一样变了）');
 
-		/* ③ 非致命：站着的人调用 ⇒ 不结算、不计数（倒下才进场） */
+		/* ④ 非致命：站着的人调用 ⇒ 不结算、不计数（倒下才进场） */
 		P.hp = P.maxHp - 1;
+		P.effects = [];
+		State.variables.babelRun.终局 = false;      // 把终局账撤掉，只留「站着」这一个变量
 		const 站 = setup.BABEL.结算战败({ 源: 'UI' });
 		ok(站.settled === false && 站.reason === '未倒下',
 			`★未倒下时仍结算（settled=${JSON.stringify(站.settled)}、reason=${JSON.stringify(站.reason)}）`);
-		ok(State.variables.babelRun.deaths === 前三.deaths, '★未倒下却计了死亡数');
+		ok(State.variables.babelRun.deaths === 前三.deaths, '★未倒下却计了战败数');
 
-		/* ④ 结算被拒 ⇒ **不计不印**（「死亡计数仅成功结算时 +1」这条声明的判据）：
-		 *   把 `respawn` 临时换成「拒绝」桁（返 `moved:false`）⇒ 入口须报未结算，且计数与输出全不动。
-		 *   刀：把 `run().deaths += 1` 提到 `if (!res.moved)` 之前 ⇒ 本臂红（旧形正是如此）。
-		 *   ⚠ 桁回存-复原（同 `R.loot` 那类临时替换的惯例）。 */
-		P.effects = [];
-		P.hp = 0;
-		const 原respawn = R.respawn;
-		const 前拒 = { deaths: State.variables.babelRun.deaths, 行数: 死亡行数() };
-		let 拒;
-		try {
-			R.respawn = () => ({ moved: false, dropped: 0, cleared: 0, from: null, to: null });
-			拒 = setup.BABEL.结算战败({ 源: 'UI' });
-		} finally {
-			R.respawn = 原respawn;
-		}
-		ok(拒.settled === false && 拒.reason.includes('拒绝'),
-			`★结算被拒时入口仍报结算（settled=${JSON.stringify(拒.settled)}、reason=${JSON.stringify(拒.reason)}）`);
-		ok(State.variables.babelRun.deaths === 前拒.deaths && 死亡行数() === 前拒.行数,
-			'★结算被拒却计了死亡数／印了死亡行（「仅成功结算时 +1」被破）');
-
-		console.log(`  结算入口：致命进入 ⇒ hp ${死人后.hp}／位置 ${JSON.stringify(死人后.位)}／deaths ${死人后.deaths}／死亡行 ${死人后.死亡行}`
-			+ `｜原地点流程停（未拿到预知）${死人后.预知 === false ? ' ✓' : ' ✗'}｜幂等${幂等 ? ' ✓' : ' ✗'}｜非致命不结算${站.settled === false ? ' ✓' : ' ✗'}｜被拒不计${拒.settled === false ? ' ✓' : ' ✗'}`);
+		console.log(`  战败终端：致命进入 ⇒ hp ${死后.hp}／位置 ${JSON.stringify(死后.位)}／战败 ${死后.deaths}／终局账 ${死后.终局}`
+			+ `｜终局行 ${死后.终局行}（印「第 5 层」${/第\s*5\s*层/.test(死后.行文) ? ' ✓' : ' ✗'}）｜跳段 ${JSON.stringify(死后.跳段)}`
+			+ `｜原地点流程停（未拿到预知）${死后.预知 === false ? ' ✓' : ' ✗'}｜幂等${幂等 ? ' ✓' : ' ✗'}｜非致命不结算${站.settled === false ? ' ✓' : ' ✗'}`);
 	} finally {
 		P.hp = 存.hp;
 		P.maxHp = 存.maxHp;
