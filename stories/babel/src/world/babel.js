@@ -117,21 +117,77 @@ const commitNode = (layerId, holder) => {
 const EVENT_KINDS = Object.freeze(['chest', 'gather', 'battle']);
 /** 本局事件账（**只读**，✗ 在此抽：守卫函数（`when`）不得有抽签副作用 —— 那会让「看一眼」就抽）。 */
 const eventsOf = () => (State.variables.span1Events ??= {});
-/** 抽二（**不放回**，走 `RPG.rng.index`）：**同随机源 ⇒ 同结果**；池不足二 ⇒ 显式报错（✗ 静默少抽）。 */
-const drawTwo = (pool = EVENT_KINDS) => {
+/** 抽二（**不放回**，走 `RPG.rng.index`）：**同随机源 ⇒ 同结果**；池不足二 ⇒ 显式报错（✗ 静默少抽）。
+ *  `必含` 非空且落在池内时（`books#164` 预知）：**该类先占首位**，另一槽照常随机
+ *    —— 随机单元只耗**一枚**（而非两枚）⇒ 与无预知时的消耗次序**不同**，判据与 e2e 的注入序列按此写。 */
+const drawTwo = (pool = EVENT_KINDS, 必含 = null) => {
 	if (!Array.isArray(pool) || pool.length < 2) {
 		throw new Error(`[babel] 抽签池不足二（实得 ${Array.isArray(pool) ? pool.length : typeof pool}）`);
 	}
 	const rest = pool.slice();
+	if (必含 != null && rest.includes(必含)) {
+		const 锚 = rest.splice(rest.indexOf(必含), 1)[0];
+		const second = rest.splice(RPG.rng.index(rest.length), 1)[0];
+		/* ★`预知类`＝**这池的来历**（哪一类是被预知钉进来的）⇒ 判据可断言「为什么」（✗ 只断「是什么」）。 */
+		return { 抽中: [锚, second], 已用: null, 预知类: 必含 };
+	}
 	const first = rest.splice(RPG.rng.index(rest.length), 1)[0];
 	const second = rest.splice(RPG.rng.index(rest.length), 1)[0];
 	return { 抽中: [first, second], 已用: null };
 };
+
+/* ---------- `books#164`：永久被动「预知」的**实效** ＝「选择下一层内容的能力」----------
+ * 操作者定义：「预知效果就是选择下一层内容的能力，只是个形式上的能力。」
+ * 形（领队 2026-10-03 02:30 裁）：持有者在 **L5、L6、L7** 各可**指定一次**下一层（L6／L7／L8）抽签池的
+ *   **必含一类**（三正向类选一），另一槽照常随机。**不改数值、不加掉落、不降难度**（纯能动性 agency）。
+ * ★为何 **L8 不出**：L9 ＝ 固定头目 ＋ 唯一出口（无抽签）⇒ 在 L8 选「下一层必含」是**死选项**，
+ *   按本仓「无死格」既裁不出（边界由 `verify.mjs` 的㉘格钉住）。
+ * ★为何还要「目标层**尚无账**」这道门：地图有回边（上下列层可来回走）⇒ 玩家可 L5⇒L6⇒回 L5；
+ *   那时 L6 的账已抽定，再选一次仍是**死选项** ⇒ `when` 须同时要求目标层尚未入账。
+ * ⚠ 本形**不碰结算**：选中的类走的还是**同一条动作**、取**同一张表**的值（㉘格的形式约束判据钉它）。 */
+const 预报可选 = Object.freeze({ L5: 'L6', L6: 'L7', L7: 'L8' });   // 本层 ⇒ 目标层（**一处定义**）
+const 预知授予层 = 'L5';      // ★授予层（`#132` 甲裁定：L5 授予，✗ 跨死亡 —— 重爬 L5 重新授予）
+const 类名 = Object.freeze({ chest: '宝箱', gather: '采集', battle: '第二场战斗' });
+/** 预报账：目标层 ⇒ 被钉的类。**新键**（同笔登记进域契约，见文件尾键表）。 */
+const 预报账 = () => (State.variables.span1Foresee ??= {});
+/** ★**只读**（✗ 经 `预报账()`）——`when` 路径只许读，建键是写路径（`记预报`）的事。 */
+const 预报类 = (targetId) => State.variables.span1Foresee?.[targetId] ?? null;
+/** 记一次预报（只允许在 `预报可选` 列出的层上调）。 */
+const 记预报 = (layerId, kind) => {
+	const target = 预报可选[layerId];
+	if (!target) throw new Error(`[babel] 本层不可预知（${layerId}）`);
+	预报账()[target] = kind;
+	return target;
+};
+/** 本层该不该出「预知」按钮（**只读**：`when` 不得有副作用 —— 同 `eventsOf` 的说明）。 */
+const 可预知 = (layerId) => {
+	const target = 预报可选[layerId];
+	if (!target) return false;                    // L8 等：无下一层抽签 ⇒ 不出（死选项）
+	if (预报类(target) != null) return false;    // 本层已选过（每层一次，✗ 可改）
+	if (eventsOf()[target]) return false;         // ★目标层已抽定（回边可达）⇒ 再选是死选项
+	const P = DND3.Player;
+	return typeof P?.contains === 'function' && P.contains('precognition');
+};
+/** 预知按钮（三类各一个，**静态入表**、由 `when` 筛 —— 与事件动作同形）。
+ *  ⚠ **不挂 `事件类`**：那个键是「抽中的事件」的**结构标记**（㉑㉓格按它取可选面）——
+ *    预知按钮不是池里的事件类，给它挂上会让那两格把本按钮算成事件 ⇒ 既有判据假红（本席实跑撞到）。
+ *    本按钮的结构标记是 **`预知类`**（取值＝目标类），✗ 与 `事件类` 混用。 */
+const 预知动作 = (L, kind) => ({
+	预知类: kind,                 // ★结构标记兼目标类（㉘格按此取钮与断言）
+	text: `（预知）听见下一层的低语：${类名[kind]}`,
+	when: () => 可预知(L.id),
+	action: () => {
+		记预报(L.id, kind);
+		R.perform(`你听见下一层的低语 —— 那里会有${类名[kind]}。`);
+	},
+});
+
 /** 该层**首次进入**时抽一次并登记入档；已有则**原样返回**（幂等，✗ 重抽）。
- *  @returns 该层的事件账（`{抽中,已用}`） */
+ *  ★`books#164`：若**上一层曾预报**本层（`$span1Foresee`），把它作为**必含类**交给 `drawTwo`。
+ *  @returns 该层的事件账（`{抽中,已用[,预知类]}`） */
 const ensureDraw = (layerId) => {
 	const bag = eventsOf();
-	return (bag[layerId] ??= drawTwo());
+	return (bag[layerId] ??= drawTwo(EVENT_KINDS, 预报类(layerId)));
 };
 /** 择一：记下用了哪一类（`已用` 非空 ⇒ 同一层的另一个选项 `when` 变假 ⇒ 两个按钮一起退场）。 */
 const markUsed = (layerId, kind) => {
@@ -262,6 +318,13 @@ const makeLayerLocation = (L) => new R.Location({
 		 *     抽签先跑 ⇒ 账里已有 `抽中`，危害只往**同一个对象**上加 `危害` 标记 ✓。
 		 *     ⚠ 随机源的**消耗次序**因此是「先抽签（两格）后危害（一格）」——判据与 e2e 面的注入序列按此写。 */
 		setup.BABEL.危害?.危害结算?.(L.id);
+		/* ★`books#164`：**L5 授予**永久被动「预知」（`books#139`／`#1893` 的挂载面在此接到活路径上）。
+		 *   ⚠ 幂等（`contains` 先判）：重进 L5 不重复授予、不重复印文案。
+		 *   ⚠ 授予**不耗随机单元**（与抽签／危害的次序无关）⇒ 上两行的次序不变。 */
+		if (L.id === 预知授予层 && !(DND3.Player?.contains?.('precognition'))) {
+			DND3.Player?.gain?.('precognition');
+			R.perform('你开始能听见下一层的低语 —— 下一层会有什么，你可以先选一样。');
+		}
 	},
 	actions: [
 		/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的基础采集退役** —— 采集在该四层改为「抽中的事件」，
@@ -270,6 +333,10 @@ const makeLayerLocation = (L) => new R.Location({
 		基础遭遇动作(L),                      // ★第一场战斗：三段皆留（裁 ②B 原文）
 		/* ★抽中的事件（三类的动作**全量入表**，由 `when` 筛：只有抽中的两类能真出现） */
 		...(EVENT_LAYERS.includes(L.id) ? EVENT_KINDS.map((k) => EVENT_ACTIONS[k](L)) : []),
+		/* ★`books#164`：预知＝「选择下一层内容」的按钮（L5／L6／L7 各三个；由 `when` 筛：
+		 *   持有者 ∧ 本层可预报 ∧ 尚未选过 ∧ 目标层未抽 —— 见 `可预知`）。
+		 *   ⚠ 三类**全量入表**（同事件动作的形），✗ 运行时算数组。 */
+		...(预报可选[L.id] ? EVENT_KINDS.map((k) => 预知动作(L, k)) : []),
 	],
 });
 
@@ -556,6 +623,8 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	/* ★`books#133` 笔 1：选择制的机器件导出（同 `登记域` 的理由：判据/刀要能**真调用**，✗ 只能静态核）。 */
 	EVENT_KINDS, EVENT_LAYERS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
+	/* ★`books#164`：预知的机器件（同上理由）—— `预报可选`／`预报账`／`预报类`／`记预报`／`可预知`／`类名`。 */
+	预报可选, 预报账, 预报类, 记预报, 可预知, 类名, 预知动作, 预知授予层,
 	/* ★`books#133` 笔 3：头目弧的机器件（同上理由：判据/刀要能**真调用**）。 */
 	LAYER_META, 是头目层, 头目层前方, 边守卫,
 	adoptHub,                      // 整备区接管形（一段/二段共用）
@@ -573,8 +642,8 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
  *   故旧的 `try/catch` 对缺席支**永不参与**、那条 `console.warn` 是死支（声明与实现不符）。
  *   现形：`typeof` 显式判 ⇒ 缺席支**真的出声**。函数挂在 `setup.BABEL.登记域` 上 ⇒ **可被调用**（刀用）。 */
 const 登记域 = () => {
-	/* ★键表**一处定义**（`books#133` 笔 1 加 `span1Events`）：新键加在这里，✗ 再写一段登记代码。 */
-	const keys = ['span1Arc', 'span1Events'];
+	/* ★键表**一处定义**（`books#133` 笔 1 加 `span1Events`；`books#164` 加 `span1Foresee`）：新键加在这里，✗ 再写一段登记代码。 */
+	const keys = ['span1Arc', 'span1Events', 'span1Foresee'];
 	if (typeof R.save?.declareDomain !== 'function') {
 		console.warn(`[BABEL] 保存域登记口缺席：${keys.join('／')} 未登记（候 \`sgstory#1903\` 的 \`RPG.save.declareDomain\`）`);
 		return false;

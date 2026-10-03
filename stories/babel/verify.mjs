@@ -114,6 +114,7 @@ State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, trau
 State.variables.babelGiven = {};
 State.variables.span1Arc = {};   // ★`books#132` L1–L9 弧的本局账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Events = {}; // ★`books#133` 笔 1：选择制事件账（与 `meta/init.twee` 逐项同形）
+State.variables.span1Foresee = {}; // ★`books#164`：预知账（`{目标层: 类}`，与 `meta/init.twee` 逐项同形）
 State.variables.span1Farms = 0;
 State.variables.span1Harvests = 0;
 
@@ -1499,6 +1500,152 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
 			+ `｜重开复位（接线 ${m(接线)}＋行为 ${m(复位ok)}）`);
 	} finally {
+		if (map.locations.has(存位)) map.moveTo(存位);
+	}
+}
+
+/* ── ㉘ 预知实效（`books#164`）─────────────────────────────────────
+ *
+ * 它回答的问题：**「预知 ＝ 选择下一层内容的能力」这条形式能力成立吗？**
+ *   操作者定义：「预知效果就是选择下一层内容的能力，只是个形式上的能力。」
+ *   领队落形（2026-10-03 02:30）：持有者在 L5／L6／L7 各可指定一次下一层抽签池的**必含一类**
+ *   （另一槽照常随机）；**不改数值、不加掉落、不降难度**（纯能动性）。
+ * 本格断七件：①L5 授予（幂等）②持有者**钉得住**下一池的一类（且账里记下「为什么」）
+ *   ③无预知者照旧**纯随机**（同随机源下手算逐字相符，且不得记 `预知类`）
+ *   ④**形式约束**：选定类的奖励与未选定时**逐字相同**（同表同动作，无加成）
+ *   ⑤入档（域契约含本键）与**随档往返后仍生效**
+ *   ⑥**边界**：L8 无按钮（L9 无抽签＝死选项）／目标层已抽则不出（回边会造死选项）／每层一次／无预知则一个不出
+ *   ⑦**动作面**：三类按钮静态入表、由 `when` 筛（持有时恰三个，选定后全部退场）。
+ * ⚠ 装置：本格自建干净账（`span1Events`／`span1Foresee`）并**存-复原**（含持有态、背包与体力）。
+ * ⚠ 随机源：有预报时抽签只耗**一枚**、无预报耗**两枚**，L5–L8 又是危害层 ⇒ 注入序列按此写。
+ */
+head('㉘ 预知实效（`books#164`）');
+{
+	const P = D.Player;
+	const 存账 = State.variables.span1Events;
+	const 存预报 = State.variables.span1Foresee;
+	const 存位 = map.current;
+	const 存包 = State.variables.inventory;
+	const 存效果 = (P.effects ?? []).slice();
+	const 存hp = P.hp;
+	const 清 = () => { State.variables.span1Events = {}; State.variables.span1Foresee = {}; };
+	/** 渲染路径对动作对象的读法（与㉓格同形）：只取带 `预知类` 标记的。 */
+	const 预知钮 = (id) => map.locations.get(id).availableActions
+		.filter((a) => a.预知类 != null).map((a) => a.预知类).sort();
+	let 授 = false, 次数 = 0, 账6 = null, 账6无 = null, 甲 = null, 乙 = null, 域 = [];
+	try {
+		/* ① L5 授予（幂等）：退层再回不得重复授予 */
+		P.lose('precognition');
+		清();
+		map.moveTo('L5');
+		授 = P.contains('precognition');
+		ok(授, '★进 L5 未授予「预知」—— 本能力的活路径断在授予面上（授予层＝L5）');
+		map.moveTo('L6'); map.moveTo('L5');
+		次数 = (P.effects ?? []).filter((e) => e === 'precognition').length;
+		ok(次数 === 1, `★L5 授予的幂等不成立（\`precognition\` 出现 ${次数} 次，应为 1：0 ＝ 未授予；>1 ＝ 重复授予）`);
+
+		/* ② 持有者钉得住下一池的一类（必含支只耗一枚；第三枚给 L6 的危害，取 0.99 ⇒ miss） */
+		清();
+		R.rng.setSequence([0, 0.99, 0.99]);
+		B.记预报('L5', 'chest');
+		map.moveTo('L6');
+		R.rng.reset();
+		账6 = State.variables.span1Events['L6'];
+		ok(Array.isArray(账6?.抽中) && 账6.抽中.includes('chest'),
+			`★预知未生效：L6 的池里没有必含的 \`chest\`（实得 ${JSON.stringify(账6?.抽中)}）`);
+		ok(JSON.stringify(账6?.抽中) === JSON.stringify(['chest', 'gather']),
+			`★必含支的池与手算不符（手算 ['chest','gather']：预知类占首位、另一槽取 0 ⇒ gather；实得 ${JSON.stringify(账6?.抽中)}）`);
+		ok(账6?.预知类 === 'chest', '★账里没记下「为什么」（`预知类`）—— 判据只能断「是什么」');
+
+		/* ③ 无预知者照旧纯随机（同随机源 ⇒ 手算逐字相符；且不得记「预知类」） */
+		清();
+		P.lose('precognition');
+		R.rng.setSequence([0, 0, 0.99]);
+		map.moveTo('L6');
+		R.rng.reset();
+		账6无 = State.variables.span1Events['L6'];
+		ok(JSON.stringify(账6无?.抽中) === JSON.stringify(['chest', 'gather']),
+			`★无预知者的抽中与手算不符（手算 ['chest','gather']（抽二耗两枚）；实得 ${JSON.stringify(账6无?.抽中)}）`);
+		ok(账6无?.预知类 === undefined, '★无预知者却记了 `预知类`（把「随机抽中」冒充成「预知钉的」）');
+		P.gain('precognition');
+
+		/* ④ 形式约束：选定类的**授予面**与未选定时逐字相同（同表同动作 ⇒ 无加成） */
+		const 跑箱 = (用预报) => {
+			清();
+			State.variables.inventory = [];
+			/* 两路都让 L6 的池含 chest：预报路钉它；随机路用注入让它自己抽到 */
+			if (用预报) { R.rng.setSequence([0, 0.99]); B.记预报('L5', 'chest'); }
+			else { R.rng.setSequence([0, 0, 0.99]); }
+			map.moveTo('L6');
+			R.rng.reset();
+			const 箱 = map.locations.get('L6').actions.find((x) => x.事件类 === 'chest');
+			if (箱) 箱.action();
+			return { 包: State.variables.inventory.map((s) => s.id).sort(), 池: State.variables.span1Events['L6']?.抽中 };
+		};
+		甲 = 跑箱(true);
+		乙 = 跑箱(false);
+		ok(JSON.stringify(甲.包) === JSON.stringify(乙.包),
+			`★形式约束被破：预知路径与随机路径的**授予物不同**（预知 ${JSON.stringify(甲.包)} vs 随机 ${JSON.stringify(乙.包)}）—— 预知不得带数值优势`);
+		ok(甲.包.length === 1, `★开箱应恰好授予一件（实得 ${JSON.stringify(甲.包)}）`);
+
+		/* ⑤ 入档（域契约）与随档往返后仍生效 */
+		域 = R.save?.envelope?.()?.domains ?? [];
+		ok(域.includes('span1Foresee'),
+			`★\`span1Foresee\` 不在 \`envelope().domains\`（实得 ${JSON.stringify(域)}）⇒ 审计缺口`);
+		清();
+		State.variables.span1Foresee = JSON.parse(JSON.stringify({ L6: 'battle' }));   // 模拟随档回来的账
+		R.rng.setSequence([0, 0.99]);
+		map.moveTo('L6');
+		R.rng.reset();
+		const 账往 = State.variables.span1Events['L6'];
+		ok(账往?.抽中?.[0] === 'battle',
+			`★随档往返后的预报不生效（L6 池首位应为 battle；实得 ${JSON.stringify(账往?.抽中)}）`);
+
+		/* ⑥ 边界 */
+		清();
+		P.gain('precognition');
+		ok(预知钮('L8').length === 0,
+			`★L8 的动作面上出现了预知按钮（实得 ${JSON.stringify(预知钮('L8'))}）—— L9 无抽签，那是死选项`);
+		ok(B.可预知('L8') === false, '★`可预知(L8)` 为真（L9 无抽签 ⇒ 死选项）');
+		map.moveTo('L5');
+		ok(B.可预知('L5') === true, '★持有者进 L5 且目标层未抽时**不可**预知（按钮面断了）');
+		B.记预报('L5', 'chest');
+		ok(B.可预知('L5') === false, '★已选过一层还能再选（「每层一次」不成立）');
+		/* ★持有者门**须在干净层上判**（`dev-9` 自纠：先前这两条挂在已「记过预报」的 L5 上，
+		 *   「已选过」那一道门也能把结果弄成 false ⇒ 本臂对持有者门**零判别力**（撤门也不红）。 */
+		ok(B.可预知('L6') === true, '★持有者在干净层（L6）不可预知 —— 后两条的基线不成立');
+		P.lose('precognition');
+		ok(B.可预知('L6') === false, '★无预知者也能预知（持有者门断了）');
+		P.gain('precognition');
+		清();
+		map.moveTo('L5'); map.moveTo('L6');            // L6 已抽定
+		ok(B.可预知('L5') === false, '★目标层已抽定后 L5 仍可预知（回边路径上会造出死选项）');
+
+		/* ⑦ 动作面：持有时恰三个；真点一次 ⇒ 入账且按钮全部退场 */
+		清();
+		map.moveTo('L5');
+		const 钮 = 预知钮('L5');
+		ok(JSON.stringify(钮) === JSON.stringify(['battle', 'chest', 'gather']),
+			`★持有者进 L5 的预知按钮不是三类（实得 ${JSON.stringify(钮)}）`);
+		const 箱钮 = map.locations.get('L5').availableActions.find((x) => x.预知类 === 'chest');
+		if (箱钮) 箱钮.action();
+		ok(B.预报类('L6') === 'chest',
+			`★点「宝箱」后预报账没记下（实得 ${JSON.stringify(State.variables.span1Foresee)}）`);
+		ok(预知钮('L5').length === 0,
+			`★选定后按钮未退场（实得 ${JSON.stringify(预知钮('L5'))}）—— 「每层一次」在屏上不成立`);
+
+		const 无预知同 = JSON.stringify(账6无?.抽中) === JSON.stringify(['chest', 'gather']);
+		const 形式同 = JSON.stringify(甲?.包) === JSON.stringify(乙?.包);
+		console.log(`  预知：L5 授予${授 ? ' ✓' : ' ✗'}（重复授予 ${次数} 次）｜持有者钉住 L6=${JSON.stringify(账6?.抽中)}（预知类 ${账6?.预知类}）`
+			+ `｜无预知手算相符${无预知同 ? ' ✓' : ' ✗'}｜形式约束（${JSON.stringify(甲?.包)} vs ${JSON.stringify(乙?.包)}）${形式同 ? ' ✓' : ' ✗'}`
+			+ `｜域含本键${域.includes('span1Foresee') ? ' ✓' : ' ✗'}｜L8 无钮${预知钮('L8').length === 0 ? ' ✓' : ' ✗'}`);
+	} finally {
+		清();
+		State.variables.span1Events = 存账;
+		State.variables.span1Foresee = 存预报;
+		State.variables.inventory = 存包;
+		P.effects = 存效果;
+		P.hp = 存hp;
 		if (map.locations.has(存位)) map.moveTo(存位);
 	}
 }
