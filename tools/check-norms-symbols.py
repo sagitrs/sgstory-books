@@ -75,37 +75,37 @@ def fence_mask(lines):
     return m
 
 
-def html_mask(lines):
-    """NORMS §三：HTML 注释块属「不得动的面」⇒ 豁免（块内符号不计数、也不须清零）。
+def strip_html_blocks(text):
+    """把 HTML 注释块（**区间级**，可跨行）置为等长空白，换行原样保留。
 
-    块以 `<!--` 起、`-->` 止，可跨多行；同一行内起止亦按块处理。
-    ★来历：`#148` 的 T 席评审记下本器原不摘注释块，于是带注释的正文会得到虚高读数（`books#162` 第一条）。
+    NORMS §三：HTML 注释块属「不得动的面」⇒ 块内符号不计数、也无须清零；**块外照常判定**。
+    ★来历：本器首版按**整行**豁免 —— 一行里只要有 `<!--` 就把整行放过，于是同行注释块**之外**的符号
+      被一并放过（两支探针：`<!-- 注 --> 甲 ⇒ 乙` 与 `甲 ⇒ <!-- 乙 ⇒ --> 丙 ⇒`，两读皆为 0；
+      评审 `books#163` 抓出）。⇒ 收成**区间**豁免。
     """
-    m, inf = [], False
-    for l in lines:
-        if inf:
-            m.append(True)
-            if '-->' in l:
-                inf = False
-            continue
-        if '<!--' in l:
-            m.append(True)
-            if '-->' not in l.split('<!--', 1)[1]:
-                inf = True
-            continue
-        m.append(False)
-    return m
+    out, i, n = [], 0, len(text)
+    while i < n:
+        j = text.find('<!--', i)
+        if j < 0:
+            out.append(text[i:])
+            break
+        out.append(text[i:j])
+        k = text.find('-->', j + 4)
+        end = n if k < 0 else k + 3
+        seg = text[j:end]
+        out.append(''.join('\n' if c == '\n' else ' ' for c in seg))
+        i = end
+    return ''.join(out)
 
 
 def body_counts(text):
     """单篇正文读数 ⇒ (判定面保留数, 行文面须清零数, 逐处定位列表)。"""
-    lines = text.split('\n')
+    lines = strip_html_blocks(text).split('\n')
     mask = fence_mask(lines)
-    cmask = html_mask(lines)
     keep = clear = 0
     hits = []
     for idx, l in enumerate(lines):
-        if mask[idx] or cmask[idx]:
+        if mask[idx]:
             continue
         if l.lstrip().startswith('>'):
             continue
@@ -134,6 +134,8 @@ CASES = [
     ('实心星 ⭐ 行文 ⇒ 清零（与 ★ 同族）', '⭐本项优先', (0, 1)),
     ('勾叉在句子中间 ⇒ 清零（非判定面）', '实测 3/5 ✓ 而其后仍红', (0, 1)),
     ('HTML 注释块内 ⇒ 例外不动（不得动的面）', '前句。\n<!-- 注释：甲 ⇒ 乙 ⭐ ｜ -->\n后句。', (0, 0)),
+    ('★同行：注释块**之外**的符号仍须计数（整行豁免的假绿反例）', '<!-- 注 --> 甲 ⇒ 乙', (0, 1)),
+    ('★同行：块内与块外各有符号 ⇒ 只数块外的', '甲 ⇒ <!-- 乙 ⇒ --> 丙 ⇒', (0, 2)),
 ]
 
 
