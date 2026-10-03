@@ -114,7 +114,7 @@ cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
-	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 1／笔 2）');
+	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 2）｜O L9 唯一出口（`books#133` 笔 3）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
 	console.log('  原语：passageLines／choiceButtons／driveButton／saveAt／loadAt／setStateVars／panelText');
 	process.exit(0);
