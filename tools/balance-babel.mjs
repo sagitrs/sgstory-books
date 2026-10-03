@@ -327,7 +327,11 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			};
 			const pick = 策略(o, ctx);
 			const hit = o.find((x) => x.value === pick) ?? o[0];
-			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp });
+			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp,
+				/* ★治疗件**消耗**这道独立证据（`tester-3` 的非阻断加固）：charges 挂在**背包条目**上
+				 *   （实测形 `{"id":"herb-poultice","charges":6,"equipped":false}`）⇒ 记它们的**总量**。 */
+				耗: (V().inventory ?? []).filter((x) => /herb|bandage|poultice/.test(String(x?.id ?? '')))
+					.reduce((a, x) => a + Number(x?.charges ?? 0), 0) });
 			return hit?.value ?? 'skip';
 		};
 		/* ★**走真路**（`books#182` RC 的修法）：交回故事自己的遭遇入口 —— 它自己滚遭遇、
@@ -524,8 +528,13 @@ async function 自证(env) {
 		 *   只看紧邻下一格会**假红**（`tester-3` 用窗口刀 `[1,2]⇒[1]` 实测证过）。 */
 		const 治疗后有涨 = 选中治疗.some((i) =>
 			[1, 2].some((d) => typeof t4[i + d]?.血 === 'number' && t4[i + d].血 > t4[i].血));
-		判('⑤c 防疗策略真的治疗了（选中治疗件 ∧ 其后两格内血涨）', 选中治疗.length > 0 && 治疗后有涨,
-			`选中治疗件 ${选中治疗.length} 次｜治疗后有涨=${治疗后有涨}`
+		/* ★**第三道独立证据**（`tester-3` 的非阻断加固）：选中之后**治疗件的 charges 减少**
+		 *   ⇒ 堵住残余风险「血涨了但不是这一件治的（别处同时回血）」。
+		 *   三证齐＝**选中 ∧ 消耗 ∧ 血涨**。 */
+		const 消耗了 = 选中治疗.some((i) =>
+			[1, 2].some((d) => typeof t4[i + d]?.耗 === 'number' && typeof t4[i].耗 === 'number' && t4[i + d].耗 < t4[i].耗));
+		判('⑤c 防疗策略真的治疗了（选中 ∧ 消耗 ∧ 血涨）', 选中治疗.length > 0 && 治疗后有涨 && 消耗了,
+			`选中治疗件 ${选中治疗.length} 次｜消耗=${消耗了}｜有涨=${治疗后有涨}`
 			+ `｜选中文案 ${JSON.stringify([...new Set(t4.map((x) => x.选文案))])}`
 			+ `｜血迹 ${JSON.stringify(血迹(r4件))}`);
 	}
