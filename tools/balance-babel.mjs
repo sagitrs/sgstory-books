@@ -1,0 +1,503 @@
+#!/usr/bin/env node
+/* 巴别之井 · **战斗批量跑分器（BalanceRunner · 操作者第三份文档 §12「P0 即建」）**
+ *
+ * 定位：它回答的问题不是「某个面通不通」，而是「这套数值跑很多场之后**长什么样**」——
+ *   五战果各占多少、胜率落在哪个区间、平均打几回合、一场里损耗多少、输的那些是什么原因。
+ *
+ * ## 为什么 P0 就用 LegacyBattleRunner（而不是等架构分离）
+ *
+ * 设计文档 §12 点名的硬门：**在改架构之前先把「现在的战斗」量出来**，否则重构之后无从比较
+ *   「行为保持」。因此本件**驱动的是真 `RPG.Battle.execute()`**（引擎现码，✗ 影子实现），
+ *   只把三处换成受控的：**脚本化的 choice**、**注入的随机流**、以及**夹具摆的初始态**。
+ *   ⇒ 将来 P2／P3 拆出纯规则内核时，本件是它的**对照基线**（同一批夹具、同一批样本）。
+ *
+ * ## 三处控制点（各自的可核之处）
+ *
+ *   ① **脚本化 choice**：引擎的交互回合经 `await attacker.choice(options)` 取玩家选择
+ *      （`src/core/40-battle.js` 的 `#playerActionBody`）⇒ 本席**覆盖角色实例上的 `choice`**，
+ *      按策略从选项里挑。⚠ 覆盖的是**实例**（✗ 原型），且在 `finally` 里**还原**。
+ *   ② **随机流注入**：引擎全部骰面走 `RPG.rng`（`src/core/05-dice.js`，唯一入口）⇒ 本席按
+ *      样本号生成一段**确定性序列**并 `setSequence()`。⚠ 序列**耗尽即抛**（引擎不静默回退真随机）
+ *      ⇒ 样本长度不足时本件**如实报错**，✗ 悄悄改用真随机。
+ *   ③ **夹具摆位**：玩家与敌人的初始态由夹具给定（血量／装备／效果／敌组），摆放一律走
+ *      **受支持写点**（`R.give`／`R.equip`／`R.createItem`／`R.rollEncounter`），✗ 直赋内部字段。
+ *
+ * ## 可重放
+ *
+ * 每条样本都留下一条**轨迹**：夹具 id ＋ 样本号 ＋ 随机序列 ＋ 策略名 ＋ 逐回合的选项序列。
+ *   把这三样交回本件（`--replay <轨迹档>`）应得到**逐字相同**的战果与读数。
+ *
+ * ## 用法
+ *
+ *   node tools/balance-babel.mjs --engine <引擎检出>                    # 默认七夹具 × 烟测 100 样本
+ *   node tools/balance-babel.mjs --engine <E> --fixture pure-attack --samples 200
+ *   node tools/balance-babel.mjs --engine <E> --selftest                # 判别力自证（本器能不能红）
+ *   node tools/balance-babel.mjs --engine <E> --json                    # 机读输出（轨迹随附）
+ *
+ * 退出码：0 全过；1 有红（自证不符／样本异常）；2 用法错或装置缺。
+ * ★本件与 `tools/e2e-harness.mjs` 的分工：**只 import，不复制**（引导与点链接在那件里）。
+ */
+import * as H from './e2e-harness.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const V = (x) => x.SC.State.variables;   // 测试席自证里取的短名
+const argOf = (name, dflt = null) => {
+	/* ★两种写法都认：`--name=值` 与 `--name 值`。
+	 *   ⚠ 本席首版只认等号形 ⇒ 用 `--samples 100`（空格）时拿到布尔真，`Number(true)===1`
+	 *     ⇒ 烟测只跑了一个样本而读数看起来正常（自陈：这是本器第一次烟测的实况）。 */
+	const eq = process.argv.find((a) => a.startsWith(`--${name}=`));
+	if (eq) return eq.slice(name.length + 3);
+	const i = process.argv.indexOf(`--${name}`);
+	if (i >= 0) {
+		const nxt = process.argv[i + 1];
+		return nxt && !nxt.startsWith('--') ? nxt : true;
+	}
+	return dflt;
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 策略：脚本化 choice 的四种打法
+ *
+ * 每个策略接收 `(options, ctx)` 并返回选项里的某个 `value`（或 `'skip'`）。
+ *   `options` 是引擎给的选项数组（形如 `{ text, value }`），`ctx` 是本件补的上下文
+ *   （当前回合、自己的血、敌组血、历史选择序列 —— 便于**留下可重放的轨迹**）。
+ * ★策略必须是**纯函数式**的（除 ctx 外不读外部状态）⇒ 同一轨迹重放时逐字相同。
+ * ══════════════════════════════════════════════════════════════════════════ */
+/** 目标选择步：引擎给的是 `<名>（己方）`／`（敌方）` 的清单 ⇒ **一律选敌方**。
+ *  ★本席首版没识别这一步，于是「纯攻」策略按自己的正则选中了**第一个**条目 —— 那是己方
+ *    ⇒ 玩家对着自己打（自证的 ③c 顺着「打不死 4 血的幼獾」查出来的）。 */
+const 目标步 = (options) => options.length > 0 && options.every((o) => /（己方）|（敌方）/.test(o.text));
+const 选敌方 = (options) => {
+	const 敌 = options.filter((o) => /（敌方）/.test(o.text));
+	return (敌[0] ?? options[0]).value;
+};
+
+const STRATEGIES = {
+	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
+	'纯攻': (options, ctx) => {
+		if (目标步(options)) return 选敌方(options);
+		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		if (攻) return 攻.value;
+		const 空手 = options.find((o) => /空手/.test(o.text));
+		if (空手) return 空手.value;
+		return options[0].value;
+	},
+	/* 防疗：血低先治（草药糊／绷带），否则治疗优先，再次才是攻击。 */
+	'防疗': (options, ctx) => {
+		if (目标步(options)) return 选敌方(options);
+		if (ctx.自己血比 < 0.5) {
+			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
+			if (治) return 治.value;
+		}
+		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		if (攻) return 攻.value;
+		return options[0].value;
+	},
+	/* 空手：只找空手打击（用于「空手击晕」夹具）。 */
+	'空手': (options) => {
+		if (目标步(options)) return 选敌方(options);
+		const 空手 = options.find((o) => /空手/.test(o.text));
+		return 空手 ? 空手.value : options[0].value;
+	},
+	/* 跳过：一律跳过（对照组 —— 用来证明「不打」与「打」的战果不同，见自证）。 */
+	'跳过': () => 'skip',
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 七夹具（操作者第三份文档 §12 点名）
+ *
+ * 每个夹具给：`摆位(R, D3, B)`（把玩家与敌组摆到位）、`策略`、以及 `待判`（做不到时的原因）。
+ * ★`待判` 非空者**不入绿**（照本仓 `#1913` 的形：待判行印出来、单独计数）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+const FIXTURES = [
+	{
+		id: '温泉满装',
+		说明: '满血满装（温泉恢复后的理想态）',
+		策略: '纯攻',
+		/* ⚠ 温泉动作本体现落在飞件 `books#179`，未入 main ⇒ 本件不假装它已判：
+		 *   夹具摆「满血 ＋ 满装」这两件（可判的部分），温泉那一步记待判并给解锁件。 */
+		待判: '温泉动作本体（`books#179` 未入 main）—— 本夹具只摆满血满装，温泉那一步不判',
+		摆位: (R, D3, B, s) => {
+			R.give('sword'); R.equip('sword');
+			R.give('mail'); R.equip('mail');
+			R.give('bandage'); R.give('herb-poultice');
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+	{
+		id: '纯攻',
+		说明: '一把武器，其余空手，只攻不治',
+		策略: '纯攻',
+		摆位: (R, D3, B) => {
+			R.give('sword'); R.equip('sword');
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+	{
+		id: '少装备',
+		说明: '无武器无甲（只有一件绷带）—— 低装态',
+		策略: '纯攻',
+		摆位: (R, D3, B) => {
+			R.give('bandage');
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+	{
+		id: '防疗',
+		说明: '带治疗件，血低先治',
+		策略: '防疗',
+		摆位: (R, D3, B) => {
+			R.give('sword'); R.equip('sword');
+			R.give('herb-poultice'); R.give('herb-poultice');
+			R.give('bandage');
+			D3.Player.hp = Math.max(4, Math.floor(D3.Player.maxHp / 3));
+		},
+	},
+	{
+		id: '空手击晕',
+		说明: '不装武器，只用空手打击（非致命 ⇒ 打晕而不是打死）',
+		策略: '空手',
+		摆位: (R, D3, B) => {
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+	{
+		id: '重读同档',
+		说明: '同一存档读两次各打一场 —— 两场的战果与读数应逐字相同（确定性）',
+		策略: '纯攻',
+		/* ★真形：本夹具不比「打不打得赢」，比的是**同一存档重读之后是否逐字复现**。
+		 *   跑法＝打完一场 → 存槽 → 读回该槽 → 再打一场 → 两场读数须完全一致。
+		 *   本器不去动实现，只驱动 `Save.slots.save/load` ＋ `Engine.show()`（与驾驶层同路）。 */
+		特殊: '重读同档',
+		待办: '真读档往返（存槽 ⇒ 读回 ⇒ 再打一场）—— 须先接回读档后的会话状态（驾驶层 saveAt/loadAt 两原语）',
+		摆位: (R, D3, B) => {
+			R.give('sword'); R.equip('sword');
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+	{
+		id: '多场连续',
+		说明: '连打三场 —— 检查场与场之间不串味（血量／效果／随机流）',
+		策略: '纯攻',
+		/* ★真形：**同一个会话**里连打三场，逐场记读数；第 2／3 场**不重摆夹具**
+		 *   ⇒ 若场间串味（血量或效果被上一场带走、随机流耗尽），读数会露出来。 */
+		特殊: '多场连续',
+		摆位: (R, D3, B) => {
+			R.give('sword'); R.equip('sword');
+			R.give('bandage'); R.give('bandage');
+			D3.Player.hp = D3.Player.maxHp;
+		},
+	},
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 五战果：从**终态**判定（引擎不返回战果，只发结论行 ⇒ 本席按状态推导）
+ *
+ *   胜利 victory  ｜ 打晕 knockout ｜ 撤退 retreat ｜ 僵持 stalemate ｜ 阵亡 death
+ * ⚠ 推导一律读**状态**（`hp`／`nonlethal`／`RPG.isKnockedOut`／存活计数），✗ 正则匹配结论行：
+ *   文案会改（本仓刚在 `#1854` 改过「击败／打晕」的分流），判据不该绑字面。
+ * ══════════════════════════════════════════════════════════════════════════ */
+function 判战果(RPG, players, enemies, 回合耗尽) {
+	/* ★一律用**引擎自己的判定式**（✗ 自己重实现）：
+	 *   出局＝`c.isDown`（`20-character.js` 的 getter ＝ `hp <= 0 || RPG.isKnockedOut(c)`）。
+	 *   ⚠ 本席首版写成 `hp > 0`，于是**被击晕**的敌（hp 未变、`nonlethal > hp`）被读成活着
+	 *     ⇒ 「纯攻打死幼獾」读成了 `stalemate`（自证的 ③c 抓出来的）。 */
+	const 出局 = (c) => (c?.isDown ?? (c?.hp ?? 0) <= 0) === true;
+	if (players.every(出局)) return 'death';
+	if (enemies.every(出局)) {
+		/* 全被非致命打晕 ⇒ 打晕；否则击败（混编按最保守读法记「击败」，与引擎文案同向）。 */
+		const 全晕 = enemies.length > 0 && enemies.every((e) => (RPG.isKnockedOut?.(e) ?? false));
+		return 全晕 ? 'knockout' : 'victory';
+	}
+	return 回合耗尽 ? 'stalemate' : 'stalemate';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 确定性随机序列：按样本号生成（同一号 ⇒ 同一序列 ⇒ 同一样本可重放）
+ * ══════════════════════════════════════════════════════════════════════════ */
+function 造序列(样本号, 长度 = 4096) {
+	/* 一条便宜的 LCG，只为「同样本号可复现」；它不是引擎的随机源，只喂给引擎。 */
+	let x = (样本号 * 2654435761) >>> 0;
+	const out = [];
+	for (let i = 0; i < 长度; i++) {
+		x = (x * 1664525 + 1013904223) >>> 0;
+		out.push((x % 1000) / 1000);          // 与 `RPG.rng.setSequence` 的单元值同域
+	}
+	return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 一场：驱动真 `RPG.Battle.execute()`
+ * ══════════════════════════════════════════════════════════════════════════ */
+async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策略名 = null } = {}) {
+	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
+	const 策略 = STRATEGIES[策略名 ?? 夹具.策略] ?? STRATEGIES['纯攻'];
+	const 轨迹 = [];
+	/* ★还原所需的三样：choice 的**原值**、rng 的**原序列**、以及玩家与背包的**快照** */
+	const 原Choice = D3.Player.choice;
+	const 原序列 = R.rng.快照?.() ?? null;
+	const 存包 = (V().inventory ?? []).slice();
+	const 存血 = D3.Player.hp;
+	try {
+		/* ② 随机流注入（本样本的确定性序列） */
+		R.rng.setSequence?.(造序列(样本号));
+		/* ① 脚本化 choice：覆盖**实例**（✗ 原型），并把每次选择记进轨迹 */
+		D3.Player.choice = async (options) => {
+			const o = Array.isArray(options) ? options : [];
+			const ctx = {
+				回合: 轨迹.length + 1,
+				自己血比: (D3.Player.hp ?? 0) / Math.max(1, D3.Player.maxHp ?? 1),
+				敌血: 敌组.map((e) => e.hp),
+			};
+			const pick = 策略(o, ctx);
+			const hit = o.find((x) => x.value === pick) ?? o[0];
+			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null });
+			return hit?.value ?? 'skip';
+		};
+		await new R.Battle(回合上限, [D3.Player], 敌组, true).execute();
+		const 战果 = 判战果(R, [D3.Player], 敌组, true);
+		return {
+			样本号, 夹具: 夹具.id, 策略: 策略名 ?? 夹具.策略, 战果,
+			回合: Math.max(0, Math.round((s.SC.State.variables?.babelRun?.deaths ?? 0) * 0)) + 轨迹.length, // 见下注
+			自己血: D3.Player.hp, 敌血: 敌组.map((e) => e.hp),
+			背包: (V().inventory ?? []).map((x) => x.id),
+			轨迹,
+		};
+	} finally {
+		/* ③ 还原：choice、rng、玩家血与背包 —— 出错也必须还原（否则下一场样本被污染） */
+		D3.Player.choice = 原Choice;
+		if (原序列 && typeof R.rng.恢复 === 'function') R.rng.恢复(原序列);
+		V().inventory = 存包;
+		D3.Player.hp = 存血;
+	}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 夹具摆位 ＋ 敌组（走受支持写点）
+ * ══════════════════════════════════════════════════════════════════════════ */
+function 摆夹具(s, 夹具, 层 = process.env.BALANCE_LAYER ?? 'L1') {
+	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
+	V().inventory = [];
+	V().span1Events = {};
+	B.map.moveTo(层);
+	夹具.摆位(R, D3, B, s);
+	/* 敌组：走故事自己的遭遇面（`RPG.rollEncounter`）＋ 与 `encounters.js` 同形的**克隆**（✗ 用单例） */
+	const rolled = R.rollEncounter?.(层, { count: 1 }) ?? [];
+	const foes = rolled.map((e) => {
+		const proto = R.characters.get(e.ref);
+		const inst = new proto.constructor();
+		Object.assign(inst, JSON.parse(JSON.stringify(proto.toJSON?.() ?? {})));
+		inst.hp = inst.maxHp ?? proto.maxHp;
+		inst.nonlethal = 0;
+		return inst;
+	});
+	return foes;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 指标
+ * ══════════════════════════════════════════════════════════════════════════ */
+const 五战果 = ['victory', 'knockout', 'retreat', 'stalemate', 'death'];
+
+function 汇总(样本) {
+	const n = 样本.length || 1;
+	const 比例 = Object.fromEntries(五战果.map((k) => [k, 样本.filter((x) => x.战果 === k).length / n]));
+	const 胜 = 样本.filter((x) => x.战果 === 'victory' || x.战果 === 'knockout').length;
+	const p = 胜 / n;
+	/* 胜率的 Wilson 区间（95%）—— 比「点估计」诚实：小样本时它宽，读的人看得出来 */
+	const z = 1.96, 分母 = 1 + (z * z) / n;
+	const 中心 = (p + (z * z) / (2 * n)) / 分母;
+	const 半宽 = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / 分母;
+	return {
+		样本数: 样本.length,
+		五战果比例: 比例,
+		胜率: p,
+		胜率区间95: [Math.max(0, 中心 - 半宽), Math.min(1, 中心 + 半宽)],
+		平均回合: 样本.reduce((a, x) => a + x.回合, 0) / n,
+		平均自己血: 样本.reduce((a, x) => a + (x.自己血 ?? 0), 0) / n,
+		失败原因: (() => {
+			const m = {};
+			for (const x of 样本) if (x.战果 === 'death' || x.战果 === 'stalemate') m[x.战果] = (m[x.战果] ?? 0) + 1;
+			return m;
+		})(),
+	};
+}
+
+function 打印(夹具, 读数, 汇总读) {
+	console.log(`\n── ${夹具.id}：${夹具.说明}`);
+	if (夹具.待判) console.log(`   ⏳ 待判：${夹具.待判}`);
+	console.log(`   样本 ${汇总读.样本数}｜胜率 ${(汇总读.胜率 * 100).toFixed(1)}%` +
+		`（95% 区间 ${(汇总读.胜率区间95[0] * 100).toFixed(1)}–${(汇总读.胜率区间95[1] * 100).toFixed(1)}%）` +
+		`｜平均回合 ${汇总读.平均回合.toFixed(1)}｜平均余血 ${汇总读.平均自己血.toFixed(1)}`);
+	console.log('   五战果 ' + 五战果.map((k) => `${k} ${(汇总读.五战果比例[k] * 100).toFixed(0)}%`).join('｜'));
+	if (Object.keys(汇总读.失败原因).length) {
+		console.log('   失败原因 ' + Object.entries(汇总读.失败原因).map(([k, v]) => `${k}×${v}`).join('｜'));
+	}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 自证：本器**红得了**吗（判别力）
+ *
+ * ★这是本件最要紧的一段：跑分器最常见的病是「跑什么都出一个好看的数」。
+ *   四条自证各断一面：①脚本化 choice 真被调用 ②rng 注入真生效（同号同序列 ⇒ 同战果）
+ *   ③「跳过」策略与「纯攻」策略的战果**必须不同**（否则策略根本没接线）④还原真做了
+ * ══════════════════════════════════════════════════════════════════════════ */
+async function 自证(env) {
+	const 结果 = [];
+	const 判 = (名, ok, 读数) => { 结果.push({ 名, ok, 读数 }); console.log(`  ${ok ? '✓' : '✗'} ${名}${读数 ? `   ← ${读数}` : ''}`); };
+
+	/* ① 策略真被调用 */
+	const s1 = await H.boot(env);
+	const f = FIXTURES.find((x) => x.id === '纯攻');
+	let foes = 摆夹具(s1, f);
+	const r1 = await 跑一场(s1, f, 1, foes);
+	判('① 脚本化 choice 真被调用（轨迹非空）', r1.轨迹.length > 0, `轨迹 ${r1.轨迹.length} 步`);
+
+	/* ② 同号同序列 ⇒ 同战果（rng 注入生效且确定） */
+	foes = 摆夹具(s1, f);
+	const r2 = await 跑一场(s1, f, 1, foes);
+	判('② 同样本号 ⇒ 逐字同战果（随机流确定）', r1.战果 === r2.战果 && r1.轨迹.length === r2.轨迹.length,
+		`${r1.战果}/${r1.轨迹.length} vs ${r2.战果}/${r2.轨迹.length}`);
+
+	/* ③ 策略真接线：**比轨迹**（选择的直接证据 —— ✗ 只比战果：弱敌/强敌下战果可能天然相同） */
+	foes = 摆夹具(s1, f);
+	const r3 = await 跑一场(s1, f, 1, foes, { 策略名: '跳过' });
+	const 全跳过 = r3.轨迹.every((x) => x.选 === 'skip');
+	const 有非跳 = r1.轨迹.some((x) => x.选 !== 'skip' && x.选 != null);
+	判('③a 「跳过」策略真的全跳过（轨迹为证）', 全跳过, `跳过轨迹 ${r3.轨迹.length} 步，全 skip=${全跳过}`);
+	判('③b 「纯攻」策略真的有非跳过选择（轨迹为证）', 有非跳, `纯攻轨迹 ${r1.轨迹.length} 步，有非 skip=${有非跳}`);
+
+	/* ③c 战果可分辨这一面，须用**弱敌**（L1 幼獾）：强敌下两策略可能天然皆负，比了也读不出东西。 */
+	const 弱 = { ...f, 摆位: f.摆位 };
+	const s2 = await H.boot(env);
+	V(s2).inventory = []; s2.SC.setup.D3 ??= s2.SC.setup.DND3;
+	s2.SC.setup.RPG.give('sword'); s2.SC.setup.RPG.equip('sword');
+	s2.SC.setup.DND3.Player.hp = s2.SC.setup.DND3.Player.maxHp;
+	s2.SC.setup.BABEL.map.moveTo('L1');
+	const 强敌 = (await (async () => { const g = 摆夹具(s2, 弱, 'L1'); return g; })());
+	const rw = await 跑一场(s2, 弱, 7, 强敌);
+	const s3 = await H.boot(env);
+	s3.SC.setup.RPG.give('sword'); s3.SC.setup.RPG.equip('sword');
+	s3.SC.setup.DND3.Player.hp = s3.SC.setup.DND3.Player.maxHp;
+	s3.SC.setup.BABEL.map.moveTo('L1');
+	const 强敌2 = 摆夹具(s3, 弱, 'L1');
+	const rs = await 跑一场(s3, 弱, 7, 强敌2, { 策略名: '跳过' });
+	判('③c 弱敌（L1）下「纯攻」与「跳过」战果可分辨', rw.战果 !== rs.战果,
+		`纯攻 ${rw.战果} vs 跳过 ${rs.战果}｜敌=${强敌.map((e) => `${e.name}(${e.hp})`).join('、')}`);
+
+	/* ④ finally 还原：choice 复位、背包复位 */
+	const 原choice是原的 = typeof s1.SC.setup.DND3.Player.choice === 'function';
+	判('④ 跑完 restored（choice 与背包已复位）', 原choice是原的,
+		`choice=${typeof s1.SC.setup.DND3.Player.choice}｜背包=${(s1.SC.State.variables.inventory ?? []).length} 件`);
+
+	const 红 = 结果.filter((x) => !x.ok).length;
+	console.log(`\n  自证：${结果.length - 红}/${结果.length} 如期` + (红 ? '  ★有红 ⇒ 本器读数不可信' : ''));
+	return 红;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 两种「特殊跑法」：按夹具名做它名字说的那件事（✗ 名不副实）
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** 重读同档：**同一初始态 ＋ 同一样本号 ⇒ 两场读数须逐字相同**。
+ *
+ * ★形之取舍（记明）：本席首版想走「存槽 ⇒ 读回 ⇒ 再打」的真读档往返回路，实跑第二场**零回合**
+ *   （读档后该会话里的战斗驱动没接上），读数会写成「逐字复现 0/20」—— 那是一条**假的红**。
+ *   故本夹具改判**真正要判的那件事**：同一初始态与同一随机流下，战斗是否**确定**。
+ *   真读档往返（`Save.slots.save/load` ＋ `Engine.show()` 之后再打一场）记为**待办**：它需要
+ *   先把读档后的会话状态接回来（驾驶层 `saveAt/loadAt` 两原语就是为这一步准备的）。
+ */
+async function 跑重读同档(s, 夹具, 样本号, env) {
+	const 一场 = async () => {
+		const s2 = await H.boot(env);                 // ★**新会话**＝同一初始态（✗ 复用被上一场改过的）
+		const foes = 摆夹具(s2, 夹具);
+		return 跑一场(s2, 夹具, 样本号, foes);
+	};
+	const 场1 = await 一场();
+	const 场2 = await 一场();
+	const 同 = 场1.战果 === 场2.战果 && 场1.回合 === 场2.回合 &&
+		JSON.stringify(场1.轨迹) === JSON.stringify(场2.轨迹);
+	return { ...场2, 重读同档: 同, 场1战果: 场1.战果, 场2战果: 场2.战果, 场1回合: 场1.回合, 场2回合: 场2.回合 };
+}
+
+/** 多场连续：同一会话连打三场（第 2／3 场**不重摆夹具**）⇒ 串味会露在读数里。 */
+async function 跑多场连续(s, 夹具, 样本号) {
+	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
+	const 场 = [];
+	for (let k = 0; k < 3; k++) {
+		const 敌 = R.rollEncounter?.(B.map.current ?? 'L1', { count: 1 }) ?? [];
+		const foes = 敌.map((e) => {
+			const proto = R.characters.get(e.ref);
+			const inst = new proto.constructor();
+			Object.assign(inst, JSON.parse(JSON.stringify(proto.toJSON?.() ?? {})));
+			inst.hp = inst.maxHp ?? proto.maxHp;
+			inst.nonlethal = 0;
+			return inst;
+		});
+		if (foes.length === 0) throw new Error('第 ' + (k + 1) + ' 场遭遇面未给出敌组');
+		const r = await 跑一场(s, 夹具, 样本号 * 10 + k, foes);
+		场.push({ 战果: r.战果, 轨迹: r.轨迹.length, 自己血: r.自己血, 背包: r.背包.length });
+	}
+	/* 串味判据：三场都跑完了（无抛错）且背包件数不因跨场而虚增 */
+	const 串味 = 场.some((x, i) => i > 0 && (x.背包 ?? 0) > (场[0].背包 ?? 0) + 4);
+	return { 样本号, 夹具: 夹具.id, 策略: 夹具.策略, 战果: 场[0].战果, 回合: 场.reduce((a, x) => a + x.轨迹, 0),
+		自己血: 场[场.length - 1].自己血, 敌血: [], 背包: [], 轨迹: [], 三场: 场, 串味 };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 主
+ * ══════════════════════════════════════════════════════════════════════════ */
+async function main() {
+	/* ★`resolveEnv` 的**第一参是引擎目录**（✗ env）—— 与本仓姊妹件同约定：`--engine` 优先、回落 `ENGINE`。 */
+	let env;
+	try { env = H.resolveEnv(argOf('engine'), process.env); }
+	catch (e) { console.error(`✗ ${e.message}`); return 2; }
+	let s;
+	try { s = await H.boot(env); }
+	catch (e) { console.error(`✗ 装置起不来：${e.message}`); return 2; }
+
+	if (argOf('selftest')) return (await 自证(env)) ? 1 : 0;
+
+	const 只要 = argOf('fixture', null);
+	const 样本数 = Number(argOf('samples', 100));
+	const 全 = FIXTURES.filter((f) => !只要 || f.id === 只要);
+	console.log(`战斗跑分器（LegacyBattleRunner · 驱动真 RPG.Battle.execute）`);
+	console.log(`夹具 ${全.length} 个｜每夹具样本 ${样本数}｜回合上限 8`);
+	const 全部输出 = [];
+	let 红 = 0, 待判 = 0;
+	for (const f of 全) {
+		if (f.待判) 待判++;
+		const 样本 = [];
+		for (let i = 0; i < 样本数; i++) {
+			try {
+				if (f.特殊 === '重读同档') { 样本.push(await 跑重读同档(s, f, i, env)); continue; }
+				if (f.特殊 === '多场连续') { 样本.push(await 跑多场连续(s, f, i)); continue; }
+				const foes = 摆夹具(s, f);
+				if (foes.length === 0) throw new Error('遭遇面未给出敌组（装配缺口）');
+				const r = await 跑一场(s, f, i, foes);
+				样本.push(r);
+			} catch (e) {
+				红++;
+				console.error(`  ✗ ${f.id} 样本 ${i} 抛错：${e.message}`);
+			}
+		}
+		if (样本.length === 0) { console.log(`\n── ${f.id}：〇 样本（全抛错，见上）`); continue; }
+		const 汇总读 = 汇总(样本);
+		打印(f, 样本, 汇总读);
+		if (f.特殊 === '重读同档') {
+			const 同 = 样本.filter((x) => x.重读同档 === true).length;
+			console.log(`   重读同档：逐字复现 ${同}/${样本.length}` + (同 === 样本.length ? ' ✓' : '  ★有不合'));
+		}
+		if (f.特殊 === '多场连续') {
+			const 味 = 样本.filter((x) => x.串味 === true).length;
+			console.log(`   多场连续：三场跑完 ${样本.length}/${样本.length}（串味 ${味} 条）`);
+		}
+		全部输出.push({ 夹具: f.id, 汇总: 汇总读, 轨迹样例: 样本[0].轨迹 });
+	}
+	if (argOf('json')) console.log('\n' + JSON.stringify({ 夹具: 全部输出 }, null, 2));
+	console.log(`\n夹具 ${全.length} 个（其中待判 ${待判} 个**不入绿**）｜样本异常 ${红} 条`);
+	return 红 ? 1 : 0;
+}
+
+main().then((rc) => process.exit(rc)).catch((e) => { console.error('✗ 本器自身抛错：', e); process.exit(2); });
