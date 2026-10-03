@@ -196,17 +196,37 @@ setup.BABEL.可存 = (slot = 槽位.快存) => {
 	return Number.isInteger(slot) && slot >= 0 && slot < 槽上限();
 };
 
-/** **快存**：`slot` 缺省＝槽 0。战斗中拒绝并给玩家可读文案（✗ 静默）。 */
+/** **写槽**（底层 · ✗ 出文案）：能力与 P0 判据在此**一处**，上层两个入口共用。 */
+setup.BABEL.写槽 = (slot = 槽位.快存, opts = {}) => {
+	if (setup.BABEL.战中) return null;               // P0：战斗中一律不写（★与 `可存` 同源）
+	if (!setup.BABEL.可存(slot)) return null;
+	const 名 = setup.BABEL.存档名(opts);
+	宿主槽().save(slot, 名);
+	return 名;
+};
+
+/** **快存**（玩家主动）：`slot` 缺省＝槽 0。**战斗中拒绝并给玩家可读文案**（✗ 静默）。 */
 setup.BABEL.快存 = (slot = 槽位.快存, opts = {}) => {
 	if (setup.BABEL.战中) { R.perform('战斗中不能存档 —— 先离开这一场。'); return false; }
-	if (!setup.BABEL.可存(slot)) {
+	const 名 = setup.BABEL.写槽(slot, opts);
+	if (名 === null) {
 		console.warn('[BABEL] 存档不可达（`Save.slots` 缺席或槽位越界）—— 请用侧栏的存档入口。');
 		R.perform('这里的存档入口暂时不可用。');
 		return false;
 	}
-	const 名 = setup.BABEL.存档名(opts);
-	宿主槽().save(slot, 名);
 	R.perform(`已存档：${名}`);
+	return true;
+};
+
+/** **战前保底**（`#172` §8.2 · 领队裁）：**整备点自动写槽 1**，最新胜。
+ *   两个触发点——**温泉使用完成**与**进入 L9 门前营地**（一处函数，两处调用）。
+ *   ★**失败面 ✗ 覆盖**：`战中` 判据与「快存」**同源**（死亡路径上 `战中` 仍为真 ⇒ 写不进）；
+ *     且本函数**只在整备点被调用**，死亡路径不调它（✗ 靠调用点自律，见 `写槽` 的门）。
+ *   ★「可手清」＝宿主存档面板对槽位存档的删除（槽号由 `槽位.战前保底` 给出）。 */
+setup.BABEL.战前保底 = (来源 = '整备') => {
+	const 名 = setup.BABEL.写槽(槽位.战前保底, { 战前: true });
+	if (名 === null) return false;
+	R.perform(`（${来源}已留下保底存档：${名} —— 失败后可从这里再来。）`);
 	return true;
 };
 
