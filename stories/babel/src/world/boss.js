@@ -26,7 +26,11 @@ R.defItem({
 	 *   `item.stats.dmg`（引擎 `combat.js:87`）⇒ **命中那一击**抛「无法解析的骰子表达式：undefined」
 	 *   （miss 不抛 ⇒ 只在真打起来时现形）。加上 L9 硬门 ⇒ **头目打不动 = 不可通关**。
 	 *   ⇒ 照引擎的形（`items/club.js`：伤害块进 `stats`）落。 */
-	stats: { dmg: '1d8', type: 'bludgeoning', atkBonus: 5 },
+	/* ★`books#201` 乙笔（数值配平）：**原值** `dmg: '1d8'`（有效 1d8 ＋ str 16(+3) ＝ 1d8+3，均 7.5）
+	 *   ⇒ **新值** `dmg: '1d6'` ⇒ 有效 **1d6+1**（均 4.5）。
+	 *   期望依据：头目 E[伤害/回合] 4.33 → 2.60 ⇒ TTD 4.6 → 7.7（玩家带盾 9.4），
+	 *   与玩家侧三项合起来把 L9 胜率从 4.7% 抬进 70–85% 带（`#201` 敏感度表：54.8% → 72.6%）。 */
+	stats: { dmg: '1d6', type: 'bludgeoning', atkBonus: 5 },
 	desc: '它的手不知冷热，也不知疲倦。抓住你的时候，你听见有人在数数。',
 	charges: null, stackable: false, weapon: true, slot: 'weapon',
 	actions: { equip: R.slotEquip, unequip: R.slotUnequip },
@@ -38,7 +42,9 @@ DND3.SleeplessOne = R.defCharacter({
 	id: 'sleepless-one',
 	name: '不眠者',
 	hp: 26, maxHp: 26,
-	stats: DND3.stats({ str: 16, dex: 12, con: 16, ac: 16, bab: 3, cr: 3 }),
+		/* ★`books#201` 乙笔：**原值** `str: 16`（+3 加进伤害 ⇒ 1d8+3）
+	 *   ⇒ **新值** `str: 12`（+1 ⇒ 1d6+1）。⚠ 攻击面**不受影响**：该件 `atkBonus: 5` 在场即以它为准（实测 +5）。 */
+	stats: DND3.stats({ str: 12, dex: 12, con: 16, ac: 16, bab: 3, cr: 3 }),
 	items: [{ id: 'sleepless-grasp', equipped: true }],
 });
 

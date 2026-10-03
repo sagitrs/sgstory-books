@@ -6,3 +6,7 @@ dist/
 build/
 # ── 依赖与临时件 ──
 node_modules/
+
+# Python 字节码缓存（模型脚本会产生）
+__pycache__/
+*.pyc
