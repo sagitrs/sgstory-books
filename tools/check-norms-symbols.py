@@ -75,14 +75,37 @@ def fence_mask(lines):
     return m
 
 
+def html_mask(lines):
+    """NORMS §三：HTML 注释块属「不得动的面」⇒ 豁免（块内符号不计数、也不须清零）。
+
+    块以 `<!--` 起、`-->` 止，可跨多行；同一行内起止亦按块处理。
+    ★来历：`#148` 的 T 席评审记下本器原不摘注释块，于是带注释的正文会得到虚高读数（`books#162` 第一条）。
+    """
+    m, inf = [], False
+    for l in lines:
+        if inf:
+            m.append(True)
+            if '-->' in l:
+                inf = False
+            continue
+        if '<!--' in l:
+            m.append(True)
+            if '-->' not in l.split('<!--', 1)[1]:
+                inf = True
+            continue
+        m.append(False)
+    return m
+
+
 def body_counts(text):
     """单篇正文读数 ⇒ (判定面保留数, 行文面须清零数, 逐处定位列表)。"""
     lines = text.split('\n')
     mask = fence_mask(lines)
+    cmask = html_mask(lines)
     keep = clear = 0
     hits = []
     for idx, l in enumerate(lines):
-        if mask[idx]:
+        if mask[idx] or cmask[idx]:
             continue
         if l.lstrip().startswith('>'):
             continue
@@ -110,6 +133,7 @@ CASES = [
     ('判定行的勾叉保留而同行 ⇒ 清零', '| 甲 | ✓ | 乙 ⇒ 丙 |', (1, 1)),
     ('实心星 ⭐ 行文 ⇒ 清零（与 ★ 同族）', '⭐本项优先', (0, 1)),
     ('勾叉在句子中间 ⇒ 清零（非判定面）', '实测 3/5 ✓ 而其后仍红', (0, 1)),
+    ('HTML 注释块内 ⇒ 例外不动（不得动的面）', '前句。\n<!-- 注释：甲 ⇒ 乙 ⭐ ｜ -->\n后句。', (0, 0)),
 ]
 
 
