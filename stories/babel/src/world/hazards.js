@@ -40,7 +40,7 @@ const 已遇 = (layerId) => eventsOf()[layerId]?.危害 != null;
 const 有危害 = (layerId) => 危害表[layerId] != null;
 
 /** 进层结算（由层地点的 `onEnter` 调；**幂等**：本层本局已触发过 ⇒ 早退，✗ 再掷）。
- *  @returns 'absent'（该层无危害）｜'done'（本局已结算过，**含 miss**）｜'miss'（这次没踩上，此后封闭）｜'hit' */
+ *  @returns 'absent'（该层无危害）｜'done'（本局已结算过，**含 miss**）｜'miss'（这次没踩上，此后封闭）｜'hit'（受了伤但仍站立）｜'dead'（★致命伤已结算：`books#171` 的统一入口报了真结算 ⇒ 呼叫方须停手） */
 const 危害结算 = (layerId) => {
 	const cfg = 危害表[layerId];
 	if (!cfg) return 'absent';                 // ★先把非危害层挡在**掷骰之前**（✗ 白耗随机单元）
@@ -56,7 +56,12 @@ const 危害结算 = (layerId) => {
 	}
 	R.applyDamage(P, cfg.伤害, { nonlethal: false });
 	R.perform(`${cfg.名}砸了下来：你受到${cfg.伤害}点伤害。`);
-	return 'hit';
+	/* ★`books#171`（源 `#170` 的 P0）：致命伤 ⇒ 改走**统一结算**（补 `death` ＋ `respawn`）。
+	 *   旧形只调 `applyDamage` ⇒ 缺 `death` 标记 ⇒ `respawn` 按契约**拒绝** ⇒ 0 血仍可移动。
+	 *   进入源**不跳段**（见 `结算战败` 头注）：原地结算后位置已回起点层，紧接着的重绘即起点层。
+	 *   ⇒ 返回 `'dead'` 供层地点的 `onEnter` **停手**（✗ 继续跑本层后续赋值）。 */
+	const 结算 = setup.BABEL.结算战败?.({ 源: '进入', 层: layerId }) ?? { settled: false, reason: '入口缺席' };
+	return 结算.settled ? 'dead' : 'hit';
 };
 
 setup.BABEL.危害 = Object.assign(setup.BABEL.危害 ?? {}, {

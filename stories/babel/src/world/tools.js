@@ -105,11 +105,14 @@ setup.BABEL.gather = () => {
 	const kind = 需要工具(layer);
 	const slot = 持工具(layer);
 	if (kind && !slot) return R.perform(`这里的东西得用${TOOLS[kind].name}才弄得动。`);
+	/* ★`books#171`（P2-10）：本读数**必须在调用之前取** —— 它问的是「**采前**有货吗」，
+	 *   而 `现制采集()` 会扣 `charges`。旧形把它写在调用**之后**，于是**采空那一击**（采前 1 件）
+	 *   被读成「采前无货」⇒ **不扣耐久**（操作者试玩实测：最后一次采集后耐久停在 1）。 */
+	const 采前有货 = (setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0;
 	const res = 现制采集();
 	/* ★「采成**才**扣」的判据取**两条**：引擎判 `applied` **且**节点采前确实有货 ——
 	 *   ⚠ 空节点时引擎仍回 `applied`（它「采到了 0 件」），若只看 status 会**白扣 1 点耐久**
 	 *   （本席 ㉕ 的⑤臂实测撞到：铁斧 3 ⇒ 2）。玩法里 `when` 已挡住空节点，这条是**纵深防御**。 */
-	const 采前有货 = (setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0;
 	if (res && res.status === 'applied' && slot && 采前有货) 扣耐久(slot);
 	return res;
 };

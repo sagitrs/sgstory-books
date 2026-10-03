@@ -29,6 +29,8 @@
  *   **M L5 选择制事件面**：**硬判**（`books#133` 笔 1）。抽二择一：抽中的两类出现为**按钮**、
  *     未抽中的类**不**出现、择一后两个事件按钮**一起退场**（而基础遭遇仍在）。
  *     ⚠ 本面靠**注入随机源**把抽签钉死（✗ 靠「看起来随机」）⇒ 读数确定。
+ *   **P 进层致命伤 ⇒ 停止原地点流程**：**硬判**（`books#171`，源 `#170` 的 P0）。危害命中且致命时，
+ *     位置须回起点层、页面须**不留**原层出口（而不是「0 血还能接着走」）；满血对照臂保证本面判得了。
  *   **S 自环就地重绘·面板跟随**：**明账**（属 `sagitrs/sgstory#1859` ⇒ 修 `#1864`，**未合**）。`--require self-loop` 升硬判。
  *   **I 故事页点道具不穿 DOM**：**明账**（属 `sagitrs/sgstory#1857` ⇒ 修 `#1866`，**未合**）。`--require item-click` 升硬判。
  *   ⇒ ★明账面**每次运行都打印**（含归属票号）—— `#300` ⑧「非空≠存在」的同族：✗ 让「没跑」与「跑过且未修」同形。
@@ -376,6 +378,43 @@ if (has('--selftest')) {
 	ok(O8.length === 2, `★面 O：对照层 L8 的出口不是 2 条（${JSON.stringify(O8)}）⇒ 出口面本身坏了，本面读数不成立`);
 	ok(O9.length === 1 && /前进/.test(O9[0] ?? ''), `★面 O：L9 的出口不是「唯一的前进」（实得 ${JSON.stringify(O9)}）`);
 	if (O8.length === 2 && O9.length === 1) console.log(`  面 O ✓ 唯一出口：L8 对照 2 条 ${JSON.stringify(O8)}；L9 1 条 ${JSON.stringify(O9)}`);
+
+	/* ★面 P（**硬判**，`books#171`，源 `#170` 的 P0）：进层致命伤 ⇒ **停止原地点流程**。
+	 *   唯一变量＝**进层前的血量**（其余全不动）：同一次真点按钮、同一注入，1 血（危害命中）⇒
+	 *   位置回起点层、页面**不留** L5 的出口；满血 ⇒ 位置停在 L5、页面**就是** L5 的出口。
+	 *   ★两臂读数须翻面（✗ 只断「1 血不留在 L5」—— 「按钮压根没找到」也会绿）。 */
+	{
+		const B = s.SC.setup.BABEL, R = s.SC.setup.RPG, P = s.SC.setup.DND3.Player;
+		const 进层 = async (hp) => {
+			delete s.SC.State.variables.span1Events.L5;         // 该层危害每局一次 ⇒ 两臂各自可掷
+			P.hp = hp;
+			B.map.moveTo('L4');
+			await playPassage(s, '探索'); await tick(300);
+			R.rng.setSequence([0, 0, 0]);                       // 抽两枚 ＋ 危害 `index(6)=0` ⇒ 命中
+			const 有钮 = choiceButtons(s).some((t) => /去第 5 层/.test(t));
+			if (有钮) await driveButton(s, /去第 5 层/, { read: (x) => choiceButtons(x).join('｜') });
+			R.rng.reset();
+			await tick(300);
+			return {
+				有钮, 位: B.map.current, 钮: choiceButtons(s),
+				deaths: s.SC.State.variables.babelRun.deaths,
+				死行: passageLines(s).filter((l) => l.includes('你死在了第')).length,
+			};
+		};
+		const 血前 = s.SC.State.variables.babelRun.deaths;
+		const 致命 = await 进层(1);          // 致命：1 血 ⇒ 危害命中
+		const 对照 = await 进层(P.maxHp);    // 对照：满血 ⇒ 同一按钮、同一注入
+		P.hp = P.maxHp;
+		const 对照臂 = 对照.有钮 === true && 对照.位 === 'L5' && 对照.钮.some((t) => /去第 6 层/.test(t));
+		const 关键臂 = 致命.有钮 === true && 致命.位 === 'L1' && !致命.钮.some((t) => /去第 6 层/.test(t))
+			&& 致命.deaths === 血前 + 1 && 致命.死行 === 1 && 对照.deaths === 致命.deaths;
+		ok(对照臂, '★面 P 两向 · 对照臂：满血进 L5，位置须在 L5 且页面须是 L5 的出口（否则本面判不了）');
+		ok(关键臂, '★面 P 关键回归：1 血进 L5（危害命中）⇒ 位置回起点层、页面不留 L5 的出口、死亡恰计一次、死亡行恰一次（满血臂不再计）');
+		if (对照臂 && 关键臂) {
+			console.log(`  面 P ✓ 进层致命伤：1 血 ⇒ 位置 ${JSON.stringify(致命.位)}、页面钮 ${JSON.stringify(致命.钮)}、deaths ${致命.deaths}`
+				+ `；满血对照 ⇒ 位置 ${JSON.stringify(对照.位)}、含「去第 6 层」${对照.钮.some((t) => /去第 6 层/.test(t))}`);
+		}
+	}
 
 	s.dom.window.close();
 }
