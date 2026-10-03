@@ -20,7 +20,13 @@ const DND3 = setup.DND3;
  *    怪因此**咬不动人**，一场「白送」的战斗表面上仍会让「可胜」为真）⇒ 判据同族（㉗ 有该臂）。 */
 R.defItem({
 	id: 'sleepless-grasp', name: '不眠的抓握',
-	dmg: '1d8', type: 'bludgeoning', atkBonus: 5,
+	/* ★`books#170`（`#182` 交查的**真缺口**，release 阻塞）：`dmg`／`type`／`atkBonus` 原写在**顶层**
+	 *   ⇒ `Item` 构造只拷贝**已知字段**（id/name/desc/stats/charges/…）⇒ 三个字段被**静默丢掉**：
+	 *   实测 `R.createItem('sleepless-grasp').stats === {}`，且顶层也读不到 ⇒ 近战伤害读
+	 *   `item.stats.dmg`（引擎 `combat.js:87`）⇒ **命中那一击**抛「无法解析的骰子表达式：undefined」
+	 *   （miss 不抛 ⇒ 只在真打起来时现形）。加上 L9 硬门 ⇒ **头目打不动 = 不可通关**。
+	 *   ⇒ 照引擎的形（`items/club.js`：伤害块进 `stats`）落。 */
+	stats: { dmg: '1d8', type: 'bludgeoning', atkBonus: 5 },
 	desc: '它的手不知冷热，也不知疲倦。抓住你的时候，你听见有人在数数。',
 	charges: null, stackable: false, weapon: true, slot: 'weapon',
 	actions: { equip: R.slotEquip, unequip: R.slotUnequip },

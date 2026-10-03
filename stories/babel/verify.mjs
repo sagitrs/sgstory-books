@@ -2341,6 +2341,65 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 	console.log(`  传送/步行/软拒/买卖四向 ✓｜价目表读数 ${JSON.stringify(B.商铺价)}`);
 }
 
+/* ── ㊲ 攻击件的**伤害块**（`books#185`；`#182` 交查的真缺口）─────────────────────
+ *
+ * 它回答的问题：**敌人真能打得动玩家吗？**（release 阻塞级 —— 加上 L9 硬门，打不动＝不可通关）
+ *   现码两处病根：`world/boss.js` 的「不眠的抓握」与 `world/babel.js` 的「蓝苔尾刺」都把
+ *   `dmg`／`type`／`atkBonus` 写在 **`defItem` 顶层**，而 `Item` 构造函数**只拷贝已知字段**
+ *   （id/name/desc/stats/charges/stable/weapon/slot/equipped）⇒ 三件被**静默丢掉**：
+ *   实测 `R.createItem('sleepless-grasp').stats === {}`，顶层也读不到 ⇒ 近战读 `item.stats.dmg`
+ *   （引擎 `combat.js:87`）⇒ **命中那一击**抛「无法解析的骰子表达式：undefined」（miss 不抛）。
+ *
+ * 本格断两件（**一条挡两病根**）：
+ *   ①**泛化棘轮**：凡 `weapon: true` 的已注册道具，`stats.dmg` 必须是**可解析的骰面**；
+ *     若它把 `dmg` 写在顶层（正是本次的病形）⇒ 报文里**点名**指出「放错了层」。
+ *   ②**真打一次且命中 ⇒ 玩家真掉血**（✗ 只断声明 —— 声明对了但没接上也算数）。
+ * 刀：把任一件的 `stats.dmg` 挪回顶层 ⇒ ①②各红。
+ * ⚠ 装置：本格改玩家血量与随机流 ⇒ 存-复原。 */
+head('㊲ 攻击件的伤害块（`books#185`）');
+{
+	const P = D.Player;
+	const 存 = { hp: P.hp, 流: R.rng };
+	let 棘轮 = { 缺: [], 错层: [] }, 读数 = {};
+	try {
+		/* ① 泛化棘轮：遍历注册表（✗ 只查已知两件 —— 那正是「改了这处漏那处」的形） */
+		for (const [id, klass] of (R.items ?? new Map())) {
+			let 实例 = null;
+			try { 实例 = new klass(); } catch { continue; }
+			if (实例?.weapon !== true) continue;
+			const 骰 = 实例.stats?.dmg;
+			const 顶层 = 实例.dmg;                        // 病形：写在顶层（构造函数不会拷进来 ⇒ 恒 undefined）
+			let 可解析 = false;
+			try { R.rollDetail(骰); 可解析 = true; } catch { 可解析 = false; }
+			if (!可解析) 棘轮.缺.push(`${id}（stats.dmg=${JSON.stringify(骰)}）`);
+			/* 顶层有、stats 里没有 ⇒ 明确判「放错了层」（报文要能直指病因，✗ 只说 undefined） */
+			if (可解析 === false && 顶层 === undefined && /dmg:/.test(String(klass)) === false) 棘轮.错层.push(id);
+		}
+		ok(棘轮.缺.length === 0,
+			`★有攻击件的伤害骰不可解析（${棘轮.缺.join('／')}）—— 「无法解析的骰子表达式：undefined」正是这条的病征；`
+			+ '若某件把 `dmg` 写在 `defItem` **顶层**，它会被 `Item` 构造静默丢掉 ⇒ 请挪进 `stats`');
+
+		/* ② 真打一次且命中 ⇒ 玩家真掉血（站在**引擎同一条路**上：`meleeAttack`） */
+		const 敌 = B.头目?.不眠者;
+		读数.前 = P.hp;
+		P.hp = P.maxHp;
+		const 件 = R.createItem('sleepless-grasp');
+		件.equipped = true;
+		let 抛 = null;
+		R.rng.setSequence(Array.from({ length: 80 }, () => 0.99));   // 必中（含重击确认）
+		try { setup.DND3.meleeAttack(件, P, 敌); } catch (e) { 抛 = e?.message ?? String(e); }
+		R.rng.reset();
+		读数.后 = P.hp;
+		ok(抛 === null, `★头目一抓就抛错（${抛}）—— 真浏览器上这就是「头目打不动」`);
+		ok(读数.后 < P.maxHp, `★头目命中却没让玩家掉血（hp ${读数.后}／${P.maxHp}）—— 伤害块没接上`);
+		console.log(`  攻击件伤害块：棘轮（缺 ${棘轮.缺.length} 件${棘轮.缺.length ? '：' + 棘轮.缺.join('／') : ''}）`
+			+ `｜真打一爪 ⇒ 玩家 ${P.maxHp} ⇒ ${读数.后}｜抛出 ${抛 === null ? '无' : 抛}`);
+	} finally {
+		P.hp = 存.hp;
+		if (R.rng?.reset) R.rng.reset();
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
