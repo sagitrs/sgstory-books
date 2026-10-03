@@ -2153,6 +2153,84 @@ head('㉝ `books#178` 件 1 快速存档（三槽 · P0 禁战内 · 回落出�
 		ok(言.some((m) => /存档入口暂时不可用/.test(m)), '★宿主缺席时没给玩家可读文案');
 		console.log(`  回落支：出声 ${警.length} 条｜玩家文案 ${言.length} 条（✗ 崩）`);
 	}
+}
+
+/* ---------- ㉞ `books#178` 件 1：**槽 1 整备点自动写**（两触发点 · 行为判据）----------
+ * 票面 §8.2（领队裁）：槽 1 ＝**整备点自动写**，最新胜，失败面 ✗ 覆盖，可手清。
+ * 两触发点＝**温泉使用完成**与**进入 L9 门前营地**。本格**真跑触发路径**（✗ 断文案、✗ 断源码文本），
+ *   手法：把 `setup.BABEL.战前保底` 换成探针 ⇒ 调真触发点 ⇒ 断探针被调用**且带对来源**。 */
+head('㉞ `books#178` 槽 1 整备点自动写（温泉完成 · 入营地 · 失败面✗覆盖）');
+{
+	const B = setup.BABEL;
+	const 真 = B.战前保底;
+	const 记 = [];
+	B.战前保底 = (来源) => { 记.push(String(来源)); return true; };
+	/* 触发点一：温泉（L8 的固定动作 · 结构标记 `温泉: true`）。 */
+	{
+		const 温泉 = (map.locations.get('L8')?.actions ?? []).find((a) => a?.温泉 === true);
+		ok(温泉 != null, '★L8 找不到温泉动作（结构标记 `温泉: true`）');
+		温泉?.action?.();
+		ok(记.includes('温泉'), `★「温泉完成」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
+	}
+	/* 触发点二：进入 L9 门前营地（`onEnter` 钩）。 */
+	{
+		const 营地 = map.locations.get('L9-camp');
+		ok(营地 != null, '★找不到 `L9-camp`（门前营地）');
+		ok(typeof 营地?.onEnter === 'function', '★门前营地没有 `onEnter` 钩 ⇒ 进营地不会自动写槽 1');
+		营地?.onEnter?.(营地);
+		ok(记.includes('门前营地'), `★「进营地」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
+	}
+	B.战前保底 = 真;
+	/* 失败面 ✗ 覆盖：整备点写入走 `写槽` 的**同一道** P0 门 ⇒ 战中时写不进（两向）。 */
+	{
+		const 言 = []; const op = R.perform; R.perform = (m) => { 言.push(String(m)); return op; };
+		B.战中 = true;
+		const r = B.战前保底('整备');
+		B.战中 = false; R.perform = op;
+		ok(r === false, '★战斗中「战前保底」仍写入 ⇒ 失败面会覆盖可用存档（P0 失效）');
+		ok(!言.some((m) => /保底存档/.test(m)), '★战斗中「战前保底」还印了「已留下保底存档」');
+	}
+	console.log(`  两触发点：${记.join('、')}｜战斗中写入被拒 ✓`);
+}
+
+/* ---------- ㉟ 快速存档：**真宿主语义的桩**（`has` 可靠 · `isEmpty` 不可靠）----------
+ * ★本格的桩**照抄真宿主的怪癖**（本席实测）：`isEmpty(i)` 一旦有过写入即对**所有号**为假、
+ *   `get(i)` 对空槽返回占位对象。⇒ 若实现拿 `isEmpty` 当空否判据，本格**必红**。
+ *   桩若不照抄这个怪癖，本格就是「装置比真宿主善良」的假绿。 */
+head('㉟ 快速存档（宿主桩：has 可靠 · isEmpty 不可靠 ⇒ 空槽不可读）');
+{
+	const 旧 = globalThis.SugarCube;
+	const m = new Map(); const 载过 = [];
+	globalThis.SugarCube = { ...(旧 ?? {}), Save: { slots: {
+		has: (i) => m.has(i),
+		get: (i) => (m.has(i) ? m.get(i) : {}),                    // ★空槽返回占位对象（同真宿主）
+		save: (i, d) => { m.set(i, { type: 2, desc: d }); },
+		load: (i) => { 载过.push(i); },                            // ★在场（✗ 缺 ⇒ 代码先走「入口不可用」支而绕过空槽判）
+		count: () => m.size,
+		delete: (i) => m.delete(i),
+		isEmpty: (i) => (m.size === 0 ? !m.has(i) : false),        // ★同真宿主：写过就恒假
+		length: 8,
+	} } };
+	try {
+		const B = setup.BABEL;
+		ok(B.可存(B.槽位.快存) === true, '★宿主桩在场时「可存」仍为假');
+		const 名 = B.写槽(B.槽位.快存, {});
+		ok(typeof 名 === 'string' && 名.length > 0, `★写槽没落名（实得：${JSON.stringify(名)}）`);
+		ok(m.has(B.槽位.快存) === true, '★写槽后宿主桩里查不到该槽');
+		/* ★核心：**空槽不可读**。桩的 `isEmpty` 此刻对 5 号返回**假**（同真宿主），
+		 *   若实现拿它当判据 ⇒ 会去 load 一个空槽 ⇒ 本断言红。 */
+		{
+			const 言 = []; const op = R.perform; R.perform = (x) => { 言.push(String(x)); return op; };
+			const r = B.快读(B.槽位.手动);                       // 5 号：从未写过
+			R.perform = op;
+			ok(r === false, '★空槽位「快读」没有拒绝 ⇒ 拿 isEmpty 当判据（真宿主会返回假）');
+			ok(言.some((x) => /还是空的/.test(x)), `★空槽「快读」被拒但没给可读文案（实得：${JSON.stringify(言)}）`);
+			ok(m.has(B.槽位.手动) === false, '★空槽「快读」竟把它变成有档');
+			ok(载过.length === 0, `★空槽「快读」竟调了 read（载过：${JSON.stringify(载过)}）`);
+		}
+		console.log(`  桩：写槽落名「${名}」｜空槽快读被拒 ✓`);
+	} finally { globalThis.SugarCube = 旧; }
+}
 /* ---------- ㊱ `books#178` 件 2：传送道具（**传送臂 ＋ 步行臂并存** ＋ 价目表钉位置）----------
  * 票面点名的判据形：「传送后位置 ＋ 步行可达并存两臂 ＋ 刀」。
  * ★两臂**都在同一格**内测：只测传送＝「步行那半被悄悄改掉也不报警」。 */
@@ -2263,82 +2341,6 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 	console.log(`  传送/步行/软拒/买卖四向 ✓｜价目表读数 ${JSON.stringify(B.商铺价)}`);
 }
 
-/* ---------- ㉞ `books#178` 件 1：**槽 1 整备点自动写**（两触发点 · 行为判据）----------
- * 票面 §8.2（领队裁）：槽 1 ＝**整备点自动写**，最新胜，失败面 ✗ 覆盖，可手清。
- * 两触发点＝**温泉使用完成**与**进入 L9 门前营地**。本格**真跑触发路径**（✗ 断文案、✗ 断源码文本），
- *   手法：把 `setup.BABEL.战前保底` 换成探针 ⇒ 调真触发点 ⇒ 断探针被调用**且带对来源**。 */
-head('㉞ `books#178` 槽 1 整备点自动写（温泉完成 · 入营地 · 失败面✗覆盖）');
-{
-	const B = setup.BABEL;
-	const 真 = B.战前保底;
-	const 记 = [];
-	B.战前保底 = (来源) => { 记.push(String(来源)); return true; };
-	/* 触发点一：温泉（L8 的固定动作 · 结构标记 `温泉: true`）。 */
-	{
-		const 温泉 = (map.locations.get('L8')?.actions ?? []).find((a) => a?.温泉 === true);
-		ok(温泉 != null, '★L8 找不到温泉动作（结构标记 `温泉: true`）');
-		温泉?.action?.();
-		ok(记.includes('温泉'), `★「温泉完成」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
-	}
-	/* 触发点二：进入 L9 门前营地（`onEnter` 钩）。 */
-	{
-		const 营地 = map.locations.get('L9-camp');
-		ok(营地 != null, '★找不到 `L9-camp`（门前营地）');
-		ok(typeof 营地?.onEnter === 'function', '★门前营地没有 `onEnter` 钩 ⇒ 进营地不会自动写槽 1');
-		营地?.onEnter?.(营地);
-		ok(记.includes('门前营地'), `★「进营地」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
-	}
-	B.战前保底 = 真;
-	/* 失败面 ✗ 覆盖：整备点写入走 `写槽` 的**同一道** P0 门 ⇒ 战中时写不进（两向）。 */
-	{
-		const 言 = []; const op = R.perform; R.perform = (m) => { 言.push(String(m)); return op; };
-		B.战中 = true;
-		const r = B.战前保底('整备');
-		B.战中 = false; R.perform = op;
-		ok(r === false, '★战斗中「战前保底」仍写入 ⇒ 失败面会覆盖可用存档（P0 失效）');
-		ok(!言.some((m) => /保底存档/.test(m)), '★战斗中「战前保底」还印了「已留下保底存档」');
-	}
-	console.log(`  两触发点：${记.join('、')}｜战斗中写入被拒 ✓`);
-}
-
-/* ---------- ㉟ 快速存档：**真宿主语义的桩**（`has` 可靠 · `isEmpty` 不可靠）----------
- * ★本格的桩**照抄真宿主的怪癖**（本席实测）：`isEmpty(i)` 一旦有过写入即对**所有号**为假、
- *   `get(i)` 对空槽返回占位对象。⇒ 若实现拿 `isEmpty` 当空否判据，本格**必红**。
- *   桩若不照抄这个怪癖，本格就是「装置比真宿主善良」的假绿。 */
-head('㉟ 快速存档（宿主桩：has 可靠 · isEmpty 不可靠 ⇒ 空槽不可读）');
-{
-	const 旧 = globalThis.SugarCube;
-	const m = new Map(); const 载过 = [];
-	globalThis.SugarCube = { ...(旧 ?? {}), Save: { slots: {
-		has: (i) => m.has(i),
-		get: (i) => (m.has(i) ? m.get(i) : {}),                    // ★空槽返回占位对象（同真宿主）
-		save: (i, d) => { m.set(i, { type: 2, desc: d }); },
-		load: (i) => { 载过.push(i); },                            // ★在场（✗ 缺 ⇒ 代码先走「入口不可用」支而绕过空槽判）
-		count: () => m.size,
-		delete: (i) => m.delete(i),
-		isEmpty: (i) => (m.size === 0 ? !m.has(i) : false),        // ★同真宿主：写过就恒假
-		length: 8,
-	} } };
-	try {
-		const B = setup.BABEL;
-		ok(B.可存(B.槽位.快存) === true, '★宿主桩在场时「可存」仍为假');
-		const 名 = B.写槽(B.槽位.快存, {});
-		ok(typeof 名 === 'string' && 名.length > 0, `★写槽没落名（实得：${JSON.stringify(名)}）`);
-		ok(m.has(B.槽位.快存) === true, '★写槽后宿主桩里查不到该槽');
-		/* ★核心：**空槽不可读**。桩的 `isEmpty` 此刻对 5 号返回**假**（同真宿主），
-		 *   若实现拿它当判据 ⇒ 会去 load 一个空槽 ⇒ 本断言红。 */
-		{
-			const 言 = []; const op = R.perform; R.perform = (x) => { 言.push(String(x)); return op; };
-			const r = B.快读(B.槽位.手动);                       // 5 号：从未写过
-			R.perform = op;
-			ok(r === false, '★空槽位「快读」没有拒绝 ⇒ 拿 isEmpty 当判据（真宿主会返回假）');
-			ok(言.some((x) => /还是空的/.test(x)), `★空槽「快读」被拒但没给可读文案（实得：${JSON.stringify(言)}）`);
-			ok(m.has(B.槽位.手动) === false, '★空槽「快读」竟把它变成有档');
-			ok(载过.length === 0, `★空槽「快读」竟调了 read（载过：${JSON.stringify(载过)}）`);
-		}
-		console.log(`  桩：写槽落名「${名}」｜空槽快读被拒 ✓`);
-	} finally { globalThis.SugarCube = 旧; }
-}
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
