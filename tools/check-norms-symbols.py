@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""正文文风符号复核器（books 版 · 两仓共用 · 数据面/判定面分类）
+"""正文文风符号复核器（books 版 · 两仓共用 · 判定面／行文面分类）
 
 来历：`gsvector-developer` 的 `check1899v2.py`（六修版）为底，本席（`sagitrs-tester-4`）取**只读**
  并入 books 仓 `tools/`，加两件它没有的：**`--body` 单篇正文模式**（本仓的清扫对象是**票面正文**，
