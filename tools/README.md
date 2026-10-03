@@ -16,6 +16,7 @@
 | `tools/check-refs-recheck.mjs` | 引用核的独立复算器，即第二双眼睛 |
 | `tools/e2e-harness.mjs` | 浏览器 e2e，使用真 DOM |
 | `tools/e2e-drive.mjs` | 真产物的驾驶层 |
+| `tools/e2e-216-sidebar-save-dom.mjs` | 侧栏存档按钮的**真 DOM 臂**（战中禁点·点了也不落档 · 战后恢复且真落档 · 读档后无残影）＋ 两把刀 |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |
