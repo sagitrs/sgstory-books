@@ -68,6 +68,15 @@ const argOf = (name, dflt = null) => {
  *  ★本席首版没识别这一步，于是「纯攻」策略按自己的正则选中了**第一个**条目 —— 那是己方
  *    ⇒ 玩家对着自己打（自证的 ③c 顺着「打不死 4 血的幼獾」查出来的）。 */
 const 目标步 = (options) => options.length > 0 && options.every((o) => /（己方）|（敌方）/.test(o.text));
+/** ★`books#203` **实测定案**（✗ 不再猜）：L9 装备面上有一条 **「用重木盾攻击」** —— 它的字面**含「攻击」**
+ *   ⇒ 旧式武器正则**会把它当武器** ✗ ⇒ 选它 ⇒ 引擎 `src/dnd/dnd3/items/shields.js:68` 的防具守卫
+ *   **抛错**：「「重木盾」是防具，装备后即生效；『用』它不产生额外效果」。
+ *   ⇒ 武器项＝**含武器字 ∧ 不含防具字**（盾／甲／铠／盔／护腕／防具）。 */
+const 防具字 = /盾|甲|铠|盔|护腕|防具|重木/;
+const 是武器项 = (o) => {
+	const t = String(o?.text ?? '');
+	return /长剑|铁镐|斧头|铁锹|匕首|淬火|攻击|打击|挥|砍|劈/.test(t) && !防具字.test(t);
+};
 const 选敌方 = (options) => {
 	const 敌 = options.filter((o) => /（敌方）/.test(o.text));
 	return (敌[0] ?? options[0]).value;
@@ -99,7 +108,7 @@ const STRATEGIES = {
 	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
 	'纯攻': (options, ctx) => {
 		if (目标步(options)) return 选敌方(options);
-		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		const 攻 = options.find((o) => 是武器项(o) && !/跳过/.test(String(o.text)));
 		if (攻) return 攻.value;
 		const 空手 = options.find((o) => /空手/.test(o.text));
 		if (空手) return 空手.value;
@@ -112,7 +121,7 @@ const STRATEGIES = {
 			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
 			if (治) return 治.value;
 		}
-		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		const 攻 = options.find((o) => 是武器项(o) && !/跳过/.test(String(o.text)));
 		if (攻) return 攻.value;
 		return 攻击回退(options);
 	},
