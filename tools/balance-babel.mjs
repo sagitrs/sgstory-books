@@ -371,7 +371,8 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			if (!名册.has(u)) 名册.set(u, { 名: String(u?.name ?? '?'), 阵营: (b.players ?? []).includes(u) ? '己方' : '敌方' });
 		}
 	};
-	let 最近选择 = null;          // ★`books#203` 诊断用（抛错时打印现场）
+	const 选择史 = [];            // ★`books#203` 诊断（v2）：最近 3 次选择的现场（抛错时全打）
+	let 最近选择 = null;
 	const 原Act = R.act;
 	R.act = function (actor, itemId, target) {
 		const 前 = new Map([...名册.keys()].map((u) => [u, u?.hp]));
@@ -403,7 +404,10 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			 *   行动者／件／靶 ＋ **策略当时的 pick** ＋ **完整选项表**打出来，再原样上抛（✗ 不改行为）。 */
 			console.error('[诊断·抛错] 行动者=' + String(actor?.name ?? '?') + '｜件=' + String(itemId) + '｜靶=' + String(target?.name ?? '?')
 				+ '｜异常=' + String(e?.message ?? e));
-			console.error('[诊断·选择] ' + JSON.stringify(最近选择));
+			/* ★v2（协调方 2026-10-03）：**保证选项表在场** —— 抛点可能不在 `choice` 之后（`最近选择` 为 null）
+			 *   ⇒ 改打**最近 3 次选择**的现场（够看出「哪条分支选的防具项／pick 是否落空走回退」）。 */
+			console.error('[诊断·选择] 最近选择=' + JSON.stringify(最近选择) + '｜史长=' + 选择史.length);
+			(选择史.slice(-3)).forEach((r, i) => console.error(`[诊断·选择#${i - Math.min(3, 选择史.length) + 1}] ` + JSON.stringify(r)));
 			throw e;
 		}
 		if (ret && typeof ret.then === 'function') return ret.then((r) => { 记录(r); return r; });
@@ -440,7 +444,8 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			if (!hit && pick !== 'skip') hit = o.find((x) => x.value === 攻击回退(o)) ?? o[0];
 			/* ★`books#203` 诊断：留下「最近一次选择」的**完整现场**（抛错时由 `RPG.act` 包装器打出）。 */
 			最近选择 = { 策略: String(策略名 ?? 夹具.策略), pick, 解出值: hit?.value ?? null, 解出文案: hit?.text ?? null,
-				用了回退, 选项: o.map((x) => x.text), 血: D3.Player.hp };
+				回退口径: 攻击回退(o),				用了回退, 选项: o.map((x) => x.text), 血: D3.Player.hp };
+			选择史.push(最近选择); if (选择史.length > 3) 选择史.shift();
 			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp,
 				/* ★治疗件**消耗**这道独立证据（`tester-3` 的非阻断加固）：charges 挂在**背包条目**上
 				 *   （实测形 `{"id":"herb-poultice","charges":6,"equipped":false}`）⇒ 记它们的**总量**。 */
