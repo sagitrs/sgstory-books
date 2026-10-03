@@ -371,6 +371,7 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			if (!名册.has(u)) 名册.set(u, { 名: String(u?.name ?? '?'), 阵营: (b.players ?? []).includes(u) ? '己方' : '敌方' });
 		}
 	};
+	let 最近选择 = null;          // ★`books#203` 诊断用（抛错时打印现场）
 	const 原Act = R.act;
 	R.act = function (actor, itemId, target) {
 		const 前 = new Map([...名册.keys()].map((u) => [u, u?.hp]));
@@ -395,7 +396,16 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				掉血: 掉,
 			});
 		};
-		const ret = 原Act.call(this, actor, itemId, target);
+		let ret;
+		try { ret = 原Act.call(this, actor, itemId, target); }
+		catch (e) {
+			/* ★**失败时刻**的读数（`books#203` 三折仍抛 ⇒ 只有它收得了口）：当场把
+			 *   行动者／件／靶 ＋ **策略当时的 pick** ＋ **完整选项表**打出来，再原样上抛（✗ 不改行为）。 */
+			console.error('[诊断·抛错] 行动者=' + String(actor?.name ?? '?') + '｜件=' + String(itemId) + '｜靶=' + String(target?.name ?? '?')
+				+ '｜异常=' + String(e?.message ?? e));
+			console.error('[诊断·选择] ' + JSON.stringify(最近选择));
+			throw e;
+		}
 		if (ret && typeof ret.then === 'function') return ret.then((r) => { 记录(r); return r; });
 		记录(ret);
 		return ret;
@@ -426,7 +436,11 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			 *     · `pick === 'skip'`（「跳过」策略的**显式**意图）⇒ 就跳过（`return hit?.value ?? 'skip'` 会落 'skip'）✓；
 			 *     · 其余对不上的 `pick` ⇒ ✗ 不许裸取第一条 ⇒ 走 `攻击回退`（跳过 ＞ 非「用／装备」项 ＞ 才认命）。 */
 			let hit = o.find((x) => x.value === pick);
+			const 用了回退 = !hit && pick !== 'skip';
 			if (!hit && pick !== 'skip') hit = o.find((x) => x.value === 攻击回退(o)) ?? o[0];
+			/* ★`books#203` 诊断：留下「最近一次选择」的**完整现场**（抛错时由 `RPG.act` 包装器打出）。 */
+			最近选择 = { 策略: String(策略名 ?? 夹具.策略), pick, 解出值: hit?.value ?? null, 解出文案: hit?.text ?? null,
+				用了回退, 选项: o.map((x) => x.text), 血: D3.Player.hp };
 			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp,
 				/* ★治疗件**消耗**这道独立证据（`tester-3` 的非阻断加固）：charges 挂在**背包条目**上
 				 *   （实测形 `{"id":"herb-poultice","charges":6,"equipped":false}`）⇒ 记它们的**总量**。 */
