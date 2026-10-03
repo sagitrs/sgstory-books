@@ -161,8 +161,13 @@ const main = async () => {
 		console.log(`  ${恰好 ? '✓' : '✗'} 刀 \`${k.名}\` ⇒ 须**恰红**「${k.须红}」；实得红 ${fails.length} 条（本面 ${红集.length}／越界 ${越界.length}）`);
 		if (!恰好) { console.error(`    （刀义：${k.说明}）\n${fails.map((f) => '    ' + f).join('\n')}`); 坏++; }
 	}
-	if (坏) { console.error(`\n刀的判别力自证失败 ${坏} 条 —— 判据红不了，等于没有判据`); process.exit(1); }
-	console.log(`\n✓ 刀的判别力自证通过（${刀.length} 把，各恰红自己那一面）`);
+	/* ★`books#224` RC（`tester-4`·阻塞）：自检的**成功路径也必须显式退出** ——
+	 *   每判一次都 boot 一个 jsdom，其事件循环**不会自己空** ⇒ 不退出就一直挂着 ⇒ `$?` 变成
+	 *   **124（timeout）** ✗（同族先例：`tools/e2e-209-host-save.mjs:156` 的 `process.exit(坏 === 0 ? 0 : 1)`）。
+	 *   ⚠ 我首版只在**失败**支退出 ⇒ 成功支挂住；而我当时报的「自检 rc=0」是**管道末态**（`| tail` 的 `$?`）✗
+	 *   —— 正是我自己刚记下的那条「读数须带 `$?`」在**推的那一刻**没执行 ✗。 */
+	console.log(坏 === 0 ? `\n✓ 刀的判别力自证通过（${刀.length} 把，各恰红自己那一面）` : `\n✗ ${坏}/${刀.length} 把刀未如期`);
+	process.exit(坏 === 0 ? 0 : 1);
 };
 
 main().catch((e) => {
