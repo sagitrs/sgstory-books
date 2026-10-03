@@ -116,6 +116,57 @@ export const panelText = (session, id) => panels(session, [id])[id];
 cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
+/* ── 战斗格**驱动**（`sgstory#1950`）：三臂共用一份驱动 ⇒ 刀才改得动**一处**（✗ 各写一份 ⇒ 刀无处落）。
+ * ⚠ 件须放进**玩家单位**（`D.Player.items` ✓）：战斗选项表由**单位快照**出（✗ 不走 `State.variables.inventory`）。 */
+async function 战斗三臂驱动(s, { 补丁 = null } = {}) {
+	const R = s.SC.setup.RPG, D = s.SC.setup.DND3, B = s.SC.setup.BABEL;
+	const 原Choice = D.Player.choice, 原Act = R.act, 存血 = D.Player.hp;
+	const 治疗槽 = { id: 'bandage', charges: 3 };
+	const 盾槽 = { id: 'heavy-wooden-shield', charges: 1 };
+	const 武槽 = { id: 'club', equipped: true };
+	const 动作录 = [];
+	try {
+		D.Player.hp = Math.max(1, Math.floor((D.Player.maxHp ?? 10) / 2));
+		D.Player.items.push(治疗槽, 盾槽, 武槽);
+		/* 录过程：包**统一入口** `RPG.act`（`#1752`）—— ✗ 不用 `battle:turn`（只在攻击被接受时发 ⇒ 漏玩家侧动作） */
+		R.act = function (actor, itemId, target, action) {
+			const 前自己 = actor?.hp, 前靶 = target?.hp;
+			const 记 = (ret) => 动作录.push({
+				我方: actor === D.Player, 件: String(itemId), 动作: String(action ?? '(默认)'),
+				靶: String(target?.name ?? target ?? ''),
+				结果: (ret && typeof ret === 'object')
+					? `${ret.status ?? '?'}${ret.reason ? '/' + ret.reason : ''}${ret.code ? '/' + ret.code : ''}`
+					: String(ret),
+				自己掉血: (前自己 ?? 0) - (actor?.hp ?? 0), 靶掉血: (前靶 ?? 0) - (target?.hp ?? 0),
+			});
+			const ret = 原Act.call(this, actor, itemId, target, action);
+			if (ret && typeof ret.then === 'function') return ret.then((r) => { 记(r); return r; });
+			记(ret); return ret;
+		};
+		let 选治 = 0, 选盾 = 0;
+		D.Player.choice = async (options) => {
+			const o = Array.isArray(options) ? options : [];
+			const 文 = (x) => String(x?.text ?? '');
+			const 治 = o.find((x) => /治疗|草药|绷带/.test(文(x)));
+			const 盾 = o.find((x) => /重木盾/.test(文(x)));
+			/* ★`#217` 同坑：防具选项文案**也含「攻击」**（「用重木盾攻击」）⇒ 须「含武器字 ∧ 不含防具字」 */
+			const 攻 = o.find((x) => /攻击|挥|砍|劈|打击/.test(文(x)) && !/重木盾|盾|防具|甲|铠/.test(文(x)));
+			if (治 && 选治 < 2) { 选治 += 1; return 治.value; }
+			if (盾 && 选盾 < 1) { 选盾 += 1; return 盾.value; }
+			/* ★兜底**不得取 `o[0]`**（那是选项表里的盾 ⇒ 会每轮反复选它 ✗） */
+			return (攻 ?? o.find((x) => !/重木盾|治疗|草药|绷带/.test(文(x))))?.value ?? 'skip';
+		};
+		if (补丁) 补丁({ R, D, B, 槽: { 治疗: 治疗槽, 盾: 盾槽, 武: 武槽 } });
+		await B.fight({ interactive: true });
+		return { 动作录, 我方: 动作录.filter((x) => x.我方) };
+	} finally {
+		R.act = 原Act; D.Player.choice = 原Choice; D.Player.hp = 存血;
+		for (const 槽 of [治疗槽, 盾槽, 武槽]) {
+			const i = D.Player.items.indexOf(槽);
+			if (i >= 0) D.Player.items.splice(i, 1);
+		}
+	}
+}
 if (has('--list')) {
 	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 2）｜O L9 唯一出口（`books#133` 笔 3）｜Q 战斗面（敌面板／治疗读数 · `books#188`）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
@@ -298,6 +349,44 @@ if (has('--selftest')) {
 		F('★面 T 唯一变量：把 `applyHeal` 换回 P0 原形（印名义量／满血不拒）⇒ 面 T 应红'
 			+ `｜实得 差1点满 Δ=${近.Δ}／屏上数=${近.数}（正例下须 1≠2）｜满血 件差=${满.件差}（正例下须 0）`,
 			刀红 === true);
+	}
+
+	/* ★战斗格的**三把刀**（`sgstory#1950`）：每把**只改一处** ⇒ 断**反条件**（＝那一臂判得了 ✗ 恒真式）。 */
+	{
+		/* 刀①：`applyHeal` 换 **no-op** ⇒ 治疗不再涨血 ⇒ ①臂判不了绿。 */
+		const s = await boot(env);
+		await playPassage(s, '探索'); await tick(250);
+		const D = s.SC.setup.DND3, 真 = D.applyHeal;
+		D.applyHeal = () => 0;                                      // ★唯一变量
+		let 治涨 = 0;
+		try { const { 我方 } = await 战斗三臂驱动(s); 治涨 = 我方.filter((x) => /bandage/.test(x.件) && x.自己掉血 < 0).length; }
+		finally { D.applyHeal = 真; }
+		F('★战斗格刀①：把 `applyHeal` 换 no-op ⇒ 治疗**不再涨血**（本格①臂判得了 ✗ 恒真式）', 治涨 === 0);
+		/* 刀②：把我推进去的那件盾的 `used()` 换成**不拒绝**（★唯一变量：「防具被静默接受」）⇒ 结果不再是
+		 *   `rejected/action-refused` ⇒ ②臂判不了绿。★打**实例**最准：`RPG.act` 是从 `actor.items`
+		 *   （快照数组）按 id 检索那件 ⇒ 我推的那件就是它（✗ 不必猜是哪个类 / 也不必动 `RPG.refuse`
+		 *   —— 结果其实是 `30-inventory.js` 那一支从 `e.code` 收出来的，打构造处**不动它** ✓ 实测过）。 */
+		const 盾原 = s.SC.setup.DND3.Player.items.find((x) => /heavy-wooden-shield/.test(String(x?.id ?? '')));
+		let 刀B = null;
+		if (盾原) {
+			const 原used = 盾原.used;
+			盾原.used = () => undefined;                       // ★唯一变量（不再抛结构化拒绝）
+			try {
+				const { 我方 } = await 战斗三臂驱动(s);
+				const 盾行 = 我方.filter((x) => /shield/.test(x.件));
+				刀B = 盾行.length > 0 && !盾行.every((x) => /rejected\/action-refused/.test(x.结果));
+			} finally { 盾原.used = 原used; }
+		}
+		F('★战斗格刀②：把防具的 `used()` 换成**不拒绝** ⇒ 结果**不再是** `rejected/action-refused`（②臂判得了 ✗ 恒真式）'
+			+ `｜实得 ${刀B}（找到那件 ${盾原 ? '是' : '否'}）`, 刀B === true);
+		/* 刀③：随机流钉成**全 1 点**（`0.0` ⇒ die=1）⇒ 己方攻击必失手 ⇒ ③臂判不了绿。 */
+		{
+			const R2 = s.SC.setup.RPG;
+			const { 我方 } = await 战斗三臂驱动(s, { 补丁: () => R2.rng.setSequence(Array.from({ length: 500 }, () => 0.0)) });
+			F('★战斗格刀③：随机流钉成必失手 ⇒ **己方致伤为 0**（本格③臂判得了 ✗ 空面）',
+				我方.filter((x) => x.靶掉血 > 0).length === 0);
+		}
+		s.dom.window.close();
 	}
 
 	s.dom.window.close();
@@ -662,6 +751,29 @@ if (has('--selftest')) {
 			console.log(`  面 T ✓ 背包栏治疗件对账：半血 Δ=${半.Δ}／屏上数=${半.数}；差 1 点满 Δ=${近满.Δ}／屏上数=${近满.数}`
 				+ `；满血 ⇒ 拒绝 ＋ 不扣件 ＋ 出声；面板接线（哨兵 ${哨兵}）＋ 对账（夹取态 ${夹取.数}、满血态 ${满血.数}）✓`);
 		}
+	}
+	/* ══ 战斗格（`sgstory#1950` · `books#222` 族）：**`quick:use` 派发三臂** ══
+	 * 症状（今天的 heal／盾两案）都在路上：「**选项 → 靶解析 → `RPG.act`**」——引擎若把**动作类**
+	 *   （治疗／伤害）传漏，治疗件的唯一合法靶（己方）会被窄成敌方 ⇒ 拒 ⇒ 回合白过。
+	 *   ★驱动在 `战斗三臂驱动()`（✗ 不在此处内联 ⇒ 三把刀才改得动一处 ✓）。 */
+	{
+		const s = await boot(env);
+		await playPassage(s, '探索'); await tick(250);
+		const { 动作录, 我方 } = await 战斗三臂驱动(s);
+		const 治行 = 我方.filter((x) => /bandage/.test(x.件));
+		const 盾行 = 我方.filter((x) => /shield/.test(x.件));
+		const 攻行 = 我方.filter((x) => x.靶掉血 > 0);
+		const 治涨 = 治行.filter((x) => x.自己掉血 < 0);
+		const 盾拒 = 盾行.filter((x) => /rejected\/action-refused/.test(x.结果));
+		ok(治行.length > 0 && 治涨.length > 0,
+			`★战斗格①臂（sgstory#1950）：治疗件经「选项→靶解析→act」须真落地（血↑）—— 实得 ${JSON.stringify(治行)}`);
+		ok(盾行.length > 0 && 盾拒.length === 盾行.length,
+			`★战斗格②臂：用防具须「结构化拒绝」（rejected/action-refused，✗ 裸抛）—— 实得 ${JSON.stringify(盾行)}`);
+		ok(攻行.length > 0,
+			`★战斗格③臂（正控）：**己方**一次成功攻击须使靶掉血（✗ 则本格是空面）—— 我方实得 ${JSON.stringify(我方)}`);
+		console.log(`  战斗格 ✓ 我方动作 ${我方.length}／全部 ${动作录.length}｜①治疗 ${治行.length}（血涨 ${治涨.length}）`
+			+ `｜②盾 ${盾行.length}（拒 ${盾拒.length}）｜③己方致伤 ${攻行.length}`);
+		s.dom.window.close();
 	}
 	s.dom.window.close();
 }
