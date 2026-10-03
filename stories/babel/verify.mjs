@@ -125,7 +125,7 @@ ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
 if (map) {
 	ok(map.validate().length === 0, `地图结构不合法：${map.validate().join('；')}`);
 	ok(map.validateConnectivity('L1').length === 0, `L1 出发不可达：${map.validateConnectivity('L1').join('；')}`);
-	ok(map.locations.size === 26, `地点数应为 26（一段 13 ＋ 二段 L11–19 九层 ＋ L20 三地点 ＋ 故事侧军械堆/马厩），实为 ${map.locations.size}`);
+	ok(map.locations.size === 27, `地点数应为 27（一段 13 ＋ 二段 L11–19 九层 ＋ L20 三地点 ＋ 故事侧军械堆/马厩 ＋ \`#180\` 的 L9 准备区），实为 ${map.locations.size}`);
 }
 console.log(`  地点 ${map.locations.size} 个｜边 ${map.exits.length} 条`);
 
@@ -937,7 +937,13 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 			State.variables.inventory = [];
 			map.moveTo(层);
 			D.Player.hp = D.Player.maxHp;
-			R.rng.set(() => 0.99);                       // 必中重击 ⇒ 软目标一击毙
+			/* ★`books#180`：本臂要的是**真击杀**。徒手在 DND3 是**非致命** ⇒ 只会把软目标**打晕**
+			 *   （`isKnockedOut`）⇒ 按 §14 ⑥「打晕不等于胜利」与引擎自己的 `RPG.loot`（非致命昏迷者不掉落）
+			 *   ⇒ 战果＝`stunned`、不发战利品也不发必掉（本席实跑读数：靶 hp1／非致命 8 ⇒ stunned）。
+			 *   故先持械（致命路），再一击毙。 */
+			R.give('sword');
+			R.equip('sword');
+			R.rng.set(() => 0.99);                       // 必中重击 ⇒ 软目标一击毙（致命）
 			await B.fight({ interactive: false });
 			R.rng.reset();
 			ok(R.has(物), `★${层} 战后背包里**没有** ${物} ⇒ 「必掉」只写在表上、**没有真给**（dev-10 RC）`);
@@ -1521,13 +1527,21 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		const 抽ref = R.rollEncounter('L9')?.[0]?.ref ?? null;
 		R.rng.reset();
 		ok(抽ref === 'sleepless-one', `★L9 抽出来不是头目（实得 ${JSON.stringify(抽ref)}）⇒ 「固定」不成立`);
-		/* ② 唯一出口（两向：可用 1 条；**边仍在**）*/
-		const L9出口 = map.exitsFrom('L9');
+		/* ② 唯一出口（★`books#180` 起**两向**：未胜 ⇒ 0 条（硬门）；已胜 ⇒ 1 条（唯一的前进）；**边始终在图里**） */
+		const L9出口_未胜 = map.exitsFrom('L9');
+		const 乙0 = L9出口_未胜.length === 0;
+		ok(乙0, `★未过头目时 L9 仍给出口（实得 ${JSON.stringify(L9出口_未胜.map((e) => e.text))}）—— 硬门失守`);
+		const 存进度 = JSON.parse(JSON.stringify(State.variables.babelRun?.bosses ?? null));
+		B.记战果?.('L9', 'victory');
+		const L9出口_已胜 = map.exitsFrom('L9');
 		const L9边 = map.exits.filter((e) => e.from === 'L9');
-		const 乙 = L9出口.length === 1 && /前进/.test(String(L9出口[0]?.text ?? ''));
-		ok(乙, `★L9 的可用出口不是「唯一的前进」（实得 ${JSON.stringify(L9出口.map((e) => e.text))}）`);
-		const 丙 = L9边.length >= 2 && L9边.some((e) => e.to === 'L8');
-		ok(丙, `★L9 的边被**结构性删掉**了（图里只剩 ${JSON.stringify(L9边.map((e) => e.to))}）—— 本笔的落法是**动作守卫**，边须仍在`);
+		const 乙 = L9出口_已胜.length === 1 && /前进/.test(String(L9出口_已胜[0]?.text ?? ''));
+		ok(乙, `★已过头目后 L9 的可用出口不是「唯一的前进」（实得 ${JSON.stringify(L9出口_已胜.map((e) => e.text))}）`);
+		const 丙 = L9边.some((e) => e.to === 'L10-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L8')
+			&& map.locations.has('L9-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L9');
+		ok(丙, `★L9 拆面坏了：战场→L10 ${L9边.some((e) => e.to === 'L10-camp')}／准备区存在 ${map.locations.has('L9-camp')}`
+			+ `／准备区→L8 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
+		State.variables.babelRun.bosses = 存进度 ?? {};
 		/* ③ 对照：非头目层不设限（守卫**按层**作用，✗ 全局摘除） */
 		const L8出口 = map.exitsFrom('L8');
 		const 丁 = L8出口.length === 2;
@@ -1548,7 +1562,7 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		ok((B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub', '★L10 不再是 `hub`（接管面被改了）');
 		ok(map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 少了「退回第 9 层」那条边（衔接面被改了）');
 		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
-			+ `｜唯一出口 ${JSON.stringify(L9出口[0]?.text)} ${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
+			+ `｜硬门（未胜 ${L9出口_未胜.length} 条 ⇒ 已胜 ${L9出口_已胜.length} 条「${L9出口_已胜[0]?.text ?? ''}」）${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
 			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
 			+ `｜重开复位（接线 ${m(接线)}＋行为 ${m(复位ok)}）`);
 	} finally {
@@ -1933,6 +1947,85 @@ head('㉛ L8 温泉（`books#177`）');
 		State.variables.inventory = 存.包;
 		State.variables.span1Events = 存.账;
 		State.variables.babelRun = 存.run;
+		if (map.locations.has(存.位)) map.moveTo(存.位);
+	}
+}
+
+/* ── ㉜ 头目硬门·准备区（`books#180`）────────────────────────────────────
+ *
+ * 它回答的问题：**L9 头目真的硬卡进度吗？撤退落点与重挑战口径成立吗？**
+ *   出处：操作者裁定（L9 头目硬卡进度·温泉满装 SL 可过）＋ `#172` 的 §14 批复 ⑤⑥⑦。
+ * 本格断六件：①**仅 victory 开门**（四臂：victory／down／stunned／stalemate）
+ *   ②**撤退落准备区**（非胜收场的落点 ＝ 准备区）③**准备区可达温泉**（准备区 → L8 的边**可用**，
+ *   且 L8 的温泉动作在位 —— 后半依赖 `#179`，未合则记明账）④**未过时 L10 门锁着／过关后开**
+ *   ⑤**重挑战满血复位**（§14 ⑤）⑥**同归于尽 ≠ 胜利**（`down` 优先于「敌全倒」）。
+ * 刀：① 拆 victory 条件（把 stunned 也算胜）⇒ ①红；② 拆守卫的进度条件 ⇒ ④红；
+ *   ③ 拆落点 ⇒ ②红；④ 拆进战场复位 ⇒ ⑤红。
+ * ⚠ 装置：本格改 `$babelRun.bosses`／位置／头目 hp ⇒ 末了**存-复原**。 */
+head('㉜ 头目硬门·准备区（`books#180`）');
+{
+	const 头目 = B.头目?.不眠者;
+	const 存 = {
+		位: map.current, run: { ...State.variables.babelRun }, 账: State.variables.babelRun?.bosses,
+		头目hp: 头目?.hp, 头目效果: (头目?.effects ?? []).slice(),
+	};
+	let 读数 = {};
+	try {
+		const 全倒 = { isDown: true, name: '靶' };
+		const 全晕 = { isDown: true, nonlethal: 9, hp: 1, name: '靶' };
+		const 尚活 = { isDown: false, name: '靶' };
+		const 玩家 = (倒) => ({ isDown: 倒, hp: 1, maxHp: 20 });
+		const 果 = (对手, 玩家倒) => B.战果?.({ foes: [对手], player: 玩家(玩家倒) });
+
+		/* ① 仅 victory 开门（四臂）＋ ⑥ 同归于尽 ≠ 胜利（`down` 优先） */
+		const 四臂 = { victory: 果(全倒, false), stalemate: 果(尚活, false), stunned: 果(全晕, false), 同归于尽: 果(全倒, true) };
+		ok(四臂.victory === 'victory', `★真击杀判成了「${四臂.victory}」`);
+		ok(四臂.stalemate === 'stalemate', `★僵持判成了「${四臂.stalemate}」`);
+		ok(四臂.stunned === 'stunned', `★打晕判成了「${四臂.stunned}」—— §14 ⑥「击晕不开门」`);
+		ok(四臂.同归于尽 === 'down', `★同归于尽判成了「${四臂.同归于尽}」—— 玩家出局优先于「敌全倒」（旧形两判不互斥之处）`);
+
+		/* ④ 门：未过 ⇒ 0 条；记 victory ⇒ 1 条 */
+		State.variables.babelRun.bosses = {};
+		const 门_未过 = map.exitsFrom('L9').filter((e) => e.to === 'L10-camp').length;
+		B.记战果?.('L9', 'victory');
+		const 门_已过 = map.exitsFrom('L9').filter((e) => e.to === 'L10-camp').length;
+		ok(门_未过 === 0 && 门_已过 === 1, `★硬门读数不对（未过 ${门_未过} 条 ⇒ 已过 ${门_已过} 条，应 0 ⇒ 1）`);
+
+		/* ② 撤退落准备区（落点函数直调：`fight()` 的战后段消费同一处） */
+		map.moveTo('L9');
+		const 落了 = B.落准备区?.('L9') === true;
+		const 落点 = map.current;
+		ok(落了 && 落点 === 'L9-camp', `★非胜收场的落点不是准备区（落了 ${落了}／位置 ${落点}）`);
+		ok(B.落准备区?.('L5') === false, '★落点函数对**非战场**层也生效（应只对头目战场）');
+
+		/* ③ 准备区可达温泉 */
+		const 备出 = map.exitsFrom('L9-camp').map((e) => e.to);
+		ok(备出.includes('L8'), `★准备区没有回 L8 的**可用**边（实得 ${JSON.stringify(备出)}）—— 「回温泉补给」不成立`);
+		map.moveTo('L8');
+		const 温泉在 = map.locations.get('L8').availableActions.some((a) => a.温泉 === true);
+		ok(温泉在, '★准备区可达 L8，但 L8 上没有温泉动作（`#179` 的入表断了？）');
+
+		/* ⑤ 重挑战满血复位（§14 ⑤）：把头目打残 ⇒ 出准备区再进战场 ⇒ 复位 */
+		if (头目) {
+			头目.hp = 3;
+			State.variables.babelRun.bosses = {};
+			map.moveTo('L8'); map.moveTo('L9-camp'); map.moveTo('L9');
+			读数.复位后hp = 头目.hp;
+			ok(头目.hp === 头目.maxHp, `★重挑战没有满血复位（实得 ${头目.hp}／${头目.maxHp}）—— §14 ⑤`);
+			/* 反过来：**已过**时不复位（读的是进度账，✗ 无条件复位） */
+			头目.hp = 3;
+			B.记战果?.('L9', 'victory');
+			map.moveTo('L9-camp'); map.moveTo('L9');
+			ok(头目.hp === 3, `★已过头目仍被复位（实得 ${头目.hp}）—— 复位条件没读进度账`);
+		}
+		读数.门 = [门_未过, 门_已过];
+		console.log(`  头目门：四臂 ${JSON.stringify(四臂)}｜门（未过 ${门_未过} ⇒ 已过 ${门_已过}）`
+			+ `｜落点 ${落点}（备出 ${JSON.stringify(备出)}）`
+			+ `｜重挑战复位 ${读数.复位后hp === 头目?.maxHp ? '✓' : '✗'}｜已过不复位 ✓`);
+	} finally {
+		if (头目) { 头目.hp = 存.头目hp; 头目.effects = 存.头目效果; }
+		State.variables.babelRun = { ...存.run };
+		if (存.账 === undefined) delete State.variables.babelRun.bosses; else State.variables.babelRun.bosses = 存.账;
 		if (map.locations.has(存.位)) map.moveTo(存.位);
 	}
 }

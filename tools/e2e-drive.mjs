@@ -217,18 +217,30 @@ if (has('--selftest')) {
 
 	/* ★面 O 的**刀**（`books#133` 笔 3）：唯一出口的读数**随层表的 `boss` 标记翻面** ——
 	 *   摘掉标记 ⇒ L9 立刻回到 2 条可用出口（证明守卫读的是**表**，✗ 硬写的层名 `=== 'L9'`）。 */
-	let O两向 = false;
+	let O两向 = false, O读数 = '';
 	{
 		const B = s.SC.setup.BABEL;
 		const L9行 = (B.LAYER_META ?? []).find((l) => l?.id === 'L9');
-		const 前 = B.map.exitsFrom('L9').length;
+		const 账 = (s.SC.State.variables.babelRun ??= {});   // ⚠ selftest 面里可能还没有本局账 ⇒ 兜住（✗ 直接点进去）
+		const 原账 = JSON.parse(JSON.stringify(账?.bosses ?? null));
+		/* ★`books#180` 起**三向**：①未胜 ⇒ 0 条（硬门）②记 victory ⇒ 1 条 ③摘掉层表的 `boss`
+		 *   标记 ⇒ 2 条（读数随**表**翻面，✗ 硬写层名）—— 三档各证一件事，缺一档就读不出是「门」
+		 *   还是「标记」（本席按 `dev-10` 的面 O 原意扩，原两向仍全在）。 */
+		账.bosses = {};
+		const 未胜 = B.map.exitsFrom('L9').length;
+		账.bosses = { L9: 'victory' };    // ⚠ 直接写账（✗ 经 `记战果`）—— 自检面里故事导出面可能不齐，本面只核**读数**随账翻面
+		const 已胜 = B.map.exitsFrom('L9').length;
 		L9行.boss = false;
 		const 摘 = B.map.exitsFrom('L9').length;
 		L9行.boss = true;
+		账.bosses = 原账 ?? {};                       // 先还原账，再读「装回」那一档（否则读到的是「已胜」）
 		const 回 = B.map.exitsFrom('L9').length;
-		O两向 = 前 === 1 && 摘 === 2 && 回 === 1;
+		/* ⚠ 拆面（`books#180`）后战场的**结构边只剩「通 L10」那一条**（回 L8 的边归准备区）
+		 *   ⇒ 摘掉标记时读到 **1**（✗ 旧两向的 2）—— 这一档证的仍是「守卫读**表**」。 */
+		O两向 = 未胜 === 0 && 已胜 === 1 && 摘 === 1 && 回 === 0;
+		O读数 = `未胜 ${未胜}／已胜 ${已胜}／摘标记 ${摘}／装回 ${回}`;
 	}
-	F('★面 O 两向：摘掉层表 L9 的 `boss` ⇒ 出口 1 ⇒ 2 条、装回 ⇒ 1 条（读数随**表**翻面，✗ 硬写层名）', O两向 === true);
+	F(`★面 O 三向：未过 ⇒ 0 条、记 victory ⇒ 1 条、摘掉层表 L9 的 \`boss\` ⇒ 1 条、装回 ⇒ 0 条（读数随**账**与**表**翻面，✗ 硬写层名）｜实得 ${O读数}`, O两向 === true);
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -367,7 +379,7 @@ if (has('--selftest')) {
 	 * 两向＝把同一读数放到**非头目层 L8** 作对照（那里两条都在）—— ✗ 只断「只有一条」
 	 *   （那可能是出口整体坏了、或地图没画出来）。⚠ 本面只走 L8↔L9，L10+ 的衔接面不动。 */
 	/* ⚠ 顿号别写进正则：本仓的出口文案用**全角逗号**（`向上，去第 9 层`），首版写成 `向上\u3001` ⇒ 漏读（本席实测撞到）。 */
-	const 出口按钮 = (x) => choiceButtons(x).filter((t2) => /^(前进|向上|向下)|钻进光里|退回第/.test(t2));
+	const 出口按钮 = (x) => choiceButtons(x).filter((t2) => /^(前进|向上|向下)|钻进光里|退回第|走进那道光/.test(t2));
 	s.SC.setup.BABEL.map.moveTo('L8');
 	await playPassage(s, '探索'); await tick(250);
 	const O8 = 出口按钮(s);
@@ -375,10 +387,26 @@ if (has('--selftest')) {
 	s.SC.setup.BABEL.map.moveTo('L9');
 	await playPassage(s, '探索'); await tick(250);
 	s.SC.setup.RPG.rng.reset();
-	const O9 = 出口按钮(s);
+	const O9未胜 = 出口按钮(s);
 	ok(O8.length === 2, `★面 O：对照层 L8 的出口不是 2 条（${JSON.stringify(O8)}）⇒ 出口面本身坏了，本面读数不成立`);
-	ok(O9.length === 1 && /前进/.test(O9[0] ?? ''), `★面 O：L9 的出口不是「唯一的前进」（实得 ${JSON.stringify(O9)}）`);
-	if (O8.length === 2 && O9.length === 1) console.log(`  面 O ✓ 唯一出口：L8 对照 2 条 ${JSON.stringify(O8)}；L9 1 条 ${JSON.stringify(O9)}`);
+	/* ★`books#180`：头目**硬门** —— 未胜时 L9 **一条出口都不出**（旧形是「唯一的前进」；
+	 *   硬门之后「只有一条」这件事本身也成了可判面：先 0 条，记 victory 后才 1 条）。 */
+	ok(O9未胜.length === 0, `★面 O：未过头目时 L9 仍给出口（实得 ${JSON.stringify(O9未胜)}）—— 硬门失守`);
+	const 账0 = JSON.parse(JSON.stringify(s.SC.State.variables.babelRun?.bosses ?? null));
+	s.SC.State.variables.babelRun.bosses = { L9: 'victory' };
+	await playPassage(s, '探索'); await tick(250);
+	const O9已胜 = 出口按钮(s);
+	ok(O9已胜.length === 1 && /前进/.test(O9已胜[0] ?? ''), `★面 O：已过头目后 L9 的出口不是「唯一的前进」（实得 ${JSON.stringify(O9已胜)}）`);
+	/* ★`books#180` 准备区：**合法回 L8** 那条边可用 ＋ 迎战边在（拆面的两半都在页面上） */
+	s.SC.setup.BABEL.map.moveTo('L9-camp');
+	await playPassage(s, '探索'); await tick(250);
+	const O备 = 出口按钮(s);
+	ok(O备.some((t2) => /回第 8 层/.test(t2)) && O备.some((t2) => /走进那道光/.test(t2)),
+		`★面 O：准备区的出口不齐（实得 ${JSON.stringify(O备)}）—— 回 L8 补给与迎战两条都要在`);
+	s.SC.State.variables.babelRun.bosses = 账0 ?? {};
+	if (O8.length === 2 && O9未胜.length === 0 && O9已胜.length === 1) {
+		console.log(`  面 O ✓ 头目硬门：L8 对照 2 条 ${JSON.stringify(O8)}；L9 未胜 ${O9未胜.length} 条 ⇒ 已胜 1 条 ${JSON.stringify(O9已胜)}；准备区 ${JSON.stringify(O备)}`);
+	}
 
 	/* ★面 P（**硬判**）：`books#171` 的统一结算入口 ＋ `books#176` 的终端语义 —— **进层致命伤 ⇒ 终局**。
 	 *   唯一变量＝**进层前的血量**（其余全不动）：同一次真点按钮、同一注入，1 血（危害命中）⇒

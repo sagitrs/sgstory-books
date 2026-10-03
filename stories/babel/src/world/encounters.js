@@ -177,7 +177,12 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 
 	await new R.Battle(8, [DND3.Player], foes, interactive).execute();
 
-	if (foes.every((f) => f.isDown)) {
+	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
+	 *   旧形把「胜」写成 `foes.every(isDown)`，与下面的「玩家是否也倒了」**相邻且不互斥** ⇒
+	 *   同归于尽时**先发了战利品**、再走失败流。现在：先取战果，各消费者按它分支。 */
+	const 果 = setup.BABEL.战果?.({ foes, player: DND3.Player }) ?? (foes.every((f) => f.isDown) ? 'victory' : 'stalemate');
+
+	if (果 === 'victory') {
 		run().kills += foes.length;
 		const loot = R.rollLoot(layer);
 		for (const l of loot) R.give(l.id, l.n);
@@ -190,6 +195,15 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		if (loot.length > 0) {
 			R.perform(`战利品：${loot.map((l) => `${R.items.has(l.id) ? R.createItem(l.id).name : l.id}×${l.n}`).join('、')}。`);
 		}
+		/* ★`books#180`：**只有真胜利**写进度（打晕／僵持／失败都不写）—— 头目硬门的数据源。 */
+		setup.BABEL.记战果?.(layer, 果);
+	}
+
+	/* ★`books#180`：头目战场上的**非胜利收场** ⇒ 退回**准备区**（操作者裁定「撤退落点＝准备区」；
+	 *   本仓的交互战斗没有独立「撤退」机制 ⇒ 「撤退」＝**未胜而离场**，与僵持／击晕同一条落点）。
+	 *   ⚠ 位置写在 `map.moveTo`（✗ 只改读数）：下一屏就是准备区那张图。 */
+	if (果 !== 'victory' && !DND3.Player.isDown && setup.BABEL.落准备区?.(layer)) {
+		R.perform('它没有追出来。你退回门前的营地，喘了口气。');
 	}
 
 	if (DND3.Player.isDown) {
