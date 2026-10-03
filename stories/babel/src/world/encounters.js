@@ -157,6 +157,72 @@ setup.BABEL.读档 = () => {
 	return false;
 };
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * `books#178` 件 1：**快速存档 UI**（`#172` §8.2 · 三槽制 · 战斗外常驻）
+ *
+ * ★宿主面（本席**实测**取得，✗ 读压缩产物推断）：`SugarCube.Save.slots` ＝
+ *   `{ ok, length, isEmpty, count, has, get, load, save, delete }`；`length` 为 **8**
+ *   （`Config.saves.maxSlotSaves = 8` ⇒ 票面「≥3」**已满足**，无需改配置）。
+ *   存：`slots.save(i, 名称)`；读：`slots.get(i)` ⇒ 元数据 `{type,desc,date,id,rpgSave}`。
+ *   ★**名称落在 `desc`**（✗ 不叫 `title`）—— 本席实测所得，勿凭印象写成 `title`。
+ *
+ * 三槽（票面 §8.2）：槽 0 快存（主动覆盖）｜槽 1 战前保底（整备点自动写·最新胜）｜槽 2 手动。
+ * P0：**战斗中禁存** —— 由 `setup.BABEL.战中` 门控，`fight()` 在战前置位、战后清零。
+ ══════════════════════════════════════════════════════════════════════════════ */
+const 槽位 = Object.freeze({ 快存: 0, 战前保底: 1, 手动: 2 });
+setup.BABEL.槽位 = 槽位;
+setup.BABEL.战中 = false;
+
+/** 宿主槽位面（缺席即 null —— 无头／桩环境）。 */
+const 宿主槽 = () => (globalThis.SugarCube ?? globalThis)?.Save?.slots ?? null;
+setup.BABEL.宿主槽 = 宿主槽;
+
+/** 槽位上限（宿主不报 ⇒ 退回票面下限 3）。 */
+const 槽上限 = () => (globalThis.SugarCube ?? globalThis)?.Config?.saves?.maxSlotSaves ?? 3;
+
+/** **自动命名**（票面 §8.2：带**真实层数**）：`层·地点名`，战前保底再加 `·战前`。 */
+setup.BABEL.存档名 = ({ 战前 = false } = {}) => {
+	const m = setup.BABEL.map;
+	const 层 = setup.BABEL.layerOf?.() ?? null;
+	const 地名 = m?.locations?.get?.(m.current)?.name ?? String(m?.current ?? '未知');
+	return `${层 ?? '?'}·${地名}${战前 ? '·战前' : ''}`;
+};
+
+/** **可否存档**（P0：战斗中一律拒绝；宿主或槽位不可用亦拒）。 */
+setup.BABEL.可存 = (slot = 槽位.快存) => {
+	if (setup.BABEL.战中) return false;
+	const S = 宿主槽();
+	if (typeof S?.save !== 'function') return false;
+	return Number.isInteger(slot) && slot >= 0 && slot < 槽上限();
+};
+
+/** **快存**：`slot` 缺省＝槽 0。战斗中拒绝并给玩家可读文案（✗ 静默）。 */
+setup.BABEL.快存 = (slot = 槽位.快存, opts = {}) => {
+	if (setup.BABEL.战中) { R.perform('战斗中不能存档 —— 先离开这一场。'); return false; }
+	if (!setup.BABEL.可存(slot)) {
+		console.warn('[BABEL] 存档不可达（`Save.slots` 缺席或槽位越界）—— 请用侧栏的存档入口。');
+		R.perform('这里的存档入口暂时不可用。');
+		return false;
+	}
+	const 名 = setup.BABEL.存档名(opts);
+	宿主槽().save(slot, 名);
+	R.perform(`已存档：${名}`);
+	return true;
+};
+
+/** **快读**：槽位空 ⇒ 出声回落（✗ 静默无反应 —— 那会让按钮看起来坏了）。 */
+setup.BABEL.快读 = (slot = 槽位.快存) => {
+	const S = 宿主槽();
+	if (typeof S?.load !== 'function' || typeof S.isEmpty !== 'function') {
+		console.warn('[BABEL] 读档不可达（`Save.slots` 缺席）—— 请用侧栏的存档入口。');
+		R.perform('这里的读档入口暂时不可用。');
+		return false;
+	}
+	if (S.isEmpty(slot)) { R.perform('这个存档位还是空的。'); return false; }
+	S.load(slot);
+	return true;
+};
+
 setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★**早退出口**（`#1877` P1-6）：本段原靠一条静态链 `[[打完，继续探索|探索]]` 兜底，
 	 *   而静态链在**段落渲染时**即出现（战斗根本还没打）⇒ 玩家以为已打完了。
@@ -182,7 +248,14 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	const foes = rolled.map((e) => fresh(e.ref, e.elite));
 	R.perform(`挡在前面的是：${foes.map((f) => f.name).join('、')}。`);
 
-	await new R.Battle(8, [DND3.Player], foes, interactive).execute();
+	/* ★`books#178` P0：**战斗中禁存** —— 战前置位、`finally` 清零（异常路径也要清零，
+	 *   否则一次抛错会把「禁存」永久留在盘上，玩家此后哪都存不了）。 */
+	setup.BABEL.战中 = true;
+	try {
+		await new R.Battle(8, [DND3.Player], foes, interactive).execute();
+	} finally {
+		setup.BABEL.战中 = false;
+	}
 
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
 	 *   旧形把「胜」写成 `foes.every(isDown)`，与下面的「玩家是否也倒了」**相邻且不互斥** ⇒
