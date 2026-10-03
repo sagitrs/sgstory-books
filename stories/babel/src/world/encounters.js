@@ -324,7 +324,12 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	 *   否则一次抛错会把「禁存」永久留在盘上，玩家此后哪都存不了）。 */
 	setup.BABEL.战中 = true;
 	try {
-		await new R.Battle(8, [DND3.Player], foes, interactive).execute();
+		/* ★`sagitrs/sgstory#1934`（doc-3 §2.8）：**回合上限由遭遇声明**（层表行 ＋ 条目可覆写 ＋ 缺省 8）——
+		 *   原先把 `8` **写死**在故事侧 ⇒ 上一层想收短/放长（教学层 3 回合、硬层 12 回合）改不动。
+		 *   取源＝`rollEncounter` 返回的**条目自身**（引擎已把「条目 ⇒ 行 ⇒ 缺省」算好 ⇒ 故事侧只读一处）。
+		 *   ⚠ `?? 8` 是**旧 pin 的读回落**（老引擎的条目没有这个字段）⇒ ✗ 新面在位时一律走它。 */
+		const 限 = rolled[0].roundLimit ?? 8;
+		await new R.Battle(限, [DND3.Player], foes, interactive).execute();
 	} finally {
 		setup.BABEL.战中 = false;
 	}
