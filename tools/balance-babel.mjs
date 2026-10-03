@@ -72,6 +72,13 @@ const 选敌方 = (options) => {
 	const 敌 = options.filter((o) => /（敌方）/.test(o.text));
 	return (敌[0] ?? options[0]).value;
 };
+const 选己方 = (options) => {
+	const 己 = options.filter((o) => /（己方）/.test(o.text));
+	return (己[0] ?? options[0]).value;
+};
+/** ★`#182` 折：目标步按**上一步选了什么**定去向 —— 治疗件（草药糊／绷带）⇒ 己方，其余⇒敌方。
+ *  先前一律选敌方 ⇒ `防疗` 夹具名不副实（量的是「带治疗件但从不使用」）。 */
+const 选目标 = (options, ctx) => (/草药糊|绷带/.test(String(ctx?.上次选文案 ?? '')) ? 选己方(options) : 选敌方(options));
 
 const STRATEGIES = {
 	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
@@ -85,7 +92,7 @@ const STRATEGIES = {
 	},
 	/* 防疗：血低先治（草药糊／绷带），否则治疗优先，再次才是攻击。 */
 	'防疗': (options, ctx) => {
-		if (目标步(options)) return 选敌方(options);
+		if (目标步(options)) return 选目标(options, ctx);
 		if (ctx.自己血比 < 0.5) {
 			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
 			if (治) return 治.value;
@@ -314,10 +321,14 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				回合: 轨迹.length + 1,
 				自己血比: (D3.Player.hp ?? 0) / Math.max(1, D3.Player.maxHp ?? 1),
 				敌血: 敌组.map((e) => e.hp),
+				/* ★`#182` D 席折：策略需要知道**上一步选了什么**（治疗件要指己方、攻击件指敌方）。
+				 *   先前只有「自己血比」⇒ 目标步**一律选敌方** ⇒ `防疗` 夹具**永远不会治疗**
+				 *   （把治疗品从各 1 件加到各 4 件，读数与回合数**一字不变** —— `tester-3` 实测）。 */
+				上次选文案: 轨迹.at(-1)?.选文案 ?? null,
 			};
 			const pick = 策略(o, ctx);
 			const hit = o.find((x) => x.value === pick) ?? o[0];
-			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null });
+			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null });
 			return hit?.value ?? 'skip';
 		};
 		/* ★**走真路**（`books#182` RC 的修法）：交回故事自己的遭遇入口 —— 它自己滚遭遇、
