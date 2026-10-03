@@ -2086,6 +2086,46 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 		ok(四臂.stunned === 'stunned', `★打晕判成了「${四臂.stunned}」—— §14 ⑥「击晕不开门」`);
 		ok(四臂.同归于尽 === 'down', `★同归于尽判成了「${四臂.同归于尽}」—— 玩家出局优先于「敌全倒」（旧形两判不互斥之处）`);
 
+		/* ★**独立格**（`sgstory#1934` 的 T 席明账，`books#226` 收并后解锁）：
+		 *   故事侧 `B.战果(...)` **投出的名** 与 **引擎当场 `RPG.outcomeResolver.resolve(...)` 的答复**
+		 *   经**本格自持**的一份 §14 规范表投出的名 —— 两者须**逐字一致**。
+		 *
+		 * ★为何本格要**自持一份表**（✗ 不读 `world/boss.js` 那张）：读它的话，「被测的映射表」与
+		 *   「断言里的期望」**同源** ⇒ 改错会一起错（＝重言）。自持之后：**映射漂一格 ⇒ 本格红**；
+		 *   引擎的次序语义若变（如「全晕」翻面）⇒ **也红**。
+		 * ★桩里**同时给 `isDown` 与 `hp`/`nonlethal`**：故事侧读 `isDown`、引擎**缺省** `isOut` 读
+		 *   `hp<=0`／`isKnockedOut` ⇒ 只给一个字段会让两边口径不同 ⇒ **假红**（✗ 不是判据要守的事）。 */
+		{
+			const 解 = R.outcomeResolver?.resolve;
+			/* ★本格自持的 §14 规范（✗ 不引故事侧那张）：五战果 ⇒ 故事四名 */
+			const 自持投影 = (五, winner) => {
+				if (五 === 'death') return 'down';
+				if (五 === 'knockout') return winner === 'enemies' ? 'down' : 'stunned';   // 敌方全出局且全晕
+				if (五 === 'victory') return 'victory';
+				return 'stalemate';                                                        // retreat／stalemate
+			};
+			if (typeof 解 !== 'function') {
+				console.log('  · 独立格：`RPG.outcomeResolver` 缺席（旧 pin 回落）⇒ 记声明、**不判红**'
+					+ '（故事侧按票面「一字不动」走原四臂；本格在引擎面在位时才断）');
+			} else {
+				const 案 = [
+					['真击杀', { isDown: true, hp: 0, maxHp: 5 }, { isDown: false, hp: 5, maxHp: 20 }],
+					['打晕', { isDown: true, hp: 1, maxHp: 5, nonlethal: 9 }, { isDown: false, hp: 5, maxHp: 20 }],
+					['僵持', { isDown: false, hp: 5, maxHp: 5 }, { isDown: false, hp: 5, maxHp: 20 }],
+					['同归于尽', { isDown: true, hp: 0, maxHp: 5 }, { isDown: true, hp: 0, maxHp: 20 }],
+				];
+				for (const [名, 对手, 玩] of 案) {
+					const 故事名 = B.战果?.({ foes: [对手], player: 玩 });
+					const 引擎答 = 解({ players: [玩], enemies: [对手], completedRounds: 0, roundLimit: 8, retreatAccepted: false });
+					const 引擎名 = (引擎答 == null) ? 'stalemate' : 自持投影(引擎答.outcome, 引擎答.winner);
+					ok(故事名 === 引擎名,
+						`★独立格[${名}]：故事侧投「${故事名}」≠ 引擎解析投「${引擎名}」`
+						+ `（引擎原答 outcome=${JSON.stringify(引擎答?.outcome)}／winner=${JSON.stringify(引擎答?.winner)}）`
+						+ ' —— 投影表或引擎次序有一处漂了');
+				}
+			}
+		}
+
 		/* ④ 门：未过 ⇒ 0 条；记 victory ⇒ 1 条 */
 		State.variables.babelRun.bosses = {};
 		const 门_未过 = map.exitsFrom('L9').filter((e) => e.to === 'L10-camp').length;
