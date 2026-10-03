@@ -842,6 +842,21 @@ head('⑲b 保存域登记（`#1902`／`#1903`：`$span1Arc` 进 `envelope().dom
 			: `  域登记：domains **不含** span1Arc（${域.length} 个域）｜实得 ${JSON.stringify(域)}`);
 		ok(含, `★\`span1Arc\` 不在 \`envelope().domains\`（实得：${JSON.stringify(域)}）⇒ 故事侧新键未登记`);
 	}
+	/* ★`#1902` 审计面加固：**按键表逐键断**（✗ 逐个键各写一条硬编断言）。
+	 *   既有断言断的是 `span1Arc` 与 `span1Foresee`（两个**硬编键名**）——键表新加一个键时，登记循环会自动
+	 *   把它登记上，但**判据里那份硬编名单不会跟着长** ⇒ 新键少了「进 domains」这一答。
+	 *   读的键表由故事侧导出（`setup.BABEL.保存域键`）—— 与登记函数**同一份**，✗ 判据里重写一份。
+	 *   本格同时把两种「只有 `console.warn` 看得见」的情形变成**具名红**：
+	 *     ① 登记循环被改窄（漏登记某键）② 某键被引擎**拒收**（与内置域同名 ⇒ `declareDomain` 返回 false）。 */
+	const 键表 = setup.BABEL.保存域键;
+	ok(Array.isArray(键表) && 键表.length > 0, '★故事侧没导出保存域键表（`setup.BABEL.保存域键`）⇒ 本格取不到「一处定义」的那一份');
+	if (Array.isArray(键表)) {
+		const 域表 = en?.domains ?? [];
+		const 未登 = 键表.filter((k) => !域表.includes(k));
+		ok(未登.length === 0,
+			`★键表里有**未进** \`envelope().domains\` 的键：${JSON.stringify(未登)}（域表 ${JSON.stringify(域表)}）⇒ 故事侧新键漏登记`);
+	}
+
 	/* ★`dev-9` NIT-3：本行曾为**裸调用** ⇒ 接口缺席时抛 `TypeError`、脚本**从 ⑲b 崩掉**，
 	 *   其后各格一条不跑（新头 0 格 / 上一头 2 格）。⇒ 包一层能力判，缺席时**只记不可判**，✗ 崩。 */
 	if (typeof R.save?.declareDomain === 'function') {

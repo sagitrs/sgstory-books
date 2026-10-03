@@ -819,9 +819,13 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
  * ★**接口缺席必须显式判**（`dev-9` 阻断 RC）：可选调用 `?.()` 在方法缺席时求值 `undefined`、**不抛**，
  *   故旧的 `try/catch` 对缺席支**永不参与**、那条 `console.warn` 是死支（声明与实现不符）。
  *   现形：`typeof` 显式判 ⇒ 缺席支**真的出声**。函数挂在 `setup.BABEL.登记域` 上 ⇒ **可被调用**（刀用）。 */
+/** 本弧**本局账**的键表（★**一处定义**：`books#133` 笔 1 加 `span1Events`；`books#164` 加 `span1Foresee`）。
+ *  新键**加在这里**，✗ 再写一段登记代码。
+ *  ★`#1902`：本表**导出**（`setup.BABEL.保存域键`）—— 审计面按它**逐键**取读数（✗ 在判据里重写一份键表：
+ *    那样「加了键但漏登记」正是判据看不见的那一种）。 */
+const 保存域键 = ['span1Arc', 'span1Events', 'span1Foresee'];
 const 登记域 = () => {
-	/* ★键表**一处定义**（`books#133` 笔 1 加 `span1Events`；`books#164` 加 `span1Foresee`）：新键加在这里，✗ 再写一段登记代码。 */
-	const keys = ['span1Arc', 'span1Events', 'span1Foresee'];
+	const keys = 保存域键;
 	if (typeof R.save?.declareDomain !== 'function') {
 		console.warn(`[BABEL] 保存域登记口缺席：${keys.join('／')} 未登记（候 \`sgstory#1903\` 的 \`RPG.save.declareDomain\`）`);
 		return false;
@@ -837,6 +841,7 @@ const 登记域 = () => {
 };
 登记域();
 setup.BABEL.登记域 = 登记域;
+setup.BABEL.保存域键 = 保存域键;   // ★`#1902`：审计面按此表逐键断（同源，✗ 判据自写一份）
 /* ★`books#178` 件 2 的需求：**「只给活人」这个闸门必须能被别档取用**（同源，✗ 各自重写一份判活）。
  *   件 2 的营火交易挂在**引擎侧地点**上，绕不过本档 `.map(只给活人)` 那道过滤 ⇒ 只有导出它，
  *   挂上去的动才与地图动作受**同一道**闸门（`#176` 终局后 hub 不给动作的判据据此成立）。 */
