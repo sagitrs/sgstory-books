@@ -148,6 +148,21 @@ jobs:
           echo "冒烟总时长 $((t1-t0))s ｜ $boot"
           { echo "- 冒烟: $((t1-t0))s ｜ $boot"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── `books#209`（F-01）：**真宿主**两半（战中宿主禁存 ＋ 读档后无残影）＋ 两把刀 ──
+      #   为何单开一枝：这两件事**只在真宿主里看得见**（侧栏走 `Config.saves.isAllowed`；
+      #   残影靠真 `Save.slots.load` 才能复现）—— 无头那一路（`verify.mjs` ㊴ 格）用的是照抄的桩。
+      # ★与冒烟并成**一步**（`gates.md` 测试面：每 job 步数有上限）；✗ 不为此另起两步。
+      - name: ★宿主存档门禁与读档面板一致性（books#209）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/e2e-209-host-save.mjs --engine "$GITHUB_WORKSPACE/engine" | tee /tmp/e209.out
+          node tools/e2e-209-host-save.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest | tee /tmp/e209k.out
+          # ★取不到即红（✗ 不吞）：`#91` 那族的教训 —— 输出形变了却不报错，判据会**静默退化**成装饰。
+          grep -q '真宿主判据通过' /tmp/e209.out || { echo "::error title=e2e-window::e2e-209 未打印「真宿主判据通过」（输出形恐已变 ⇒ 见 tools/e2e-209-host-save.mjs）"; exit 1; }
+          grep -q '两把刀如期' /tmp/e209k.out || { echo "::error title=e2e-window::e2e-209 的刀未打印「两把刀如期」（自检恐已退化）"; exit 1; }
+          { echo '```'; tail -3 /tmp/e209.out; echo '---'; tail -4 /tmp/e209k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
         run: |
