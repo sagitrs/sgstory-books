@@ -215,7 +215,26 @@ const eventPending = (layerId, kind) => {
 const EVENT_LAYERS = Object.freeze(['L5', 'L6', 'L7', 'L8']);
 /** ★`books#133` 笔 2：**宝箱奖励表**（一处常量）。缺省＝该层采集点道具（笔 1 的形）；
  *  领队确认「斧铲由 L5／L6 的宝箱事件按层位给」⇒ 两格覆写（其余层走缺省）。 */
-const 宝箱奖励 = Object.freeze({ L5: 'axe', L6: 'shovel' });
+/** ★`books#170` P1-6（试玩反馈）：**箱奖励表**（一处常量）。值一律是**物品** id，**✗ 地点节点** id ——
+ *  原形 `宝箱奖励[L.id] ?? GATHER_OF[L.id]` 的**回落**会把节点（`dead-wood`／`copper-vein`）塞进背包，
+ *  而节点在背包里**不可用**（玩家报的正是 L7 枯木／L8 铜矿脉这两条）。
+ *  ⚠ 逐层配齐（L5–L8），缺一格由下方**装配校验**当场抛（✗ 静默回落）。材料奖励取各层节点的**产出物**
+ *  （出处＝引擎 `src/dnd/dnd3/items/resources.js` 的 `yields`）。 */
+const 宝箱奖励 = Object.freeze({
+	L5: 'axe',          // 工具（笔 2 领队裁：斧由 L5 箱给）
+	L6: 'shovel',       // 工具（同上：铲由 L6 箱给）
+	L7: 'wood',         // 材料：L7 节点 `dead-wood` 的**产出**（✗ 给节点本身）
+	L8: 'copper-ore',   // 材料：L8 节点 `copper-vein` 的**产出**（✗ 给节点本身）
+});
+/* ★装配校验（P1-6 的第三件）：每个事件层都必须有箱奖励 —— 缺配置**当场抛**（故事起不来 ＝ 装配红）。
+ *  静默回落到节点正是本缺陷的成因 ⇒ 宁可让它炸在装载期。 */
+for (const id of EVENT_LAYERS) {
+	if (!宝箱奖励[id]) {
+		throw new Error(`[babel] 箱奖励表缺 ${id}（\`books#170\` P1-6：须逐层显式给**物品** id，✗ 回落 \`GATHER_OF\`）`);
+	}
+}
+/** 奖励是否为**工具**（判据取 `world/tools.js` 导出的表本身 ⇒ ✗ 在文案处再写一遍层名）。 */
+const 工具奖励 = (id) => !!setup.BABEL.工具?.TOOLS?.[id];
 /** 池里各类的**动作形**（`L` ⇒ action）。`chest` 的奖励取该层采集点道具：✗ 新数值面（笔 1 不引入）。 */
 const EVENT_ACTIONS = {
 	chest: (L) => ({
@@ -224,9 +243,11 @@ const EVENT_ACTIONS = {
 		when: () => eventPending(L.id, 'chest'),
 		action: () => {
 			markUsed(L.id, 'chest');
-			const 奖 = 宝箱奖励[L.id] ?? GATHER_OF[L.id];
+			const 奖 = 宝箱奖励[L.id];
+			/* ★`books#170` P1-6：**不得回落** `GATHER_OF`（那是地点节点）—— 见 `宝箱奖励` 头注。 */
+			if (!奖) throw new Error(`箱奖励缺配置：${L.id}（\`books#170\` P1-6）`);
 			R.give(奖);
-			R.perform(宝箱奖励[L.id]
+			R.perform(工具奖励(奖)
 				? '箱底压着件趁手的东西 —— 还算能用。'
 				: '箱盖一掀就开了，里头的干货还能用。');
 		},
@@ -630,6 +651,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	预报可选, 预报账, 预报类, 记预报, 可预知, 类名, 预知动作, 预知授予层,
 	/* ★`books#133` 笔 3：头目弧的机器件（同上理由：判据/刀要能**真调用**）。 */
 	LAYER_META, 是头目层, 头目层前方, 边守卫,
+	宝箱奖励表: 宝箱奖励,    // ★`books#170` P1-6：判据按**表**取读数（✗ 在判据里重写一份）
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
 	makeExploreScene,              // ★`books#136`：读档重注册用（`story/hooks.js` 消费；与下方注册同源）

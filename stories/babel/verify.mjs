@@ -1686,6 +1686,55 @@ head('㉘ 预知实效（`books#164`）');
 	}
 }
 
+/* ── ㉚ 箱奖励表（`books#170` P1-6）──────────────────────────────
+ *
+ * 它回答的问题：**每个事件层的箱奖励是不是一件真物品、且不是该层的地点节点？**
+ *   ① 表在且逐层配齐（缺格由装载期校验抛）② 奖励 id **已注册**（「须是物品」只靠名字看不出来）
+ *   ③ 奖励**不是**该层 `gatherPoints` 里的**节点**（节点进背包不可用 —— 正是试玩报的形）
+ *   ④ ★**逐层真开一次箱**：拿到配置里那一件，且**不得**含该层节点（判据钉行为，✗ 只核表）。
+ *   ⚠ 抽签靠注入随机源（`index(3)=0 ⇒ chest`）＋账清空（同 ㉓／㉖ 的形）。 */
+head('㉚ 箱奖励表（`books#170` P1-6）');
+{
+	const 存账 = State.variables.span1Events;
+	/* ★存**副本**（✗ 引用）＋清时**赋新数组**（✗ 就地 `.length = 0`）—— `dev-10` 的装置瑕疵记录：
+	 *   首版两处都写成了「就地」，于是「复原」把**装了本格战利品**的那个数组又放回去了（他在票面给了探针读数）。
+	 *   今日无影响（本格是末格），但日后在其后加格会继承被污染的背包 ⇒ 按 ⑳ 的同族形改。 */
+	const 存包 = (State.variables.inventory ?? []).slice();
+	const 存位 = map.current;
+	try {
+		const 表 = B.宝箱奖励表;
+		ok(!!表, '★没导出 `宝箱奖励表`（`world/babel.js`）');
+		const 层 = B.EVENT_LAYERS ?? [];
+		const 缺 = 层.filter((id) => !表?.[id]);
+		ok(缺.length === 0, `★事件层缺箱奖励（${JSON.stringify(缺)}）—— 装载期校验该先抛`);
+		const 未注册 = 层.filter((id) => 表?.[id] && !R.items.has(表[id]));
+		ok(未注册.length === 0, `★箱奖励里有**未注册**的 id（${JSON.stringify(未注册.map((id) => `${id}→${表[id]}`))}）—— 「须是物品」只靠名字看不出来`);
+		const 是节点 = 层.filter((id) => !!B.gatherPoints?.[id] && B.gatherPoints[id] === 表?.[id]);
+		ok(是节点.length === 0, `★有层的箱奖励给的是**地点节点**（${JSON.stringify(是节点)}）—— 节点进背包不可用，正是 P1-6 的因`);
+		const 行 = [];
+		for (const id of 层) {
+			State.variables.span1Events = {};
+			State.variables.inventory = [];           // ★赋新数组（✗ 就地清空 —— 那会连存档一起清，见上注）
+			R.rng.setSequence([0, 0, 0.99]);          // index(3)=0 ⇒ 'chest'；rest index(2)=0 ⇒ 'gather'；危害 miss
+			map.moveTo(id);
+			R.rng.reset();
+			const 动 = map.locations.get(id)?.actions.find((a) => a.事件类 === 'chest');
+			if (!动) { 行.push([id, '无箱子动作']); continue; }
+			动.action();
+			const 得 = (State.variables.inventory ?? []).map((s2) => s2.id);
+			const 节点 = B.gatherPoints?.[id];
+			行.push([id, 表[id], 得.includes(表[id]) ? '✓' : '✗', 节点 && 得.includes(节点) ? '★含节点' : '']);
+		}
+		const 坏 = 行.filter((r) => r[2] !== '✓' || r[3] === '★含节点');
+		ok(坏.length === 0, `★逐层开箱不符（${JSON.stringify(坏)}）—— 应给配置里那一件，且**不得**给该层节点`);
+		console.log(`  箱奖励：${层.map((id) => `${id}→${表?.[id]}`).join('｜')}（逐层真开箱 ${行.map((r) => `${r[0]}${r[2]}${r[3] || ''}`).join(' ')}）`);
+	} finally {
+		State.variables.span1Events = 存账;
+		State.variables.inventory = 存包;
+		if (map.locations.has(存位)) map.moveTo(存位);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
