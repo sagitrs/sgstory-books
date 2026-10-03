@@ -848,13 +848,13 @@ setup.BABEL.保存域键 = 保存域键;   // ★`#1902`：审计面按此表逐
 setup.BABEL.只给活人 = 只给活人;   // ★导出以便判据可**真调用**（✗ 只能静态核）
 R.registerScene(makeExploreScene());
 
-/* ---------- 永久被动「预知」占位（`#1893` E2 · 供 L5 的固定事件授予）----------
- * ★**占位**：无任何效果（✗ 判定字段）—— 只提供挂载面，效果留待 0.0.2。
- * `scope:'persistent'` ⇒ **跨场保留**；而**死亡清档照样清它**（`RPG.respawn` 的清档按角色实例的
- *   `effects` 过滤，与「谁注册」无关 ⇒ 故事侧注册与引擎侧注册语义一致）。
- * ★**注册即验**：未生效即抛（✗ 静默 —— 否则要到 L5 授予时才以「未知效果」暴露）。 */
-R.defEffect({
-	id: 'precognition', name: '预知', kind: 'buff', scope: 'persistent',
-	desc: '（占位：暂无效果）',
-});
-if (!R.effects.has('precognition')) throw new Error('[babel] precognition 注册未生效');
+/* ---------- 永久被动「预知」（**注册面已迁引擎档** · `#1909`／`sgstory#1930`）----------
+ * 原故事侧 `R.defEffect({ id: 'precognition', … })` 已**退役**：注册面现在在**引擎档**
+ *   `src/dnd/dnd3/core/passives.js`（归属理由见该档文件头 —— 通用被动归引擎，Babel 专属数值归故事层）。
+ * ⚠ **退役是必须的**（✗ 不是整洁癖）：引擎与故事两边都注册 ⇒ 加载期打一条
+ *   `[RPG] 效果 id「precognition」重复注册：预知 被覆盖。`（本席实测：退役前 boot 期 14 条「重复注册」，
+ *   含这一条；退役后 13 条、无它）。且两条实现并存时，将来改一处忘另一处会**静默**按后加载者为准。
+ * ★**注册即验照留**（形同原样，只把出处改指引擎档）：未生效即抛 —— ✗ 不留到 L5 授予时才以「未知效果」
+ *   暴露（那时代价是战斗深处的一次崩溃）。 */
+if (!R.effects.has('precognition'))
+	throw new Error('[babel] 引擎档 dnd3/core/passives.js 的 precognition 未生效（pin 是否已含 sgstory#1930？）');

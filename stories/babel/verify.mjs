@@ -778,7 +778,8 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
 	 *   ⚠ ✗ 用 `if (def)` 守卫 —— 那修不到：**抛在取 def 那一行**。 */
 	const registered = R.effects.has('precognition');
 	const def = registered ? R.effectOf('precognition') : null;
-	ok(registered, '★`precognition` 未注册（`R.effects.has` 为假）—— 故事侧 `R.defEffect` 未生效');
+	ok(registered, '★`precognition` 未注册（`R.effects.has` 为假）—— 引擎档 `dnd3/core/passives.js` 未随包加载'
+		+ '（`#1909`／`sgstory#1930` 之后注册面在引擎侧：pin 是否已含该件？）');
 	/* ★未注册 ⇒ 以下三条会**误红**（`def` 为 null）＋ 授予等四条会**抛**
 	 *   ⇒ 全部放进 `else` ⇒ 刀红收成**恰一条**（✗ 四条假红 —— 本席实跑抓到）。 */
 	if (!registered) {
