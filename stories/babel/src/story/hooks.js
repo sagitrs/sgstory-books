@@ -55,6 +55,15 @@ RPG.events.on('item:used', (e) => {
 	const SC = globalThis.SugarCube ?? globalThis;
 	const saveFace = SC?.Save ?? globalThis.Save;
 	saveFace?.onLoad?.add?.(() => {
+		/* ★`books#209` ②（F-01）：读档 ⇒ **敌情栏的模块态归零**。
+		 *   病灶：敌面板读的是 `ui/battle.js` 里两个**不进存档**的量（`当前战斗`／`已见`）
+		 *   ⇒ 读档后世界换了，屏上还是上一场的敌情（writer 实测「载入变野猪第 1 回合 ＋
+		 *   敌情栏残留 19/22」）。本席已在真产物里复现过（真`Save.slots.load` 后面板仍印旧敌）。
+		 *   ★与本订阅里下面的场景重注册**同一处收尾**（两件都是「读档＝换一个世界」的尾巴）
+		 *     —— 顺序无耦合；✗ 别把它挂到 `:passagedisplay`（那每段都跑，卡手）。
+		 *   ⚠ 能力探测：`ui/battle.js` 未落地那么本面缺席 ⇒ 静默跳过
+		 *     （与 `refreshPanels?.`／下面 `makeExploreScene` 的探测同形）。 */
+		setup.BABEL?.敌情栏重置?.();
 		const make = setup.BABEL?.makeExploreScene;
 		if (typeof make !== 'function' || !RPG.scenes.has('babel-explore')) return;
 		RPG.scenes.delete('babel-explore');

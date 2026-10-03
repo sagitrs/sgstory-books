@@ -82,6 +82,28 @@ const 治疗面板 = () => {
 R.registerPanel('enemy', { name: '敌人', host: '[data-panel="enemy"]', render: 敌面板 });
 R.registerPanel('heal', { name: '治疗', host: '[data-panel="heal"]', render: 治疗面板 });
 
+/* ── ★`books#209` ②（F-01 · 残影面）：**读档 ⇒ 模块态归零** ────────────────────
+ *
+ * 病灶（writer 线上实测）：上面这两个量（`当前战斗`／`已见`）住在**模块**里、**不进存档**
+ *   （战斗对象是内存里的活物）⇒ 读档换了世界，屏上还是**上一场**的敌情：
+ *   本席在真产物里复现过 —— 真读档（`Save.slots.load`）之后世界已无此战，
+ *   敌面板仍印「巨蜥 健壮（19/22）」；不眠者复核那一份是「敌情栏仍 8/26」。
+ *
+ * 修法：读档路径上调**这一个面**（订阅在 `story/hooks.js` 的 `Save.onLoad`）。
+ *   ★「清」的作用域**只到内存态**：新档若真在战斗中，`battle:turnEnd` 会把**该档**的战斗
+ *     重新填进来，且已见从**空**开始（✗ 把上一场的爪击带过来）。
+ *   ⚠ 与「换场就清已见」（下面 `battle:turnEnd` 那条）**同结果** ⇒ 无头那格**分辨不出**是哪条清的，
+ *     断的是**不变量**（读档后屏上不得出现上一场的手）—— 已写进票面明账，✗ 不假装有牙。 */
+/* ⚠ **装载序**：本档（`ui/**`）在 `world/**` **之前**被求值（故事脚本按路径排序装载 ⇒ story < ui < world）
+ *   ⇒ 此刻 `setup.BABEL` 还没建。`world/babel.js` 用的是 `Object.assign(setup.BABEL ?? {}, …)`（**合并**）
+ *   ⇒ 这里自建**空壳**不会被它冲掉（✗ 也不去替它建面：只补上本档要的那个键）。 */
+setup.BABEL ??= {};
+setup.BABEL.敌情栏重置 = () => {
+	当前战斗 = null;
+	已见.clear();
+	R.refreshPanels?.();
+};
+
 /* 战斗实例的两个来源：回合结束（有实例）与战斗结束（只清空）。两处都**自己刷一次**面板 ——
  * ✗ 指望别处（`story/hooks.js` 也订阅了 `battle:turnEnd`），否则注册顺序一变读数就停在旧场。 */
 R.events.on('battle:turnEnd', (e) => {
@@ -90,11 +112,9 @@ R.events.on('battle:turnEnd', (e) => {
 	if (b) 当前战斗 = b;
 	R.refreshPanels?.();
 });
-R.events.on('battle:end', () => {
-	当前战斗 = null;
-	已见.clear();
-	R.refreshPanels?.();
-});
+/* 战斗结束＝**同一个归零面**（`敌情栏重置`）—— 一处行为一处实现（✗ 两处各写一遍三行）。 */
+R.events.on('battle:end', () => { setup.BABEL.敌情栏重置(); });
+
 R.events.on('item:used', (e) => {
 	if (!是敌方(e?.actor)) return;
 	const 集 = 已见.get(e.actor) ?? [];

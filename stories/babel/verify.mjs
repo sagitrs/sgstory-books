@@ -82,6 +82,15 @@ SugarCube.Engine.play = (name) => { globalThis.__played.push(name); };
 
 load(path.join(root, 'tests/unit/dist/bundle.js'));   // 插件源码（build.py 生成）
 
+/* ---------- ★`books#209`：装载**前**给一个最小的宿主配置桩 ----------
+ * 用途只有一个：让故事脚本**装载期那一次**「装宿主存档门」真的跑到 —— 否则无头里
+ *   `Config` 永远缺席，「装了没有」就永远判不了（那会把该判据变成**死区**）。
+ * ★桩**只给空 `saves`**（✗ 不给 `maxSlotSaves` ⇒ `槽上限()` 仍走回落，与先前逐字同；
+ *   ✗ 不给 `isAllowed` ⇒ 包装层从「宿主无判定」那一支上装 —— 那正是真产物的初值）。
+ * ⚠ 本桩**不删**：留着才能让下面的㊴ 格分别断「装载期装的」与「当场装的」两条路。 */
+const 宿主配置桩 = { saves: {} };
+globalThis.SugarCube = { ...(globalThis.SugarCube ?? globalThis), Config: 宿主配置桩 };
+
 /* ---------- 装载故事侧脚本（与 build.py 同形：IIFE ＋ RPG 别名）---------- */
 const storySrc = path.join(here, 'src');
 const jsFiles = [];
@@ -2540,6 +2549,99 @@ head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 	D.Player.stats.heal_bonus = 存.加成;
 	console.log(`  战斗面：档位三档（含 2/3 与 1/3 两个边界）＋出局两向 ✓｜AC 走 acOf（对照件 +3）✓｜已见动作去重 ✓｜`
 		+ '治疗读数（行为对账：面板预计恢复 ＝ 引擎实回）✓｜战斗结束后清空 ✓');
+}
+
+/* ---------- ㊴ 宿主面存档门禁 ＋ 读档后面板一致性（`books#209` F-01 两半）----------
+ * 病灶（writer 线上实测）：①**故事侧**快存已被 `#183` 的 P0 拦住，而**侧栏的普通存档**（宿主口子）
+ *   战中未禁 ⇒ 存下的是**半截状态**；②存巨蜥战第 2 回合 ⇒ 载入变野猪第 1 回合 ＋ 敌情栏残留 19/22
+ *   （面板读的 `当前战斗`／`已见` 是**模块态**，不进存档）。
+ * 本格判两半；**真宿主那一路**（真 `Save.slots.save/load` ＋真 DOM）另见 `tools/e2e-209-host-save.mjs`。
+ *
+ * ★真宿主语义（**本席在真产物里实测**，本格的桩照此造，✗ 凭印象）：`Config.saves.isAllowed(saveType)`
+ *   按**类型**分别来问（`Slot`／`Disk`／`Base64`／`Auto`），拒时宿主自己抛 `saveErrorDisallowed`。
+ * ★桩里放一个**宿主自带的禁用规则**（`Disk` 本就被拒）作**对照臂** —— 否则「一律放行」与
+ *   「委托原判定」同值，委托那半的牙看不出来。
+ * ⚠ ②那半的**已见清除**在无头里**断不出独立牙**（与「换场清已见」同一结果）⇒ 本格只断**不变量**
+ *   （读档后屏上不得出现上一场的敌情／动作），并在下面注明这条通路的两处来源。 */
+head('㊴ 宿主存档门禁（战中禁 · 战后委托）＋ 读档后面板归零（`books#209`）');
+{
+	const B = setup.BABEL;
+	/* ---------- ⓪ **装载期**那一次装门（判 boot 接线，✗ 判面向存不存在）----------
+	 * 上面装载故事脚本**之前**给了一个空 `saves` 桩 ⇒ 这里断的正是**装载期真的装了**
+	 *   （拆掉 boot 那一行调用 ⇒ 本子面目名红 ⇒ 不留死区）。
+	 * ⚠ 桩里**没有** `isAllowed` ⇒ 包装层的「原判定」是「宿主无判定」，与本格的 ① 段（有原判定）
+	 *   是**两条不同**的入口 ⇒ 两面各自都判。 */
+	{
+		const 桩判 = 宿主配置桩.saves.isAllowed;
+		ok(typeof 桩判 === 'function',
+			'★装载期没装门（`Config.saves` 在场而装载后 `isAllowed` 仍非函数）—— boot 那次调用没生效');
+		B.战中 = true;
+		ok(桩判?.('Slot') === false && 桩判?.('Auto') === false,
+			`★装载期装的门在战中没拦住（实得 Slot=${桩判?.('Slot')}／Auto=${桩判?.('Auto')}）`);
+		B.战中 = false;
+		ok(桩判?.('Slot') === true, `★无宿主判定时战后没放行（实得 ${桩判?.('Slot')}）`);
+		console.log('  装载期：boot 那一次装门生效 ✓｜战中拦（四类型）✓｜无宿主判定时战后放行 ✓');
+	}
+	/* ---------- ① 门禁：**组合**两向 ＋ 装一次 ＋ 缺席不抛 ---------- */
+	{
+		const 旧SC = globalThis.SugarCube;
+		const 宿主原判 = (类型) => 类型 !== 'Disk';        // ★对照臂：宿主本来就不准存 Disk
+		const cfg = { saves: { maxAutoSaves: 0, maxSlotSaves: 8, isAllowed: 宿主原判 } };
+		globalThis.SugarCube = { ...(旧SC ?? {}), Config: cfg };
+		try {
+			ok(B.装宿主存档门() === true, '★宿主配置在场却装不上门（能力探测把能装的也跳过了）');
+			ok(cfg.saves.isAllowed !== 宿主原判, '★装完了 `Config.saves.isAllowed` 还是宿主原来那一个 ⇒ 没组合');
+			const 类型 = ['Slot', 'Disk', 'Base64', 'Auto'];
+			B.战中 = true;
+			ok(类型.every((t) => cfg.saves.isAllowed(t) === false),
+				`★战中宿主存档没被全类型拒（实得 ${JSON.stringify(类型.map((t) => cfg.saves.isAllowed(t)))}）`
+				+ ' —— 只盖故事侧快存正是 `#183` 留下的这个缺口');
+			B.战中 = false;
+			ok(类型.every((t) => cfg.saves.isAllowed(t) === (t !== 'Disk')),
+				`★战中解除后没**委托**宿主原判定（实得 ${JSON.stringify(类型.map((t) => cfg.saves.isAllowed(t)))}）`
+				+ ' —— 一律放行会把宿主自己的禁用规则吃掉（对照臂：Disk 本该仍被拒）');
+			const 判一 = cfg.saves.isAllowed;
+			ok(B.装宿主存档门() === true && cfg.saves.isAllowed === 判一, '★重复装配叠加了一层包装');
+			ok(B.宿主存档门.原判 === 宿主原判, '★重复装配把「原判定」记成了上一次的包装层');
+			/* 缺席面：宿主配置没有 ⇒ 回落为「没装」且**不抛**（无头／桩环境的同形回落）
+			 *   ⚠ 必须把 `Config` 一并去掉：上面留有**装载期桩**，`{...旧SC}` 会把它带上。 */
+			const 无配 = { ...(旧SC ?? {}) };
+			delete 无配.Config;
+			globalThis.SugarCube = 无配;
+			let 抛 = null;
+			try { ok(B.装宿主存档门() === false, '★宿主配置缺席时该回落为「没装」'); } catch (e) { 抛 = e; }
+			ok(抛 === null, `★宿主配置缺席时装门抛了（实得：${抛?.message}）—— 能力回落面不许抛`);
+			console.log('  门禁：战中四类型全拒 ✓｜战后委托原判定（对照臂 Disk 仍拒）✓｜装一次不叠加 ✓｜缺席不抛 ✓');
+		} finally { globalThis.SugarCube = 旧SC; }
+	}
+
+	/* ---------- ② 读档 ⇒ 面板模块态归零（先铺「上一场」，再**发真读档**）---------- */
+	{
+		const 存 = { hp: D.Player.hp };
+		const 敌 = new (R.Character)({ name: '巨蜥', hp: 19, maxHp: 22, stats: { ac: 12 } });
+		const 假战斗 = { enemies: [敌], players: [D.Player] };
+		R.events.emit('battle:turnEnd', { actor: D.Player, battle: 假战斗 });
+		R.events.emit('item:used', { actor: 敌, name: '甩尾' });          // 已见：本场真出过手的一手
+		const 敌面 = () => R.panelHTML('enemy');
+		ok(敌面().includes('巨蜥') && 敌面().includes('甩尾'),
+			`★前置没铺成（开战事件后敌面板该印巨蜥与已见甩尾；实得：${敌面()}）`);
+		/* ★真读档：`Save.load` 会跑 `onLoad` 处理器 ⇒ 走的正是 `story/hooks.js` 那条订阅（判接线，✗ 判面存在） */
+		Save.load(Save.make());
+		ok(敌面() === '',
+			`★读档后面板仍印上一场的敌情（实得：${敌面()}）—— 残影未清`
+			+ '（模块态 `当前战斗` 不进存档 ⇒ 只能靠读档路径上那一个归零面）');
+		/* 正控（✗ 不得清过头）：新档里真有一场 ⇒ 面板读**该档**的敌组，已见从**空**开始。
+		 *   ⚠ 已见这一断言**分辨不出**「归零面清的」与「换场分支清的」（两条通路同结果）——
+		 *     断的是**不变量**：读档之后屏上不得出现上一场的手。 */
+		R.events.emit('battle:turnEnd', { actor: D.Player, battle: 假战斗 });
+		ok(敌面().includes('巨蜥'), `★读档后新一场的敌组没进面板（实得：${敌面()}）—— 清过了头`);
+		ok(!敌面().includes('甩尾'), `★读档后已见里还带着上一场的手（实得：${敌面()}）`);
+		R.events.emit('item:used', { actor: 敌, name: '咬' });
+		ok(敌面().includes('已见：咬'), `★读档后新场的手记不进去（实得：${敌面()}）—— 清与记两向都得成立`);
+		ok(B.敌情栏重置() === undefined && 敌面() === '', '★归零面没清空面板');
+		D.Player.hp = 存.hp;
+		console.log('  读档面：真读档后敌面板归零 ✓｜新一场敌组进得去 ✓｜已见从零起 ✓｜归零面可单独调 ✓');
+	}
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
