@@ -1439,15 +1439,28 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		 *   ① **接线**：`world/boss.js` 里那行 `:enginerestart` 绑定在，**且绑的是 `复位头目`**
 		 *      （剥块注释与行注释后再断 —— 同 ⑲ 的教训）。
 		 *   ② **行为**：真调复位函数（本判据跑在 host 桩里，**没有真 DOM 事件** ⇒ 走那个具名函数）。
-		 *   ★`books#156`（`#155` 的合后遗留）：① 原先只核「`:enginerestart` 与 `jQuery(document).on`
-		 *     两串共现」⇒ 把绑定换成**另一个空函数**、而 `复位头目` 留着且照旧导出时，本臂与②臂**都绿**，
-		 *     而那正是「重开事件不会复位头目」。⇒ 本臂收紧到要求**绑定的目标是指名的那一个**；
-		 *     行注释也一并剥除（只剥块注释时，把绑定写成行注释仍会过，同族）。 */
+		 *   ★`books#156`（`#155` 的合后遗留；`dev-9` 提，`app/sagitrs-developer` 出形）：原先只核
+		 *     「`:enginerestart` 与 `jQuery(document).on` 两串**共现**」⇒ 把绑定换成**另一个空函数**、
+		 *     而 `复位头目` 留着且照旧导出时，本臂与行为臂**都绿**，而那正是「重开事件不会复位头目」。
+		 *     ⇒ 现形为**三层齐断**：
+		 *       ① **运行时身份**：登记面里的每一个钩子都 `===` 导出面的复位本体。
+		 *          （host 桩里的 `jQuery` 是 no-op 代理（引擎 `tests/unit/framework/shims.js:26`）
+		 *          ⇒ 绑定动作**留不下痕迹**，故身份只能靠故事侧的登记面去核。）
+		 *       ② **注册走的是具名登记函数**（摘掉注册、绕开它直接绑 ⇒ 红）。
+		 *       ③ **登记函数绑的是它的参数**（绑别的 ⇒ 红）。
+		 *     ★**行注释与块注释都剥**（只剥块注释时，把绑定写成 `// jQuery…on(…)` 仍会假绿，同族）。
+		 *     ⚠ 真事件触发那一层本档**测不到**（`SugarCube.Engine.restart` 与真 DOM 事件都不在桩里），
+		 *       那一半归 `tools/e2e-drive.mjs` 的真 DOM 面——本档不得写成「真触发」。 */
 		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8')
-			.replace(/\/\*[\s\S]*?\*\//g, '')          // 块注释
-			.replace(/\/\/[^\n]*/g, '');                 // 行注释
-		const 接线 = /jQuery\(document\)\.on\(\s*':enginerestart'\s*,\s*(复位头目|setup\.BABEL\.头目\.复位)\s*\)/.test(bossSrc);
-		ok(接线, '★`world/boss.js` 没有把**复位头目**挂到 `:enginerestart`（引擎的重开事件）⇒ 头目只会被杀一次');
+			.replace(/\/\*[\s\S]*?\*\//g, '')             // 块注释
+			.replace(/(^|[^:])\/\/[^\n]*/gm, '$1');        // 行注释（避开 http:// 这类）
+		const 钩子 = B.头目?.重开钩子 ?? [];
+		const 本体 = B.头目?.复位;
+		const 身份 = typeof 本体 === 'function' && 钩子.length > 0 && 钩子.every((f) => f === 本体);
+		const 注册路 = /注册重开钩子\s*\(\s*复位头目\s*\)/.test(bossSrc) && /on\(\s*':enginerestart'\s*,\s*fn\s*\)/.test(bossSrc);
+		const 接线 = 身份 && 注册路;
+		ok(身份, `★重开事件绑的不是复位本体（登记面 ${JSON.stringify(钩子.map((f) => typeof f))}，复位本体 ${typeof 本体}）⇒ 头目只会被杀一次`);
+		ok(注册路, '★`world/boss.js` 的注册没走具名登记函数，或其登记函数绑的不是参数（接线不可核）');
 		const 原hp = 头目?.hp;
 		if (头目) { 头目.hp = 0; 头目.effects = ['残留']; }
 		const 复位fn = B.头目?.复位;

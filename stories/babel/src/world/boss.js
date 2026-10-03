@@ -40,15 +40,25 @@ DND3.SleeplessOne = R.defCharacter({
  *   `:enginerestart` 之后 `hp` 仍是 0、`effects` 还挂着上一局的，头目就「死了还没死」。
  * ★逻辑抽成**具名函数**、并挂到导出面：`verify.mjs` 跑在 host 桩里（**没有真 DOM 事件**：本席实测
  *   `jQuery(document)` 与 host 的 `document` 不是同一个、自注册探针也触发 0 次）⇒ 判据要能**真调用**
- *   复位逻辑本身，✗ 只能静态核那行绑定。绑定仍在下面一行（静态可核）。 */
+ *   复位逻辑本身，✗ 只能静态核那行绑定。绑定仍在下面一行（静态可核）。
+ *
+ * ★`books#156`（`#155` 的合后遗留，由 `dev-9` 提、`app/sagitrs-developer` 出形）：**登记面**。
+ *   为什么需要它：host 桩里的 `jQuery` 是 **no-op 代理**（引擎 `tests/unit/framework/shims.js:26`）
+ *   ⇒ 绑定动作**留不下任何痕迹**，只核源码文本时「绑的是哪个函数」核不出来：把绑定换成空函数、
+ *   而把真复位挂在导出面上，两层判据都会绿，而那正是「重开事件不会复位头目」。
+ *   ⇒ 把「注册」抽成本函数：**登记进数组 ＋ 做绑定**；判据断言「数组里每一个 === 导出面上的复位本体」，
+ *     并静态核「注册走的是本函数、本函数绑的是它的参数」（三处齐，见 `verify.mjs` 的 ㉗）。 */
 const 复位头目 = () => {
 	DND3.SleeplessOne.hp = DND3.SleeplessOne.maxHp;
 	DND3.SleeplessOne.effects = [];
 };
-jQuery(document).on(':enginerestart', 复位头目);
+const 重开钩子 = [];
+const 注册重开钩子 = (fn) => { 重开钩子.push(fn); jQuery(document).on(':enginerestart', fn); return fn; };
+注册重开钩子(复位头目);
 
 setup.BABEL.头目 = Object.assign(setup.BABEL.头目 ?? {}, {
 	不眠者: DND3.SleeplessOne,
 	抓握: R.items?.['sleepless-grasp'] ?? null,
 	复位: 复位头目,                       // ★判据可调（见上：host 桩里没有真 DOM 事件）
+	重开钩子, 注册重开钩子,               // ★`books#156`：登记面（判据断言「被绑的 === 复位本体」）
 });
