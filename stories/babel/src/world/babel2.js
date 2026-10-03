@@ -139,24 +139,29 @@ map.addLocation(new R.Location({
 /* ---------- 边 ---------- */
 /* ★ 10→11 单向门**本笔才挂**（一段当年挂不上：L11 尚不存在）。挂上后 L11 就有了入边 ⇒ 段间连通。 */
 map.addExit(DND3.span1GateExit());
+/* ★`books#176`：本文件**复用** `babel.js` 导出的终局位闸门（✗ 自建一份 —— `babel.js` 先装载）。 */
+const 边可否通行 = setup.BABEL.边可否通行;
+if (typeof 边可否通行 !== 'function') throw new Error('[babel2] 缺 `setup.BABEL.边可否通行`（`world/babel.js` 未先装载？）');
+
 /* 段内自由（双向）：L11↔…↔L19↔L20-forge */
 for (let i = 0; i < SPAN2_LAYERS.length - 1; i++) {
 	const a = SPAN2_LAYERS[i].id;
 	const b = SPAN2_LAYERS[i + 1].id;
-	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 12} 层` });
-	map.addPath({ from: b, to: a, text: `向下，回第 ${i + 11} 层（段内自由）` });
+	/* ★`books#176`：终局位闸门 —— 复用 `babel.js` 导出的**同一个** `边可否通行`（✗ 自建一份）。 */
+	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 12} 层`, when: 边可否通行(a, b) });
+	map.addPath({ from: b, to: a, text: `向下，回第 ${i + 11} 层（段内自由）`, when: 边可否通行(b, a) });
 }
-map.addPath({ from: 'L19', to: 'L20-forge', text: '走进城墙（第 20 层）' });
-map.addPath({ from: 'L20-forge', to: 'L19', text: '退回第 19 层（段内自由）' });
+map.addPath({ from: 'L19', to: 'L20-forge', text: '走进城墙（第 20 层）', when: 边可否通行('L19', 'L20-forge') });
+map.addPath({ from: 'L20-forge', to: 'L19', text: '退回第 19 层（段内自由）', when: 边可否通行('L20-forge', 'L19') });
 /* 故事侧两地点：从料场分出去的支线（单向去、可回料场） */
-map.addPath({ from: 'L20-settlement', to: 'L20-armory', text: '去军械堆' });
-map.addPath({ from: 'L20-armory', to: 'L20-settlement', text: '回料场' });
-map.addPath({ from: 'L20-settlement', to: 'L20-stable', text: '去马厩' });
-map.addPath({ from: 'L20-stable', to: 'L20-settlement', text: '回料场' });
+map.addPath({ from: 'L20-settlement', to: 'L20-armory', text: '去军械堆', when: 边可否通行('L20-settlement', 'L20-armory') });
+map.addPath({ from: 'L20-armory', to: 'L20-settlement', text: '回料场', when: 边可否通行('L20-armory', 'L20-settlement') });
+map.addPath({ from: 'L20-settlement', to: 'L20-stable', text: '去马厩', when: 边可否通行('L20-settlement', 'L20-stable') });
+map.addPath({ from: 'L20-stable', to: 'L20-settlement', text: '回料场', when: 边可否通行('L20-stable', 'L20-settlement') });
 /* ★`#135` ①（dev-10 预研）：补 **料场 → 炉边** 回边 —— 引擎 hub 两条边皆**单向**
  *   （`src/dnd/dnd3/scenes/span2-hub.js:115-116`：炉边→料场→石门）⇒ 领图后回不了炉边锻造
  *   （README 承诺链路断）。加在**故事侧**（✗ 改引擎）✓ */
-map.addPath({ from: 'L20-settlement', to: 'L20-forge', text: '回炉边' });
+map.addPath({ from: 'L20-settlement', to: 'L20-forge', text: '回炉边', when: 边可否通行('L20-settlement', 'L20-forge') });
 /* ★ `span2GateExit()`（20→21）**只定义不挂图**——`L21` 属三段。下行的「定义存在」断言在 verify.mjs §③。 */
 
 /* ---------- 收尾：终点评语（试玩版到 L20-gate 为止）---------- */

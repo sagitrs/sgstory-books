@@ -258,6 +258,12 @@ if (run.deaths > 0) {
 }
 console.log(`  kills=${run.kills} deaths=${run.deaths}｜玩家 ${D.Player.hp}/${D.Player.maxHp}`
 	+ `｜创伤 [${D.Player.effects.filter((e) => D.Traumas[e]).join(',')}]`);
+/* ★`books#176`：本格可能把玩家**留在终局态**（死亡＝不复活）⇒ 必须放回活人态，
+ *   否则**终局位闸门**（`活着()`）会把**后面每一格**的地图动作与出口全关掉（本席实跑撞到：
+ *   ⑤b 之后 L11 的边读为 0）。 */
+D.Player.hp = D.Player.maxHp;
+D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+State.variables.babelRun.终局 = false;
 
 /* ---------- ⑤b 战败终端＝游戏失败（`books#176`；强制走一次）----------
  * ★本格要测的是「**死亡 → 终局/失败面/停手**」这条面，✗ 不是「本层的怪打不打得死人」。
@@ -311,6 +317,10 @@ ok(globalThis.__played.includes('游戏失败'), `战败后应跳「游戏失败
 /* ★`tester-4` 的刀所指向的那条契约：终局行须印**死亡层**号（✗ 起点层）—— 层读数取错即在此红。 */
 ok(/第\s*3\s*层/.test(终局行), `★终局行没印死亡层号（应含「第 3 层」；实得「${终局行}」）`);
 console.log(`  战败：deaths=${r2.deaths}｜位置 ${map.current}｜体力 ${D.Player.hp}/${D.Player.maxHp}｜death 标记 ${D.Player.contains(R.death.id)}｜跳段 [${globalThis.__played.join(',')}]`);
+/* ★`books#176`：同上 —— 本格刻意把玩家留在终局态，随后**放回活人态**（否则终局位闸门关闭后面各格）。 */
+D.Player.hp = D.Player.maxHp;
+D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+State.variables.babelRun.终局 = false;
 
 /* ---------- ⑥ 第 10 层聚落（#1776 的建造/收获）---------- */
 head('⑥ 聚落闭环（L10）');
@@ -796,7 +806,7 @@ head('⑲ 永久被动「预知」占位（注册 · 授予 · 跨场 · 往返 
 			console.log(`  注册/授予/跨场/往返 ✓｜死亡清档 cleared=${res.cleared} ⇒ ✗残留 ✓`);
 		} finally {
 			/* ★复原（dev-10 NIT-2）：状态键回原值 ＋ 清本格授予的效果 ⇒ ✗ 残留给后续格。
-			 *   ⚠ `respawn` 会把 `P` 搬回起点层 ⇒ 位置面本格不核、也**不复原**（既有 ⑤b 格同样如此，
+			  *   ⚠ 本格直调引擎的 `R.respawn`（**引擎契约**；`books#176` 后故事侧不再调它）⇒ 它会把 `P` 搬回
 			 *     且后续格均显式 `map.moveTo(...)`）。 */
 			P.lose('precognition');
 			P.items = saved.items;
@@ -1770,10 +1780,18 @@ head('㉙ 战败终端＝游戏失败（`books#171`／`#176`）');
 
 		/* ★终局位的**闸门**（`books#176`）：死人不得继续行动 —— 死亡层的地图须**无动作、无出口**。
 		 *   （引擎的出口分支在 `moveTo` 后无条件重绘，那一屏会被画进失败页 ⇒ 否则尸体还能接着玩。） */
-		const 死层动作 = map.locations.get('L5').availableActions.length;
-		const 死层出口 = map.exitsFrom('L5').length;
-		ok(死层动作 === 0, `★终局后死亡层仍给动作（实得 ${死层动作} 条）—— 尸体还能继续玩`);
-		ok(死层出口 === 0, `★终局后死亡层仍给出口（实得 ${死层出口} 条）—— 尸体还能继续走`);
+		/* ★四臂各承一面（`dev-10` 的要求：红须落在**指定面**，✗ 冒充）：
+		 *   ① 一段层动作 ② 一段边（含 `L10-camp→L9` 那条零守卫的）③ **二段边** ④ **hub**（动作与出边都不经层表）。 */
+		const 臂1_动作 = map.locations.get('L5').availableActions.length;
+		/* ★四臂**互斥**（`dev-10`：红须落在指定面，✗ 冒充）：一段/二段各取**普通层**（✗ hub 层 ——
+		 *   那会与臂4 重叠：hub 的出边同属两臂 ⇒ 一把刀会同时打红两臂，读不出「哪一面没挂闸门」）。 */
+		const 臂2_一段边 = map.exitsFrom('L5').length + map.exitsFrom('L9').length;
+		const 臂3_二段边 = map.exitsFrom('L19').length + map.exitsFrom('L12').length;
+		const 臂4_hub = map.locations.get('L10-camp').availableActions.length + map.exitsFrom('L10-camp').length;
+		ok(臂1_动作 === 0, `★[臂1 一段层动作] 终局后仍给动作（实得 ${臂1_动作} 条）—— 尸体还能继续玩`);
+		ok(臂2_一段边 === 0, `★[臂2 一段边] 终局后仍给出口（L5＋L9 实得 ${臂2_一段边} 条）—— 尸体还能继续走`);
+		ok(臂3_二段边 === 0, `★[臂3 二段边] 终局后二段仍给出口（L19＋L12 实得 ${臂3_二段边} 条）—— 二段可带尸行走`);
+		ok(臂4_hub === 0, `★[臂4 hub] 终局后 hub 仍给动作／出边（实得 ${臂4_hub} 条）—— hub 面没挂闸门`);
 
 		/* ② 静态：失败面两钮齐；复活教学段已删（裁定②要求废止 L1–9 的「死亡清背包回 L1」口径） */
 		const twee = fs.readFileSync(new URL('./src/story/play.twee', import.meta.url), 'utf8');
