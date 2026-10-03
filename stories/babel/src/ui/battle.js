@@ -39,13 +39,18 @@ const 档位 = (c) => {
 	return 比 > 2 / 3 ? '健壮' : 比 >= 1 / 3 ? '负伤' : '濒死';
 };
 
-/** 一件的**预计恢复** ＝ **引擎的治疗量**（`DND3.healAmount`）——「一处源」，故事侧**只消费**。
+/** 一件对**玩家本人**的**预计恢复** ＝ **引擎的实回**（`DND3.healDelta(item, from, target)`）。
  *
  *  ★`books#200` P0（操作者试玩 15:07）：本行原先是「件 `stats.hp` ＋ 施用者 `heal_bonus`」的**自算式**
  *    （注释写「与 `used()` 同式」）—— 同一个量两份实现，满血／近满血处一漂就是**两条读数说两样**。
- *    现形：走 `DND3.healAmount`（`src/dnd/dnd3/core/heal.js`，与 `used()` 的落值同源）。
+ *  ★★**为何是 `healDelta`（实回）而不是 `healAmount`（名义量）**（`dev-10`／`tester-3` 的两条 RC 同指）：
+ *    `healAmount` **夹不了 `maxHp`**（它的签名里没有靶）⇒ 满血时它会印一个**拿不到的数**（面板 8／引擎 0）。
+ *    实回＝名义量夹到 `maxHp` 之后**还剩多少**（满血 ⇒ 0，差 1 点满 ⇒ 1）—— 这正是 `verify.mjs` ⑤′
+ *    自己写明的规则（「面板的『预计恢复』須等于引擎**真治一次的实际回血量**」）。
+ *  ⚠ **夹取由引擎做**（✗ 故事侧再写一遍 `Math.min` —— 那又是一份实现，正是本票的病因）。
  *  ⚠ 接口缺席 ⇒ 显式标 `？`（✗ 静默 0 —— 那与「这一点都回不了」同形，正是本票要消灭的假读数）。 */
-const 预计恢复 = (item) => (typeof D.healAmount === 'function' ? D.healAmount(item, D.Player) : '？');
+const 预计恢复 = (item) =>
+	(typeof D.healDelta === 'function' ? D.healDelta(item, D.Player, D.Player) : '？');
 
 /** 治疗件 = 引擎动作目录里归入 `heal` 的那一类（✗ 面板自己判 `battleUse` —— 两处各判一份会漂）。 */
 const 是治疗件 = (item) => R.battleActions?.classOf?.(item) === 'heal';

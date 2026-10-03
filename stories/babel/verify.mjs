@@ -2513,6 +2513,21 @@ head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 	ok(治面().includes(`恢复 ${实回}`),
 		`★面板的「预计恢复」≠ 引擎实际回血量（面板：${治面()}；引擎实回：${实回}）—— 两处算式已漂`);
 
+	/* ⑤″ **夹取态／满血态**（`dev-10` ＋ `tester-3` 两条 RC 同指的缺口）：⑤′ 的夹具 `hp = 2` **离上限够远**
+	 *   ⇒ 名义量 ＝ 实回 ⇒ 面板就算报**名义量**也恰好躲过 ✗。⇒ 在两个夹取态各判一次，期望仍取自
+	 *   **引擎的行为**（真治一次的实际回血量），✗ 不取自第二份算式。 */
+	for (const [态, 前血] of [['差 1 点满', D.Player.maxHp - 1], ['满血', D.Player.maxHp]]) {
+		D.Player.hp = 前血;
+		D.Player.items.push({ id: 'bandage', charges: 1 });
+		const 面板数 = Number((治面().match(/恢复 (\d+)/) ?? [])[1] ?? NaN);
+		R.act(D.Player, 'bandage', D.Player, 'use');     // ★真治一次（满血时引擎**拒绝** ⇒ 实回 0）
+		const 该回 = D.Player.hp - 前血;                 // ＝ 引擎的实际回血量（面板须报它）
+		ok(面板数 === 该回,
+			`★夹取态（${态}）面板报的数 ≠ 引擎实回（面板：${面板数}；引擎实回：${该回}）`
+			+ '—— 报一个**拿不到的数**就是假读数（`D.healAmount` 的名义量正是这一族）');
+		D.Player.items.pop();
+	}
+
 	/* ⑥ 战斗结束 ⇒ 两块都清空（✗ 把上一场的敌组与读数留在屏上） */
 	R.events.emit('battle:end', { players: [D.Player], enemies: [敌] });
 	ok(R.panelHTML('enemy') === '' && R.panelHTML('heal') === '',
