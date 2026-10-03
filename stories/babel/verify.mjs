@@ -2178,6 +2178,46 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 		ok(okBuy === false, '★钱不够却买成了');
 		ok(B.手上有('coin') === 钱前 && B.手上有(卷) === 卷前, '★钱不够却动了账（半买）');
 	}
+	/* ⑥ **到达状态对照**（★本笔最该防的形：一方只到了同一个地点 id，却绕过了 `onEnter`）。
+	 *   两路**各真走一次**，比**到达状态**（层号／`onEnter` 真被调用过／当下可达动作集），
+	 *   ✗ 只比 `map.current` —— 那样「传送直接赋 id 而不走进入流程」的写法照样全绿。
+	 *   ⚠ 探针包在 `onEnter` 外层并**保留旧钩**；格末复原（含进度账与钩子）。 */
+	{
+		const 地点 = m.locations.get(聚);
+		ok(!!地点, '★取不到聚落地点，到达状态对照无法进行');
+		const 旧入 = 地点?.onEnter;
+		let 到过 = 0;
+		const 动作集 = () => (地点?.actions ?? [])
+			.filter((x) => !x.when || x.when())
+			.map((x) => (typeof x.text === 'function' ? x.text() : x.text))
+			.sort();
+		const 到达态 = () => ({ 层: B.layerOf?.() ?? null, 到过, 动作: 动作集() });
+		if (地点) 地点.onEnter = (loc) => { 到过 += 1; return 旧入?.(loc); };
+		const 账 = State.variables.babelRun;
+		const 前账 = 账?.bosses, 前有 = 账 != null && Object.prototype.hasOwnProperty.call(账, 'bosses');
+		try {
+			/* 路 A：**传送**。 */
+			到过 = 0; m.moveTo('L1'); R.give(卷, 1);
+			R.useItem(卷, setup.DND3.Player, setup.DND3.Player);
+			const 甲 = 到达态();
+			/* 路 B：**步行**（先开 `#180` 的头目硬门，再从 L9 走那条边）。 */
+			到过 = 0; m.moveTo('L1'); B.记战果?.('L9', 'victory'); m.moveTo('L9');
+			ok((m.exitsFrom('L9') ?? []).some((e) => (e.to ?? e) === 聚), '★开闸后 L9 的步行出边仍不在');
+			m.moveTo(聚);
+			const 乙 = 到达态();
+			ok(甲.层 === 乙.层, `★两路到达的**层号**不同（传送 ${JSON.stringify(甲.层)} vs 步行 ${JSON.stringify(乙.层)}）`);
+			/* ★`onEnter` 真的被走过（这才是「防绕过进入流程」的正面断言）。 */
+			ok(甲.到过 >= 1, `★传送**没有**经过聚落的进入流程（onEnter 调用 ${甲.到过} 次）`);
+			ok(乙.到过 >= 1, `★步行**没有**经过聚落的进入流程（onEnter 调用 ${乙.到过} 次）`);
+			ok(甲.到过 === 乙.到过, `★两路的进入流程次数不同（传送 ${甲.到过} vs 步行 ${乙.到过}）`);
+			ok(甲.动作.join('|') === 乙.动作.join('|'),
+				`★两路到达后的**可达动作集**不同（传送 ${JSON.stringify(甲.动作)} vs 步行 ${JSON.stringify(乙.动作)}）`);
+			console.log(`  到达态对照：传送 层=${JSON.stringify(甲.层)} 动作数=${甲.动作.length}｜步行 层=${JSON.stringify(乙.层)} 动作数=${乙.动作.length}`);
+		} finally {
+			if (地点) 地点.onEnter = 旧入;
+			if (前有) 账.bosses = 前账; else if (账) delete 账.bosses;
+		}
+	}
 	console.log(`  传送/步行/软拒/买卖四向 ✓｜价目表读数 ${JSON.stringify(B.商铺价)}`);
 }
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
