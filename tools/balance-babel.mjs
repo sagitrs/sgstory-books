@@ -80,6 +80,21 @@ const 选己方 = (options) => {
  *  先前一律选敌方 ⇒ `防疗` 夹具名不副实（量的是「带治疗件但从不使用」）。 */
 const 选目标 = (options, ctx) => (/草药糊|绷带/.test(String(ctx?.上次选文案 ?? '')) ? 选己方(options) : 选敌方(options));
 
+/** ★`books#203` 的工具侧堵点（`dev-9` 报的校准链总堵点）：装备面会把**防具的「用」项**摆进选单，
+ *   而它**不是攻击** —— 选它 ⇒ 引擎抛「『重木盾』是防具，装备后即生效；『用』它不产生额外效果」。
+ *   本器三条策略原先一律回退 `options[0]`（选单**第一条**）⇒ 一旦那条是防具的「用」项，**全样本抛错**
+ *   （乙保证装备后选单变长，这个坑才露出来）。
+ *   ⇒ 回退口径：**跳过** ＞ 第一个非「用／装备／卸下」项 ＞ 才认命取 `options[0]`。
+ *   ★这是「回退必须落在**它的语义**里」那一族：回退的用途是**打**，✗ 不是「随便点一个」。 */
+const 防具用项 = /^用|装备|防具|卸下/;
+const 跳过项 = /跳过|结束|不动作|观望/;
+const 攻击回退 = (options) => {
+	const 跳过 = options.find((o) => 跳过项.test(String(o?.text ?? '')));
+	if (跳过) return 跳过.value;
+	const 可打 = options.find((o) => !防具用项.test(String(o?.text ?? '')) && !跳过项.test(String(o?.text ?? '')));
+	return (可打 ?? options[0]).value;
+};
+
 const STRATEGIES = {
 	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
 	'纯攻': (options, ctx) => {
@@ -88,7 +103,7 @@ const STRATEGIES = {
 		if (攻) return 攻.value;
 		const 空手 = options.find((o) => /空手/.test(o.text));
 		if (空手) return 空手.value;
-		return options[0].value;
+		return 攻击回退(options);
 	},
 	/* 防疗：血低先治（草药糊／绷带），否则治疗优先，再次才是攻击。 */
 	'防疗': (options, ctx) => {
@@ -99,13 +114,13 @@ const STRATEGIES = {
 		}
 		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
 		if (攻) return 攻.value;
-		return options[0].value;
+		return 攻击回退(options);
 	},
 	/* 空手：只找空手打击（用于「空手击晕」夹具）。 */
 	'空手': (options) => {
 		if (目标步(options)) return 选敌方(options);
 		const 空手 = options.find((o) => /空手/.test(o.text));
-		return 空手 ? 空手.value : options[0].value;
+		return 空手 ? 空手.value : 攻击回退(options);
 	},
 	/* 跳过：一律跳过（对照组 —— 用来证明「不打」与「打」的战果不同，见自证）。 */
 	'跳过': () => 'skip',
