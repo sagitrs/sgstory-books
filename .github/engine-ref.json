@@ -1,6 +1,6 @@
 {
-  "ref": "a7f2a9b345f5b9b5245e62e58ed5e5641f29b39c",
+  "ref": "629955cf8c5d950c3c3efd9ca65b29ca360521e6",
   "branch": "main",
-  "why": "本次升级：`sgstory#1918`（PR #1919）单靶一键直达（唯一候选 ⇒ 选单直出一键项）＋ 草药糊 `battleUse:{class:'heal'}` 声明（books#188 甲案；P1-4 的战斗内治疗入口由此可点）。自上一 pin `2ad9fbc5` 起 1 个 PR。",
-  "checked": "本地核过（本笔；★引擎=`a7f2a9b3`）：①pin=sgstory main tip 40 位 ✓②新 pin 下 books 三装置 rc=0（CI 同套）③检出==pin 自证步在位。"
+  "why": "本次升级：`sgstory#1928`（PR #1928）治疗件改「实回」口径 —— `used()` 的文案不再印**名义量**、满血 ⇒ 出声 ＋ 拒绝（不扣件）；治疗量的算式收成**一处源**（新档 `dnd3/core/heal.js` 的 `healAmount`／`healDelta`／`applyHeal`，三件道具同读）。本仓同笔消费该一处源：治疗面板的「预计恢复」改读 `DND3.healAmount`（✗ 自算一份），并补**背包栏路径**的对账判据（驾驶层面 T）。直接动因＝`books#200` P0（操作者试玩 15:07：满血点草药糊印「受到2点治疗」而体力条不动）。自上一 pin `a7f2a9b3` 起 1 个 PR。",
+  "checked": "本地核过（本笔；★引擎=`629955cf`）：①pin=sgstory main tip 40 位 ✓②`git worktree` 在 pin 上跑：构建（同参重建两遍 sha1 相同）＋ 场景链 ＋ 清单引用核 ＋ 装配自检 ＋ 恒绿门自证 ＋ 驾驶层（含面 T）＋ 驾驶层刀 全绿 ✓③检出==pin 自证（`git -C <引擎> rev-parse HEAD` 与 `ref` 逐字相同）✓④引擎仓 tracked 面无改动 ✓。"
 }
