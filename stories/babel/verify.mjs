@@ -1840,83 +1840,93 @@ head('㉙ 战败终端＝游戏失败（`books#171`／`#176`）');
 	}
 }
 
-/* ── ㉛ L8 温泉（`books#177`）────────────────────────────────────
- *
+/* ── ㉛ L8 温泉（`books#177`；改向见下）────────────────────────────────────
  * 它回答的问题：**「L9 硬门前的满状态前提」在装置上成立吗？**
- *   出处：操作者裁定 2026-10-03 03:52（`#170`）第③条「L8 增温泉事件（回复所有状态）—— 确保满装备＋SL 可过」，
- *   领队注明「须与选择制共存且不冲突—— L8 若已抽签，温泉动作照常可用」。
- * 本格断四件：①**共存**（与抽签零耦合：**择一之后**事件面清空，而温泉仍在 —— 两向对照：事件动作 2→0、温泉 1→1）
- *   ②**全回复**（先造伤 ⇒ 用温泉 ⇒ hp 满／效果空／工具耐久回初值）③**每局一次**（用过即退场，重进不复现）
- *   ④**满状态进 L9 的前提可证**（温泉后进 L9 ⇒ 满血、无效果）。
- * 刀：① 改成池内事件（`when` 加 `eventPending`）⇒ 共存臂红；② 少清一样（不清效果）⇒ 全回复臂红；
- *    ③ 去掉「每局一次」的账 ⇒ 第三条红。
- * ⚠ 装置：本格改 hp／effects／背包／账／位置 ⇒ 末了**存-复原**；抽签靠注入随机源。 */
+ *   出处：操作者裁定 03:52（`#170`）第③条；**改向** 04:33（`#172` 的 §14 批复 ⑧⑨）：
+ *     可重复＋耗游戏时间（时间成本＝占位常量）｜范围＝HP＋非致命伤＋**恢复表内**的负面状态
+ *     （长期正面／资源消耗**保留**）⇒ 撤「每局一次」与「耐久回初值」两处旧形。
+ * 本格断五件：①**共存**（与抽签零耦合：择一之后事件面清空、温泉仍在 —— 两向对照）
+ *   ②**回复范围**（hp 满／非致命归零／表内负面清／**表外正面留**）
+ *   ③**可重复**（连泡两次：都用得上、都生效）④**时间占位读数**（每次 +`温泉耗时.分钟`）
+ *   ⑤**耐久不回初值**（工具损耗属资源消耗 ⇒ 保留）。
+ * 刀：① 池内化（`when` 加 `eventPending`）⇒ 共存臂红；② 清全部 `effects` ⇒ 表外正面那条红；
+ *   ③ 去非致命复位 ⇒ 范围臂红；④ 去时间记账 ⇒ 占位读数红；⑤ 回旧形（耐久回初值）⇒ ⑤红。
+ * ⚠ 装置：本格改 hp／nonlethal／effects／背包／账／位置 ⇒ 末了**存-复原**；抽签靠注入随机源。 */
 head('㉛ L8 温泉（`books#177`）');
 {
 	const P = D.Player;
 	const T = B.工具;
 	const 存 = {
-		hp: P.hp, effects: (P.effects ?? []).slice(), 包: State.variables.inventory,
+		hp: P.hp, 非致命: P.nonlethal ?? 0, effects: (P.effects ?? []).slice(), 包: State.variables.inventory,
 		账: State.variables.span1Events, 位: map.current, run: { ...State.variables.babelRun },
 	};
 	let 读数 = {};
 	try {
 		State.variables.span1Events = {};
 		State.variables.inventory = [];
-		R.give('pick');                       // 工具一件（耐久回充的读数用）
+		State.variables.babelRun = { ...State.variables.babelRun, 时间: 0 };
+		R.give('pick');                       // 工具一件（⑤耐久臂的读数用）
 		R.rng.setSequence([0, 0, 0.99]);      // L8 抽签两枚 + 危害一枚 miss
 		map.moveTo('L8');
 		R.rng.reset();
 		const 温泉钮 = () => map.locations.get('L8').availableActions.filter((a) => a.温泉 === true);
 		const 事件钮 = () => map.locations.get('L8').availableActions.filter((a) => a.事件类 != null);
+		const 耗时 = B.温泉耗时?.分钟;
+
 		/* ① 共存（两向）：择一之后**事件面清空**，而**温泉仍在** —— 这是「零耦合」的可判形 */
 		const 前_事件 = 事件钮().length, 前_温泉 = 温泉钮().length;
 		for (const k of (State.variables.span1Events['L8']?.抽中 ?? [])) B.markUsed('L8', k);
 		const 后_事件 = 事件钮().length, 后_温泉 = 温泉钮().length;
-		ok(前_温泉 === 1 && 后_温泉 === 1,
-			`★温泉与抽签耦合了（择一前 ${前_温泉} 条／择一后 ${后_温泉} 条，应恒为 1）—— 领队要求「L8 若已抽签，温泉动作照常可用」`);
-		ok(前_事件 === 2 && 后_事件 === 0, `★对照臂不成立（事件面应 2→0，实得 ${前_事件}→${后_事件}）—— 本格的前提读数不对`);
+		ok(前_温泉 === 1 && 后_温泉 === 1, `★温泉与抽签耦合了（择一前 ${前_温泉} 条／择一后 ${后_温泉} 条，应恒为 1）`);
+		ok(前_事件 === 2 && 后_事件 === 0, `★对照臂不成立（事件面应 2→0，实得 ${前_事件}→${后_事件}）`);
 
-		/* ② 全回复（行为面：真点那个动作） */
-		P.hp = 1;
-		P.effects = ['bleeding'];
+		/* ② 回复范围（行为面：真点那个动作）：hp 满／非致命归零／表内清／表外留 */
+		/* ⚠ 前置状态必须**活着**：`nonlethal > hp` 即出局（`isKnockedOut`）⇒ 终局位闸门（`#175`）
+		 *   会把本层动作**全关掉**（本席首版把 hp 设 1／非致命设 5，当场撞到「L8 上没有温泉动作」——
+		 *   那不是入表断了，是闸门按设计关了图）。⇒ hp 取**高于非致命**且低于满血。 */
+		P.hp = 10;
+		P.nonlethal = 5;
+		P.effects = ['bleeding', 'precognition'];      // 前者在恢复表（创伤）内，后者是长期正面
 		const 槽 = State.variables.inventory.find((s) => s.id === 'pick');
 		槽.charges = 1;
 		const 按 = 温泉钮()[0];
 		ok(!!按, '★L8 上没有温泉动作（`makeLayerLocation` 的入表断了）');
 		if (按) 按.action();
 		读数 = {
-			hp: P.hp, maxHp: P.maxHp, 效果: (P.effects ?? []).length,
-			耐久: State.variables.inventory.find((s) => s.id === 'pick')?.charges,
-			初值: T?.TOOL_CHARGES, 账: State.variables.span1Events['L8']?.温泉,
-			余钮: 温泉钮().length,
+			hp: P.hp, maxHp: P.maxHp, 非致命: Number(P.nonlethal ?? 0), 效果: (P.effects ?? []).slice(),
+			耐久: State.variables.inventory.find((s) => s.id === 'pick')?.charges, 初值: T?.TOOL_CHARGES,
+			时间: B.时间账?.(), 余钮: 温泉钮().length,
 		};
 		ok(读数.hp === P.maxHp, `★温泉后 hp 未满（实得 ${读数.hp}／${P.maxHp}）`);
-		ok(读数.效果 === 0, `★温泉后效果没清（实得 ${读数.效果} 条）—— 「所有状态」漏了效果面`);
-		ok(读数.耐久 === 读数.初值, `★温泉后工具耐久没回初值（实得 ${读数.耐久}，表 ${读数.初值}）`);
-		ok(读数.账 === true, '★温泉用过却没记账（「每局一次」没有依据）');
+		ok(读数.非致命 === 0, `★温泉后非致命伤没归零（实得 ${读数.非致命}）—— ⑧的范围漏了这一项`);
+		ok(!读数.效果.includes('bleeding'), `★恢复表内的负面状态没清（实得 ${JSON.stringify(读数.效果)}）`);
+		ok(读数.效果.includes('precognition'), `★恢复表外的**长期正面**被一起清了（实得 ${JSON.stringify(读数.效果)}）—— ⑧要求「长期正面保留」`);
+		ok(读数.耐久 === 1, `★工具耐久被回充了（实得 ${读数.耐久}／充前 1）—— ⑨撤了「耐久回初值」（资源消耗保留）`);
 
-		/* ③ 每局一次：用过即退场，且**重进 L8 不复现** */
-		map.moveTo('L7'); map.moveTo('L8');
-		const 重进 = 温泉钮().length;
-		ok(读数.余钮 === 0 && 重进 === 0,
-			`★温泉用过仍可再用（用后 ${读数.余钮} 条／重进 L8 后 ${重进} 条）—— 「每局一次」被破`);
+		/* ③ 可重复 ＋ ④ 时间占位读数：连泡第二次（先再造伤） */
+		P.hp = 2;
+		const 二次钮 = 温泉钮().length;
+		if (温泉钮()[0]) 温泉钮()[0].action();
+		const 二次 = { hp: P.hp, 时间: B.时间账?.(), 钮: 温泉钮().length };
+		ok(二次钮 === 1 && 二次.hp === P.maxHp, `★温泉不可重复（二次前 ${二次钮} 条／二次后 hp ${二次.hp}）—— ⑨要求「可重复」`);
+		ok(读数.时间 === 耗时 && 二次.时间 === 耗时 * 2,
+			`★时间成本占位读数不对（一次 ${读数.时间}／两次 ${二次.时间}，表 ${耗时}）—— ⑨要求「耗游戏时间」`);
 
-		/* ④ 满状态进 L9 的前提（平衡基线「温泉后满状态 vs 不眠者」的机械前提） */
-		P.hp = 2; P.effects = ['bleeding'];          // 再糟一次，然后（用过温泉）直接进 L9
+		/* ⑤ 满状态进 L9 的前提（平衡基线「温泉后满状态 vs 不眠者」的机械前提） */
+		P.hp = 10; P.nonlethal = 3; P.effects = ['bleeding'];
 		const L9前 = { hp: P.hp, 效果: (P.effects ?? []).length };
 		ok(L9前.效果 > 0, '★本臂前置不成立（进 L9 前应带着效果）');
-		/* ★本格**只证前提可证**：温泉是 L8 的可选动作，判据取「用过温泉 ⇒ 进 L9 时满状态」这条链。 */
-		P.hp = P.maxHp; P.effects = [];
+		if (温泉钮()[0]) 温泉钮()[0].action();     // 温泉是 L8 的可选动作 ⇒ 用它把状态拉满
 		map.moveTo('L9');
-		const 在L9 = { hp: P.hp, 效果: (P.effects ?? []).length, 层: setup.BABEL.layerOf?.() ?? null };
-		ok(在L9.层 === 'L9' && 在L9.hp === P.maxHp && 在L9.效果 === 0,
-			`★满状态进 L9 的前提不成立（层 ${JSON.stringify(在L9.层)}／hp ${在L9.hp}／效果 ${在L9.效果}）`);
+		const 在L9 = { hp: P.hp, 效果: (P.effects ?? []).length, 非致命: Number(P.nonlethal ?? 0), 层: setup.BABEL.layerOf?.() ?? null };
+		ok(在L9.层 === 'L9' && 在L9.hp === P.maxHp && 在L9.效果 === 0 && 在L9.非致命 === 0,
+			`★满状态进 L9 的前提不成立（层 ${JSON.stringify(在L9.层)}／hp ${在L9.hp}／效果 ${在L9.效果}／非致命 ${在L9.非致命}）`);
 
-		console.log(`  温泉：共存（择一后事件 ${后_事件} 条／温泉 ${后_温泉} 条）｜全回复 ⇒ hp ${读数.hp}／效果 ${读数.效果}／耐久 ${读数.耐久}（表 ${读数.初值}）`
-			+ `｜每局一次（重进后 ${重进} 条）｜满状态进 L9：${在L9.层} hp ${在L9.hp}／效果 ${在L9.效果}`);
+		console.log(`  温泉：共存（择一后事件 ${后_事件} 条／温泉 ${后_温泉} 条）｜范围 ⇒ hp ${读数.hp}／非致命 ${读数.非致命}／效果 ${JSON.stringify(读数.效果)}／耐久 ${读数.耐久}（充前 1）`
+			+ `｜可重复（二次 hp ${二次.hp}）｜时间占位（一次 ${读数.时间}／两次 ${二次.时间}，表 ${耗时}）｜满状态进 L9：${在L9.层} hp ${在L9.hp}`);
 	} finally {
 		P.hp = 存.hp;
+		P.nonlethal = 存.非致命;
 		P.effects = 存.effects;
 		State.variables.inventory = 存.包;
 		State.variables.span1Events = 存.账;

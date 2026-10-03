@@ -17,7 +17,7 @@
 const DND3 = setup.DND3;
 const R = setup.RPG;
 
-const run = () => (State.variables.babelRun ??= { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1' });
+const run = () => (State.variables.babelRun ??= { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 时间: 0 });
 
 /**
  * 取一个**新鲜的**怪物实例。
