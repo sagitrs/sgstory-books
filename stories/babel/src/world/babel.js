@@ -436,6 +436,19 @@ const makeLayerLocation = (L) => new R.Location({
 		 *   持有者 ∧ 本层可预报 ∧ 尚未选过 ∧ 目标层未抽 —— 见 `可预知`）。
 		 *   ⚠ 三类**全量入表**（同事件动作的形），✗ 运行时算数组。 */
 		...(预报可选[L.id] ? EVENT_KINDS.map((k) => 预知动作(L, k)) : []),
+		/* ★`books#178` 件 1：**战斗外常驻的快存/快读入口**（票面 §8.2「战斗外常驻」）。
+		 *   `when` 读 `setup.BABEL.战中` ⇒ 战斗中**不可见** —— 与 P0「禁战内存档」**同源**（✗ 两套判据）。
+		 *   ⚠ 闭包在**玩家点击时**求值，故此处不依赖 `encounters.js` 已装载（它在本档之后装载）。 */
+		{
+			text: '快存（记下这一刻）',
+			when: () => !setup.BABEL.战中 && setup.BABEL.可存?.(setup.BABEL.槽位.快存) === true,
+			action: () => setup.BABEL.快存(setup.BABEL.槽位.快存),
+		},
+		{
+			text: '快读（回到上一次快存）',
+			when: () => !setup.BABEL.战中 && typeof setup.BABEL.宿主槽?.()?.load === 'function',
+			action: () => setup.BABEL.快读(setup.BABEL.槽位.快存),
+		},
 	].map(只给活人),                 // ★`books#176`：**死人的地图不给动作**（终局后那一屏不得可点）
 });
 
