@@ -128,6 +128,12 @@ State.variables.span1Farms = 0;
 State.variables.span1Harvests = 0;
 
 /* ---------- ① 装配面 ---------- */
+/* ★`books#220`（dev-10 实测、`tools/README.md` 已立口径）：本档含**遭遇抽样**（L13 遭遇、事件账取序）
+ *   ⇒ **同树两跑 sha 不同** ⇒ 「逐字节对照」类零回归证明在本档**不可用**。
+ *   口径要印在**读数所在处**（✗ 只躺在 README 里）：故此处就地声明，请改用**构造证明**（断**来源**，✗ 断输出文本）。 */
+console.log('★口径（可复现性）：本档含**遭遇抽样**（L13 遭遇／事件账取序）⇒ **同树两跑 sha 可能不同**'
+	+ ' ⇒ 逐字节对照**不可用**；零回归请改用**构造证明**（断来源，✗ 断输出文本）。依据与例见 `tools/README.md`「读数的可复现口径」。');
+
 head('① 装配面');
 ok(!!B, '故事脚本未挂上 `setup.BABEL`（脚本没被装载？）');
 ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
