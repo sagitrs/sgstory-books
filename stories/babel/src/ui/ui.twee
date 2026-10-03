@@ -4,6 +4,10 @@
 	<span class="panel" data-panel="hp"></span>｜<span class="panel" data-panel="location"></span>｜<span class="panel" data-panel="trauma"></span>｜<span class="panel inventory-links" data-panel="inventory"></span>
 </div>
 <div class="noticebar" data-panel="notice"></div>
+/* ★`books#188` P1-2／P1-4：**战斗面**两块 —— 敌组状态与治疗读数（只战斗内有内容，平时为空）。
+ *   内容一律由 `ui/battle.js` 的渲染函数给（同 `notice` 面板的口径：twee 只留骨架）。 */
+<div class="enemybar" data-panel="enemy"></div>
+<div class="healbar" data-panel="heal"></div>
 
 :: StoryStylesheet
 body {
@@ -41,6 +45,12 @@ hr { border: 0; border-top: 1px solid #2d3440; }
 .rpg-notice-list li.rpg-notice-key { color: #d8d4c8; }
 .rpg-notice-list li.rpg-notice-log { color: #7c8794; }
 .rpg-notice-ch { color: #a8c0d8; }
+/* `books#188`：战斗面 —— 敌组逐行（体量小、靠色区分），治疗读数一行 */
+.enemybar { color: #c8b4a4; font-size: 0.88em; margin-top: 0.3em; }
+.enemybar .enemy-line { line-height: 1.6; }
+.enemybar .enemy-name { color: #e0a888; }
+.healbar { color: #9db8a0; font-size: 0.86em; margin-top: 0.2em; }
+.healbar .heal-item { white-space: nowrap; }
 small { color: #7c8794; }
 
 :: StoryCaption
