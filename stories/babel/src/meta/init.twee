@@ -36,6 +36,11 @@
  *   ⚠ **须登记进引擎 `DOMAINS`**（同 `$span1Arc` 那条）；否则 `envelope().domains` 与逐域往返面
  *     看不到本键（审计缺口，✗ 丢档）。登记点：`world/babel.js` 的 `登记域()` 键表。 */
 <<set $span1Events to {}>>
+/* ★`books#164`：**预知账** —— `{ 目标层 id: 类 }`：持有「预知」的玩家在 L5／L6／L7 选定的
+ *   「下一层必含一类」。写点在 `world/babel.js` 的 `记预报`（选择动作），读点在 `ensureDraw`
+ *   （进目标层时把该类钉进抽签池）。
+ *   ⚠ **须登记进引擎 `DOMAINS`**（同 `$span1Events` 那条）；登记点：`world/babel.js` 的 `登记域()` 键表。 */
+<<set $span1Foresee to {}>>
 /* ★`#116`：**地点节点账**（采集点挂地点，✗ 背包）—— 键＝地点 id，值＝节点快照（含 charges）。
  *   与 `babelGiven` 的分工：`babelGiven` 是「该层发放过没有」的 **bool 账**（旧两段式用）；
  *   本键是**节点本体**（per-run：新局 ⇒ 新节点；旧档遗留的 `babelGiven` 留着不管＝兼容）。
