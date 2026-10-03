@@ -2410,8 +2410,9 @@ head('㊲ 攻击件的伤害块（`books#185`）');
  * ⚠ 本件无 DOM（`document` 是桩）⇒ 只读渲染函数的产物（`R.panelHTML`），真 DOM 面归 `tools/e2e-drive.mjs`。 */
 head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 {
-	const 存 = { items: D.Player.items.slice(), hp: D.Player.hp };
-	const 敌 = new (R.Character)({ name: '幼獾', hp: 6, maxHp: 6 });
+	const 存 = { items: D.Player.items.slice(), hp: D.Player.hp, 加成: D.Player.stats.heal_bonus };
+	/* ⚠ 敌给一个**基础** `stats.ac`：否则下面 AC 那把刀的读数会印成 `undefined`（`dev-10` 指出的口径不清）。 */
+	const 敌 = new (R.Character)({ name: '幼獾', hp: 6, maxHp: 6, stats: { ac: 10 } });
 	敌.items.push({ id: 'mail', equipped: true });   // +3 AC ⇒ 与基础值**不等**（对照臂）
 	const 假战斗 = { enemies: [敌], players: [D.Player] };
 
@@ -2431,6 +2432,13 @@ head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 	ok(敌面().includes('负伤'), `★2/6 恰在 1/3 ⇒ 该是「负伤」（实得：${敌面()}）`);
 	敌.hp = 1;
 	ok(敌面().includes('濒死'), `★1/6 该是「濒死」（实得：${敌面()}）`);
+	/* ②′ 出局者先说结论（✗ 再报「濒死 0/6」）——两向：致命出局 vs 非致命打晕（`hp` 未变而 `nonlethal` 更大） */
+	敌.hp = 0;
+	ok(敌面().includes('已倒下'), `★0 血该说「已倒下」（实得：${敌面()}）`);
+	敌.hp = 1;
+	敌.nonlethal = 2;
+	ok(敌面().includes('已打晕'), `★非致命打晕该说「已打晕」（实得：${敌面()}）`);
+	敌.nonlethal = 0;
 	敌.hp = 6;
 
 	/* ③ 有效 AC 必须走**引擎那一处**（✗ 面板自算）—— 对照臂就是那件已装备的铁环甲 */
@@ -2445,17 +2453,32 @@ head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 	ok(敌面().includes('爪击'), `★已见动作没记上（实得：${敌面()}）`);
 	ok((敌面().match(/爪击/g) ?? []).length === 1, `★同一动作记了多次（应去重，实得：${敌面()}）`);
 
-	/* ⑤ 治疗读数：治疗件列（含预计恢复与余次）、非治疗件不列、改充能数须跟着变 */
+	/* ⑤ 治疗读数：治疗件列、非治疗件不列、改充能数须跟着变 */
 	const 绷带槽 = { id: 'bandage', charges: 2 };
 	D.Player.items.push(绷带槽);
 	D.Player.items.push({ id: 'club' });      // 非治疗件（对照臂）
-	const 预计 = Number(R.reviveItem(绷带槽).stats?.hp ?? 0) + Number(D.Player.stats?.heal_bonus ?? 0);
 	const 治面 = () => R.panelHTML('heal');
-	ok(治面().includes('绷带') && 治面().includes(`恢复 ${预计}`) && 治面().includes('余 2 次'),
-		`★治疗读数不对（应见「绷带 恢复 ${预计}（余 2 次）」，实得：${治面()}）`);
+	ok(治面().includes('绷带') && 治面().includes('余 2 次'),
+		`★治疗读数没列出治疗件（应见「绷带 …（余 2 次）」，实得：${治面()}）`);
 	ok(!治面().includes('木棒'), `★非治疗件也进了治疗读数（实得：${治面()}）`);
 	绷带槽.charges = 1;
 	ok(治面().includes('余 1 次'), `★改了充能数而读数不变（没读状态，实得：${治面()}）`);
+	绷带槽.charges = 2;
+
+	/* ⑤′ **行为对账**（`dev-10` D 席 RC 的推荐形）：面板的「预计恢复」須等于**引擎真治一次的实际回血量**。
+	 *   动因（他实测的刀-H1）：原形把期望写成「件自身 `stats.hp` ＋ 施用者加成」——那是**第二份公式**，
+	 *   而夹具里 `heal_bonus` 恒为 0 ⇒ 含不含这一项**数值相同** ⇒ 该断言对“加成项”**恒真**
+	 *   （删掉加成项，全绿）。⇒ 两件一起做：
+	 *     ① 夹具给**非零**加成（否则两臂不可分辨）；
+	 *     ② 期望取自**引擎的行为**（真治一次的实际回血量），✗ 不取自第二份算式。
+	 *   ⇒ 面板换算式、引擎换行为，两侧任一处漂移本判据都红（前一条则只管“有那两行字”）。 */
+	D.Player.stats.heal_bonus = 2;
+	D.Player.hp = 2;                               // 低血 ⇒ 不会被 maxHp 截断（截断会把两臂读数撞在一起）
+	R.act(D.Player, 'bandage', D.Player, 'use');   // ★引擎**真治一次**（走它自己的 `used()`）
+	const 实回 = D.Player.hp - 2;
+	ok(实回 === 7, `（前置）引擎这一次应回 7（绷带 5 ＋ 加成 2），实得 ${实回} ⇒ 夹具有问题，本节判不了`);
+	ok(治面().includes(`恢复 ${实回}`),
+		`★面板的「预计恢复」≠ 引擎实际回血量（面板：${治面()}；引擎实回：${实回}）—— 两处算式已漂`);
 
 	/* ⑥ 战斗结束 ⇒ 两块都清空（✗ 把上一场的敌组与读数留在屏上） */
 	R.events.emit('battle:end', { players: [D.Player], enemies: [敌] });
@@ -2465,8 +2488,9 @@ head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
 	D.Player.items.length = 0;
 	for (const s of 存.items) D.Player.items.push(s);
 	D.Player.hp = 存.hp;
-	console.log(`  战斗面：档位三档（含 2/3 与 1/3 两个边界）✓｜AC 走 acOf（对照件 +3）✓｜已见动作去重 ✓｜`
-		+ '治疗读数（恢复/余次）✓｜战斗结束后清空 ✓');
+	D.Player.stats.heal_bonus = 存.加成;
+	console.log(`  战斗面：档位三档（含 2/3 与 1/3 两个边界）＋出局两向 ✓｜AC 走 acOf（对照件 +3）✓｜已见动作去重 ✓｜`
+		+ '治疗读数（行为对账：面板预计恢复 ＝ 引擎实回）✓｜战斗结束后清空 ✓');
 }
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——

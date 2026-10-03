@@ -492,6 +492,10 @@ if (has('--selftest')) {
 			敌: (s.doc.querySelector('[data-panel="enemy"]')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
 			治: (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
 		});
+		const 存加成 = D.Player.stats.heal_bonus;
+		/* ★加成给**非零**：否则「含不含那一项」数值相同 ⇒ 本面与无头面一样，对那一项恒真
+		 *   （`dev-10` 的刀-H1：删掉加成项，全绿）。 */
+		D.Player.stats.heal_bonus = 2;
 		const 空 = 读战斗面();
 		const 敌 = new (R.Character)({ name: '幼獾', hp: 4, maxHp: 6 });
 		敌.items.push({ id: 'mail', equipped: true });
@@ -507,11 +511,12 @@ if (has('--selftest')) {
 		D.Player.items.splice(D.Player.items.indexOf(绷带槽), 1);
 		const 反例臂 = 空.敌 === '' && 空.治 === '';
 		const 正例臂 = /幼獾/.test(有.敌) && /负伤/.test(有.敌) && /AC 13/.test(有.敌) && /已见：爪击/.test(有.敌);
-		const 治疗臂 = /绷带/.test(有.治) && /恢复 5/.test(有.治) && /余 2 次/.test(有.治);
+		const 治疗臂 = /绷带/.test(有.治) && /恢复 7/.test(有.治) && /余 2 次/.test(有.治);
 		const 清空臂 = 清.敌 === '' && 清.治 === '';
+		D.Player.stats.heal_bonus = 存加成;
 		ok(反例臂, `★面 Q 反例臂：没发战斗事件时两块就该是空的（实得 ${JSON.stringify(空)}）—— 否则本面读到的是常量`);
 		ok(正例臂, `★面 Q：敌面板没按事件渲染出「幼獾／负伤／AC 13／已见：爪击」（实得 ${JSON.stringify(有.敌)}）`);
-		ok(治疗臂, `★面 Q：治疗读数没按背包渲染出「绷带 恢复 5（余 2 次）」（实得 ${JSON.stringify(有.治)}）`);
+		ok(治疗臂, `★面 Q：治疗读数没按背包渲染出「绷带 恢复 7（余 2 次）—— 件 5 ＋ 加成 2」（实得 ${JSON.stringify(有.治)}）`);
 		ok(清空臂, `★面 Q：battle:end 之后两块没清空（旧场读数会留到探索段，实得 ${JSON.stringify(清)}）`);
 		if (反例臂 && 正例臂 && 治疗臂 && 清空臂) {
 			console.log(`  面 Q ✓ 战斗面：敌「${有.敌}」；治疗「${有.治}」；战斗结束 ⇒ 两块清空 ✓`);
