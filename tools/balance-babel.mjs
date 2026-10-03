@@ -112,21 +112,75 @@ const STRATEGIES = {
  * ══════════════════════════════════════════════════════════════════════════ */
 const FIXTURES = [
 	{
-		id: '温泉满装',
-		说明: '满血满装（温泉恢复后的理想态）',
+		id: '温泉→L9 头目',
+		待判: 'L9 头目的攻击面：本席手搭 `R.Battle` 时，`R.Character.revive(toJSON())` 带过来的 `items` 是**规格**（`{id,equipped}`）而非**物化实例** ⇒ 战斗里下骰表为 undefined（`rollDetail ← dnd3.meleeAttack`）。故事自己的遭遇路（`encounters.js:175` 的 `fresh` ＋ 同一句 `new R.Battle`）在游戏中是通的 ⇒ 缺口在**本器手搭的那一段**，不在游戏。**本夹具因此不入绿**；修法＝改走故事自己的遭遇动作（`基础遭遇动作(L)` 那条 `action`）而不是本器自建战斗，待落。目标面不变：L9 硬门（§14 ⑩ 的七成到八成半）。',
+		说明: '走真路：L9 ⇒ L8 泡温泉（故事自己的动作本体）⇒ 回 L9 打头目 —— 操作者点名的平衡基线「温泉后满状态 vs 不眠者」的**前半**',
+		层: 'L9',
 		策略: '纯攻',
-		/* ⚠ 温泉动作本体现落在飞件 `books#179`，未入 main ⇒ 本件不假装它已判：
-		 *   夹具摆「满血 ＋ 满装」这两件（可判的部分），温泉那一步记待判并给解锁件。 */
-		待判: '温泉动作本体（`books#179` 未入 main）—— 本夹具只摆满血满装，温泉那一步不判',
+		/* ★**走真路**（✗ 摆一个「同形」状态）：`books#181` 起 L9↔L10↔L8 **双向**在本段内合法，
+		 *   故回 L8 泡温泉是玩家真能走的步。温泉动作按件内明文说的**结构标记**找
+		 *   （`温泉: true` —— 件里写着「判据按它取动作，✗ 按文案猜」）。
+		 *   ⚠ 本席首版此夹具叫「温泉满装」却**没走温泉**（只摆满血满装），且 `待判` 理由
+		 *     （`books#179` 未入 main）**已过时**（`#179` 已合 `2006a51`）—— 两处都是 `books#182` 的 RC 点。 */
+		摆位: (R, D3, B, s) => {
+			R.give('sword'); R.equip('sword');
+			R.give('mail'); R.equip('mail');
+			R.give('bandage'); R.give('herb-poultice');
+			/* 先降状态（否则「温泉有没有用」这一面读不出来）—— 但**须留活着**：
+			 *   ⚠ `availableActions` 过终局位闸门 `活着()`＝`hp>0 且 nonlethal<=hp`
+			 *     ⇒ 摆成「非致命高于血」时那条动作会**消失**，读起来像「入表断了」（`dev-9` 的提示）。 */
+			D3.Player.hp = Math.max(6, Math.floor(D3.Player.maxHp / 3));
+			D3.Player.nonlethal = 2;
+			B.map.moveTo('L8');
+			/* ★第一步（`dev-9` 建议两步都留）：**L8 的可用动作里那一条在**（这一断把终局位闸门也串进来）。
+			 *   结构标记找动作（件内明文「判据按它取动作，✗ 按文案猜」）—— `text` 自 `#179` 起是**函数**。 */
+			const loc = B.map.locations?.get?.('L8');
+			const 可用 = loc?.availableActions ?? loc?.actions ?? [];
+			const 那条 = 可用.find((a) => a.温泉 === true);
+			if (!那条) throw new Error('L8 的可用动作里没有 `温泉: true` 那一条（入表／闸门／装置三处之一）');
+			/* ★第二步：调**导出的单一实现**（`setup.BABEL.温泉回复` —— hp 满／非致命归零／按恢复表清负面／记时间）。
+			 *   ✗ 手写复原：那是「恢复表」这条语义的第二份实现（本件头注同款理由）。 */
+			if (typeof B.温泉回复 !== 'function') throw new Error('导出面缺 `温泉回复`（`books#179` 的机器件未接线）');
+			const 前 = { hp: D3.Player.hp, 非致命: Number(D3.Player.nonlethal ?? 0) };
+			const r = B.温泉回复();
+			if (D3.Player.hp !== D3.Player.maxHp) throw new Error('泡了温泉 hp 未满（本夹具要判的正是它）');
+			if (Number(D3.Player.nonlethal ?? 0) !== 0) throw new Error('泡了温泉非致命未归零');
+			s.__温泉读数 = { 前, 后: { hp: D3.Player.hp, 非致命: Number(D3.Player.nonlethal ?? 0) }, 清了: r?.清了 ?? [] };
+			B.map.moveTo('L9');
+		},
+	},
+	{
+		id: '不温泉→L9 头目',
+		待判: 'L9 头目的攻击面：本席手搭 `R.Battle` 时，`R.Character.revive(toJSON())` 带过来的 `items` 是**规格**（`{id,equipped}`）而非**物化实例** ⇒ 战斗里下骰表为 undefined（`rollDetail ← dnd3.meleeAttack`）。故事自己的遭遇路（`encounters.js:175` 的 `fresh` ＋ 同一句 `new R.Battle`）在游戏中是通的 ⇒ 缺口在**本器手搭的那一段**，不在游戏。**本夹具因此不入绿**；修法＝改走故事自己的遭遇动作（`基础遭遇动作(L)` 那条 `action`）而不是本器自建战斗，待落。目标面不变：L9 硬门（§14 ⑩ 的七成到八成半）。',
+		说明: '同前但不泡温泉、且带伤带非致命 —— 操作者点名的「vs 不眠者」的**后半**，两面之差即温泉在硬门上的分量',
+		层: 'L9',
+		策略: '纯攻',
+		摆位: (R, D3, B, s) => {
+			R.give('sword'); R.equip('sword');
+			R.give('mail'); R.equip('mail');
+			R.give('bandage'); R.give('herb-poultice');
+			D3.Player.hp = Math.max(6, Math.floor(D3.Player.maxHp / 3));
+			D3.Player.nonlethal = 2;
+			B.map.moveTo('L9');
+		},
+	},
+	{
+		id: '满装→L9 头目',
+		待判: 'L9 头目的攻击面：本席手搭 `R.Battle` 时，`R.Character.revive(toJSON())` 带过来的 `items` 是**规格**（`{id,equipped}`）而非**物化实例** ⇒ 战斗里下骰表为 undefined（`rollDetail ← dnd3.meleeAttack`）。故事自己的遭遇路（`encounters.js:175` 的 `fresh` ＋ 同一句 `new R.Battle`）在游戏中是通的 ⇒ 缺口在**本器手搭的那一段**，不在游戏。**本夹具因此不入绿**；修法＝改走故事自己的遭遇动作（`基础遭遇动作(L)` 那条 `action`）而不是本器自建战斗，待落。目标面不变：L9 硬门（§14 ⑩ 的七成到八成半）。',
+		说明: '满血满装直接打 L9 头目（温泉的上界对照：温泉能补的它已经满了）',
+		层: 'L9',
+		策略: '纯攻',
 		摆位: (R, D3, B, s) => {
 			R.give('sword'); R.equip('sword');
 			R.give('mail'); R.equip('mail');
 			R.give('bandage'); R.give('herb-poultice');
 			D3.Player.hp = D3.Player.maxHp;
+			B.map.moveTo('L9');
 		},
 	},
 	{
 		id: '纯攻',
+		层: 'L1',
 		说明: '一把武器，其余空手，只攻不治',
 		策略: '纯攻',
 		摆位: (R, D3, B) => {
@@ -136,6 +190,7 @@ const FIXTURES = [
 	},
 	{
 		id: '少装备',
+		层: 'L1',
 		说明: '无武器无甲（只有一件绷带）—— 低装态',
 		策略: '纯攻',
 		摆位: (R, D3, B) => {
@@ -145,6 +200,7 @@ const FIXTURES = [
 	},
 	{
 		id: '防疗',
+		层: 'L1',
 		说明: '带治疗件，血低先治',
 		策略: '防疗',
 		摆位: (R, D3, B) => {
@@ -156,6 +212,7 @@ const FIXTURES = [
 	},
 	{
 		id: '空手击晕',
+		层: 'L1',
 		说明: '不装武器，只用空手打击（非致命 ⇒ 打晕而不是打死）',
 		策略: '空手',
 		摆位: (R, D3, B) => {
@@ -164,6 +221,7 @@ const FIXTURES = [
 	},
 	{
 		id: '重读同档',
+		层: 'L1',
 		说明: '同一存档读两次各打一场 —— 两场的战果与读数应逐字相同（确定性）',
 		策略: '纯攻',
 		/* ★真形：本夹具不比「打不打得赢」，比的是**同一存档重读之后是否逐字复现**。
@@ -178,6 +236,7 @@ const FIXTURES = [
 	},
 	{
 		id: '多场连续',
+		层: 'L1',
 		说明: '连打三场 —— 检查场与场之间不串味（血量／效果／随机流）',
 		策略: '纯攻',
 		/* ★真形：**同一个会话**里连打三场，逐场记读数；第 2／3 场**不重摆夹具**
@@ -198,7 +257,7 @@ const FIXTURES = [
  * ⚠ 推导一律读**状态**（`hp`／`nonlethal`／`RPG.isKnockedOut`／存活计数），✗ 正则匹配结论行：
  *   文案会改（本仓刚在 `#1854` 改过「击败／打晕」的分流），判据不该绑字面。
  * ══════════════════════════════════════════════════════════════════════════ */
-function 判战果(RPG, players, enemies, 回合耗尽) {
+function 判战果(RPG, players, enemies) {
 	/* ★一律用**引擎自己的判定式**（✗ 自己重实现）：
 	 *   出局＝`c.isDown`（`20-character.js` 的 getter ＝ `hp <= 0 || RPG.isKnockedOut(c)`）。
 	 *   ⚠ 本席首版写成 `hp > 0`，于是**被击晕**的敌（hp 未变、`nonlethal > hp`）被读成活着
@@ -210,7 +269,8 @@ function 判战果(RPG, players, enemies, 回合耗尽) {
 		const 全晕 = enemies.length > 0 && enemies.every((e) => (RPG.isKnockedOut?.(e) ?? false));
 		return 全晕 ? 'knockout' : 'victory';
 	}
-	return 回合耗尽 ? 'stalemate' : 'stalemate';
+	/* 双方都还有活人 ⇒ 僵持（本器按回合上限收场，无第三态可退）。 */
+	return 'stalemate';
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -256,7 +316,7 @@ async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策�
 			return hit?.value ?? 'skip';
 		};
 		await new R.Battle(回合上限, [D3.Player], 敌组, true).execute();
-		const 战果 = 判战果(R, [D3.Player], 敌组, true);
+		const 战果 = 判战果(R, [D3.Player], 敌组);
 		return {
 			样本号, 夹具: 夹具.id, 策略: 策略名 ?? 夹具.策略, 战果,
 			回合: Math.max(0, Math.round((s.SC.State.variables?.babelRun?.deaths ?? 0) * 0)) + 轨迹.length, // 见下注
@@ -276,7 +336,9 @@ async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策�
 /* ══════════════════════════════════════════════════════════════════════════
  * 夹具摆位 ＋ 敌组（走受支持写点）
  * ══════════════════════════════════════════════════════════════════════════ */
-function 摆夹具(s, 夹具, 层 = process.env.BALANCE_LAYER ?? 'L1') {
+function 摆夹具(s, 夹具, 层 = 夹具.层 ?? process.env.BALANCE_LAYER ?? 'L1') {
+	/* ★层由**夹具自己**给（`books#182` RC 非阻断一）：L1 遭遇面与 L9 头目面答的不是同一个问题，
+	 *   本器首版把层写死成 L1 ⇒ 全表读的都是 L1 遭遇面，答不了 §14 ⑩ 那条 L9 硬门。 */
 	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
 	V().inventory = [];
 	V().span1Events = {};
@@ -284,13 +346,17 @@ function 摆夹具(s, 夹具, 层 = process.env.BALANCE_LAYER ?? 'L1') {
 	夹具.摆位(R, D3, B, s);
 	/* 敌组：走故事自己的遭遇面（`RPG.rollEncounter`）＋ 与 `encounters.js` 同形的**克隆**（✗ 用单例） */
 	const rolled = R.rollEncounter?.(层, { count: 1 }) ?? [];
+	/* ★克隆走**故事自己的配方**（`stories/babel/src/world/encounters.js:35` 的 `fresh`，模块私有 ⇒ 照抄其两步）：
+	 *     `R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON())))`，`elite` 只改可见命名。
+	 *   ⚠⚠ 那处源码头上就写着「**✗ 手搓字段**（手搓会漏字段，且与 `#1758` 的 revive 钩子面脱钩）」——
+	 *     本席首版正是手搓（`new proto.constructor()` ＋ `Object.assign`），症状是 L9 头目
+	 *     「**无法解析的骰子表达式：undefined**」（头目的攻击骰在 revive 钩子面上，手搓拿不到）。 */
 	const foes = rolled.map((e) => {
 		const proto = R.characters.get(e.ref);
-		const inst = new proto.constructor();
-		Object.assign(inst, JSON.parse(JSON.stringify(proto.toJSON?.() ?? {})));
-		inst.hp = inst.maxHp ?? proto.maxHp;
-		inst.nonlethal = 0;
-		return inst;
+		if (!proto) throw new Error(`遭遇表引用了未注册的角色 id「${e.ref}」`);
+		const copy = R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON())));
+		if (e.elite) copy.name = `精英·${copy.name}`;
+		return copy;
 	});
 	return foes;
 }
@@ -303,17 +369,26 @@ const 五战果 = ['victory', 'knockout', 'retreat', 'stalemate', 'death'];
 function 汇总(样本) {
 	const n = 样本.length || 1;
 	const 比例 = Object.fromEntries(五战果.map((k) => [k, 样本.filter((x) => x.战果 === k).length / n]));
-	const 胜 = 样本.filter((x) => x.战果 === 'victory' || x.战果 === 'knockout').length;
-	const p = 胜 / n;
-	/* 胜率的 Wilson 区间（95%）—— 比「点估计」诚实：小样本时它宽，读的人看得出来 */
-	const z = 1.96, 分母 = 1 + (z * z) / n;
-	const 中心 = (p + (z * z) / (2 * n)) / 分母;
-	const 半宽 = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / 分母;
+	/* ★**两率分列**（`books#182` RC 阻断一）：引擎自己就把「打晕」与「击败」分开
+	 *   （`#1854`：全被非致命打晕 ⇒ 文案说「打晕」而非「击败」）⇒ 本器**不得**再把两者
+	 *   合成一个「胜率」—— 那会把「打晕」读成「能过门」，而它们本是分开判的两件事。
+	 *   ⚠ 本席首版合并计（`victory || knockout`），在「多场连续」那格把
+	 *     `victory 0%｜knockout 89%` 写成了「胜率 89%」—— 我自己的 PR 正文表还错记成「victory 89」。 */
+	const 计数 = (k) => 样本.filter((x) => x.战果 === k).length;
+	const 区间 = (k) => {
+		/* Wilson 区间（95%）—— 比「点估计」诚实：小样本时它宽，读的人看得出来 */
+		const p = 计数(k) / n, z = 1.96, 分母 = 1 + (z * z) / n;
+		const 中心 = (p + (z * z) / (2 * n)) / 分母;
+		const 半宽 = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / 分母;
+		return [Math.max(0, 中心 - 半宽), Math.min(1, 中心 + 半宽)];
+	};
 	return {
 		样本数: 样本.length,
 		五战果比例: 比例,
-		胜率: p,
-		胜率区间95: [Math.max(0, 中心 - 半宽), Math.min(1, 中心 + 半宽)],
+		击败率: 计数('victory') / n,
+		击败率区间95: 区间('victory'),
+		打晕率: 计数('knockout') / n,
+		打晕率区间95: 区间('knockout'),
 		平均回合: 样本.reduce((a, x) => a + x.回合, 0) / n,
 		平均自己血: 样本.reduce((a, x) => a + (x.自己血 ?? 0), 0) / n,
 		失败原因: (() => {
@@ -327,8 +402,11 @@ function 汇总(样本) {
 function 打印(夹具, 读数, 汇总读) {
 	console.log(`\n── ${夹具.id}：${夹具.说明}`);
 	if (夹具.待判) console.log(`   ⏳ 待判：${夹具.待判}`);
-	console.log(`   样本 ${汇总读.样本数}｜胜率 ${(汇总读.胜率 * 100).toFixed(1)}%` +
-		`（95% 区间 ${(汇总读.胜率区间95[0] * 100).toFixed(1)}–${(汇总读.胜率区间95[1] * 100).toFixed(1)}%）` +
+	/* ★表头写明**层**（`books#182` RC 非阻断一）：L1 遭遇面与 L9 头目面答的不是同一个问题，
+	 *   不写层的话读的人会把两批数当同一件事比。 */
+	console.log(`   层 ${夹具.层 ?? '(未标)'}｜样本 ${汇总读.样本数}` +
+		`｜击败率 ${(汇总读.击败率 * 100).toFixed(1)}%（95% 区间 ${(汇总读.击败率区间95[0] * 100).toFixed(1)}–${(汇总读.击败率区间95[1] * 100).toFixed(1)}%）` +
+		`｜打晕率 ${(汇总读.打晕率 * 100).toFixed(1)}%（95% 区间 ${(汇总读.打晕率区间95[0] * 100).toFixed(1)}–${(汇总读.打晕率区间95[1] * 100).toFixed(1)}%）` +
 		`｜平均回合 ${汇总读.平均回合.toFixed(1)}｜平均余血 ${汇总读.平均自己血.toFixed(1)}`);
 	console.log('   五战果 ' + 五战果.map((k) => `${k} ${(汇总读.五战果比例[k] * 100).toFixed(0)}%`).join('｜'));
 	if (Object.keys(汇总读.失败原因).length) {
