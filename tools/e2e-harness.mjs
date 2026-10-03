@@ -38,7 +38,8 @@
  *      ★**勿只跑 `start()`**：它不含 `runUserInit`（我曾据此写错，见 §教训）。
  *      **教训（一般化）**：**装置多跑一步，就会多造一份「一次性副作用」，而这份多出来的量看起来像真读数。**
  *
- * 用法（**先构建产物**：`python3 <引擎>/build.py <本仓故事> --out babel-trial.html`）：
+ * 用法（**先构建产物**，★故事目录与 `--out` 都给**绝对路径** —— 相对形会被拼到**引擎仓根**）：
+ *   `python3 <引擎>/build.py "$PWD/stories/babel" --out "$PWD/stories/babel/babel-trial.html"`
  *     node tools/e2e-harness.mjs --engine <引擎检出>                 # 跑内置冒烟（P0/P1 机械子集）
  *     node tools/e2e-harness.mjs --engine <引擎> --selftest          # 刀：证明本件**判得了**
  *     node tools/e2e-harness.mjs --engine <引擎> --list              # 只列可判面
@@ -81,7 +82,9 @@ export function resolveEnv(engineArg, env = process.env) {
 	const htmlPath = path.join(storyDir, 'babel-trial.html');   // 构建产物（✗ 进 git）
 	if (!fs.existsSync(htmlPath)) {
 		throw new Error(`缺产物：${path.relative(repoRoot, htmlPath)}\n`
-			+ `  先构建：python3 ${path.join(root, 'build.py')} ${storyDir} --out babel-trial.html`);
+			+ `  先构建（★**故事目录与 --out 都给绝对路径**）：`
+			+ `\n    python3 ${path.join(root, 'build.py')} "${storyDir}" --out "${htmlPath}"`
+			+ `\n  （相对形会被拼到**引擎仓根** ⇒ 产物落错位置，见 .github/workflows/babel-tests.yml 的「构建」步注释）`);
 	}
 	/* ★产物**新鲜度**守卫（作者建议、协调方批 2026-10-03）：本件只认**预构建产物**，
 	 *   `--engine` 只取 jsdom 与故事目录 ⇒ ✗ 不参与构建 ⇒ 产物陈旧时**全链都拿旧码跑**
