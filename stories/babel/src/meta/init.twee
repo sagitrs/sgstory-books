@@ -23,7 +23,9 @@
 <<set $inventory to []>>
 /* ★`#1879` D9：**版本徽标缺省值** —— 此串即 `build.py --version` 的**唯一替换目标**（✗ 改源树）。 */
 <<set $buildVersion to "—">>
-<<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1" }>>
+/* ★`books#176`：本局账增 `终局`（死亡＝游戏失败后本局是否已中止）—— 它是**入口的幂等门**
+ *   （不复活后尸体会恒在 ⇒ 没这道账每调一次都会重结算）。仍在 `$babelRun` 内，✗ 新顶层键。 */
+<<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1", 终局: false }>>
 <<set $babelGiven to {}>>
 /* ★`books#132` L1–L9 弧的**本局账**（宝箱态…；L5+ 的事件抽签也将落这里）。
  * ⚠ **须登记进引擎 `DOMAINS`**。★**后果措辞改准**（`dev-10` RC）：是**审计缺口**（`envelope().domains`

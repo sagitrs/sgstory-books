@@ -61,3 +61,4 @@ RPG.events.on('item:used', (e) => {
 		RPG.registerScene(make());
 	});
 }
+
