@@ -169,7 +169,14 @@ setup.BABEL.读档 = () => {
  * 三槽（票面 §8.2）：槽 0 快存（主动覆盖）｜槽 1 战前保底（整备点自动写·最新胜）｜槽 2 手动。
  * P0：**战斗中禁存** —— 由 `setup.BABEL.战中` 门控，`fight()` 在战前置位、战后清零。
  ══════════════════════════════════════════════════════════════════════════════ */
-const 槽位 = Object.freeze({ 快存: 0, 战前保底: 1, 手动: 2 });
+/* ★★**为什么从 3 号起**（领队裁 甲案 · `dev-10` 取证）：SugarCube 的**自动存档**与槽位存档
+ *   共用**同一套编号**，而自动存档环从**低号**开始（`Save.browser.auto` 的环索引）。
+ *   ⇒ 若故事槽占 0/1/2，玩家存过之后**下一次触发自动存档**会写进同一号 ⇒ 分工失真。
+ *   · 宿主报 `maxSlotSaves = 8` ⇒ 3/4/5 在环外且有余量。
+ *   · **✗ 不停用自动存档**：它是玩家崩溃时的保险（领队裁「宿主自动档留低号照常活」）。
+ *   · 另一支撑（`dev-10` 转来 · 引擎 `sgstory#1912` 作者核）：把 `maxAutoSaves` 写回 0
+ *     **不算关掉** —— 宿主下次读配置时又抬回 1 ⇒ 停用还得额外 pin，代价更高。 */
+const 槽位 = Object.freeze({ 快存: 3, 战前保底: 4, 手动: 5 });
 setup.BABEL.槽位 = 槽位;
 setup.BABEL.战中 = false;
 
@@ -177,8 +184,9 @@ setup.BABEL.战中 = false;
 const 宿主槽 = () => (globalThis.SugarCube ?? globalThis)?.Save?.slots ?? null;
 setup.BABEL.宿主槽 = 宿主槽;
 
-/** 槽位上限（宿主不报 ⇒ 退回票面下限 3）。 */
-const 槽上限 = () => (globalThis.SugarCube ?? globalThis)?.Config?.saves?.maxSlotSaves ?? 3;
+/** 槽位上限（宿主不报 ⇒ 退回**本笔用到的最高号＋1**；✗ 写死旧下限 —— 甲案改号后 3 号被误判越界，
+ *   正是 ㉝ 格抓到的那个缺陷）。 */
+const 槽上限 = () => (globalThis.SugarCube ?? globalThis)?.Config?.saves?.maxSlotSaves ?? (槽位.手动 + 1);
 
 /** **自动命名**（票面 §8.2：带**真实层数**）：`层·地点名`，战前保底再加 `·战前`。 */
 setup.BABEL.存档名 = ({ 战前 = false } = {}) => {
@@ -238,7 +246,13 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 		R.perform('这里的读档入口暂时不可用。');
 		return false;
 	}
-	if (S.isEmpty(slot)) { R.perform('这个存档位还是空的。'); return false; }
+	/* ★★**槽位空否的判据只能用 `has`，不能用 `isEmpty`**（本席实测，`#183` 调查所得）：
+	 *   真宿主的 `isEmpty(i)` **一旦有过任何写入**就对**所有号**返回假（空槽亦然），
+	 *   而 `has(i)` 逐号准确；且 `get(i)` 对**空槽**也返回占位对象（其字段为 undefined）
+	 *   ⇒ 拿 `isEmpty` 当空否判据，会把空槽当有档去读（本席的旧形正是如此）。
+	 *   `has` 缺席时才退回 `isEmpty`（更老的宿主），并**明知其不可靠**。 */
+	const 空否 = typeof S.has === 'function' ? !S.has(slot) : S.isEmpty(slot);
+	if (空否) { R.perform('这个存档位还是空的。'); return false; }
 	S.load(slot);
 	return true;
 };

@@ -2117,8 +2117,8 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 head('㉛ `books#178` 件 1 快速存档（三槽 · P0 禁战内 · 回落出声）');
 {
 	const B = setup.BABEL;
-	ok(B.槽位?.快存 === 0 && B.槽位?.战前保底 === 1 && B.槽位?.手动 === 2,
-		`★三槽约定不符（应 快存0／战前保底1／手动2，实得 ${JSON.stringify(B.槽位)}）`);
+	ok(B.槽位?.快存 === 3 && B.槽位?.战前保底 === 4 && B.槽位?.手动 === 5,
+		`★三槽约定不符（应 快存3／战前保底4／手动5，实得 ${JSON.stringify(B.槽位)}）`);
 	/* 命名：带**真实层数**（票面 §8.2）。 */
 	map.moveTo('L9');
 	const 名 = B.存档名();
@@ -2299,6 +2299,45 @@ head('㉜ `books#178` 槽 1 整备点自动写（温泉完成 · 入营地 · �
 		ok(!言.some((m) => /保底存档/.test(m)), '★战斗中「战前保底」还印了「已留下保底存档」');
 	}
 	console.log(`  两触发点：${记.join('、')}｜战斗中写入被拒 ✓`);
+}
+
+/* ---------- ㉝ 快速存档：**真宿主语义的桩**（`has` 可靠 · `isEmpty` 不可靠）----------
+ * ★本格的桩**照抄真宿主的怪癖**（本席实测）：`isEmpty(i)` 一旦有过写入即对**所有号**为假、
+ *   `get(i)` 对空槽返回占位对象。⇒ 若实现拿 `isEmpty` 当空否判据，本格**必红**。
+ *   桩若不照抄这个怪癖，本格就是「装置比真宿主善良」的假绿。 */
+head('㉝ 快速存档（宿主桩：has 可靠 · isEmpty 不可靠 ⇒ 空槽不可读）');
+{
+	const 旧 = globalThis.SugarCube;
+	const m = new Map(); const 载过 = [];
+	globalThis.SugarCube = { ...(旧 ?? {}), Save: { slots: {
+		has: (i) => m.has(i),
+		get: (i) => (m.has(i) ? m.get(i) : {}),                    // ★空槽返回占位对象（同真宿主）
+		save: (i, d) => { m.set(i, { type: 2, desc: d }); },
+		load: (i) => { 载过.push(i); },                            // ★在场（✗ 缺 ⇒ 代码先走「入口不可用」支而绕过空槽判）
+		count: () => m.size,
+		delete: (i) => m.delete(i),
+		isEmpty: (i) => (m.size === 0 ? !m.has(i) : false),        // ★同真宿主：写过就恒假
+		length: 8,
+	} } };
+	try {
+		const B = setup.BABEL;
+		ok(B.可存(B.槽位.快存) === true, '★宿主桩在场时「可存」仍为假');
+		const 名 = B.写槽(B.槽位.快存, {});
+		ok(typeof 名 === 'string' && 名.length > 0, `★写槽没落名（实得：${JSON.stringify(名)}）`);
+		ok(m.has(B.槽位.快存) === true, '★写槽后宿主桩里查不到该槽');
+		/* ★核心：**空槽不可读**。桩的 `isEmpty` 此刻对 5 号返回**假**（同真宿主），
+		 *   若实现拿它当判据 ⇒ 会去 load 一个空槽 ⇒ 本断言红。 */
+		{
+			const 言 = []; const op = R.perform; R.perform = (x) => { 言.push(String(x)); return op; };
+			const r = B.快读(B.槽位.手动);                       // 5 号：从未写过
+			R.perform = op;
+			ok(r === false, '★空槽位「快读」没有拒绝 ⇒ 拿 isEmpty 当判据（真宿主会返回假）');
+			ok(言.some((x) => /还是空的/.test(x)), `★空槽「快读」被拒但没给可读文案（实得：${JSON.stringify(言)}）`);
+			ok(m.has(B.槽位.手动) === false, '★空槽「快读」竟把它变成有档');
+			ok(载过.length === 0, `★空槽「快读」竟调了 read（载过：${JSON.stringify(载过)}）`);
+		}
+		console.log(`  桩：写槽落名「${名}」｜空槽快读被拒 ✓`);
+	} finally { globalThis.SugarCube = 旧; }
 }
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
