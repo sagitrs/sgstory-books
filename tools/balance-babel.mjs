@@ -210,10 +210,12 @@ const FIXTURES = [
 		层: 'L1',
 		说明: '带治疗件，血低先治',
 		策略: '防疗',
-		摆位: (R, D3, B) => {
+		摆位: (R, D3, B, s) => {
 			R.give('sword'); R.equip('sword');
-			R.give('herb-poultice'); R.give('herb-poultice');
-			R.give('bandage');
+			/* ★治疗件数可参数化：自证第 ⑤ 项靠「同夹具、治疗件 1 件 vs 4 件 ⇒ 读数须变」
+			 *   来断「防疗策略真接线」。 */
+			const n = Number(s?.__治疗件数 ?? 2);
+			for (let i = 0; i < n; i++) { R.give('herb-poultice'); R.give('bandage'); }
 			D3.Player.hp = Math.max(4, Math.floor(D3.Player.maxHp / 3));
 		},
 	},
@@ -482,6 +484,26 @@ async function 自证(env) {
 	const rs = await 跑一场(s3, 弱, 7, null, { 策略名: '跳过' });
 	判('③c 弱敌（L1）下「纯攻」与「跳过」战果可分辨', rw.战果 !== rs.战果,
 		`纯攻 ${rw.战果}（余血 ${rw.自己血}）vs 跳过 ${rs.战果}（余血 ${rs.自己血}）`);
+
+	/* ⑤ 策略真接线（**机读化**）：同一夹具、**治疗件 1 件 vs 4 件** ⇒ 读数须**变**。
+	 *   ★来历：这是 `tester-3` **人工撞出**的一件事 —— 「防疗策略没接线时读数看起来也像样」；
+	 *     dev-9 建议把它做成机读项，领队准。判据取「平均回合」与「平均余血」两个计数 ⇒
+	 *     治疗件多了，回合数与余血**应当**变化；若两者逐字相同，说明策略读了恒定输入
+	 *     （或根本没接线）= 这份读数不可信。 */
+	{
+		const sN = await H.boot(env);
+		const fN = FIXTURES.find((x) => x.id === '防疗');
+		const 跑一遍 = async (sess, n) => {
+			sess.__治疗件数 = n;
+			摆夹具(sess, fN);
+			return 跑一场(sess, fN, 3);
+		};
+		const r1件 = await 跑一遍(sN, 1);
+		const r4件 = await 跑一遍(sN, 4);
+		const 变了 = r1件.回合 !== r4件.回合 || r1件.自己血 !== r4件.自己血 || r1件.战果 !== r4件.战果;
+		判('⑤ 同夹具「治疗件 1 件 vs 4 件」⇒ 读数变了（防疗策略真接线）', 变了,
+			`1 件：${r1件.战果}/回合 ${r1件.回合}/余血 ${r1件.自己血}｜4 件：${r4件.战果}/回合 ${r4件.回合}/余血 ${r4件.自己血}`);
+	}
 
 	/* ④ finally 还原：choice 复位、背包复位 */
 	const 原choice是原的 = typeof s1.SC.setup.DND3.Player.choice === 'function';
