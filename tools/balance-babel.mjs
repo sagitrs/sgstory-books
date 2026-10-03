@@ -326,8 +326,59 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 	/* ★敌组**不自己造**：由引擎自己的 `battle:end` 事件交回来（那是引擎对外说「这一场有谁」的通道）。 */
 	let 敌组 = [];
 	const onEnd = ({ enemies } = {}) => { 敌组 = Array.isArray(enemies) ? enemies : []; };
+	/* ★`#191` 旗下 `--dump-tracks`：逐回合轨迹 —— 只**读**引擎自己的对外通道（✗ 不改引擎、✗ 影子实现）：
+	 *   · `battle:turnStart`（回合边界成对发：`{actor, battle}`）⇒ 借此把**全阵** hp 录一遍，
+	 *     这样**第一击的 Δ 也算得出**（✗ 不靠「敌人一开场必满血」这类假设）；
+	 *   · `battle:turn`（**只在攻击被接受时**发：`{attacker, defender}`）⇒ 一笔即一回合的一次交手。
+	 *   ⚠ 引擎的 `battle:turn` **不带伤害字段** ⇒ 本录的是**观测差**（两次观测之间血量的变化），故逐行标 `Δ血`；
+	 *     且**两侧都记**。「受击者掉血 > 0」读作**命中**——这是**读数**，✗ 不是引擎替我下的判定。 */
+	let 本场方 = null;
+	const 名册 = new Map();      // 单位 ⇒ { 名, 阵营 }（由引擎自己的 battle 对象给）
+	const 动作录 = [];
+	/* ★读数面＝**引擎的统一入口 `RPG.act`**（`#1752` 定的唯一入口 ⇒ 双方都得过它），✗ 不用 `battle:turn`
+	 *   —— 那个事件只在**攻击被接受**时发，实测：玩家侧**一次都不发**（`纯攻`／`少装备`／`空手击晕`／`满装→L9 头目`
+	 *   四格皆「己方出手 0」）⇒ 拿它当轨迹会**系统性漏掉玩家的全部动作**（本器自己先栽了这一跟头）。
+	 *   ⚠ 包的是**入口的调用**（读它返回什么），✗ 不是替身实现；`finally` 里原样还原。 */
+	const onTurnStart = (p) => {
+		const b = p?.battle;
+		if (!b) return;
+		本场方 = Array.isArray(b.players) ? b.players : null;
+		for (const u of [...(b.players ?? []), ...(b.enemies ?? [])]) {
+			if (!名册.has(u)) 名册.set(u, { 名: String(u?.name ?? '?'), 阵营: (b.players ?? []).includes(u) ? '己方' : '敌方' });
+		}
+	};
+	const 原Act = R.act;
+	R.act = function (actor, itemId, target) {
+		const 前 = new Map([...名册.keys()].map((u) => [u, u?.hp]));
+		const 记录 = (ret) => {
+			const 掉 = [];
+			for (const u of 名册.keys()) {
+				const a = 前.get(u), b = u?.hp;
+				if (typeof a === 'number' && typeof b === 'number' && b < a) {
+					const m = 名册.get(u);
+					掉.push({ 名: m.名, 阵营: m.阵营, 掉血: a - b, 剩: b, 上限: u?.maxHp ?? null });
+				}
+			}
+			const m = 名册.get(actor);
+			动作录.push({
+				序: 动作录.length + 1,
+				行动者: m?.名 ?? String(actor?.name ?? '?'),
+				阵营: m?.阵营 ?? '?',
+				动作: String(Array.isArray(itemId) ? itemId.join('/') : (itemId ?? '(未录)')),
+				选文案: m?.阵营 === '己方' ? (轨迹.at(-1)?.选文案 ?? null) : null,
+				靶: target ? String(target?.name ?? '?') : null,
+				结果: (ret && typeof ret === 'object') ? `${ret.status ?? '?'}${ret.reason ? '/' + ret.reason : ''}` : String(ret),
+				掉血: 掉,
+			});
+		};
+		const ret = 原Act.call(this, actor, itemId, target);
+		if (ret && typeof ret.then === 'function') return ret.then((r) => { 记录(r); return r; });
+		记录(ret);
+		return ret;
+	};
 	try {
 		R.events?.on?.('battle:end', onEnd);
+		R.events?.on?.('battle:turnStart', onTurnStart);
 
 		/* ② 随机流注入（本样本的确定性序列） */
 		R.rng.setSequence?.(造序列(样本号));
@@ -372,11 +423,13 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 			回合: 轨迹.length,
 			自己血: D3.Player.hp, 敌血: 敌组.map((e) => e.hp),
 			背包: (V().inventory ?? []).map((x) => x.id),
-			轨迹,
+			轨迹, 动作录,
 		};
 	} finally {
 		/* ③ 还原：choice、rng、玩家血与背包 —— 出错也必须还原（否则下一场样本被污染） */
 		R.events?.off?.('battle:end', onEnd);
+		R.events?.off?.('battle:turnStart', onTurnStart);
+		R.act = 原Act;
 		D3.Player.choice = 原Choice;
 		if (原序列 && typeof R.rng.恢复 === 'function') R.rng.恢复(原序列);
 		V().inventory = 存包;
@@ -433,6 +486,63 @@ function 汇总(样本) {
 			return m;
 		})(),
 	};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * `--dump-tracks`：逐回合轨迹（**读**工具）
+ *
+ * 动因（协调方 2026-10-03）：乙笔标定显示「砍头目 1/3 血仅 +10pp」⇒ 玩家**实跑**伤害远低于
+ *   隔离量测（10.9／47%）⇒ 没有轨迹就分不清是「出手少／命中低／策略耗回合」。
+ * ⚠ 这里**不判绿红**：只把数摆出来（本器判绿红的地方在 `自证()` 与目标带那两处）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+function 轨迹行(样) {
+	const 行 = [`  样本 ${样.样本号}｜策略 ${样.策略}｜战果 ${样.战果}｜回合 ${样.回合}｜选择 ${(样.轨迹 ?? []).length} 次`];
+	for (const r of 样.动作录 ?? []) {
+		const 掉 = (r.掉血 ?? []).map((x) => `${x.名}(${x.阵营}) −${x.掉血} ⇒ ${x.剩}${x.上限 ? '/' + x.上限 : ''}`).join('、') || '无人掉血';
+		行.push(`    #${r.序} ${r.阵营}${r.行动者}｜动作=${r.动作}${r.选文案 ? `（选：${r.选文案}）` : ''}`
+			+ `｜靶=${r.靶 ?? '—'}｜结果=${r.结果} → ${掉}`);
+	}
+	if ((样.动作录 ?? []).length === 0) 行.push('    （本样本**一次动作都没有**：引擎入口 `RPG.act` 未被打过）');
+	return 行;
+}
+
+/** 一串样本的小结：**动作次数／按结果分类**（接受 vs 各拒绝理由）＋双方总伤 —— 「分不清三件事」时先看这几样。 */
+function 轨迹小结(样本) {
+	let 动作 = 0, 接受 = 0, 掉血过 = 0, 己方动作 = 0, 己方接受 = 0, 己方总伤 = 0, 敌方总伤 = 0;
+	const 结果表 = new Map();
+	for (const s of 样本) {
+		for (const r of s.动作录 ?? []) {
+			动作++;
+			结果表.set(r.结果, (结果表.get(r.结果) ?? 0) + 1);
+			const 接 = /^applied/.test(String(r.结果)) || r.结果 === 'true' || /^[0-9]+$/.test(String(r.结果));
+			if (接) 接受++;
+			if ((r.掉血 ?? []).length > 0) 掉血过++;
+			if (r.阵营 === '己方') { 己方动作++; if (接) 己方接受++; }
+			for (const x of r.掉血 ?? []) {
+				if (r.阵营 === '己方' && x.阵营 === '敌方') 己方总伤 += x.掉血;
+				if (r.阵营 === '敌方' && x.阵营 === '己方') 敌方总伤 += x.掉血;
+			}
+		}
+	}
+	const 比例 = (a, b) => (b ? `${((a / b) * 100).toFixed(0)}%` : '—');
+	return `小结：样本 ${样本.length}｜**动作 ${动作} 次**（己方 ${己方动作}）｜判为接受 ${接受}/${动作}（${比例(接受, 动作)}；己方 ${己方接受}/${己方动作}）`
+		+ `｜有掉血的动作 ${掉血过}/${动作}｜己方总伤 ${己方总伤}（每场 ${样本.length ? (己方总伤 / 样本.length).toFixed(1) : '—'}）｜敌方总伤 ${敌方总伤}（每场 ${样本.length ? (敌方总伤 / 样本.length).toFixed(1) : '—'}）`
+		+ `\n  结果分布：` + [...结果表.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join('｜');
+}
+
+function 印轨迹(夹具, 样本, 去处) {
+	const 块 = [];
+	块.push(`\n── 逐回合轨迹（${夹具.id}｜样本 ${样本.length}）■ 读数，✗ 不是判据`);
+	for (const s of 样本) 块.push(...轨迹行(s));
+	块.push('  ' + 轨迹小结(样本));
+	if (typeof 去处 === 'string' && 去处 !== '') {
+		/* ★落档：正文用 `--dump-tracks=<路径>` ⇒ **追加**（多夹具一次跑完落同一档），首行写清身份。 */
+		if (!fs.existsSync(去处)) fs.writeFileSync(去处, `# 战斗逐回合轨迹（balance-babel.mjs --dump-tracks）\n`, 'utf8');
+		fs.appendFileSync(去处, 块.join('\n') + '\n', 'utf8');
+		console.log(`   ↳ 轨迹已追加到 ${去处}`);
+	} else {
+		for (const l of 块) console.log(l);
+	}
 }
 
 function 打印(夹具, 读数, 汇总读) {
@@ -631,6 +741,8 @@ async function main() {
 
 	if (argOf('selftest')) return (await 自证(env)) ? 1 : 0;
 
+	/* `--dump-tracks`（布尔）⇒ 印到 stdout；`--dump-tracks=<路径>` ⇒ 追加落档（两形都认，见 `argOf` 的注）。 */
+	const 轨迹档 = argOf('dump-tracks', null);
 	const 只要 = argOf('fixture', null);
 	const 样本数 = Number(argOf('samples', 100));
 	const 全 = FIXTURES.filter((f) => !只要 || f.id === 只要);
@@ -667,6 +779,7 @@ async function main() {
 		if (样本.length === 0) { console.log(`\n── ${f.id}：〇 样本（全抛错，见上）`); continue; }
 		const 汇总读 = 汇总(样本);
 		打印(f, 样本, 汇总读);
+		if (轨迹档) 印轨迹(f, 样本, 轨迹档);
 		if (f.特殊 === '重读同档') {
 			const 同 = 样本.filter((x) => x.重读同档 === true).length;
 			console.log(`   重读同档：逐字复现 ${同}/${样本.length}` + (同 === 样本.length ? ' ✓' : '  ★有不合'));
