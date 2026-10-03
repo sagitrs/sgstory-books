@@ -410,7 +410,14 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				上次选文案: 轨迹.at(-1)?.选文案 ?? null,
 			};
 			const pick = 策略(o, ctx);
-			const hit = o.find((x) => x.value === pick) ?? o[0];
+			/* ★`books#203` **第二道门**（`dev-9` 同树动态复现抓的）：策略返回的 `pick` 若在选单里**对不上**，
+			 *   原形是**裸取 `o[0]`**（选单第一条）⇒ 又会选到防具的「用」项 ⇒ **同抛错**（我上一修只堵了策略侧三处回退，
+			 *   这一行没动 ⇒ `dev-9` 复现「修无效」✓）。
+			 *   ⇒ 与策略侧**同口径**（`:攻击回退`）：
+			 *     · `pick === 'skip'`（「跳过」策略的**显式**意图）⇒ 就跳过（`return hit?.value ?? 'skip'` 会落 'skip'）✓；
+			 *     · 其余对不上的 `pick` ⇒ ✗ 不许裸取第一条 ⇒ 走 `攻击回退`（跳过 ＞ 非「用／装备」项 ＞ 才认命）。 */
+			let hit = o.find((x) => x.value === pick);
+			if (!hit && pick !== 'skip') hit = o.find((x) => x.value === 攻击回退(o)) ?? o[0];
 			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp,
 				/* ★治疗件**消耗**这道独立证据（`tester-3` 的非阻断加固）：charges 挂在**背包条目**上
 				 *   （实测形 `{"id":"herb-poultice","charges":6,"equipped":false}`）⇒ 记它们的**总量**。 */
