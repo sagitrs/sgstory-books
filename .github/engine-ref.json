@@ -1,6 +1,6 @@
 {
-  "ref": "c320d816827d5025aa9b7d08bef3cf8600f8a9df",
+  "ref": "2ad9fbc537a8855b58ad91dbf17d23f93dcb54e6",
   "branch": "main",
-  "why": "本次升级：`#1908` WorldMap 世代锚（甲′——实例记住上次同步的 State，换代即未摆位；含 currentSource 三值判据面与 G4 夹具刀）。自上一 pin `63484a98` 起 1 个 PR（`#1908`，含话级折两处）。",
-  "checked": "本地核过（本笔；★引擎=`c320d816`）：①pin=sgstory main tip 40 位 ✓②新 pin 下 books 三装置 rc=0（verify/scenario/check-refs 46/0——CI 同套）③检出==pin 自证步在位会红。"
+  "why": "本次升级：`#1910` 通知倒序修复＋满血口粮拒绝（0.0.2 试玩阻塞 P1-5/P2-11——books#170）。自上一 pin `c320d816` 起 1 个 PR。",
+  "checked": "本地核过（本笔；★引擎=`2ad9fbc5`）：①pin=sgstory main tip 40 位 ✓②新 pin 下 books 三装置 rc=0（CI 同套）③检出==pin 自证步在位。"
 }
