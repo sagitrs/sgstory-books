@@ -37,9 +37,14 @@ for (const [id, meta] of Object.entries(TOOLS)) {
 		stackable: true,                 // ★⇒ `RPG.give` 再拾同类时**并入**（耐久相加）
 		charges: TOOL_CHARGES,
 		/** 背包里点它 ⇒ **拒绝**（`used()` 返回 `false` ⇒ `act` 不提交、**不扣耐久** —— `#1801` 的契约），
-		 *  只给一句白话：工具要对着能采的东西用。 */
+		 *  并给一句白话：工具要对着能采的东西用。
+		 *  ★`sgstory#1906` §G（`books#166` 的第⑦面）：这句是**瞬时说明**（「为什么用不了」）⇒ 走**通知面**
+		 *    （✗ 落正文）。`perform` 两个面都写 ⇒ 玩家每点一次正文多一行（`books#130` D6-3 的读数形）；
+		 *    能力探测：通知面未加载的环境回落 `perform`（同 `coin`）。 */
 		used() {
-			this.perform(`${this.name}得对着能采的东西用。`);
+			const line = `${this.name}得对着能采的东西用。`;
+			if (typeof R.pushNotice === 'function') R.pushNotice(line);
+			else this.perform(line);
 			return false;
 		},
 	});

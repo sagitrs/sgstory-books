@@ -1411,7 +1411,25 @@ head('㉕ 工具耐久制（`books#133` 笔 2）');
 			ok(采动作().when() === false, '★没有对应工具时 `gather` 仍可选（假选项：点进去才被告知没工具）');
 			R.give('axe');
 			ok(采动作().when() === true, '★手上有铁斧了，`gather` 仍不可选（工具门接线断了）');
-			console.log(`  工具：三件齐 ✓｜初值 ${T.TOOL_CHARGES}（表）✓｜同类并入 ✓｜实例感知扣费 ${两把读数}（应 2／8）｜采空不扣 ✓｜工具门 ✓`);
+			/* ⑧ ★`books#166` 的第七面 ＋ `sgstory#1906` §G：**背包里直接使用工具**须
+			 *   ① `act` 判**拒绝**（`used()` 返回 false —— `#1776`／`#1801` 的契约）
+			 *   ② **耐久不变** ③ 瞬时说明进**通知面**（✗ 正文多一行 —— `books#130` D6-3 的读数形）。
+			 *   ⚠ 三条一起断：只断①会放过「扣了耐久」，只断②会放过「静默无反馈」。 */
+			{
+				const 行 = () => (globalThis.__host?.host?.lines?.() ?? []).length;
+				const 前耐 = State.variables.inventory.find((s) => s.id === 'axe')?.charges;
+				const 前行 = 行();
+				const 前通 = R.notices({ limit: 200 }).length;
+				const r用 = R.act(D.Player, 'axe', D.Player, 'use');
+				const 后耐 = State.variables.inventory.find((s) => s.id === 'axe')?.charges;
+				const 后行 = 行();
+				const 后通 = R.notices({ limit: 200 }).length;
+				ok(r用?.status === 'rejected', `★直接使用工具须判**拒绝**（实得 ${JSON.stringify(r用)}）`);
+				ok(后耐 === 前耐, `★直接使用工具**扣了耐久**（${前耐} ⇒ ${后耐}）—— #1801 的契约被破`);
+				ok(后行 === 前行, `★正文多了 ${后行 - 前行} 行 —— 瞬时说明该走通知面（同 coin 那件）`);
+				ok(后通 - 前通 === 1, `★通知面须恰记一句白话（实得 +${后通 - 前通} —— 玩家看不到「为什么用不了」）`);
+				console.log(`  工具：三件齐 ✓｜初值 ${T.TOOL_CHARGES}（表）✓｜同类并入 ✓｜实例感知扣费 ${两把读数}（应 2／8）｜采空不扣 ✓｜工具门 ✓｜直接使用工具：拒绝 ＋ 耐久不变 ＋ 通知面白话 ✓`);
+			}
 		} finally {
 			State.variables.inventory = 存包;
 			State.variables.span1Events = 存账;
