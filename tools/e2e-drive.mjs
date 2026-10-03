@@ -524,9 +524,14 @@ if (has('--selftest')) {
 			治: (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
 		});
 		const 存加成 = D.Player.stats.heal_bonus;
+		const 存HP = D.Player.hp;
 		/* ★加成给**非零**：否则「含不含那一项」数值相同 ⇒ 本面与无头面一样，对那一项恒真
 		 *   （`dev-10` 的刀-H1：删掉加成项，全绿）。 */
 		D.Player.stats.heal_bonus = 2;
+		/* ★★血量须**离上限够远**（`books#200` 的两条 RC 之后）：面板的「预计恢复」现在报**实回**
+		 *   （＝名义量夹到 `maxHp` 之后还剩多少）⇒ 满血时它**该**报 0 ✗ 不再是名义量。
+		 *   本面判的是「事件驱动渲染」这件事 ⇒ 铺一个「缺 10 点」的伤（名义 7 不被夹）才读得到 7。 */
+		D.Player.hp = D.Player.maxHp - 10;
 		const 空 = 读战斗面();
 		const 敌 = new (R.Character)({ name: '幼獾', hp: 4, maxHp: 6 });
 		敌.items.push({ id: 'mail', equipped: true });
@@ -545,6 +550,7 @@ if (has('--selftest')) {
 		const 治疗臂 = /绷带/.test(有.治) && /恢复 7/.test(有.治) && /余 2 次/.test(有.治);
 		const 清空臂 = 清.敌 === '' && 清.治 === '';
 		D.Player.stats.heal_bonus = 存加成;
+		D.Player.hp = 存HP;
 		ok(反例臂, `★面 Q 反例臂：没发战斗事件时两块就该是空的（实得 ${JSON.stringify(空)}）—— 否则本面读到的是常量`);
 		ok(正例臂, `★面 Q：敌面板没按事件渲染出「幼獾／负伤／AC 13／已见：爪击」（实得 ${JSON.stringify(有.敌)}）`);
 		ok(治疗臂, `★面 Q：治疗读数没按背包渲染出「绷带 恢复 7（余 2 次）—— 件 5 ＋ 加成 2」（实得 ${JSON.stringify(有.治)}）`);
@@ -598,29 +604,59 @@ if (has('--selftest')) {
 		ok(半臂, `★面 T 半血臂：文案数应 ＝ 实回 2（实得 Δ=${半.Δ}／屏上数=${半.数}／件差=${半.件差}）`);
 		ok(近满臂, `★面 T 差 1 点满臂：文案数应 ＝ 实回 **1**（✗ 名义 2）—— 实得 Δ=${近满.Δ}／屏上数=${近满.数}`);
 		ok(满臂, `★面 T 满血臂：应**拒绝**＋不扣件＋出声（实得 Δ=${满.Δ}／件差=${满.件差}／出声 ${满.出新声} 条）`);
-		/* ★同源臂：面板的「预计恢复」须 ＝ **引擎**的治疗量（`DND3.healAmount`）。读数取**面板渲染出来的数**，
-		 *   与「引擎那一份」分别取 —— 面板**自算一份**时，一旦引擎那侧改了（本票就是），两处就开始说两样。 */
-		const 有源 = typeof D.healAmount === 'function';
+		/* ★**接线臂**（两条 RC 的修法①：原「同源臂」两边调**同一个函数** ⇒ 对「这个量对不对」**恒真** ✗）：
+		 *   把引擎的 `D.healDelta` 换成**哨兵** ⇒ 面板渲染出来的数须**跟着变** —— 这才判得出「面板有没有**读引擎**」
+		 *   （自算一份的版本对哨兵无反应）。★它只管**接线**，✗ 不当面板侧的唯一判据 ⇒ 与下面**对账臂**配对。 */
+		const 有实回 = typeof D.healDelta === 'function';
+		const 存实回 = D.healDelta;
 		const 存加成 = P.stats.heal_bonus;
-		P.stats.heal_bonus = 3;                                   // ⇒ 8（自算式在同值点上也给 8 ⇒ 本臂判的是**同源**）
+		P.stats.heal_bonus = 2;                                   // 名义量 7（✗ 实回 1／0）⇒ 两臂读数不相撞
 		const 敌 = new (R.Character)({ name: '幼獾', hp: 4, maxHp: 6 });
-		V.inventory.length = 0;                                   // ★只留一件 ⇒ 面板那行就是它（✗ 否则取到上一臂的件）
-		P.items.push({ id: 'bandage', charges: 2 });
 		R.events.emit('battle:turnEnd', { actor: P, battle: { enemies: [敌], players: [P] } });
-		R.refreshPanels();
-		const 面板文 = (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ');
-		const 面板数 = Number((面板文.match(/恢复 (\d+)/) ?? [])[1] ?? NaN);
-		const 引擎数 = 有源 ? D.healAmount(R.reviveItem({ id: 'bandage', charges: 2 }), P) : NaN;
+		const 铺一件 = async () => {
+			V.inventory.length = 0;                               // ★只留一件 ⇒ 面板那行就是它
+			P.items.push({ id: 'bandage', charges: 2 });
+			R.refreshPanels();
+			await tick(120);
+			const 文 = (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ');
+			return { 文, 数: Number((文.match(/恢复 (\d+)/) ?? [])[1] ?? NaN) };
+		};
+		let 哨兵 = null;
+		if (有实回) {
+			D.healDelta = () => 424242;                           // ★唯一变量：引擎那一处换成哨兵
+			P.hp = P.maxHp - 1;
+			哨兵 = (await 铺一件()).数;
+			D.healDelta = 存实回;                                 // ★换回
+		}
+		const 接线臂 = 有实回 && 哨兵 === 424242;
+		/* ★★**对账臂**（两条 RC 的修法②）：面板的数须 ＝ **引擎真治一次的实回**（`verify.mjs` ⑤′ 自写的规则）。
+		 *   在**两个夹取态**各判一次 —— ⑤′／㊳ 的夹具血量离上限够远 ⇒ 名义量 ＝ 实回 ⇒ 面板报名义量也**恰好躲过** ✗。 */
+		const 一档面板 = async (前血) => {
+			P.hp = 前血;
+			const 数 = (await 铺一件()).数;
+			const 前 = P.hp;
+			R.itemClick('bandage');                               // ★引擎**真治一次**（期望取自**行为**，✗ 第二份算式）
+			const 该回 = P.hp - 前;
+			V.inventory.length = 0;
+			return { 数, 该回 };
+		};
+		const 夹取 = await 一档面板(P.maxHp - 1);                // 名义 7 ⇒ **实回 1**
+		const 满血 = await 一档面板(P.maxHp);                    // 名义 7 ⇒ **实回 0**（引擎会拒绝）
 		R.events.emit('battle:end', { players: [P], enemies: [敌] });
 		R.refreshPanels();
 		P.stats.heal_bonus = 存加成;
 		V.inventory.length = 0;
-		ok(有源 && 面板数 === 引擎数,
-			`★面 T 同源臂：面板「预计恢复」应 ＝ 引擎 \`DND3.healAmount\`（面板自算一份 ⇒ 引擎一改就漂）`
-			+ `—— 实得 面板 ${面板数}／引擎 ${引擎数}（接口在场 ${有源}）｜面板文「${面板文}」`);
-		if (半臂 && 近满臂 && 满臂 && 有源 && 面板数 === 引擎数) {
+		const 夹取臂 = 夹取.数 === 夹取.该回 && 夹取.该回 === 1;
+		const 满血面板臂 = 满血.数 === 满血.该回 && 满血.该回 === 0;
+		ok(接线臂, `★面 T 接线臂：把引擎 \`D.healDelta\` 换成哨兵 ⇒ 面板须跟着变（自算一份者不会）`
+			+ `—— 实得 哨兵态面板数 ${哨兵}（应 424242；接口在场 ${有实回}）`);
+		ok(夹取臂, `★面 T 对账臂·差 1 点满：面板数应 ＝ 引擎**实回 1**（✗ 名义 7）`
+			+ `—— 实得 面板 ${夹取.数}／引擎实回 ${夹取.该回}`);
+		ok(满血面板臂, `★面 T 对账臂·满血：面板数应 ＝ 引擎**实回 0**（✗ 名义 7 —— 那是拿不到的数）`
+			+ `—— 实得 面板 ${满血.数}／引擎实回 ${满血.该回}`);
+		if (半臂 && 近满臂 && 满臂 && 接线臂 && 夹取臂 && 满血面板臂) {
 			console.log(`  面 T ✓ 背包栏治疗件对账：半血 Δ=${半.Δ}／屏上数=${半.数}；差 1 点满 Δ=${近满.Δ}／屏上数=${近满.数}`
-				+ `；满血 ⇒ 拒绝 ＋ 不扣件 ＋ 出声；面板＝引擎同源（${面板数}）`);
+				+ `；满血 ⇒ 拒绝 ＋ 不扣件 ＋ 出声；面板接线（哨兵 ${哨兵}）＋ 对账（夹取态 ${夹取.数}、满血态 ${满血.数}）✓`);
 		}
 	}
 	s.dom.window.close();
