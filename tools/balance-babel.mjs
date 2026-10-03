@@ -113,7 +113,7 @@ const STRATEGIES = {
 const FIXTURES = [
 	{
 		id: '温泉→L9 头目',
-		待判: 'L9 头目的攻击面：本席手搭 `R.Battle` 时，`R.Character.revive(toJSON())` 带过来的 `items` 是**规格**（`{id,equipped}`）而非**物化实例** ⇒ 战斗里下骰表为 undefined（`rollDetail ← dnd3.meleeAttack`）。故事自己的遭遇路（`encounters.js:175` 的 `fresh` ＋ 同一句 `new R.Battle`）在游戏中是通的 ⇒ 缺口在**本器手搭的那一段**，不在游戏。**本夹具因此不入绿**；修法＝改走故事自己的遭遇动作（`基础遭遇动作(L)` 那条 `action`）而不是本器自建战斗，待落。目标面不变：L9 硬门（§14 ⑩ 的七成到八成半）。',
+		待判: 'L9 头目的攻击面：**改走故事自己的遭遇入口（`setup.BABEL.fight`）之后仍然抛**「无法解析的骰子表达式：undefined」（`rollDetail ← dnd3.meleeAttack`）。⇒ 这已不是本器手搭 `R.Battle` 的问题：同一条路在**故事自己的代码里**也断。读数：`R.items.has(\'sleepless-grasp\')` 为 **true**（道具已注册）、而取出的定义只有 `handlers`、**取不到 `dmg`／`atkBonus`**；`boss.js:19` 自己写着「⚠ 必须落在 `items` 里：`RPG.Character` 不认 `attacks:` 字段」。⇒ **本器记待判、不入绿**，并把它作为**待查项**交回故事侧（L9 头目在无头装具里打不起来 —— 请作者判是装置差还是真缺口）。',
 		说明: '走真路：L9 ⇒ L8 泡温泉（故事自己的动作本体）⇒ 回 L9 打头目 —— 操作者点名的平衡基线「温泉后满状态 vs 不眠者」的**前半**',
 		层: 'L9',
 		策略: '纯攻',
@@ -290,7 +290,7 @@ function 造序列(样本号, 长度 = 4096) {
 /* ══════════════════════════════════════════════════════════════════════════
  * 一场：驱动真 `RPG.Battle.execute()`
  * ══════════════════════════════════════════════════════════════════════════ */
-async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策略名 = null } = {}) {
+async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策略名 = null } = {}) {
 	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
 	const 策略 = STRATEGIES[策略名 ?? 夹具.策略] ?? STRATEGIES['纯攻'];
 	const 轨迹 = [];
@@ -299,7 +299,12 @@ async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策�
 	const 原序列 = R.rng.快照?.() ?? null;
 	const 存包 = (V().inventory ?? []).slice();
 	const 存血 = D3.Player.hp;
+	/* ★敌组**不自己造**：由引擎自己的 `battle:end` 事件交回来（那是引擎对外说「这一场有谁」的通道）。 */
+	let 敌组 = [];
+	const onEnd = ({ enemies } = {}) => { 敌组 = Array.isArray(enemies) ? enemies : []; };
 	try {
+		R.events?.on?.('battle:end', onEnd);
+
 		/* ② 随机流注入（本样本的确定性序列） */
 		R.rng.setSequence?.(造序列(样本号));
 		/* ① 脚本化 choice：覆盖**实例**（✗ 原型），并把每次选择记进轨迹 */
@@ -315,17 +320,31 @@ async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策�
 			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null });
 			return hit?.value ?? 'skip';
 		};
-		await new R.Battle(回合上限, [D3.Player], 敌组, true).execute();
+		/* ★**走真路**（`books#182` RC 的修法）：交回故事自己的遭遇入口 —— 它自己滚遭遇、
+		 *   自己用 `fresh` 克隆、自己坐 `new R.Battle`。本席原来自建那一段（含手搓克隆）
+		 *   正是「L9 头目攻击面取不到」的成因。 */
+		if (typeof B.fight !== 'function') throw new Error('故事侧缺 `setup.BABEL.fight`（遭遇入口未接线）');
+		/* ★`fight()` 末尾会把玩家导去战后段落（`exit()` 的 `Engine.play`），而那一步在无头装具里
+		 *   会抛（`momentCreate ⇒ clone`）。本器量的是**战斗**：**战斗已结束之后**的错只记不抛，
+		 *   战斗**之前或之中**的错照抛（✗ 一律吞 —— 那会把「装配缺口」也吞成绿）。
+		 *   判据＝引擎自己的 `battle:end` 事件是否已到（这就是「战斗结束」的权威信号）。 */
+		try {
+			await B.fight({ interactive: true });
+		} catch (e) {
+			if (敌组.length === 0) throw e;
+			s.__尾部差错 = String(e?.message ?? e);
+		}
 		const 战果 = 判战果(R, [D3.Player], 敌组);
 		return {
 			样本号, 夹具: 夹具.id, 策略: 策略名 ?? 夹具.策略, 战果,
-			回合: Math.max(0, Math.round((s.SC.State.variables?.babelRun?.deaths ?? 0) * 0)) + 轨迹.length, // 见下注
+			回合: 轨迹.length,
 			自己血: D3.Player.hp, 敌血: 敌组.map((e) => e.hp),
 			背包: (V().inventory ?? []).map((x) => x.id),
 			轨迹,
 		};
 	} finally {
 		/* ③ 还原：choice、rng、玩家血与背包 —— 出错也必须还原（否则下一场样本被污染） */
+		R.events?.off?.('battle:end', onEnd);
 		D3.Player.choice = 原Choice;
 		if (原序列 && typeof R.rng.恢复 === 'function') R.rng.恢复(原序列);
 		V().inventory = 存包;
@@ -333,32 +352,17 @@ async function 跑一场(s, 夹具, 样本号, 敌组, { 回合上限 = 8, 策�
 	}
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * 夹具摆位 ＋ 敌组（走受支持写点）
- * ══════════════════════════════════════════════════════════════════════════ */
+/** 把**场景**摆到位（清背包／清抽签账／走到该层／夹具自己的 `摆位`）。
+ *  ★**敌组不由本器构造**（`books#182` RC 的修法）：交回故事自己的遭遇面 ——
+ *    `setup.BABEL.fight()` 内部自己滚 `R.rollEncounter`、自己用 `fresh`（`R.Character.revive(toJSON())`）
+ *    克隆、自己坐 `new R.Battle`。本席原来自建那一套（含**手搓克隆**）正是「L9 头目攻击面取不到」的成因。 */
 function 摆夹具(s, 夹具, 层 = 夹具.层 ?? process.env.BALANCE_LAYER ?? 'L1') {
-	/* ★层由**夹具自己**给（`books#182` RC 非阻断一）：L1 遭遇面与 L9 头目面答的不是同一个问题，
-	 *   本器首版把层写死成 L1 ⇒ 全表读的都是 L1 遭遇面，答不了 §14 ⑩ 那条 L9 硬门。 */
 	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
 	V().inventory = [];
 	V().span1Events = {};
 	B.map.moveTo(层);
 	夹具.摆位(R, D3, B, s);
-	/* 敌组：走故事自己的遭遇面（`RPG.rollEncounter`）＋ 与 `encounters.js` 同形的**克隆**（✗ 用单例） */
-	const rolled = R.rollEncounter?.(层, { count: 1 }) ?? [];
-	/* ★克隆走**故事自己的配方**（`stories/babel/src/world/encounters.js:35` 的 `fresh`，模块私有 ⇒ 照抄其两步）：
-	 *     `R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON())))`，`elite` 只改可见命名。
-	 *   ⚠⚠ 那处源码头上就写着「**✗ 手搓字段**（手搓会漏字段，且与 `#1758` 的 revive 钩子面脱钩）」——
-	 *     本席首版正是手搓（`new proto.constructor()` ＋ `Object.assign`），症状是 L9 头目
-	 *     「**无法解析的骰子表达式：undefined**」（头目的攻击骰在 revive 钩子面上，手搓拿不到）。 */
-	const foes = rolled.map((e) => {
-		const proto = R.characters.get(e.ref);
-		if (!proto) throw new Error(`遭遇表引用了未注册的角色 id「${e.ref}」`);
-		const copy = R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON())));
-		if (e.elite) copy.name = `精英·${copy.name}`;
-		return copy;
-	});
-	return foes;
+	return null;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -428,41 +432,45 @@ async function 自证(env) {
 	/* ① 策略真被调用 */
 	const s1 = await H.boot(env);
 	const f = FIXTURES.find((x) => x.id === '纯攻');
-	let foes = 摆夹具(s1, f);
-	const r1 = await 跑一场(s1, f, 1, foes);
+	摆夹具(s1, f);
+	const r1 = await 跑一场(s1, f, 1);
 	判('① 脚本化 choice 真被调用（轨迹非空）', r1.轨迹.length > 0, `轨迹 ${r1.轨迹.length} 步`);
 
 	/* ② 同号同序列 ⇒ 同战果（rng 注入生效且确定） */
-	foes = 摆夹具(s1, f);
-	const r2 = await 跑一场(s1, f, 1, foes);
+	摆夹具(s1, f);
+	const r2 = await 跑一场(s1, f, 1);
 	判('② 同样本号 ⇒ 逐字同战果（随机流确定）', r1.战果 === r2.战果 && r1.轨迹.length === r2.轨迹.length,
 		`${r1.战果}/${r1.轨迹.length} vs ${r2.战果}/${r2.轨迹.length}`);
 
 	/* ③ 策略真接线：**比轨迹**（选择的直接证据 —— ✗ 只比战果：弱敌/强敌下战果可能天然相同） */
-	foes = 摆夹具(s1, f);
-	const r3 = await 跑一场(s1, f, 1, foes, { 策略名: '跳过' });
-	const 全跳过 = r3.轨迹.every((x) => x.选 === 'skip');
-	const 有非跳 = r1.轨迹.some((x) => x.选 !== 'skip' && x.选 != null);
-	判('③a 「跳过」策略真的全跳过（轨迹为证）', 全跳过, `跳过轨迹 ${r3.轨迹.length} 步，全 skip=${全跳过}`);
-	判('③b 「纯攻」策略真的有非跳过选择（轨迹为证）', 有非跳, `纯攻轨迹 ${r1.轨迹.length} 步，有非 skip=${有非跳}`);
-
-	/* ③c 战果可分辨这一面，须用**弱敌**（L1 幼獾）：强敌下两策略可能天然皆负，比了也读不出东西。 */
+	摆夹具(s1, f);
+	const r3 = await 跑一场(s1, f, 1, null, { 策略名: '跳过' });
+	/* ★断言按**「有没有做出战斗动作」**判（✗ 按「全 skip」、✗ 按具体武器 id 硬编码）：
+	 *   走真路后，`fight()` 末尾的战后导航（`exit()` 的「继续探索」）也在同一 `choice` 通道上，
+	 *   而它不提供 skip ⇒ 「全 skip」会把那次导航误判成攻击；武器 id 又会随故事改。
+	 *   故只用一个判据：**选中值里除了 'skip' 与导航项之外，还有没有别的** —— 有＝做了战斗动作。 */
+	const 非战斗值 = new Set(['skip', '探索']);
+	const 有异动 = (rs) => rs.轨迹.some((x) => x.选 != null && !非战斗值.has(x.选));
+	判('③a 「跳过」策略从未做出战斗动作（轨迹为证）', !有异动(r3),
+		`跳过轨迹 ${r3.轨迹.length} 步，选中值=${JSON.stringify([...new Set(r3.轨迹.map((x) => x.选))])}`);
+	判('③b 「纯攻」策略确实做出过战斗动作（轨迹为证）', 有异动(r1),
+		`纯攻轨迹 ${r1.轨迹.length} 步，选中值=${JSON.stringify([...new Set(r1.轨迹.map((x) => x.选))])}`);	/* ③c 战果可分辨这一面，须用**弱敌**（L1 幼獾）：强敌下两策略可能天然皆负，比了也读不出东西。 */
 	const 弱 = { ...f, 摆位: f.摆位 };
 	const s2 = await H.boot(env);
 	V(s2).inventory = []; s2.SC.setup.D3 ??= s2.SC.setup.DND3;
 	s2.SC.setup.RPG.give('sword'); s2.SC.setup.RPG.equip('sword');
 	s2.SC.setup.DND3.Player.hp = s2.SC.setup.DND3.Player.maxHp;
 	s2.SC.setup.BABEL.map.moveTo('L1');
-	const 强敌 = (await (async () => { const g = 摆夹具(s2, 弱, 'L1'); return g; })());
-	const rw = await 跑一场(s2, 弱, 7, 强敌);
+	摆夹具(s2, 弱, 'L1');
+	const rw = await 跑一场(s2, 弱, 7);
 	const s3 = await H.boot(env);
 	s3.SC.setup.RPG.give('sword'); s3.SC.setup.RPG.equip('sword');
 	s3.SC.setup.DND3.Player.hp = s3.SC.setup.DND3.Player.maxHp;
 	s3.SC.setup.BABEL.map.moveTo('L1');
-	const 强敌2 = 摆夹具(s3, 弱, 'L1');
-	const rs = await 跑一场(s3, 弱, 7, 强敌2, { 策略名: '跳过' });
+	摆夹具(s3, 弱, 'L1');
+	const rs = await 跑一场(s3, 弱, 7, null, { 策略名: '跳过' });
 	判('③c 弱敌（L1）下「纯攻」与「跳过」战果可分辨', rw.战果 !== rs.战果,
-		`纯攻 ${rw.战果} vs 跳过 ${rs.战果}｜敌=${强敌.map((e) => `${e.name}(${e.hp})`).join('、')}`);
+		`纯攻 ${rw.战果}（余血 ${rw.自己血}）vs 跳过 ${rs.战果}（余血 ${rs.自己血}）`);
 
 	/* ④ finally 还原：choice 复位、背包复位 */
 	const 原choice是原的 = typeof s1.SC.setup.DND3.Player.choice === 'function';
@@ -489,8 +497,8 @@ async function 自证(env) {
 async function 跑重读同档(s, 夹具, 样本号, env) {
 	const 一场 = async () => {
 		const s2 = await H.boot(env);                 // ★**新会话**＝同一初始态（✗ 复用被上一场改过的）
-		const foes = 摆夹具(s2, 夹具);
-		return 跑一场(s2, 夹具, 样本号, foes);
+		摆夹具(s2, 夹具);
+		return 跑一场(s2, 夹具, 样本号);
 	};
 	const 场1 = await 一场();
 	const 场2 = await 一场();
@@ -551,9 +559,8 @@ async function main() {
 			try {
 				if (f.特殊 === '重读同档') { 样本.push(await 跑重读同档(s, f, i, env)); continue; }
 				if (f.特殊 === '多场连续') { 样本.push(await 跑多场连续(s, f, i)); continue; }
-				const foes = 摆夹具(s, f);
-				if (foes.length === 0) throw new Error('遭遇面未给出敌组（装配缺口）');
-				const r = await 跑一场(s, f, i, foes);
+				摆夹具(s, f);
+				const r = await 跑一场(s, f, i);
 				样本.push(r);
 			} catch (e) {
 				红++;
