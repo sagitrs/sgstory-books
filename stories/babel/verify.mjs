@@ -1435,11 +1435,18 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		ok((头目?.items ?? []).some((i) => i?.equipped), '★头目的攻击件**没有装备**（`equipped: true`）⇒ 自动通路取不到它');
 		/* ★重开复位（形照引擎 `monsters/*.js` 的同名钩子）：**没有它，头目只会被杀一次**
 		 *   （`hp` 留在 0、`effects` 还挂着上一局的）。两向分两层：
-		 *   ① **接线**：`world/boss.js` 里那行 `:enginerestart` 绑定在（剥块注释后再断 —— 同 ⑲ 的教训）
-		 *   ② **行为**：真调复位函数（本判据跑在 host 桩里，**没有真 DOM 事件** ⇒ 走那个具名函数）。 */
-		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-		const 接线 = /:enginerestart/.test(bossSrc) && /jQuery\(document\)\.on/.test(bossSrc);
-		ok(接线, '★`world/boss.js` 没有把复位挂到 `:enginerestart`（引擎的重开事件）⇒ 头目只会被杀一次');
+		 *   ① **接线**：`world/boss.js` 里那行 `:enginerestart` 绑定在，**且绑的是 `复位头目`**
+		 *      （剥块注释与行注释后再断 —— 同 ⑲ 的教训）。
+		 *   ② **行为**：真调复位函数（本判据跑在 host 桩里，**没有真 DOM 事件** ⇒ 走那个具名函数）。
+		 *   ★`books#156`（`#155` 的合后遗留）：① 原先只核「`:enginerestart` 与 `jQuery(document).on`
+		 *     两串共现」⇒ 把绑定换成**另一个空函数**、而 `复位头目` 留着且照旧导出时，本臂与②臂**都绿**，
+		 *     而那正是「重开事件不会复位头目」。⇒ 本臂收紧到要求**绑定的目标是指名的那一个**；
+		 *     行注释也一并剥除（只剥块注释时，把绑定写成行注释仍会过，同族）。 */
+		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8')
+			.replace(/\/\*[\s\S]*?\*\//g, '')          // 块注释
+			.replace(/\/\/[^\n]*/g, '');                 // 行注释
+		const 接线 = /jQuery\(document\)\.on\(\s*':enginerestart'\s*,\s*(复位头目|setup\.BABEL\.头目\.复位)\s*\)/.test(bossSrc);
+		ok(接线, '★`world/boss.js` 没有把**复位头目**挂到 `:enginerestart`（引擎的重开事件）⇒ 头目只会被杀一次');
 		const 原hp = 头目?.hp;
 		if (头目) { 头目.hp = 0; 头目.effects = ['残留']; }
 		const 复位fn = B.头目?.复位;
