@@ -163,6 +163,23 @@ jobs:
           grep -q '两把刀如期' /tmp/e209k.out || { echo "::error title=e2e-window::e2e-209 的刀未打印「两把刀如期」（自检恐已退化）"; exit 1; }
           { echo '```'; tail -3 /tmp/e209.out; echo '---'; tail -4 /tmp/e209k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── `books#216`：**侧栏存档按钮的真 DOM 臂**（玩家真点得到的那颗按钮）──
+      #   为何单开一步（✗ 并进上面 books#209 那步）：那条步的两句汇总串正被上面两条 `grep` 守着，
+      #   混在一起会让「哪一句是谁的」说不清。★步数上限仍在（`gates.md` 测试面）⇒ 只加这一步。
+      #   ★本笔**依赖 `books#224`**（工具档 `tools/e2e-216-sidebar-save-dom.mjs` 由它落盘）⇒ 合序 `#224` → 本笔。
+      - name: ★侧栏存档按钮的真 DOM 臂（books#216）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/e2e-216-sidebar-save-dom.mjs --engine "$GITHUB_WORKSPACE/engine" | tee /tmp/e216.out
+          node tools/e2e-216-sidebar-save-dom.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest | tee /tmp/e216k.out
+          # ★取不到即红（✗ 不吞）：`#91` 那族的教训 —— 输出形变了却不报错，判据会**静默退化**成装饰。
+          #   ★另：`set -o pipefail` 是这两句 `| tee` **能用**的前提 —— 没有它，管道会把 `node` 的
+          #     非零退出码吃掉（只剩 `tee` 的 0）⇒ 判据红了这步也不会红。
+          grep -q '侧栏真 DOM 判据通过' /tmp/e216.out || { echo "::error title=e2e-window::e2e-216 未打印「侧栏真 DOM 判据通过」（输出形恐已变 ⇒ 见 tools/e2e-216-sidebar-save-dom.mjs）"; exit 1; }
+          grep -q '刀的判别力自证通过' /tmp/e216k.out || { echo "::error title=e2e-window::e2e-216 的刀未打印「刀的判别力自证通过」（自检恐已退化）"; exit 1; }
+          { echo '```'; tail -4 /tmp/e216.out; echo '---'; tail -3 /tmp/e216k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
         run: |
