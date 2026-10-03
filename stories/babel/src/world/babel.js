@@ -325,7 +325,7 @@ DND3.BlueMossWasp = R.defCharacter({
 	items: [{ id: 'blue-moss-sting', equipped: true }],
 });
 
-/* ---------- 遭遇表覆写（只换 L1–L3；L4–L9 与 **掉落面**逐字继承引擎）---------- */
+/* ---------- 遭遇表覆写（换 L1–L3 与 L9；L4–L8 与 **掉落面**逐字继承引擎）---------- */
 {
 	const base = DND3.ENCOUNTER_SPAN1 ?? {};
 	R.registerEncounterTable('span1', Object.assign({}, base, {
@@ -337,8 +337,49 @@ DND3.BlueMossWasp = R.defCharacter({
 		L2: { encounters: [{ ref: 'badger', weight: 1, elite: true }], loot: base.L2?.loot ?? [{ id: 'coin', weight: 1 }] },
 		/* L3：换成蓝苔蜂（一击必杀／高敏／高伤）。 */
 		L3: { encounters: [{ ref: 'blue-moss-wasp', weight: 1 }], loot: base.L3?.loot ?? [{ id: 'coin', weight: 1 }] },
+		/* ★`books#133` 笔 3：**L9 ＝ 固定头目**（设计稿 §L9「固定事件＝玩家看到出口」）——
+		 *   行内**只剩一个 ref** ⇒ 任何一次抽都只能是它（「固定」由此是**机械事实**，✗ 口号）。
+		 *   体在 `world/boss.js`（故事层定义；`#1855` 的形）。掉落面**继承引擎的 L9 行**不动
+		 *   （头目战利品口径未定 ⇒ 不新造数值面；明账见 PR）。 */
+		L9: { encounters: [{ ref: 'sleepless-one', weight: 1 }], loot: base.L9?.loot ?? [{ id: 'coin', weight: 1 }] },
 	}));
 }
+
+/* ---------- 层表覆写（`books#133` 笔 3；与上面的遭遇表**同笔**）----------
+ * 领队 2026-10-03 00:01 裁（逐字）：「两表同笔覆写[ENCOUNTER_SPAN1+LAYER_META_SPAN1——同键配对校验，
+ *   L9 条目替换]」。两表由**同一个键**配对（`#1748`）：遭遇表的键集 ⊆ 层表的 id 集
+ *   （`hub` 型层不设遭遇行），层 id 与遭遇表键**同一套命名**（防两套）。
+ * ★本笔**唯一改动的条目＝ L9**：标成 `boss: true`。该标记是下面「唯一出口」的**数据源**
+ *   （✗ 在守卫里硬写 `=== 'L9'`）⇒ 头目层将来换位置只改这一格。
+ * ⚠ 重复注册：引擎的 `registerLayerMeta` 对重复 id 打 `console.warn`（`#1816` 的既有形，**告警不抛**）
+ *   —— 本条是**有意覆写** ⇒ 该告警属预期（本笔既不静默、也不去压掉它）。 */
+const LAYER_META = R.registerLayerMeta('span1', (() => {
+	const base = DND3.LAYER_META_SPAN1 ?? [];
+	if (base.length === 0) {
+		throw new Error('[babel] 层表缺席（`DND3.LAYER_META_SPAN1` 未装载？）—— `books#133` 笔 3 的出口守卫读它（✗ 静默降级）');
+	}
+	return base.map((l) => (l?.id === 'L9' ? Object.assign({}, l, { boss: true }) : Object.assign({}, l)));
+})());
+/** 头目层判定（走引擎的公开读面 `layerOfLocation` —— 它按**最长前缀**匹配地点 id
+ *  ⇒ `'L10-camp'` 归 `L10`，✗ 误配到 `L1`）。 */
+const 是头目层 = (locId) => R.layerOfLocation?.(locId)?.boss === true;
+/** 头目层的**唯一出口**指向：层表里的**下一层**（`L9` ⇒ `L10`）。 */
+const 头目层前方 = (locId) => {
+	const t = R.layerMeta?.['span1'] ?? [];
+	const id = R.layerOfLocation?.(locId)?.id ?? locId;
+	const i = t.findIndex((l) => l?.id === id);
+	return i >= 0 ? (t[i + 1]?.id ?? null) : null;
+};
+/** 边守卫：**只给头目层的边**装（非头目层返回 `null` ⇒ 连 `when` 都不挂，边照旧可用）。
+ *  ★落法是**动作守卫**而✗结构删边（领队原文）：边仍在图里（`map.exits` 读得到、`validate()` 照验），
+ *    只是 `when` 恒假 ⇒ 「玩家选项中只有一个」。 */
+const 边守卫 = (from, to) => {
+	if (!是头目层(from)) return null;          // 装载时：非头目层**根本不装守卫**（边照旧可用）
+	const 前方 = 头目层前方(from);              // 前方由**层表顺序**定（静态内容 ⇒ 装载时取即可）
+	/* ★调用时**再看一次表**：头目标记若被摘掉 ⇒ 该层不再受限（✗ 把标记在装载时判死 ——
+	 *   那样「读数随表翻面」就只是句空话：面 O 的两向臂会立刻抓到，见 `tools/e2e-drive.mjs`）。 */
+	return () => !是头目层(from) || (R.layerOfLocation?.(to)?.id ?? to) === 前方;
+};
 
 /* ---------- L1 固定事件：地上那把剑 ---------- */
 /* ★与已关闭的 `#128`（木棒）**同形**，实体换成**剑**（`books#132` 设计：L1 武器获取＝捡剑）。
@@ -462,14 +503,18 @@ adoptHub(map, DND3.buildSpan1Hub());   // 包里已自带 `validate()`：不合�
 for (let i = 0; i < LAYERS.length - 1; i++) {
 	const a = LAYERS[i].id;
 	const b = LAYERS[i + 1].id;
-	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层` });
+	const w = 边守卫(a, b);
+	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层`, ...(w ? { when: w } : {}) });
 }
-map.addPath({ from: 'L9', to: 'L10-camp', text: '钻进光里（第 10 层）' });
+/* ★`books#133` 笔 3：L9 的**唯一出口**＝前进（设计稿：「选项唯一＝前进进入 10 层」）。
+ *   文案带上设计原词，让「前进」在**选项本身**上可见（✗ 只在文档里）。边照旧，守卫只说「就这一条」。 */
+map.addPath({ from: 'L9', to: 'L10-camp', text: '前进（钻进光里 · 第 10 层）', when: 边守卫('L9', 'L10-camp') ?? undefined });
 map.addPath({ from: 'L10-camp', to: 'L9', text: '退回第 9 层（段内自由）' });
 for (let i = LAYERS.length - 1; i > 0; i--) {
 	const a = LAYERS[i].id;
 	const b = LAYERS[i - 1].id;
-	map.addPath({ from: a, to: b, text: `向下，回第 ${i} 层（段内自由）` });
+	const w = 边守卫(a, b);
+	map.addPath({ from: a, to: b, text: `向下，回第 ${i} 层（段内自由）`, ...(w ? { when: w } : {}) });
 }
 /* ★ **10→11 单向门本体与 L11 实体均由 `babel2.js` 接**（`#1791`）：
  *   一段当年挂不上那条边（L11 尚不存在 ⇒ 悬空边、`validate()` 必红）；现在 L11 是二段的**爬层**
@@ -511,6 +556,8 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	/* ★`books#133` 笔 1：选择制的机器件导出（同 `登记域` 的理由：判据/刀要能**真调用**，✗ 只能静态核）。 */
 	EVENT_KINDS, EVENT_LAYERS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
+	/* ★`books#133` 笔 3：头目弧的机器件（同上理由：判据/刀要能**真调用**）。 */
+	LAYER_META, 是头目层, 头目层前方, 边守卫,
 	adoptHub,                      // 整备区接管形（一段/二段共用）
 	layerOf: () => R.layerOfLocation(map.current)?.id ?? null,
 	makeExploreScene,              // ★`books#136`：读档重注册用（`story/hooks.js` 消费；与下方注册同源）

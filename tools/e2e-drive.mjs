@@ -211,6 +211,21 @@ if (has('--selftest')) {
 		N有工具 = 采().when() === true;
 	}
 	F('★面 N 两向：同一注入下，无斧 ⇒ 不可选、给斧 ⇒ 可选（读数随**背包**翻面，✗ 恒定）', N无工具 === true && N有工具 === true);
+
+	/* ★面 O 的**刀**（`books#133` 笔 3）：唯一出口的读数**随层表的 `boss` 标记翻面** ——
+	 *   摘掉标记 ⇒ L9 立刻回到 2 条可用出口（证明守卫读的是**表**，✗ 硬写的层名 `=== 'L9'`）。 */
+	let O两向 = false;
+	{
+		const B = s.SC.setup.BABEL;
+		const L9行 = (B.LAYER_META ?? []).find((l) => l?.id === 'L9');
+		const 前 = B.map.exitsFrom('L9').length;
+		L9行.boss = false;
+		const 摘 = B.map.exitsFrom('L9').length;
+		L9行.boss = true;
+		const 回 = B.map.exitsFrom('L9').length;
+		O两向 = 前 === 1 && 摘 === 2 && 回 === 1;
+	}
+	F('★面 O 两向：摘掉层表 L9 的 `boss` ⇒ 出口 1 ⇒ 2 条、装回 ⇒ 1 条（读数随**表**翻面，✗ 硬写层名）', O两向 === true);
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -343,6 +358,24 @@ if (has('--selftest')) {
 	const N有 = 采按钮(s);
 	ok(N有.length === 1, `★面 N：给了铁斧之后采集按钮仍不出现（实得 ${JSON.stringify(N有)}）—— 工具门接线断了`);
 	if (N有.length === 1 && N无.length === 0) console.log(`  面 N ✓ 工具门：无斧 ⇒ 采集按钮 0 个；给斧 ⇒ ${JSON.stringify(N有)}`);
+
+	/* ══ 面 O（**硬判**）：L9 头目弧的**唯一出口**（`books#133` 笔 3）════════════════
+	 * 玩家可见的形＝「选项中只有一个」：L9 的出口只出「前进」那一条（✗ 向上／向下两条都出）。
+	 * 两向＝把同一读数放到**非头目层 L8** 作对照（那里两条都在）—— ✗ 只断「只有一条」
+	 *   （那可能是出口整体坏了、或地图没画出来）。⚠ 本面只走 L8↔L9，L10+ 的衔接面不动。 */
+	/* ⚠ 顿号别写进正则：本仓的出口文案用**全角逗号**（`向上，去第 9 层`），首版写成 `向上\u3001` ⇒ 漏读（本席实测撞到）。 */
+	const 出口按钮 = (x) => choiceButtons(x).filter((t2) => /^(前进|向上|向下)|钻进光里|退回第/.test(t2));
+	s.SC.setup.BABEL.map.moveTo('L8');
+	await playPassage(s, '探索'); await tick(250);
+	const O8 = 出口按钮(s);
+	s.SC.setup.RPG.rng.setSequence([0.99, 0.99, 0.99]);        // L9 抽签两格 + 危害一格（皆非命中）
+	s.SC.setup.BABEL.map.moveTo('L9');
+	await playPassage(s, '探索'); await tick(250);
+	s.SC.setup.RPG.rng.reset();
+	const O9 = 出口按钮(s);
+	ok(O8.length === 2, `★面 O：对照层 L8 的出口不是 2 条（${JSON.stringify(O8)}）⇒ 出口面本身坏了，本面读数不成立`);
+	ok(O9.length === 1 && /前进/.test(O9[0] ?? ''), `★面 O：L9 的出口不是「唯一的前进」（实得 ${JSON.stringify(O9)}）`);
+	if (O8.length === 2 && O9.length === 1) console.log(`  面 O ✓ 唯一出口：L8 对照 2 条 ${JSON.stringify(O8)}；L9 1 条 ${JSON.stringify(O9)}`);
 
 	s.dom.window.close();
 }

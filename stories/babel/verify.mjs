@@ -867,8 +867,12 @@ head('⑳ `books#132` L1–L4 弧（空手可胜／捡剑／必掉绷带／一�
 	if (t1) {
 		ok((t1.L2?.encounters ?? []).some((e) => e.elite), '★L2 没有升 elite ⇒ 设计要的「难度较高」不成立');
 		ok((t1.L3?.encounters ?? []).some((e) => e.ref === 'blue-moss-wasp'), '★L3 没换成蓝苔蜂（`books#132` 的 L3 怪）');
-		/* L4–L9 须**逐字继承**引擎（防漂）：抽查 L9 与引擎表同源 */
-		ok(JSON.stringify(t1.L9) === JSON.stringify(D.ENCOUNTER_SPAN1?.L9), '★L9 行与引擎表**不同源**（覆写时漂了）');
+		/* ★**判据连改（`books#133` 笔 3）**：原来这里要求「L9 与引擎表逐字同源」，而笔 3 把 L9
+		 *   **有意替换**成固定头目行 ⇒ 那条反了。继承面改查 **L8**（L4–L8 仍须逐字继承，防漂）；
+		 *   L9 的新不变式在 ㉗ 格（单一 ref ＝ 固定头目）。 */
+		ok(JSON.stringify(t1.L8) === JSON.stringify(D.ENCOUNTER_SPAN1?.L8), '★L8 行与引擎表**不同源**（L4–L8 应逐字继承，覆写时漂了）');
+		ok((t1.L9?.encounters ?? []).length === 1 && t1.L9.encounters[0].ref === 'sleepless-one',
+			`★L9 行不是「固定头目」（${JSON.stringify(t1.L9?.encounters)}）—— 笔 3 的口径是行内只剩头目一个 ref`);
 	}
 	/* ── L3 怪：**一击必杀 = 机制事实**（hp 1 ≤ 玩家最低一击） */
 	const wasp = R.characters.get('blue-moss-wasp');
@@ -1404,6 +1408,91 @@ head('㉖ 层危害（`books#133` 笔 2）');
 			State.variables.span1Events = 存账;
 			if (map.locations.has(存位)) map.moveTo(存位);
 		}
+	}
+}
+
+/* ── ㉗ L9 头目弧（`books#133` 笔 3）────────────────────────────
+ *
+ * 它回答的问题：**L9 是不是「固定头目 ＋ 唯一出口（前进）」、两表是不是同键配对？**
+ *   ① 头目实体在册、**有已装备的攻击件**（「咬不动人」那一类：`Character` 不认 `attacks:` 字段）
+ *     ——数值表读自**实体对实体**（它 ≥ 段内头「巨蜥」）② L9 的遭遇行是**单一 ref ＝ 头目**
+ *     （「固定」是机械事实：**抽一次也是它**），且**掉落面逐字继承引擎** ③ **唯一出口**：可用出口恰好
+ *     1 条且文案含「前进」；而**边仍在图里**（✗ 结构删边 —— 对照 ④：非头目层 L8 有 2 条可用
+ *     ⇒ 守卫是**按层**的，✗ 全局摘除）⑤ **两表同键配对**（层表 id 序列 ＝ 引擎的；遭遇表键集 ⊆ 层表
+ *     id 集；带 `boss` 的只有 L9）⑥ 接管面不动的证据：L10 仍是 `hub`、L10-camp 的出口含「退回第 9 层」。
+ *   ⚠ 本格会**移动地图**：进出各一次（形照 ⑳ / ㉖）。 */
+head('㉗ L9 头目弧（`books#133` 笔 3）');
+{
+	const 存位 = map.current;
+	try {
+		/* ★读数一律落**局部变量**，收束行的 ✓ 由读数印（✗ 无条件打 ✓ —— `dev-9` 在笔 2 的 NIT）。 */
+		const m = (b) => (b ? '✓' : '✗');
+		const 头目 = B.头目?.不眠者;
+		const 件 = (头目?.items ?? []).map((i) => (typeof i?.id === 'string' ? i.id : null)).filter(Boolean);
+		const 甲 = !!头目 && !!R.characters.get('sleepless-one') && 件.length > 0 && (头目.items ?? []).some((i) => i?.equipped);
+		ok(!!头目 && !!R.characters.get('sleepless-one'), '★`sleepless-one` 不在册（`world/boss.js` 未装载？）');
+		ok(件.length > 0, '★头目**没有攻击件**（`items` 空）⇒ 它在战斗里咬不动人（`attacks:` 字段不被 `Character` 认）');
+		ok((头目?.items ?? []).some((i) => i?.equipped), '★头目的攻击件**没有装备**（`equipped: true`）⇒ 自动通路取不到它');
+		/* ★重开复位（形照引擎 `monsters/*.js` 的同名钩子）：**没有它，头目只会被杀一次**
+		 *   （`hp` 留在 0、`effects` 还挂着上一局的）。两向分两层：
+		 *   ① **接线**：`world/boss.js` 里那行 `:enginerestart` 绑定在（剥块注释后再断 —— 同 ⑲ 的教训）
+		 *   ② **行为**：真调复位函数（本判据跑在 host 桩里，**没有真 DOM 事件** ⇒ 走那个具名函数）。 */
+		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+		const 接线 = /:enginerestart/.test(bossSrc) && /jQuery\(document\)\.on/.test(bossSrc);
+		ok(接线, '★`world/boss.js` 没有把复位挂到 `:enginerestart`（引擎的重开事件）⇒ 头目只会被杀一次');
+		const 原hp = 头目?.hp;
+		if (头目) { 头目.hp = 0; 头目.effects = ['残留']; }
+		const 复位fn = B.头目?.复位;
+		ok(typeof 复位fn === 'function', '★复位逻辑没有导出（`setup.BABEL.头目.复位`）⇒ 判据只能静态核');
+		复位fn?.();
+		const 复位ok = 头目?.hp === 头目?.maxHp && (头目?.effects ?? []).length === 0;
+		ok(复位ok, `★重开复位没把头目拨回（hp ${头目?.hp}／${头目?.maxHp}，effects ${JSON.stringify(头目?.effects)}）—— 它只会被杀一次`);
+		if (头目) 头目.hp = 原hp;
+		/* 数值面：读**实体对实体**（✗ 在此写魔数） */
+		const 巨蜥 = R.characters.get('monitor-lizard');
+		ok(!!巨蜥 && 头目.maxHp >= 巨蜥.maxHp, `★头目 maxHp=${头目?.maxHp} < 段内头「巨蜥」${巨蜥?.maxHp}（头目不该比段内头更脆）`);
+		/* ① L9 遭遇行：单一 ref ＋ 掉落面继承 ＋ 仍是 `climb`（标 `boss` 不得把层挤出梯度） */
+		const t1 = R.encounterTables?.span1;
+		ok((t1?.L9?.encounters ?? []).length === 1, `★L9 不是「固定」（encounters ${(t1?.L9?.encounters ?? []).length} 条）`);
+		ok(JSON.stringify(t1?.L9?.loot) === JSON.stringify(D.ENCOUNTER_SPAN1?.L9?.loot), '★L9 的**掉落面**漂了（应逐字继承引擎）');
+		ok(R.layerOf('L9')?.type === 'climb', `★L9 不再是 \`climb\`（${R.layerOf('L9')?.type}）—— 标 \`boss\` 不该动 \`type\`（那是梯度语义）`);
+		/* 「固定」的机械证据：抽一次也只能抽出它（注入后立即复位；读数取第 0 笔的 ref） */
+		R.rng.setSequence([0.5, 0.5, 0.5, 0.5]);
+		const 抽ref = R.rollEncounter('L9')?.[0]?.ref ?? null;
+		R.rng.reset();
+		ok(抽ref === 'sleepless-one', `★L9 抽出来不是头目（实得 ${JSON.stringify(抽ref)}）⇒ 「固定」不成立`);
+		/* ② 唯一出口（两向：可用 1 条；**边仍在**）*/
+		const L9出口 = map.exitsFrom('L9');
+		const L9边 = map.exits.filter((e) => e.from === 'L9');
+		const 乙 = L9出口.length === 1 && /前进/.test(String(L9出口[0]?.text ?? ''));
+		ok(乙, `★L9 的可用出口不是「唯一的前进」（实得 ${JSON.stringify(L9出口.map((e) => e.text))}）`);
+		const 丙 = L9边.length >= 2 && L9边.some((e) => e.to === 'L8');
+		ok(丙, `★L9 的边被**结构性删掉**了（图里只剩 ${JSON.stringify(L9边.map((e) => e.to))}）—— 本笔的落法是**动作守卫**，边须仍在`);
+		/* ③ 对照：非头目层不设限（守卫**按层**作用，✗ 全局摘除） */
+		const L8出口 = map.exitsFrom('L8');
+		const 丁 = L8出口.length === 2;
+		ok(丁, `★非头目层 L8 的可用出口不是 2 条（${JSON.stringify(L8出口.map((e) => e.text))}）⇒ 守卫并非按层作用`);
+		/* ④ 两表同键配对 */
+		const 引擎层 = (D.LAYER_META_SPAN1 ?? []).map((l) => l?.id);
+		const 本地层 = (B.LAYER_META ?? []).map((l) => l?.id);
+		const 遭遇键 = Object.keys(R.encounterTables?.span1 ?? {});
+		const 戊 = JSON.stringify(本地层) === JSON.stringify(引擎层)
+			&& 遭遇键.every((k) => 本地层.includes(k))
+			&& (B.LAYER_META ?? []).filter((l) => l?.boss === true).map((l) => l.id).join() === 'L9';
+		ok(JSON.stringify(本地层) === JSON.stringify(引擎层), `★层表 id 序列与引擎不同（${JSON.stringify(本地层)} vs ${JSON.stringify(引擎层)}）—— 两表须同键同序`);
+		ok(遭遇键.every((k) => 本地层.includes(k)), `★遭遇表键不在层表里（${遭遇键.filter((k) => !本地层.includes(k))}）—— 两表**同键配对**被破`);
+		ok((B.LAYER_META ?? []).filter((l) => l?.boss === true).map((l) => l.id).join() === 'L9',
+			`★带 boss 标记的层不是恰好 L9（${JSON.stringify((B.LAYER_META ?? []).filter((l) => l?.boss === true).map((l) => l.id))}）`);
+		/* ⑤ 接管面不动 */
+		const 己 = (B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub' && map.exitsFrom('L10-camp').some((e) => e.to === 'L9');
+		ok((B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub', '★L10 不再是 `hub`（接管面被改了）');
+		ok(map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 少了「退回第 9 层」那条边（衔接面被改了）');
+		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
+			+ `｜唯一出口 ${JSON.stringify(L9出口[0]?.text)} ${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
+			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
+			+ `｜重开复位（接线 ${m(接线)}＋行为 ${m(复位ok)}）`);
+	} finally {
+		if (map.locations.has(存位)) map.moveTo(存位);
 	}
 }
 
