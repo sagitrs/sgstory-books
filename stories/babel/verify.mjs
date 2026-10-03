@@ -1262,7 +1262,8 @@ head('㉔ 守卫无副作用（`books#133` 笔 1）');
  *   ① 三件定义齐 ＋ **层-工具表** 的取值都在工具集里 ② 耐久初值按**表**（判据钉的是**表位置** ⇒ 平衡只改表）
  *   ③ **拾取并入**（同类再拾 ⇒ 一个槽、耐久相加，✗ 两把） ④ ★**实例感知扣费**（手工构造两把不同耐久：
  *   用掉的那把 −1、另一把**不动** —— 这正是 `sgstory#1905`／领队探针的形） ⑤ **采成才扣**（节点已空 ⇒ 不扣）
- *   ⑥ **工具门**（该层没有对应工具 ⇒ 抽中的「采集」**不出按钮**；给上 ⇒ 出）。
+ *   ⑥ **工具门**（该层没有对应工具 ⇒ 抽中的「采集」**不出按钮**；给上 ⇒ 出）
+ *   ⑦ ★**最后一次采集也要扣**（`books#171` 的 P2-10：采空那一击若不扣，耐久就永远掉不下去）。
  */
 head('㉕ 工具耐久制（`books#133` 笔 2）');
 {
@@ -1313,6 +1314,21 @@ head('㉕ 工具耐久制（`books#133` 笔 2）');
 			const 耐久 = State.variables.inventory.find((s) => s.id === 'axe')?.charges;
 			ok(耐久 === 3, `★节点采空却扣了耐久（铁斧 3 ⇒ ${耐久}）—— 「采成才扣」被破`);
 			State.variables.gatherNodes = 存节点账;
+
+			/* ⑦ ★`books#171`（P2-10）：**最后一次采集也要扣** —— 节点只余 1 次 ⇒ 采空那一击必须扣 1 点。
+			 *   旧形把「采前有货」的读数写在 `现制采集()` **之后** ⇒ 采空后读到 0 ⇒ 判「采前无货」
+			 *   ⇒ 不扣（操作者试玩实测：最后一次采完耐久停在 1）。刀：把读数移回调用之后 ⇒ 本臂红。 */
+			State.variables.inventory = [{ id: 'axe', charges: 3, equipped: false }];
+			State.variables.span1Events = {};
+			const 存节点账二 = State.variables.gatherNodes;
+			map.moveTo('L7');
+			State.variables.gatherNodes = { ...(存节点账二 ?? {}), L7: { ...B.nodeAt('L7'), charges: 1 } };
+			B.gather();
+			const 末次耐久 = State.variables.inventory.find((s) => s.id === 'axe')?.charges;
+			const 末次空 = (B.nodeAt('L7')?.charges ?? 0) === 0;
+			ok(末次空, `★只余 1 次时采集没有采空（实得 ${B.nodeAt('L7')?.charges}）—— 本臂前置不成立`);
+			ok(末次耐久 === 2, `★最后一次采集**没扣耐久**（铁斧 3 ⇒ ${末次耐久}）—— 「采前有货」的读数取晚了（P2-10）`);
+			State.variables.gatherNodes = 存节点账二;
 
 			/* ⑥ 工具门：抽中 gather 时，没工具 ⇒ 该动作**不可选**；给上工具 ⇒ 可选 */
 			State.variables.span1Events = {};
@@ -1732,6 +1748,107 @@ head('㉚ 箱奖励表（`books#170` P1-6）');
 		State.variables.span1Events = 存账;
 		State.variables.inventory = 存包;
 		if (map.locations.has(存位)) map.moveTo(存位);
+	}
+}
+
+/* ── ㉙ 玩家受伤后的统一结算入口（`books#171`，源 `#170` 的 P0）────────
+ *
+ * 它回答的问题：**「致命伤 ⇒ 真的进了死亡/复活流吗？」**
+ *   操作者试玩 03:20 报的形：层进入的危害把人打到 0 血 ⇒ `hp=0`、`isDown` 为真、而 **`death` 不在**
+ *   ⇒ `RPG.respawn` 按契约**拒绝** ⇒ **0 血仍可移动**、死亡也不计数。
+ * 本格断四件：①**致命进入 ⇒ 真结算**（hp 复位／位置回起点层／`deaths` 恰 +1／死亡行恰一次／`death` 已清）
+ *   ②**原地点流程停止**（致命进入 L5 后 **不得**再跑 L5 的授予块 —— 那是「onEnter 没停手」的铁证）
+ *   ③**幂等**（三源重复调用：`settled` 全假、状态无一变动） ④**非致命不结算**（倒下才进场）。
+ * ⚠ 装置：本格只改 `hp/effects/账/位置`，末了**存-复原**；随机源按「抽签两枚 ＋ 危害一枚」注入。
+ */
+head('㉙ 统一结算入口（`books#171`）');
+{
+	const P = D.Player;
+	const 存 = {
+		hp: P.hp, maxHp: P.maxHp, items: P.items, effects: (P.effects ?? []).slice(),
+		账: State.variables.span1Events, 预报: State.variables.span1Foresee, 位: map.current,
+		run: { ...State.variables.babelRun },
+	};
+	const 行 = () => (globalThis.__host?.host?.lines?.() ?? []);
+	const 死亡行数 = () => 行().filter((l) => String(l).includes('你死在了第')).length;
+	let 死人后 = {};
+	try {
+		globalThis.__host?.install?.();          // 接住 `perform` 的输出（只读观察）
+		/* ① 致命进入：L5 的危害打 2 点，玩家只剩 1 血 ⇒ 必命中 ⇒ 必真结算 */
+		P.effects = [];
+		P.hp = 1;
+		State.variables.babelRun.deaths = 0;
+		State.variables.span1Events = {};
+		State.variables.span1Foresee = {};
+		const 起 = 死亡行数();
+		R.rng.setSequence([0, 0, 0]);            // 抽签两枚（⇒['chest','gather']）＋ 危害 `index(6)=0` ⇒ 命中
+		map.moveTo('L5');
+		R.rng.reset();
+		死人后 = {
+			hp: P.hp, 位: map.current, deaths: State.variables.babelRun.deaths,
+			死亡行: 死亡行数() - 起, 残留死标: P.contains(R.death), 预知: P.contains('precognition'),
+			层读: setup.BABEL.layerOf?.() ?? null,
+		};
+		ok(死人后.hp === P.maxHp, `★致命伤后 hp 未复位（实得 ${死人后.hp}／${P.maxHp}）—— 结算没走到 respawn（P0 原形：死亡态缺失 ⇒ 结算被拒）`);
+		ok(死人后.位 === 'L1', `★致命伤后位置未回起点层（实得 ${JSON.stringify(死人后.位)}）—— 0 血仍可移动（P0 原形）`);
+		ok(死人后.deaths === 1, `★死亡计数不是 1（实得 ${死人后.deaths}）—— 要么没计，要么重复计`);
+		ok(死人后.死亡行 === 1, `★死亡行不是恰一次（实得 ${死人后.死亡行}）`);
+		ok(死人后.残留死标 === false, '★结算后 `death` 标记未清（`respawn` 的④步应清它）');
+		ok(死人后.预知 === false,
+			'★致命进入 L5 后仍跑了 L5 的授予块（拿到了「预知」）—— **原地点流程没停**，那正是验收里最关键的那条回归');
+		ok(死人后.层读 === 'L1', `★当前位置读数不是起点层（实得 ${JSON.stringify(死人后.层读)}）—— 紧随其后的重绘会画错层`);
+
+		/* ② 幂等：三源（进入／战斗／UI）重复调用 ⇒ 全报未结算、状态零变动 */
+		const 前三 = { deaths: State.variables.babelRun.deaths, hp: P.hp, 位: map.current, 行数: 死亡行数() };
+		const 三次 = [
+			setup.BABEL.结算战败({ 源: '进入' }),
+			setup.BABEL.结算战败({ 源: '战斗', 导航: false }),
+			setup.BABEL.结算战败({ 源: 'UI' }),
+		];
+		const 幂等 = 三次.every((r) => r.settled === false)
+			&& State.variables.babelRun.deaths === 前三.deaths && P.hp === 前三.hp
+			&& map.current === 前三.位 && 死亡行数() === 前三.行数;
+		ok(三次.every((r) => r.settled === false), `★已结算后仍报 settled（幂等破：${JSON.stringify(三次.map((r) => r.settled))}）`);
+		ok(幂等, '★重复调用有副作用（计数／血／位置／输出里有一样变了）');
+
+		/* ③ 非致命：站着的人调用 ⇒ 不结算、不计数（倒下才进场） */
+		P.hp = P.maxHp - 1;
+		const 站 = setup.BABEL.结算战败({ 源: 'UI' });
+		ok(站.settled === false && 站.reason === '未倒下',
+			`★未倒下时仍结算（settled=${JSON.stringify(站.settled)}、reason=${JSON.stringify(站.reason)}）`);
+		ok(State.variables.babelRun.deaths === 前三.deaths, '★未倒下却计了死亡数');
+
+		/* ④ 结算被拒 ⇒ **不计不印**（「死亡计数仅成功结算时 +1」这条声明的判据）：
+		 *   把 `respawn` 临时换成「拒绝」桁（返 `moved:false`）⇒ 入口须报未结算，且计数与输出全不动。
+		 *   刀：把 `run().deaths += 1` 提到 `if (!res.moved)` 之前 ⇒ 本臂红（旧形正是如此）。
+		 *   ⚠ 桁回存-复原（同 `R.loot` 那类临时替换的惯例）。 */
+		P.effects = [];
+		P.hp = 0;
+		const 原respawn = R.respawn;
+		const 前拒 = { deaths: State.variables.babelRun.deaths, 行数: 死亡行数() };
+		let 拒;
+		try {
+			R.respawn = () => ({ moved: false, dropped: 0, cleared: 0, from: null, to: null });
+			拒 = setup.BABEL.结算战败({ 源: 'UI' });
+		} finally {
+			R.respawn = 原respawn;
+		}
+		ok(拒.settled === false && 拒.reason.includes('拒绝'),
+			`★结算被拒时入口仍报结算（settled=${JSON.stringify(拒.settled)}、reason=${JSON.stringify(拒.reason)}）`);
+		ok(State.variables.babelRun.deaths === 前拒.deaths && 死亡行数() === 前拒.行数,
+			'★结算被拒却计了死亡数／印了死亡行（「仅成功结算时 +1」被破）');
+
+		console.log(`  结算入口：致命进入 ⇒ hp ${死人后.hp}／位置 ${JSON.stringify(死人后.位)}／deaths ${死人后.deaths}／死亡行 ${死人后.死亡行}`
+			+ `｜原地点流程停（未拿到预知）${死人后.预知 === false ? ' ✓' : ' ✗'}｜幂等${幂等 ? ' ✓' : ' ✗'}｜非致命不结算${站.settled === false ? ' ✓' : ' ✗'}｜被拒不计${拒.settled === false ? ' ✓' : ' ✗'}`);
+	} finally {
+		P.hp = 存.hp;
+		P.maxHp = 存.maxHp;
+		P.items = 存.items;
+		P.effects = 存.effects;
+		State.variables.span1Events = 存.账;
+		State.variables.span1Foresee = 存.预报;
+		State.variables.babelRun = 存.run;
+		if (map.locations.has(存.位)) map.moveTo(存.位);
 	}
 }
 

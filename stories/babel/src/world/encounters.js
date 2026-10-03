@@ -98,6 +98,41 @@ setup.BABEL.gather = () => {
  *   `false` = 全自动通路。**自动通路是给无头自检用的**（交互通路要等 UI 选择 ⇒ 无头环境会挂起，
  *   见 `stories/babel/verify.mjs` 的用法）；玩家路径一律用缺省值。
  */
+/* ---------- `books#171`（源 `#170` 的 P0）：玩家受伤后的**统一结算入口**（三源共用）----------
+ * 由来（操作者试玩 03:20 报，无头三步复现）：层进入的**危害**把人打到 0 血时，`hp=0`、`isDown`
+ *   为真、而 **`death` 效果不在**，于是 `RPG.respawn` 按契约**拒绝**（引擎 `40-battle.js:204`
+ *   「非死亡态即早退」），结果 **0 血仍可继续移动**且死亡不计数。
+ *   ⇒ 根因：`RPG.applyDamage` **不施加 `death`**（引擎面有意，死亡判定归各包的 `grantDeathIfDown`），
+ *     而故事侧的危害路只调了 `applyDamage`。战斗路看着正常，只因战战伤害在**包侧**战场内补了。
+ * 本入口收成一处，供**三源**调用：**层进入**（`world/hazards.js`）／**战斗**（本档 `fight`）／
+ *   **UI 动作**（将来的陷阱类动作）。四件事：
+ *   ① 倒下才进场；② 缺 `death` 标记则补（`DND3.grantDeathIfDown`，它自己判 `hp <= 0`）；
+ *   ③ **只有 `respawn` 真结算**（`moved === true`）才 `deaths += 1`、才印死亡行、才（按需）跳
+ *      「死亡回溯」—— ✗ 不再出现「计数了但没结算」；④ 呼叫方收到 `settled` 为真**必须停手**。
+ * **幂等**：`respawn` 会复位 hp 并清掉 `death` 标记（引擎 `40-battle.js:218`）⇒ 三源即便都调，
+ *   也只结算一次、只计一次数（第二道后在第一道门就早退）。
+ * **导航两形**（均经调用方指定）：战斗源跳段（与既有形一致：战斗页要换段）；
+ *   进入源**不跳段**——它跑在 `moveTo` 内，而 `MapScene` 的出口分支在 `moveTo` 后无条件重绘
+ *   （引擎 `60-map.js:363-364`，那路无 `#leftPassage` 守卫）⇒ 跳段会把那一屏画进死亡页。
+ * @param {object} [opts]
+ * @param {string} [opts.源]   来源名（读用：'进入'／'战斗'／'UI'）
+ * @param {string} [opts.层]   死亡发生的层 id（缺省取当前层；**须在 respawn 前取**，因为 respawn 会搬位）
+ * @param {boolean} [opts.导航] 是否跳「死亡回溯」（缺省 false）
+ * @returns {{settled: boolean, reason: string, res?: object, 死前层?: string}} */
+setup.BABEL.结算战败 = ({ 源 = '未知', 层 = null, 导航 = false } = {}) => {
+	const P = DND3.Player;
+	if (!P || P.isDown !== true) return { settled: false, reason: '未倒下' };
+	const 死前层 = 层 ?? setup.BABEL.layerOf?.() ?? null;
+	if (typeof DND3.grantDeathIfDown === 'function') DND3.grantDeathIfDown(P);
+	const res = R.respawn(P, { map: setup.BABEL.map });
+	if (!res.moved) return { settled: false, reason: 'respawn 拒绝（非死亡态）', 死前层 };
+	run().deaths += 1;
+	/* `#1798` B4：阵亡是**结论行** ⇒ 走 `death` 通道（`key`），「仅关键」档下仍进正文。 */
+	R.perform(`你死在了第 ${String(死前层 ?? '?').replace('L', '')} 层。清点损失：掉落 ${res.dropped} 件、清除 ${res.cleared} 项效果。`, { channel: 'death' });
+	if (导航) SugarCube.Engine.play('死亡回溯');
+	return { settled: true, reason: 源, res, 死前层 };
+};
+
 setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★**早退出口**（`#1877` P1-6）：本段原靠一条静态链 `[[打完，继续探索|探索]]` 兜底，
 	 *   而静态链在**段落渲染时**即出现（战斗根本还没打）⇒ 玩家以为已打完了。
@@ -141,14 +176,13 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	}
 
 	if (DND3.Player.isDown) {
-		/* 死亡回起点层：掉落 ＋ 清档（**含 persistent 创伤** —— `#1760` 裁定⑤）＋ `moveTo(起点层)`。
-		 * `respawn` 的起点层来自**层表注册面**（`LAYER_META_SPAN1` 里 `start: true` 的 L1）。 */
-		const res = R.respawn(DND3.Player, { map: setup.BABEL.map });
-		run().deaths += 1;
-		/* `#1798` B4：阵亡是**结论行** ⇒ 走 `death` 通道（`key`），「仅关键」档下仍进正文。 */
-		R.perform(`你死在了第 ${layer.replace('L', '')} 层。清点损失：掉落 ${res.dropped} 件、清除 ${res.cleared} 项效果。`, { channel: 'death' });
-		SugarCube.Engine.play('死亡回溯');
-		return;
+		/* ★`books#171`：改走**统一入口**（`setup.BABEL.结算战败`）—— 与危害源共用一处，
+		 *   且**只在真结算时**计数／印行（旧形无条件 `deaths += 1`，respawn 被拒时也照样计数）。
+		 *   战斗源跳「死亡回溯」（与既有形一致），进入源不跳（见入口头注）。 */
+		const r = setup.BABEL.结算战败({ 源: '战斗', 层: layer, 导航: true });
+		if (r.settled) return;
+		/* ★未结算（如 respawn 拒绝）⇒ **不装死**：出声 ＋ 把出口照常落页底（✗ 静默——那会让玩家停在死状）。 */
+		return bail(`你倒下了，可这一局没能结算（${r.reason}）—— 先喘口气。`);
 	}
 
 	/* ── 出口：**必须落在页底**（`#1856` 复现；`#1877` P1-6 把「静态兜底」也收归此处）──────────
