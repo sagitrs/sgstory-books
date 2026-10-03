@@ -2360,7 +2360,7 @@ head('㊲ 攻击件的伤害块（`books#185`）');
 {
 	const P = D.Player;
 	const 存 = { hp: P.hp, 流: R.rng };
-	let 棘轮 = { 缺: [], 错层: [] }, 读数 = {};
+	let 棘轮 = { 缺: [] }, 读数 = {};
 	try {
 		/* ① 泛化棘轮：遍历注册表（✗ 只查已知两件 —— 那正是「改了这处漏那处」的形） */
 		for (const [id, klass] of (R.items ?? new Map())) {
@@ -2368,12 +2368,14 @@ head('㊲ 攻击件的伤害块（`books#185`）');
 			try { 实例 = new klass(); } catch { continue; }
 			if (实例?.weapon !== true) continue;
 			const 骰 = 实例.stats?.dmg;
-			const 顶层 = 实例.dmg;                        // 病形：写在顶层（构造函数不会拷进来 ⇒ 恒 undefined）
 			let 可解析 = false;
 			try { R.rollDetail(骰); 可解析 = true; } catch { 可解析 = false; }
+			/* ★（`dev-10` D 席 RC）：原先这里还有一条「判放错了层」的分支 —— 它是**死分支**：
+			 *   `实例.dmg` **恒 undefined**（病根正是构造不拷该字段）、`String(klass)` 里也**没有**字段名
+			 *   （`defItem` 造出的类形是 `class extends RPG.Item{constructor(o){super({...defaults,...o})}}`）
+			 *   ⇒ 两个合取项恒真、且该字段**无读者**。「点名病因」已由下面的 `ok()` 报文承担（它直接写
+			 *   「若把 `dmg` 写在顶层会被静默丢掉」）⇒ 删之零损失，✗ 留一条永远查不到的判定（`#1844` 的教训）。 */
 			if (!可解析) 棘轮.缺.push(`${id}（stats.dmg=${JSON.stringify(骰)}）`);
-			/* 顶层有、stats 里没有 ⇒ 明确判「放错了层」（报文要能直指病因，✗ 只说 undefined） */
-			if (可解析 === false && 顶层 === undefined && /dmg:/.test(String(klass)) === false) 棘轮.错层.push(id);
 		}
 		ok(棘轮.缺.length === 0,
 			`★有攻击件的伤害骰不可解析（${棘轮.缺.join('／')}）—— 「无法解析的骰子表达式：undefined」正是这条的病征；`
