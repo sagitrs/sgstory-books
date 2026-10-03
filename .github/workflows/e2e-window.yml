@@ -180,6 +180,23 @@ jobs:
           grep -q '刀的判别力自证通过' /tmp/e216k.out || { echo "::error title=e2e-window::e2e-216 的刀未打印「刀的判别力自证通过」（自检恐已退化）"; exit 1; }
           { echo '```'; tail -4 /tmp/e216.out; echo '---'; tail -3 /tmp/e216k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── `sgstory#1950`：**战斗格三臂**（`quick:use` 派发：治疗经「选项→靶解析→act」真落地／防具结构化拒绝／己方致伤正控）──
+      #   为何单开一步（✗ 并进上面 #209 那步）：那条步的两句汇总串正被它自己的两条 `grep` 守着，
+      #   混在一起会让「哪一句是谁的」说不清（与 `#216` 同理由）。★步数上限仍在（`gates.md` 测试面）⇒ 只加这一步。
+      #   ★本笔**依赖 `books#228`**（该格由它落盘）⇒ 合序 `#228` → 本笔。
+      - name: ★战斗格三臂（quick:use 派发 · sgstory#1950）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/e2e-drive.mjs --engine "$GITHUB_WORKSPACE/engine" | tee /tmp/e1950.out
+          node tools/e2e-drive.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest | tee /tmp/e1950k.out
+          # ★取不到即红（✗ 不吞）：输出形一变，判据会**静默退化**成装饰（`#91` 那族的教训）。
+          #   ★另：`set -o pipefail` 是这两句 `| tee` **能用**的前提 —— 没有它，管道会把 `node` 的
+          #     非零退出码吃掉（只剩 `tee` 的 0）⇒ 判据红了这步也不会红。
+          grep -q '战斗格 ✓' /tmp/e1950.out || { echo "::error title=e2e-window::e2e-1950 未打印「战斗格 ✓」（输出形恐已变 ⇒ 见 tools/e2e-drive.mjs）"; exit 1; }
+          grep -q '战斗格刀①' /tmp/e1950k.out || { echo "::error title=e2e-window::e2e-1950 的刀未打印（自检恐已退化 ⇒ 见 tools/e2e-drive.mjs）"; exit 1; }
+          { echo '```'; tail -2 /tmp/e1950.out; echo '---'; tail -3 /tmp/e1950k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
         run: |
