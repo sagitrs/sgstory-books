@@ -185,7 +185,7 @@ const 宿主槽 = () => (globalThis.SugarCube ?? globalThis)?.Save?.slots ?? nul
 setup.BABEL.宿主槽 = 宿主槽;
 
 /** 槽位上限（宿主不报 ⇒ 退回**本笔用到的最高号＋1**；✗ 写死旧下限 —— 甲案改号后 3 号被误判越界，
- *   正是 ㉝ 格抓到的那个缺陷）。 */
+ *   正是 ㉟ 格抓到的那个缺陷）。 */
 const 槽上限 = () => (globalThis.SugarCube ?? globalThis)?.Config?.saves?.maxSlotSaves ?? (槽位.手动 + 1);
 
 /** **自动命名**（票面 §8.2：带**真实层数**）：`层·地点名`，战前保底再加 `·战前`。 */
