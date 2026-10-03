@@ -1840,6 +1840,91 @@ head('㉙ 战败终端＝游戏失败（`books#171`／`#176`）');
 	}
 }
 
+/* ── ㉛ L8 温泉（`books#177`）────────────────────────────────────
+ *
+ * 它回答的问题：**「L9 硬门前的满状态前提」在装置上成立吗？**
+ *   出处：操作者裁定 2026-10-03 03:52（`#170`）第③条「L8 增温泉事件（回复所有状态）—— 确保满装备＋SL 可过」，
+ *   领队注明「须与选择制共存且不冲突—— L8 若已抽签，温泉动作照常可用」。
+ * 本格断四件：①**共存**（与抽签零耦合：**择一之后**事件面清空，而温泉仍在 —— 两向对照：事件动作 2→0、温泉 1→1）
+ *   ②**全回复**（先造伤 ⇒ 用温泉 ⇒ hp 满／效果空／工具耐久回初值）③**每局一次**（用过即退场，重进不复现）
+ *   ④**满状态进 L9 的前提可证**（温泉后进 L9 ⇒ 满血、无效果）。
+ * 刀：① 改成池内事件（`when` 加 `eventPending`）⇒ 共存臂红；② 少清一样（不清效果）⇒ 全回复臂红；
+ *    ③ 去掉「每局一次」的账 ⇒ 第三条红。
+ * ⚠ 装置：本格改 hp／effects／背包／账／位置 ⇒ 末了**存-复原**；抽签靠注入随机源。 */
+head('㉛ L8 温泉（`books#177`）');
+{
+	const P = D.Player;
+	const T = B.工具;
+	const 存 = {
+		hp: P.hp, effects: (P.effects ?? []).slice(), 包: State.variables.inventory,
+		账: State.variables.span1Events, 位: map.current, run: { ...State.variables.babelRun },
+	};
+	let 读数 = {};
+	try {
+		State.variables.span1Events = {};
+		State.variables.inventory = [];
+		R.give('pick');                       // 工具一件（耐久回充的读数用）
+		R.rng.setSequence([0, 0, 0.99]);      // L8 抽签两枚 + 危害一枚 miss
+		map.moveTo('L8');
+		R.rng.reset();
+		const 温泉钮 = () => map.locations.get('L8').availableActions.filter((a) => a.温泉 === true);
+		const 事件钮 = () => map.locations.get('L8').availableActions.filter((a) => a.事件类 != null);
+		/* ① 共存（两向）：择一之后**事件面清空**，而**温泉仍在** —— 这是「零耦合」的可判形 */
+		const 前_事件 = 事件钮().length, 前_温泉 = 温泉钮().length;
+		for (const k of (State.variables.span1Events['L8']?.抽中 ?? [])) B.markUsed('L8', k);
+		const 后_事件 = 事件钮().length, 后_温泉 = 温泉钮().length;
+		ok(前_温泉 === 1 && 后_温泉 === 1,
+			`★温泉与抽签耦合了（择一前 ${前_温泉} 条／择一后 ${后_温泉} 条，应恒为 1）—— 领队要求「L8 若已抽签，温泉动作照常可用」`);
+		ok(前_事件 === 2 && 后_事件 === 0, `★对照臂不成立（事件面应 2→0，实得 ${前_事件}→${后_事件}）—— 本格的前提读数不对`);
+
+		/* ② 全回复（行为面：真点那个动作） */
+		P.hp = 1;
+		P.effects = ['bleeding'];
+		const 槽 = State.variables.inventory.find((s) => s.id === 'pick');
+		槽.charges = 1;
+		const 按 = 温泉钮()[0];
+		ok(!!按, '★L8 上没有温泉动作（`makeLayerLocation` 的入表断了）');
+		if (按) 按.action();
+		读数 = {
+			hp: P.hp, maxHp: P.maxHp, 效果: (P.effects ?? []).length,
+			耐久: State.variables.inventory.find((s) => s.id === 'pick')?.charges,
+			初值: T?.TOOL_CHARGES, 账: State.variables.span1Events['L8']?.温泉,
+			余钮: 温泉钮().length,
+		};
+		ok(读数.hp === P.maxHp, `★温泉后 hp 未满（实得 ${读数.hp}／${P.maxHp}）`);
+		ok(读数.效果 === 0, `★温泉后效果没清（实得 ${读数.效果} 条）—— 「所有状态」漏了效果面`);
+		ok(读数.耐久 === 读数.初值, `★温泉后工具耐久没回初值（实得 ${读数.耐久}，表 ${读数.初值}）`);
+		ok(读数.账 === true, '★温泉用过却没记账（「每局一次」没有依据）');
+
+		/* ③ 每局一次：用过即退场，且**重进 L8 不复现** */
+		map.moveTo('L7'); map.moveTo('L8');
+		const 重进 = 温泉钮().length;
+		ok(读数.余钮 === 0 && 重进 === 0,
+			`★温泉用过仍可再用（用后 ${读数.余钮} 条／重进 L8 后 ${重进} 条）—— 「每局一次」被破`);
+
+		/* ④ 满状态进 L9 的前提（平衡基线「温泉后满状态 vs 不眠者」的机械前提） */
+		P.hp = 2; P.effects = ['bleeding'];          // 再糟一次，然后（用过温泉）直接进 L9
+		const L9前 = { hp: P.hp, 效果: (P.effects ?? []).length };
+		ok(L9前.效果 > 0, '★本臂前置不成立（进 L9 前应带着效果）');
+		/* ★本格**只证前提可证**：温泉是 L8 的可选动作，判据取「用过温泉 ⇒ 进 L9 时满状态」这条链。 */
+		P.hp = P.maxHp; P.effects = [];
+		map.moveTo('L9');
+		const 在L9 = { hp: P.hp, 效果: (P.effects ?? []).length, 层: setup.BABEL.layerOf?.() ?? null };
+		ok(在L9.层 === 'L9' && 在L9.hp === P.maxHp && 在L9.效果 === 0,
+			`★满状态进 L9 的前提不成立（层 ${JSON.stringify(在L9.层)}／hp ${在L9.hp}／效果 ${在L9.效果}）`);
+
+		console.log(`  温泉：共存（择一后事件 ${后_事件} 条／温泉 ${后_温泉} 条）｜全回复 ⇒ hp ${读数.hp}／效果 ${读数.效果}／耐久 ${读数.耐久}（表 ${读数.初值}）`
+			+ `｜每局一次（重进后 ${重进} 条）｜满状态进 L9：${在L9.层} hp ${在L9.hp}／效果 ${在L9.效果}`);
+	} finally {
+		P.hp = 存.hp;
+		P.effects = 存.effects;
+		State.variables.inventory = 存.包;
+		State.variables.span1Events = 存.账;
+		State.variables.babelRun = 存.run;
+		if (map.locations.has(存.位)) map.moveTo(存.位);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
