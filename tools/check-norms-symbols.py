@@ -28,7 +28,6 @@ import pathlib
 JUDGE = '✗✓'
 CONN = '⇒⭐★｜'
 SYM = JUDGE + CONN
-LIST = re.compile(r'^\s*(?:[-*+]|\d+[.)、])\s')
 QUOTED = re.compile(r'`[^`]*`|「[^」]*」|『[^』]*』')
 
 
