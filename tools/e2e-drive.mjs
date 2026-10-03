@@ -126,7 +126,11 @@ if (has('--list')) {
 let env;
 try { env = resolveEnv(argOf('--engine'), process.env); } catch (e) { bail(e.message, 2); }
 if (!fs.existsSync(env.htmlPath)) {
-	bail(`缺产物：${env.htmlPath}\n  先构建：python3 ${path.join(env.root, 'build.py')} ${env.storyDir} --out ${path.basename(env.htmlPath)}`);
+	/* ★`#220` dev-10 实测：**照旧提示逐字跑不通**（相对故事目录 ⇒ 产物落在**引擎仓**里，且把 `tests/unit/dist/**`
+	 *   写进引擎检出 ⇒ 撞上工作流那道「引擎仓没被写脏」步）。⇒ 提示改成**绝对路径**形（并写明理由）。 */
+	bail(`缺产物：${env.htmlPath}\n  先构建（★**故事目录与 --out 都给绝对路径**）：`
+		+ `\n    python3 ${path.join(env.root, 'build.py')} "${env.storyDir}" --out "${env.htmlPath}"`
+		+ `\n  （相对形会被拼到**引擎仓根** ⇒ 产物落错位置，见 .github/workflows/babel-tests.yml 的「构建」步注释）`);
 }
 
 const fails = [];
