@@ -2262,6 +2262,44 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 	}
 	console.log(`  传送/步行/软拒/买卖四向 ✓｜价目表读数 ${JSON.stringify(B.商铺价)}`);
 }
+
+/* ---------- ㉜ `books#178` 件 1：**槽 1 整备点自动写**（两触发点 · 行为判据）----------
+ * 票面 §8.2（领队裁）：槽 1 ＝**整备点自动写**，最新胜，失败面 ✗ 覆盖，可手清。
+ * 两触发点＝**温泉使用完成**与**进入 L9 门前营地**。本格**真跑触发路径**（✗ 断文案、✗ 断源码文本），
+ *   手法：把 `setup.BABEL.战前保底` 换成探针 ⇒ 调真触发点 ⇒ 断探针被调用**且带对来源**。 */
+head('㉜ `books#178` 槽 1 整备点自动写（温泉完成 · 入营地 · 失败面✗覆盖）');
+{
+	const B = setup.BABEL;
+	const 真 = B.战前保底;
+	const 记 = [];
+	B.战前保底 = (来源) => { 记.push(String(来源)); return true; };
+	/* 触发点一：温泉（L8 的固定动作 · 结构标记 `温泉: true`）。 */
+	{
+		const 温泉 = (map.locations.get('L8')?.actions ?? []).find((a) => a?.温泉 === true);
+		ok(温泉 != null, '★L8 找不到温泉动作（结构标记 `温泉: true`）');
+		温泉?.action?.();
+		ok(记.includes('温泉'), `★「温泉完成」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
+	}
+	/* 触发点二：进入 L9 门前营地（`onEnter` 钩）。 */
+	{
+		const 营地 = map.locations.get('L9-camp');
+		ok(营地 != null, '★找不到 `L9-camp`（门前营地）');
+		ok(typeof 营地?.onEnter === 'function', '★门前营地没有 `onEnter` 钩 ⇒ 进营地不会自动写槽 1');
+		营地?.onEnter?.(营地);
+		ok(记.includes('门前营地'), `★「进营地」没有触发槽 1 自动写（记到：${JSON.stringify(记)}）`);
+	}
+	B.战前保底 = 真;
+	/* 失败面 ✗ 覆盖：整备点写入走 `写槽` 的**同一道** P0 门 ⇒ 战中时写不进（两向）。 */
+	{
+		const 言 = []; const op = R.perform; R.perform = (m) => { 言.push(String(m)); return op; };
+		B.战中 = true;
+		const r = B.战前保底('整备');
+		B.战中 = false; R.perform = op;
+		ok(r === false, '★战斗中「战前保底」仍写入 ⇒ 失败面会覆盖可用存档（P0 失效）');
+		ok(!言.some((m) => /保底存档/.test(m)), '★战斗中「战前保底」还印了「已留下保底存档」');
+	}
+	console.log(`  两触发点：${记.join('、')}｜战斗中写入被拒 ✓`);
+}
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
