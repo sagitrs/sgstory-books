@@ -1437,9 +1437,17 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		 *   （`hp` 留在 0、`effects` 还挂着上一局的）。两向分两层：
 		 *   ① **接线**：`world/boss.js` 里那行 `:enginerestart` 绑定在（剥块注释后再断 —— 同 ⑲ 的教训）
 		 *   ② **行为**：真调复位函数（本判据跑在 host 桩里，**没有真 DOM 事件** ⇒ 走那个具名函数）。 */
-		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-		const 接线 = /:enginerestart/.test(bossSrc) && /jQuery\(document\)\.on/.test(bossSrc);
-		ok(接线, '★`world/boss.js` 没有把复位挂到 `:enginerestart`（引擎的重开事件）⇒ 头目只会被杀一次');
+		/* ⚠ 首版只核「两串在剥块注释后的源码里共现」⇒ `dev-9` 的阻断 RC：把绑定换成**空函数**
+		 *   （`jQuery(document).on(':enginerestart', () => {})`）**全部读数仍绿**，而头目不再复位。
+		 *   现形＝**登记面 ＋ 身份断言**（②）＋ 静态烟测收紧到**调用形**且**连行注释一起剥**（①）。
+		 *   ⚠ 仍**不是**「真 DOM 事件」那一层（host 桩里跑不了；见本笔明账 5）—— 那一半由 e2e 面覆盖。 */
+		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8')
+			.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+		const 接线 = /jQuery\(\s*document\s*\)\.on\(\s*':enginerestart'\s*,/.test(bossSrc);
+		ok(接线, '★`world/boss.js` 没有把 `:enginerestart` 的绑定写成**调用形**（`jQuery(document).on(\':enginerestart\', …)`）⇒ 头目只会被杀一次');
+		const 钩子 = B.头目?.重开钩子 ?? [];
+		const 身份 = 钩子.length > 0 && 钩子.every((f) => f === B.头目?.复位);
+		ok(身份, `★重开事件绑的**不是**复位本体（登记面里有 ${钩子.length} 个钩子，其中一个≠\`复位\`）⇒ 换了绑定也不会有读数红（\`dev-9\` RC 的盲区）`);
 		const 原hp = 头目?.hp;
 		if (头目) { 头目.hp = 0; 头目.effects = ['残留']; }
 		const 复位fn = B.头目?.复位;
@@ -1490,7 +1498,7 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
 			+ `｜唯一出口 ${JSON.stringify(L9出口[0]?.text)} ${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
 			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
-			+ `｜重开复位（接线 ${m(接线)}＋行为 ${m(复位ok)}）`);
+			+ `｜重开复位（调用形 ${m(接线)}＋身份 ${m(身份)}＋行为 ${m(复位ok)}）`);
 	} finally {
 		if (map.locations.has(存位)) map.moveTo(存位);
 	}

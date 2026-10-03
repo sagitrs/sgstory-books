@@ -41,14 +41,25 @@ DND3.SleeplessOne = R.defCharacter({
  * ★逻辑抽成**具名函数**、并挂到导出面：`verify.mjs` 跑在 host 桩里（**没有真 DOM 事件**：本席实测
  *   `jQuery(document)` 与 host 的 `document` 不是同一个、自注册探针也触发 0 次）⇒ 判据要能**真调用**
  *   复位逻辑本身，✗ 只能静态核那行绑定。绑定仍在下面一行（静态可核）。 */
+/** ★重开钩子的**登记面**（`dev-9` 的阻断 RC 的修法②）：钩子留一份**可读引用** ——
+ *   判据据此断言「被绑的就是复位本体」，✗ 只能拿源码里的两串共现去猜（那只管「出现过」，
+ *   把绑定换成**另一个空函数**照样全绿：本席实测过那条盲区）。 */
+const 重开钩子 = [];
+const 注册重开钩子 = (fn) => {
+	if (typeof fn !== 'function') throw new Error('[babel] 重开钩子须是函数');
+	重开钩子.push(fn);
+	jQuery(document).on(':enginerestart', fn);
+	return fn;
+};
 const 复位头目 = () => {
 	DND3.SleeplessOne.hp = DND3.SleeplessOne.maxHp;
 	DND3.SleeplessOne.effects = [];
 };
-jQuery(document).on(':enginerestart', 复位头目);
+注册重开钩子(复位头目);
 
 setup.BABEL.头目 = Object.assign(setup.BABEL.头目 ?? {}, {
 	不眠者: DND3.SleeplessOne,
 	抓握: R.items?.['sleepless-grasp'] ?? null,
 	复位: 复位头目,                       // ★判据可调（见上：host 桩里没有真 DOM 事件）
+	重开钩子, 注册重开钩子,                 // ★登记面（判据断言「被绑的 === 复位本体」）
 });
