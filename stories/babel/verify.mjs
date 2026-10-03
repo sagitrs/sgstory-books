@@ -1450,7 +1450,9 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		 *       ③ **登记函数绑的是它的参数**（绑别的 ⇒ 红）。
 		 *     ★**行注释与块注释都剥**（只剥块注释时，把绑定写成 `// jQuery…on(…)` 仍会假绿，同族）。
 		 *     ⚠ 真事件触发那一层本档**测不到**（`SugarCube.Engine.restart` 与真 DOM 事件都不在桩里），
-		 *       那一半归 `tools/e2e-drive.mjs` 的真 DOM 面——本档不得写成「真触发」。 */
+		 *       而且**眼下本仓与引擎两侧都没有这一层**：本仓驾驶层档搜该事件名 0 命中，
+		 *       引擎单测明文绕开（`tests/unit/dnd3/characters.test.js` 记「jQuery shim 无法触发 :enginerestart」）。
+		 *       ⇒ 该缺口已开票 `books#161`（须补一面真 DOM 触发面）——本档**不得**写成「真触发」或「归某面」。 */
 		const bossSrc = fs.readFileSync(new URL('./src/world/boss.js', import.meta.url), 'utf8')
 			.replace(/\/\*[\s\S]*?\*\//g, '')             // 块注释
 			.replace(/(^|[^:])\/\/[^\n]*/gm, '$1');        // 行注释（避开 http:// 这类）
