@@ -83,6 +83,35 @@ export function resolveEnv(engineArg, env = process.env) {
 		throw new Error(`缺产物：${path.relative(repoRoot, htmlPath)}\n`
 			+ `  先构建：python3 ${path.join(root, 'build.py')} ${storyDir} --out babel-trial.html`);
 	}
+	/* ★产物**新鲜度**守卫（作者建议、协调方批 2026-10-03）：本件只认**预构建产物**，
+	 *   `--engine` 只取 jsdom 与故事目录 ⇒ ✗ 不参与构建 ⇒ 产物陈旧时**全链都拿旧码跑**
+	 *   （实测踩过：修好的引擎 ＋ 18:19 的产物 ⇒ 夹具读「治好了」而自证读「没治」✗ 两读）。
+	 *   判据：产物早于 `stories/babel/src/**` 最新档 或 早于 `--engine/src/**` 最新档 ⇒ **具名红**。
+	 *   ⚠ 取**严格早于**（相等放行 —— 同一次克隆/构建里 mtime 可能全等，用 `>=` 会误红）。 */
+	{
+		const 最新档 = (dir) => {
+			let t = 0, 谁 = null;
+			if (!fs.existsSync(dir)) return { t, 谁 };
+			for (const f of fs.readdirSync(dir, { recursive: true })) {
+				const q = path.join(dir, String(f));
+				if (!q.endsWith('.js') || !fs.statSync(q).isFile()) continue;
+				const m = fs.statSync(q).mtimeMs;
+				if (m > t) { t = m; 谁 = q; }
+			}
+			return { t, 谁 };
+		};
+		const 产物 = fs.statSync(htmlPath).mtimeMs;
+		for (const [名, dir] of [['故事 src', path.join(storyDir, 'src')], ['引擎 src', path.join(root, 'src')]]) {
+			const 最 = 最新档(dir);
+			if (最.t > 产物) {
+				throw new Error(`产物**陈旧**（${名}）：${path.relative(repoRoot, htmlPath)} 早于 ${path.relative(root, String(最.谁))}`
+					+ `（产物 ${new Date(产物).toISOString()}｜${名} ${new Date(最.t).toISOString()}）\n`
+					+ `  先重建：python3 ${path.join(root, 'build.py')} ${storyDir} --out babel-trial.html\n`
+					+ '  ★✗ 别拿旧产物跑读数 —— 那正是「读数跑在另一棵树上」那一族（本舰队实测踩过）');
+			}
+		}
+	}
+
 	return { root, storyDir, htmlPath, JSDOM, VirtualConsole };
 }
 
