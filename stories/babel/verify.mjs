@@ -2402,6 +2402,73 @@ head('㊲ 攻击件的伤害块（`books#185`）');
 	}
 }
 
+/* ---------- ㊳ 战斗面：敌面板（`books#188` P1-2）与治疗读数（P1-4）----------
+ * 口径（票面）：HP **档位**（>2/3 健壮｜1/3–2/3 负伤｜<1/3 濒死）、**有效 AC**（读 `DND3.acOf`，✗ 面板自算）、
+ *   **已见动作**（＝本场真出过手的动作，去重保次序）；治疗读数＝每件治疗件的**预计恢复**与**剩余次数**。
+ * ★每一条都带**对照臂**：AC 拿一件**带 `ac_bonus` 的已装备件**作对照（否则「读 `acOf`」与「读 `stats.ac`」同值，
+ *   刀砍不出声）；档位取 **2/3 与 1/3 两个边界**（否则改了不等号也照样绿）；已见动作**故意发两次**（证去重）。
+ * ⚠ 本件无 DOM（`document` 是桩）⇒ 只读渲染函数的产物（`R.panelHTML`），真 DOM 面归 `tools/e2e-drive.mjs`。 */
+head('㊳ 战斗面：敌面板（P1-2）与治疗读数（P1-4）');
+{
+	const 存 = { items: D.Player.items.slice(), hp: D.Player.hp };
+	const 敌 = new (R.Character)({ name: '幼獾', hp: 6, maxHp: 6 });
+	敌.items.push({ id: 'mail', equipped: true });   // +3 AC ⇒ 与基础值**不等**（对照臂）
+	const 假战斗 = { enemies: [敌], players: [D.Player] };
+
+	/* ① 开战前：两块都空（战斗面的读数只在战斗内） */
+	ok(R.panelHTML('enemy') === '' && R.panelHTML('heal') === '',
+		'★没战斗时战斗面不是空的（探索时也会占版面）');
+
+	R.events.emit('battle:turnEnd', { actor: D.Player, battle: 假战斗 });
+	const 敌面 = () => R.panelHTML('enemy');
+
+	/* ② 档位三档 ＋ 两个边界（4/6＝2/3 与 2/6＝1/3 都算「中间那档」） */
+	ok(敌面().includes('幼獾'), `★敌面板没读敌组（实得：${敌面()}）`);
+	ok(敌面().includes('健壮'), `★满血该是「健壮」（实得：${敌面()}）`);
+	敌.hp = 4;
+	ok(敌面().includes('负伤'), `★4/6 恰在 2/3 ⇒ 该是「负伤」（实得：${敌面()}）`);
+	敌.hp = 2;
+	ok(敌面().includes('负伤'), `★2/6 恰在 1/3 ⇒ 该是「负伤」（实得：${敌面()}）`);
+	敌.hp = 1;
+	ok(敌面().includes('濒死'), `★1/6 该是「濒死」（实得：${敌面()}）`);
+	敌.hp = 6;
+
+	/* ③ 有效 AC 必须走**引擎那一处**（✗ 面板自算）—— 对照臂就是那件已装备的铁环甲 */
+	const ac = D.acOf(敌);
+	ok(ac === (敌.stats?.ac ?? 10) + 3, `（前置）acOf 应为 基础+3，实得 ${ac}`);
+	ok(敌面().includes(`AC ${ac}`),
+		`★面板里的 AC 不是 acOf 的数（应见「AC ${ac}」，实得：${敌面()}）—— 自算会漏掉已装备件的加成`);
+
+	/* ④ 已见动作：本场真出过手的动作（发两次 ⇒ 证去重） */
+	R.events.emit('item:used', { id: 'badger-claw', name: '爪击', action: 'use', actor: 敌, target: D.Player });
+	R.events.emit('item:used', { id: 'badger-claw', name: '爪击', action: 'use', actor: 敌, target: D.Player });
+	ok(敌面().includes('爪击'), `★已见动作没记上（实得：${敌面()}）`);
+	ok((敌面().match(/爪击/g) ?? []).length === 1, `★同一动作记了多次（应去重，实得：${敌面()}）`);
+
+	/* ⑤ 治疗读数：治疗件列（含预计恢复与余次）、非治疗件不列、改充能数须跟着变 */
+	const 绷带槽 = { id: 'bandage', charges: 2 };
+	D.Player.items.push(绷带槽);
+	D.Player.items.push({ id: 'club' });      // 非治疗件（对照臂）
+	const 预计 = Number(R.reviveItem(绷带槽).stats?.hp ?? 0) + Number(D.Player.stats?.heal_bonus ?? 0);
+	const 治面 = () => R.panelHTML('heal');
+	ok(治面().includes('绷带') && 治面().includes(`恢复 ${预计}`) && 治面().includes('余 2 次'),
+		`★治疗读数不对（应见「绷带 恢复 ${预计}（余 2 次）」，实得：${治面()}）`);
+	ok(!治面().includes('木棒'), `★非治疗件也进了治疗读数（实得：${治面()}）`);
+	绷带槽.charges = 1;
+	ok(治面().includes('余 1 次'), `★改了充能数而读数不变（没读状态，实得：${治面()}）`);
+
+	/* ⑥ 战斗结束 ⇒ 两块都清空（✗ 把上一场的敌组与读数留在屏上） */
+	R.events.emit('battle:end', { players: [D.Player], enemies: [敌] });
+	ok(R.panelHTML('enemy') === '' && R.panelHTML('heal') === '',
+		'★战斗结束后战斗面没清空（旧场读数会留到探索段）');
+
+	D.Player.items.length = 0;
+	for (const s of 存.items) D.Player.items.push(s);
+	D.Player.hp = 存.hp;
+	console.log(`  战斗面：档位三档（含 2/3 与 1/3 两个边界）✓｜AC 走 acOf（对照件 +3）✓｜已见动作去重 ✓｜`
+		+ '治疗读数（恢复/余次）✓｜战斗结束后清空 ✓');
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();

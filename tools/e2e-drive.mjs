@@ -117,7 +117,7 @@ cli: {
 if (import.meta.filename !== process.argv[1]) break cli;	// ★被 import ⇒ 只取本件原语，✗ 跑 CLI
 const bail = (msg, code = 2) => { console.error(`✗ ${msg}`); process.exit(code); };
 if (has('--list')) {
-	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 2）｜O L9 唯一出口（`books#133` 笔 3）');
+	console.log('  硬判面：R 读档往返·导航形｜L 同地点读档·场景头重印（`books#136` F4）｜M L5 选择制事件面｜N 工具门（`books#133` 笔 2）｜O L9 唯一出口（`books#133` 笔 3）｜Q 战斗面（敌面板／治疗读数 · `books#188`）');
 	console.log('  明账面（挂票号；`--require <self-loop|item-click>` 可升硬判）：S 自环就地重绘·面板跟随（sagitrs/sgstory#1859）｜I 故事页点道具不穿 DOM（sagitrs/sgstory#1857）');
 	console.log('  原语：passageLines／choiceButtons／driveButton／saveAt／loadAt／setStateVars／panelText');
 	process.exit(0);
@@ -241,6 +241,30 @@ if (has('--selftest')) {
 		O读数 = `未胜 ${未胜}／已胜 ${已胜}／摘标记 ${摘}／装回 ${回}`;
 	}
 	F(`★面 O 三向：未过 ⇒ 0 条、记 victory ⇒ 1 条、摘掉层表 L9 的 \`boss\` ⇒ 1 条、装回 ⇒ 0 条（读数随**账**与**表**翻面，✗ 硬写层名）｜实得 ${O读数}`, O两向 === true);
+	/* ★面 Q 的**刀**（`books#188`）：唯一变量＝把 `RPG.refreshPanels` 换成 **no-op** ⇒ 面板**不再被写入**
+	 *   ⇒ 此时发 `battle:end` 也**清不掉**屏上旧读数 ⇒ 证明「渲染／清空」确实来自**面板写入**这条通路，
+	 *   ✗ 不是「宿主本来就是空的」凑出来的。两向：①换回真 `refreshPanels` 后发事件 ⇒ 面板**有内容**；
+	 *   ②换回后同一「结束」操作 ⇒ **清得掉**。 */
+	{
+		const R = s.SC.setup.RPG, D = s.SC.setup.DND3;
+		const 敌文 = () => (s.doc.querySelector('[data-panel="enemy"]')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+		const 敌2 = new (R.Character)({ name: '幼獾', hp: 3, maxHp: 6 });
+		R.events.emit('battle:turnEnd', { actor: D.Player, battle: { enemies: [敌2], players: [D.Player] } });
+		R.refreshPanels();
+		const 写得上 = 敌文().includes('幼獾');
+		const 真刷 = R.refreshPanels;
+		R.refreshPanels = () => {};                       // ★唯一变量：面板不再被写入
+		R.events.emit('battle:end', { players: [D.Player], enemies: [敌2] });
+		const noop后 = 敌文().includes('幼獾');             // 仍应看到旧行（清不掉）
+		R.refreshPanels = 真刷;                           // ★换回
+		R.events.emit('battle:end', { players: [D.Player], enemies: [敌2] });
+		R.refreshPanels();
+		const 清得掉 = !敌文().includes('幼獾');
+		F('★面 Q 两向 · 正例臂：发了战斗事件并刷新 ⇒ 面板**有内容**（✗ 无则本面读的是空面）', 写得上 === true);
+		F('★面 Q 唯一变量：只把 `refreshPanels` 换成 no-op ⇒ 同一「结束」操作**清不掉**屏上读数（读数确由写入而来）', noop后 === true);
+		F('★面 Q 反例臂：换回真 `refreshPanels` ⇒ 同一操作**清得掉**（✗ 则上一条是「本来就空」造的假刀）', 清得掉 === true);
+	}
+
 	s.dom.window.close();
 } else {
 	const s = await boot(env);
@@ -453,6 +477,44 @@ if (has('--selftest')) {
 		if (对照臂 && 关键臂) {
 			console.log(`  面 P ✓ 进层致命伤：1 血 ⇒ 段落 ${JSON.stringify(致命.段)}、位置 ${JSON.stringify(致命.位)}、链接 ${JSON.stringify(致命.链接)}、战败 ${致命.战败}`
 				+ `；满血对照 ⇒ 段落 ${JSON.stringify(对照.段)}、位置 ${JSON.stringify(对照.位)}、含「去第 6 层」${对照.钮.some((t) => /去第 6 层/.test(t))}`);
+		}
+	}
+	/* ★面 Q（**硬判**）：战斗面两块（`books#188` P1-2 敌面板 ／ P1-4 治疗读数）在**真 DOM** 里接线。
+	 *   唯一变量＝**发不发战斗事件**：
+	 *     ① 反例臂：没发事件 ⇒ 两块宿主都空（✗ 若恒有内容 ⇒ 本面读的是常量，不是事件驱动）；
+	 *     ② 发了（敌组带**已装备的铁环甲**）⇒ 敌面板出「幼獾／负伤／AC 13／已见：爪击」、治疗面出「绷带 恢复 5（余 2 次）」；
+	 *     ③ 发 `battle:end` ⇒ 两块都清空（✗ 旧场读数留到探索段）。
+	 *   ⚠ 那件铁环甲（+3 AC）是**对照件**：它让「读引擎 `acOf`」与「面板自算 `stats.ac`」**不同值** ⇒
+	 *     自算版会被本面咬住（无头版见 `verify.mjs` ㊳ 的同形判据）。 */
+	{
+		const R = s.SC.setup.RPG, D = s.SC.setup.DND3;
+		const 读战斗面 = () => ({
+			敌: (s.doc.querySelector('[data-panel="enemy"]')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+			治: (s.doc.querySelector('[data-panel="heal"]')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+		});
+		const 空 = 读战斗面();
+		const 敌 = new (R.Character)({ name: '幼獾', hp: 4, maxHp: 6 });
+		敌.items.push({ id: 'mail', equipped: true });
+		const 绷带槽 = { id: 'bandage', charges: 2 };
+		D.Player.items.push(绷带槽);
+		R.events.emit('battle:turnEnd', { actor: D.Player, battle: { enemies: [敌], players: [D.Player] } });
+		R.events.emit('item:used', { id: 'badger-claw', name: '爪击', action: 'use', actor: 敌, target: D.Player });
+		R.refreshPanels();
+		const 有 = 读战斗面();
+		R.events.emit('battle:end', { players: [D.Player], enemies: [敌] });
+		R.refreshPanels();
+		const 清 = 读战斗面();
+		D.Player.items.splice(D.Player.items.indexOf(绷带槽), 1);
+		const 反例臂 = 空.敌 === '' && 空.治 === '';
+		const 正例臂 = /幼獾/.test(有.敌) && /负伤/.test(有.敌) && /AC 13/.test(有.敌) && /已见：爪击/.test(有.敌);
+		const 治疗臂 = /绷带/.test(有.治) && /恢复 5/.test(有.治) && /余 2 次/.test(有.治);
+		const 清空臂 = 清.敌 === '' && 清.治 === '';
+		ok(反例臂, `★面 Q 反例臂：没发战斗事件时两块就该是空的（实得 ${JSON.stringify(空)}）—— 否则本面读到的是常量`);
+		ok(正例臂, `★面 Q：敌面板没按事件渲染出「幼獾／负伤／AC 13／已见：爪击」（实得 ${JSON.stringify(有.敌)}）`);
+		ok(治疗臂, `★面 Q：治疗读数没按背包渲染出「绷带 恢复 5（余 2 次）」（实得 ${JSON.stringify(有.治)}）`);
+		ok(清空臂, `★面 Q：battle:end 之后两块没清空（旧场读数会留到探索段，实得 ${JSON.stringify(清)}）`);
+		if (反例臂 && 正例臂 && 治疗臂 && 清空臂) {
+			console.log(`  面 Q ✓ 战斗面：敌「${有.敌}」；治疗「${有.治}」；战斗结束 ⇒ 两块清空 ✓`);
 		}
 	}
 	s.dom.window.close();
