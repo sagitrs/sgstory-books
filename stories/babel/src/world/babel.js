@@ -441,6 +441,39 @@ const makeLayerLocation = (L) => new R.Location({
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
 
+/* ---------- ★`books#180`：L9 拆「准备区 ＋ 战场」----------
+ * 设计原话「固定事件＝玩家看到出口；选项**唯一**＝前进」说的是**战场里**（✗ 整层）——
+ *   拆开后：准备区＝撤退落点＋**合法回 L8 温泉**的补给点；战场＝迎战不眠者，出口仍唯一（且受进度约束）。
+ * ⚠ 准备区的边**不经** `边守卫`（`是头目战场('L9-camp')` 假）⇒ L8 回边在此合法化（`#180` 的「须解」那处）。 */
+const 准备区 = new R.Location({
+	id: 'L9-camp',
+	name: '第 9 层 · 门前营地',
+	desc: () => '光就在前面那道门缝里。你在这里扎过营 —— 再往上一步，就是它守的地方。',
+	/* ⚠ 判据的「前哨」面：准备区**不设遭遇**（安全点，撤退落点），动作一律过「活着」闸门。 */
+	actions: [].map(只给活人),
+});
+map.addLocation(准备区);
+/** L9 的**入口**（上行走到的是准备区，✗ 战场；下行从准备区回 L8）。 */
+const 入层口 = (id) => (id === 'L9' ? 'L9-camp' : id);
+/* 战场那一格照实改名（✗ 与准备区同名 —— 两处同名会让玩家与判据都把两处当一处）。 */
+const 战场 = map.locations.get('L9');
+if (战场) 战场.name = '第 9 层 · 门前战场';
+/** ★§14 ⑤（操作者批「头目撤退后满血重置」）：进战场且**本局未过** ⇒ 头目复位（防无成本磨血）。 */
+const 进战场复位 = () => {
+	if (!setup.BABEL.已过?.('L9')) setup.BABEL.头目?.复位?.();   // 跨文件：走导出面（`boss.js` 的 `已过`）
+};
+if (战场) {
+	const 旧入 = 战场.onEnter;
+	战场.onEnter = () => { 旧入?.(); 进战场复位(); };
+}
+/** ★`books#180`：头目战场**非胜收场**的落点（撤退落点＝准备区）。一处函数 ⇒ 判据可**直调**
+ *   （`fight()` 的战后段消费它；「本仓无独立撤退机制 ⇒ 撤退＝未胜而离场」的口径见该处注释）。 */
+const 落准备区 = (layer) => {
+	if (!是头目战场(layer)) return false;
+	map.moveTo(准备区.id);
+	return true;
+};
+
 /* ══════════════════════════════════════════════════════════════════════════════
  * L1–L9 **引导弧**（`books#132` · 操作者设计指令）—— 故事侧装配
  *
@@ -524,11 +557,16 @@ const LAYER_META = R.registerLayerMeta('span1', (() => {
 	if (base.length === 0) {
 		throw new Error('[babel] 层表缺席（`DND3.LAYER_META_SPAN1` 未装载？）—— `books#133` 笔 3 的出口守卫读它（✗ 静默降级）');
 	}
-	return base.map((l) => (l?.id === 'L9' ? Object.assign({}, l, { boss: true }) : Object.assign({}, l)));
+	/* ★`books#180`：`bossArena` 指明**战场那一处**（L9 拆成「准备区 ＋ 战场」后，整层不再是头目层
+	 *   —— 准备区要能自由走回 L8）。守卫与判据都读这一格（✗ 硬写层名，✗ 按层前缀判）。 */
+	return base.map((l) => (l?.id === 'L9' ? Object.assign({}, l, { boss: true, bossArena: 'L9' }) : Object.assign({}, l)));
 })());
 /** 头目层判定（走引擎的公开读面 `layerOfLocation` —— 它按**最长前缀**匹配地点 id
  *  ⇒ `'L10-camp'` 归 `L10`，✗ 误配到 `L1`）。 */
-const 是头目层 = (locId) => R.layerOfLocation?.(locId)?.boss === true;
+const 是头目战场 = (locId) => {
+	const 行 = R.layerOfLocation?.(locId);
+	return 行?.boss === true && (行.bossArena ?? 行.id) === locId;
+};
 /** 头目层的**唯一出口**指向：层表里的**下一层**（`L9` ⇒ `L10`）。 */
 const 头目层前方 = (locId) => {
 	const t = R.layerMeta?.['span1'] ?? [];
@@ -536,15 +574,20 @@ const 头目层前方 = (locId) => {
 	const i = t.findIndex((l) => l?.id === id);
 	return i >= 0 ? (t[i + 1]?.id ?? null) : null;
 };
+/** 进度账的键＝**层 id**（头目实体按层归属；将来一场一头目也只改这里）。 */
+const 头目场 = (locId) => R.layerOfLocation?.(locId)?.id ?? locId;
 /** 边守卫：**只给头目层的边**装（非头目层返回 `null` ⇒ 连 `when` 都不挂，边照旧可用）。
  *  ★落法是**动作守卫**而✗结构删边（领队原文）：边仍在图里（`map.exits` 读得到、`validate()` 照验），
  *    只是 `when` 恒假 ⇒ 「玩家选项中只有一个」。 */
 const 边守卫 = (from, to) => {
-	if (!是头目层(from)) return null;          // 装载时：非头目层**根本不装守卫**（边照旧可用）
+	if (!是头目战场(from)) return null;        // 装载时：非**战场**根本不装守卫（准备区／普通层边照旧可用）
 	const 前方 = 头目层前方(from);              // 前方由**层表顺序**定（静态内容 ⇒ 装载时取即可）
 	/* ★调用时**再看一次表**：头目标记若被摘掉 ⇒ 该层不再受限（✗ 把标记在装载时判死 ——
 	 *   那样「读数随表翻面」就只是句空话：面 O 的两向臂会立刻抓到，见 `tools/e2e-drive.mjs`）。 */
-	return () => !是头目层(from) || (R.layerOfLocation?.(to)?.id ?? to) === 前方;
+	/* ★`books#180`：**唯一出口 ∧ 本局已过该场** —— 头目硬门（操作者裁定：L9 头目硬卡进度）。
+	 *   两向都在一处：未胜 ⇒ 该边 `when()` 假（不出现在选项里，边本身仍在图里）。 */
+	return () => !是头目战场(from)
+		|| ((R.layerOfLocation?.(to)?.id ?? to) === 前方 && setup.BABEL.已过?.(头目场(from)));
 };
 
 /* ---------- L1 固定事件：地上那把剑 ---------- */
@@ -678,16 +721,17 @@ adoptHub(map, DND3.buildSpan1Hub());   // 包里已自带 `validate()`：不合�
  * 段内自由（双向）＋ 段间封闭（10→11 单向、无回边）。 */
 for (let i = 0; i < LAYERS.length - 1; i++) {
 	const a = LAYERS[i].id;
-	const b = LAYERS[i + 1].id;
+	const b = 入层口(LAYERS[i + 1].id);   // ★`books#180`：L9 的入口是**准备区**
 	const w = 边可否通行(a, b);   // ★`books#176`：合成「活着」
 	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层`, ...(w ? { when: w } : {}) });
 }
 /* ★`books#133` 笔 3：L9 的**唯一出口**＝前进（设计稿：「选项唯一＝前进进入 10 层」）。
  *   文案带上设计原词，让「前进」在**选项本身**上可见（✗ 只在文档里）。边照旧，守卫只说「就这一条」。 */
+map.addPath({ from: 'L9-camp', to: 'L9', text: '走进那道光（迎战不眠者）', when: 边可否通行('L9-camp', 'L9') });
 map.addPath({ from: 'L9', to: 'L10-camp', text: '前进（钻进光里 · 第 10 层）', when: 边可否通行('L9', 'L10-camp') });
 map.addPath({ from: 'L10-camp', to: 'L9', text: '退回第 9 层（段内自由）', when: 边可否通行('L10-camp', 'L9') });
 for (let i = LAYERS.length - 1; i > 0; i--) {
-	const a = LAYERS[i].id;
+	const a = 入层口(LAYERS[i].id);       // ★`books#180`：从 L9 下去的是**准备区**（战场 ✗ 挂回边）
 	const b = LAYERS[i - 1].id;
 	const w = 边可否通行(a, b);   // ★`books#176`：合成「活着」
 	map.addPath({ from: a, to: b, text: `向下，回第 ${i} 层（段内自由）`, ...(w ? { when: w } : {}) });
@@ -735,7 +779,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	/* ★`books#164`：预知的机器件（同上理由）—— `预报可选`／`预报账`／`预报类`／`记预报`／`可预知`／`类名`。 */
 	预报可选, 预报账, 预报类, 记预报, 可预知, 类名, 预知动作, 预知授予层,
 	/* ★`books#133` 笔 3：头目弧的机器件（同上理由：判据/刀要能**真调用**）。 */
-	LAYER_META, 是头目层, 头目层前方, 边守卫, 边可否通行, 活着,
+	LAYER_META, 是头目战场, 头目场, 头目层前方, 边守卫, 边可否通行, 活着, 准备区, 入层口, 进战场复位, 落准备区,   // ★`books#180`
 	宝箱奖励表: 宝箱奖励,    // ★`books#170` P1-6：判据按**表**取读数（✗ 在判据里重写一份）
 	温泉层, 温泉回复, 温泉动作, 温泉耗时, 温泉可清, 时间账,   // ★`books#177`：温泉的机器件（判据/刀要能**真调用**）
 	adoptHub,                      // 整备区接管形（一段/二段共用）

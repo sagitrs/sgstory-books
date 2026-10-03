@@ -56,9 +56,46 @@ const 重开钩子 = [];
 const 注册重开钩子 = (fn) => { 重开钩子.push(fn); jQuery(document).on(':enginerestart', fn); return fn; };
 注册重开钩子(复位头目);
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * ★`books#180`：头目门的**战果判定**与**进度账**（形照 `#175` 的 `结算战败`：一族一个判据源）
+ *
+ * 为何要单点：旧形把「胜」写死在 `encounters.js` 的 `foes.every(f => f.isDown)` 里，而那条判与
+ *   「玩家是否也倒了」**相邻且不互斥** —— 同归于尽时**先发了战利品**、再走失败流（本席读码时挖到）。
+ *   ⇒ 战果一处判、消费者（战利品／进度／落点）各按它分支。
+ * 口径（操作者 `#172` §14 批复 ⑥⑦）：**打晕 ≠ 打死**（`allowKnockoutClear` 可配置）｜
+ *   玩家**全非致命出局**同样是「失败」入口（本函数把两者都归 `'down'`）。
+ * ⚠ 进度账落**本局**（`$babelRun.bosses`）：硬门要「**每局**都得打」，✗「打过一次就永久开」。
+ */
+setup.BABEL.头目策略 = Object.assign({ allowKnockoutClear: false }, setup.BABEL.头目策略 ?? {});
+/** 战果：`'victory' | 'stunned' | 'stalemate' | 'down'`（判定**只此一处**）。 */
+const 战果 = ({ foes, player } = {}) => {
+	const 敌 = foes ?? [];
+	const 全倒 = 敌.length > 0 && 敌.every((f) => f.isDown);
+	const 全晕 = 全倒 && 敌.every((f) => R.isKnockedOut?.(f) === true);
+	if (player?.isDown) return 'down';                       // 致命归零 **或** 非致命出局（§14 ⑦）
+	if (全倒 && (!全晕 || setup.BABEL.头目策略.allowKnockoutClear)) return 'victory';
+	if (全倒) return 'stunned';                              // §14 ⑥：打晕不开门（可配置翻面）
+	return 'stalemate';                                      // 回合打完双方仍在（含玩家主动收手）
+};
+/** 进度账：本局各场头目的战果（**只有** victory 会写进去）。 */
+const 进度账 = () => ((State.variables.babelRun ??= {}).bosses ??= {});
+const 已过 = (场) => 进度账()[场] === 'victory';
+const 记战果 = (场, 果) => {
+	if (果 === 'victory') 进度账()[场] = 'victory';
+	return 已过(场);
+};
+
 setup.BABEL.头目 = Object.assign(setup.BABEL.头目 ?? {}, {
 	不眠者: DND3.SleeplessOne,
 	抓握: R.items?.['sleepless-grasp'] ?? null,
 	复位: 复位头目,                       // ★判据可调（见上：host 桩里没有真 DOM 事件）
+	战果, 进度账, 已过, 记战果,           // ★`books#180`：头目门的战果判定与进度账（判据/刀要能**真调用**）
 	重开钩子, 注册重开钩子,               // ★`books#156`：登记面（判据断言「被绑的 === 复位本体」）
 });
+
+/* ★`books#180`：战果／进度账同挂**故事出口面** —— 消费方（`babel.js` 的边守卫、`encounters.js`
+ *   的战后段）与判据一律按出口面取，✗ 深入 `setup.BABEL.头目` 子对象（两处各一份取法易漂）。 */
+setup.BABEL.战果 = 战果;
+setup.BABEL.进度账 = 进度账;
+setup.BABEL.已过 = 已过;
+setup.BABEL.记战果 = 记战果;
