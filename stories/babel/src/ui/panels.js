@@ -56,7 +56,22 @@ R.registerPanel('trauma', {
 R.registerPanel('inventory', {
 	name: '背包',
 	host: '.statusbar [data-panel="inventory"]',
-	render: () => setup.RPG.inventoryLinks(),
+	/* ★`books#280` ③a（本席 2026-10-04 裁定：取「战中禁用页脚治疗」这一支；三条理由见 PR／票面）：
+	 *   页脚背包面是**回合契约之外**的面 —— 点一下即用掉一件药（`RPG.itemClick` ⇒ `useItem`），
+	 *   却**不消耗战斗回合** ⇒ 同一件事有两条路、两条规矩（战斗面板那条会占本回合）。
+	 *   ⇒ 战斗中把这一格**降级为只读标签**（`RPG.inventoryLabel()` —— 它与链接面**本就是一对**，
+	 *     「逐字同形」是引擎 `70-ui.js` 头注 ③ 的既有不变式），并给一句白话**指向合法入口**
+	 *     （✗ 静默消失：那会读成「药没了」，是另一种假读数）。
+	 *   ⚠ 为何在**渲染面**换而不是在**点击面**加拒绝：换面即**不产生**可点件 ⇒ 不必再写一份
+	 *     「点了会怎样」的逻辑（✗ 第二份实现 —— 它会随战斗循环演化而漂）。
+	 *   ⚠ 判据在 `verify.mjs` 的「第 51 格」（两向 ＋ 同形 ＋ 缺省正控）。 */
+	render: () => {
+		if (setup.BABEL?.战中 === true) {
+			return `${R.inventoryLabel()} <span class="rpg-hint">`
+				+ `（战斗中：请在战斗面板里使用道具——那会占用本回合）</span>`;
+		}
+		return setup.RPG.inventoryLinks();
+	},
 });
 /* 通知面板：能力来自 B4（`#1798`）⇒ **能力探测**注册（该面未落地时这一格留空，✗ 报错） */
 if (typeof R.noticeToggleHTML === 'function') {
