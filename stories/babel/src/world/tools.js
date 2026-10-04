@@ -165,7 +165,12 @@ setup.BABEL.gather = () => {
 	const 档存 = R.noticeFilter;                            // ★`books#280` ④：档位存后复原（✗ 改玩家的档）
 	const 前 = 背包计数();                                  // ★汇总取**真产出**（前后差）
 	try {
-		R.setNoticeFilter?.('key');                     // 逐件行只进通知中心（可回看）
+		/* ★`books#280` ④ ＋ 校准（tester-4 报告后本席实测）：逐件行走 `default` 通道 ⇒ 进**正文**会被这一档挡住，
+		 *   但 `perform` **先** `pushNotice` 再判档（`01-perform.js:63`）⇒ 逐件行**照样进通知缓冲**。
+		 *   ⚠ 边界（✗ 别读成「长期留档」）：缓冲是**200 条环形**（超出丢最旧），通知面板的窗口是**最近 20 条**
+		 *     ⇒ 采净那 12 行在**同一段会话里可回看**，被后续通知（战斗行很多）挤出后**不再可回看**；
+		 *     本作**没有**单独的采集历史面 —— 那是**设计取舍**（✗ 不是本笔漏做）。 */
+		R.setNoticeFilter?.('key');                     // 逐件行：✗ 进正文；仍进通知缓冲（见上）
 		while ((setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0) {
 			if (slot && (slot.charges ?? 0) <= 0) break;      // 没耐久 ⇒ 采不动（`扣耐久` 到 0 会摘件）
 			const res = 现制采集();
