@@ -3366,14 +3366,18 @@ head('㊽ `books#280` ①：遭遇＝每层一次（胜利即耗；撤退／失�
  *   走 `'loot'` 通道（key 级 ⇒ 任何档下都进正文）；汇总取**真产出**（背包前后差）。
  *
  * 断什么：① 正文里 `采得：` 行**恰 1 条**（✗ 逐件 6 条）② 该行带总数 `×12` 与**节点耗尽信息**
- *   ③ 逐件「＋N 物品」行**不在正文** ④ **正控：压缩 ≠ 丢证据** —— 被压缩的行仍**在通知中心**可回看
+ *   ③ 逐件「＋N 物品」行**不在正文** ④ **压缩 ≠ 丢证据**：逐件行**确实进了通知缓冲** —— 断法是
+ *      **前后计数**（逐件行 +2×件数），✗ 不是「缓冲里有『石料』字样」（那被**汇总行自己**满足 ⇒ **无牙**；
+ *      本席首版就是这么写的，tester-4 报告时才发现）。
  *   ⑤ **正控：档位必复原**（✗ 把玩家的档留在「仅关键」）。
+ * ⚠ **可回看的边界**（校准 · 实测）：缓冲是 200 条环形 ＋ 面板窗口 20 条 ⇒ 采净那 12 行「同一段会话里可回看」，
+ *   被后续通知挤出后不再可回看；本作**没有**独立的采集历史面（**设计取舍**，✗ 不是漏做）。
  * ⚠ 读数的口径（本席首版载在这里）：宿主仿真的归档记的是 **`perform` 调用**（✗ 过滤后的正文）
  *   ⇒ 「正文行」得按**引擎自己那一条判断**（`RPG.noticeAdmits`）在本格临时插一层探针来取；
  *   ✗ 不得在判据里重写一遍「什么算关键」的规则（那是第二份源）。
  * 刀（记在提交信息）：拆掉循环里的 `setNoticeFilter('key')` ⇒ ①③ 红，复原回绿。
  */
-head('㊾ `books#280` ④：一次采净只印一行（逐件行降为通知中心可回看）');
+head('㊾ `books#280` ④：一次采净只印一行（逐件行进通知缓冲；✗ 无独立采集历史面＝取舍）');
 {
 	const 层 = 'L1';
 	const 节点 = B.nodeAt?.(层);
@@ -3395,7 +3399,11 @@ head('㊾ `books#280` ④：一次采净只印一行（逐件行降为通知中�
 		const 记 = (text, opts) => { if (R.noticeAdmits?.(opts?.channel ?? 'default') !== false) 正文.push(String(text)); };
 		Object.defineProperty(Object.prototype, 'perform', { ...描, value: function (text, opts) { 记(text, opts); return 原.apply(this, arguments); } });
 		R.perform = function (text, opts) { 记(text, opts); return 原RPG.apply(this, arguments); };
+		/* ④ 逐件行的**形**（✗ 用「含石料」这种松匹配 —— 汇总行自己也含「石料」⇒ 松匹配在「逐件行不再入缓冲」时
+		 *   **照样绿**；本席首版即是此病，tester-4 报告后校准）。定义须在**取采前读数之前**（TDZ）。 */
+		const 逐件形 = (t) => /^－1 |^采得：.+×\d+。$/.test(String(t));
 		let 件数;
+		const 采前逐件 = (R.notices?.() ?? []).map((n) => String(n.text ?? n)).filter(逐件形).length;
 		try { 件数 = B.gather(); }
 		finally { Object.defineProperty(Object.prototype, 'perform', 描); R.perform = 原RPG; }
 		const 采得 = 正文.filter((l) => /^采得：/.test(l));
@@ -3409,12 +3417,15 @@ head('㊾ `books#280` ④：一次采净只印一行（逐件行降为通知中�
 		ok(加行.length === 0, `★逐件「＋N 物品」行仍在正文：${JSON.stringify(加行)}`);
 		/* ④ 正控：压缩 ≠ 丢证据 —— 被压缩的行须**仍在通知中心**（`RPG.notices` 可回看） */
 		const 通知 = (R.notices?.() ?? []).map((n) => String(n.text ?? n));
-		ok(通知.some((t) => /采得：|石料|＋/.test(t)),
-			`★被压缩的行**没进**通知中心（那就不是压缩，是丢证据）：${JSON.stringify(通知.slice(-4))}`);
+		const 后逐件 = 通知.filter(逐件形).length;
+		ok(后逐件 - 采前逐件 === 2 * 件数,
+			`★逐件行没进通知缓冲（差分应为 2×件数=${2 * 件数}，实得 ${后逐件 - 采前逐件}）`
+			+ ` —— 压缩 ≠ 丢证据这条就靠它；✗ 只看「有没有『石料』字样」（汇总行自己也含）；`
+			+ ` 实得尾部：${JSON.stringify(通知.slice(-4))}`);
 		/* ⑤ 正控：档位复原 */
 		ok(R.noticeFilter === 'all', `★采集后通知档未复原（实得 ${JSON.stringify(R.noticeFilter)}）—— ✗ 改玩家的档`);
 		console.log(`  采集压缩：正文采得行 ${采得.length} 条 ⇒ ${JSON.stringify(采得[0] ?? null)}`
-			+ `｜正文＋行 ${加行.length} 条｜通知中心留痕 ${通知.length} 条｜档位 ${R.noticeFilter}`);
+			+ `｜正文＋行 ${加行.length} 条｜通知缓冲 ${通知.length} 条（其中逐件 ${后逐件 - 采前逐件} 条，采前 ${采前逐件}）｜档位 ${R.noticeFilter}`);
 	} finally {
 		if (节点) 节点.charges = 次存;
 		R.setNoticeFilter?.(档存);
