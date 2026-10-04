@@ -209,6 +209,41 @@ if (自检) {
 			中不中.push({ 刀: 'D', 命中: 命中.length, 产 });
 		} finally { try { fs2.unlinkSync(刀本); } catch { /* 清不掉不掩盖结论 */ } }
 	}
+	/* ── ★配对刀（槽位跟走臂 · `sgstory#1993` 登记的那条跟进臂）──
+	 *   要证的性质：**判据真的从「一处源」取值**（✗ 不是钉死 3/4）。
+	 *   单拔任一件 ⇒ 都应**仍绿**（这正是「一处源」的意义：改表，DOM 与判据**一起**跟着走 ✓）；
+	 *   只有**两件同时**上身（表改了、而引擎那边写死）⇒ 才该红 ✓。
+	 *   ⚠️ 刀的靶是**产物里的字符串**（改了源码不重建＝刀没落在被测物上 ✓）：两处靶在正跑前都要**先确认在位** ✓。 */
+	{
+		const 靶表 = 'const 槽位 = Object.freeze({ 快存: 3, 战前保底: 4, 手动: 5 })';
+		const 靶集 = "var 保留 = (typeof RPG.reservedSlots === 'function') ? RPG.reservedSlots() : [];";
+		const 有表 = 原.includes(靶表), 有集 = 原.includes(靶集);
+		console.log(`★配对刀靶：故事侧槽位表 ${有表 ? '在 ✓' : '✗ 不在'}｜引擎侧保留集取值 ${有集 ? '在 ✓' : '✗ 不在'}`);
+		if (!有表 || !有集) {
+			console.error('✗ 配对刀：靶不在位 ⇒ **刀没落在被测物上**（产物变了就同步改刀 ✓）⇒ ✗ 不当读数 ✗');
+			不中 += 1;
+		} else {
+			const 改表 = (文) => 文.split(靶表).join(靶表.replace('快存: 3', '快存: 6'));
+			const 改集 = (文) => 文.replace(靶集, 'var 保留 = [3, 4];   /* ★刀：引擎侧写死 ⇒ ✗ 不再从一处源取 */');
+			const 跑 = async (名, 文, 期望红) => {
+				const d = html.replace(/\.html$/, `.__paired-${process.pid}-${名}.html`);
+				fs2.writeFileSync(d, 文);
+				try {
+					const { fails } = await 判({ ...env2, htmlPath: d });
+					const 命中 = fails.filter((f) => /【A 保留槽】|【C 点击】/.test(f));
+					const 对 = 期望红 ? 命中.length > 0 : fails.length === 0;
+					if (!对) 不中 += 1;
+					console.log(`  ${对 ? '✓' : '✗'} ${名}：期望${期望红 ? '**红**' : '**仍绿**'}｜实得 判据红 ${命中.length} 条／总红 ${fails.length} 条`
+						+ (命中.length ? `（${命中[0].slice(0, 62)}…）` : ''));
+					中不中.push({ 刀: 名, 命中: 命中.length, 总红: fails.length });
+				} finally { try { fs2.unlinkSync(d); } catch { /* 清不掉不掩盖结论 */ } }
+			};
+			await 跑('单改表（3⇒6）', 改表(原), false);
+			await 跑('单写死引擎集', 改集(原), false);
+			await 跑('两件同上身', 改集(改表(原)), true);
+		}
+	}
+
 	process.exit(不中 ? 1 : 0);
 }
 
