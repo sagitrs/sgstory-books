@@ -514,7 +514,9 @@ if (has('--selftest')) {
 	const N无 = 采按钮(s);
 	ok(JSON.stringify(N账?.抽中 ?? null) === JSON.stringify(['chest', 'gather']),
 		`★面 N：注入后 L7 的抽中与手算不符（手算 ['chest','gather']；实得 ${JSON.stringify(N账?.抽中)}）`);
-	ok(N无.length === 0, `★面 N：手上**没有**铁斧，却出现了采集按钮（${JSON.stringify(N无)}）—— 工具门没生效`);
+	/* ★`books#212` 第 1 项改形（操作者裁定 00:2x）：**入口改为常出** ⇒ 本面由「没有按钮」翻成「按钮在」；
+	 *   而「为什么不行」由动作说明白 ⇒ 那条链在 `verify` ㉕ 格里断（那里能就地调动作并截 `perform`）✓。 */
+	ok(N无.length === 1, `★面 N：手上**没有**铁斧时采集按钮**不在**（${JSON.stringify(N无)}）—— 本票已改为「入口常出 ＋ 动作说明原因」`);
 	ok(choiceButtons(s).some((t) => t.includes('箱子')), '★面 N：另一类事件按钮（箱子）也不在 ⇒ 事件面本身没起来，本面读数不成立');
 	s.SC.setup.RPG.give('axe');
 	await playPassage(s, '探索'); await tick(250);            // 就地重画（同一段落、同一账）
