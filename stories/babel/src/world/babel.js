@@ -214,8 +214,27 @@ const markUsed = (layerId, kind) => {
 /** 守卫读数：该层抽中 `kind` 且**尚未用过任何一类**（✗ 在此抽签——见 `eventsOf` 的说明）。 */
 const eventPending = (layerId, kind) => {
 	const e = eventsOf()[layerId];
-	return !!e && e.已用 === null && e.抽中.includes(kind);
+	return !!e && 本层已战(layerId) && e.已用 === null && e.抽中.includes(kind);
 };
+
+/** ★`books#259` 裁 1（战斗不可跳）：本层**是否已打过那一场**。
+ *   它是**向上边**与**事件面**的共同前置 ⇒ 「每层严格『先战斗→再判定事件』」，且
+ *   「不想触发事件可在**事件入口**跳过」（跳过的是**事件**，✗ 战斗本身）。
+ *   标记由 `encounters.js` 的 `fight()` 在**战斗结算后**置上（✗ 战前置 —— 那会让打一半退出的也算已战）。 */
+const 本层已战 = (layerId) => State.variables.babelRun?.已战?.[layerId] === true;
+
+/** ★`books#259` 裁 1：**在事件入口跳过**（战后、事件未取时可见；取过或跳过 ⇒ 消失）。 */
+const 跳过事件动作 = (L) => ({
+	text: '不理会这层的动静，继续向上',
+	when: () => {
+		const e = eventsOf()[L.id];
+		return 本层已战(L.id) && !!e && e.已用 === null;
+	},
+	action: () => {
+		eventsOf()[L.id].已用 = '__跳过';        // ★声明的哨兵（✗ 与事件类混用；`when` 只认 `!== null`）
+		R.perform('你没有在这层多做停留。');
+	},
+});
 
 /* ★`books#133` 笔 1 的**动作表**（领队 2026-10-02 裁：①陷阱**不入池**（层危害落笔 2）②**读法 (B) 替换**：
  *   抽二择一**就是**该层的额外事件面；③抽签只管 **L5–L8**，L9＝固定 BOSS ＋ 唯一出口）。
@@ -453,6 +472,8 @@ const makeLayerLocation = (L) => new R.Location({
 		...(EVENT_LAYERS.includes(L.id) ? EVENT_KINDS.map((k) => EVENT_ACTIONS[k](L)) : []),
 		/* ★`books#177`：L8 的**温泉**（固定动作，与抽签零耦合 —— 见 `温泉动作` 头注）。 */
 		...(L.id === 温泉层 ? [温泉动作(L)] : []),
+		/* ★`books#259` 裁 1：战后可在**事件入口**跳过（✗ 跳过战斗）。 */
+		跳过事件动作(L),
 		/* ★`books#164`：预知＝「选择下一层内容」的按钮（L5／L6／L7 各三个；由 `when` 筛：
 		 *   持有者 ∧ 本层可预报 ∧ 尚未选过 ∧ 目标层未抽 —— 见 `可预知`）。
 		 *   ⚠ 三类**全量入表**（同事件动作的形），✗ 运行时算数组。 */
@@ -840,7 +861,11 @@ for (let i = 0; i < LAYERS.length - 1; i++) {
 	const a = LAYERS[i].id;
 	const b = 入层口(LAYERS[i + 1].id);   // ★`books#180`：L9 的入口是**准备区**
 	const w = 边可否通行(a, b);   // ★`books#176`：合成「活着」
-	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层`, ...(w ? { when: w } : {}) });
+	/* ★`books#259` 裁 1：**本层那一场没打，向上边不开**（战斗不可跳）；
+	 *   ⚠ 只有「层 → 下一层」这组边受此门（`L9-camp → L9`「走进那道光」与 `L9 → L10-camp` 不在此列：
+	 *     前者是进战场的门、后者已由 `#180` 的头目硬门管）。 */
+	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 2} 层`,
+		when: () => (typeof w === 'function' ? w() : true) && 本层已战(a) });
 }
 /* ★`books#133` 笔 3：L9 的**唯一出口**＝前进（设计稿：「选项唯一＝前进进入 10 层」）。
  *   文案带上设计原词，让「前进」在**选项本身**上可见（✗ 只在文档里）。边照旧，守卫只说「就这一条」。 */
