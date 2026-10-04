@@ -11,11 +11,27 @@
 [RPG] 角色 id「player」重复注册：已存在，将被覆盖。
 [RPG] 遭遇表「span1」重复注册：将被覆盖。
 [RPG] 层表「span1」重复注册：将被覆盖。
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
 Not implemented: Window's scroll() method
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
+[DEPRECATED] Save.slots.has() is deprecated.
 Not implemented: Window's scroll() method
 ✓ D9-1 产物注入串恰 1 次   ← v0.0.1·084974f2
 ✓ D9-2 版本标识**真渲染**（#story-caption 含版本）   ← "版本 v0.0.1·084974f2"
-✓ D9-3 同 pin 同参两次构建 sha1 相同   ← ea3f3a661f04 vs ea3f3a661f04
+✓ D9-3 同 pin 同参两次构建 sha1 相同   ← 19e23c9e0c9e vs 19e23c9e0c9e
 ✓ D9-4 变更日志在册   ← docs/playtest/CHANGELOG-babel-v0.0.1.md
 
   ⇒ 失败 0 条
