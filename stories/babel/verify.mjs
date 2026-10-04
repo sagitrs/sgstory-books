@@ -3823,6 +3823,80 @@ head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效�
 	}
 }
 
+/* ── 第 55 格 `books#280` ⑨：治疗反馈 ＋ HP 实时刷新（**三路同口径**）───────────────────────────
+ *
+ * 三路＝① 战斗面板的选单／② 背包**战外**使用／③ 背包**战中提交**；三路最终都走引擎 `RPG.act`
+ *   ⇒ 都发 `item:used` ⇒ 故事侧**一处钩子**（`hooks.js`）即覆盖三路（本格就是**分别驱动三路**来证这一点）。
+ * 断什么：每路既断**文本**（`HP X → Y`，X/Y 取真值）又断**接线**（`refreshPanels(['hp'])` 确实被调过 ⇒ 页脚会变；
+ *   真 DOM 的「页脚真变」在 `tools/e2e-280-heal-feedback.mjs` 里断）。
+ * 刀（记在提交信息）：K1 拆掉反馈打印 ⇒ 文本臂红；K2 拆掉就地刷 ⇒ 接线臂红；各自按字节复原。
+ */
+head('第 55 格 `books#280` ⑨：治疗反馈 HP X → Y ＋ 页脚就地刷（三路同口径：战斗面板／战外／战中提交）');
+{
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 血存 = D.Player.hp, 非致存 = D.Player.nonlethal;
+	const 原choice = D.Player.choice, 原refresh = R.refreshPanels;
+	const 行 = () => __host.host.lines().map((x) => String(x));
+	const 造敌 = () => new (R.Character)({ name: '装置靶', hp: 1, maxHp: 1, stats: { dmg: '0', atkBonus: 0 } });
+	/* 每路跑一次：装上「刷 hp」的侦听 ⇒ 用一次绷带（HP −10 起）⇒ 断文本 ＋ 断接线。 */
+	const 试一路 = async (名, 用) => {
+		State.variables.inventory = [{ id: 'bandage', charges: 2 }];
+		D.Player.hp = D.Player.maxHp - 10; D.Player.nonlethal = 0;
+		const 血前 = D.Player.hp;
+		const 刷过 = [];
+		R.refreshPanels = (...a) => { 刷过.push(a[0]); return 原refresh.apply(R, a); };
+		setup.BABEL.记血();                                  // 「前值」＝玩家最后看到的数（真装置：先记一次）
+		const 行数前 = 行().length;
+		await 用();
+		R.refreshPanels = 原refresh;
+		const 新行 = 行().slice(行数前).join('\n');
+		const m = 新行.match(/HP (\d+) → (\d+)/);
+		ok(!!m, `★${名}：使用反馈里没有「HP X → Y」（新行：${JSON.stringify(新行.slice(0, 120))}）`);
+		if (m) {
+			ok(Number(m[1]) === 血前 && Number(m[2]) === 血前 + 5,
+				`★${名}：反馈的数字不对（读到 ${m[1]} → ${m[2]}，应 ${血前} → ${血前 + 5}）`);
+		}
+		ok(D.Player.hp === 血前 + 5, `★${名}：治疗没真生效（血 ${血前} ⇒ ${D.Player.hp}）`);
+		ok(刷过.some((x) => Array.isArray(x) && x.includes('hp')),
+			'★' + 名 + '：没有触发 refreshPanels([\'hp\']) ⇒ 页脚不会随用刷新（实得 ' + JSON.stringify(刷过) + '）');
+	};
+	try {
+		/* ② 战外：引擎那条点击口（状态栏／背包视图的 `.rpg-item-link` 走的就是它） */
+		await 试一路('战外使用', () => { R.itemClick('bandage'); });
+		/* ③ 战中提交：`R.submitBattleAction` ⇒ 战斗循环取作本回合行动（`sgstory#2003`） */
+		if (typeof R.submitBattleAction === 'function') {
+			await 试一路('战中提交', async () => {
+				const 悬 = [];
+				D.Player.choice = () => new Promise((res) => { 悬.push(() => res('skip')); });
+				const 场 = new (R.Battle)(1, [D.Player], [造敌()], true);
+				const p = 场.execute();
+				await new Promise((r) => setTimeout(r, 0));
+				R.submitBattleAction({ item: 'bandage' });
+				await Promise.race([p, new Promise((r) => setTimeout(() => { 悬.forEach((f) => f()); r(); }, 1500))]);
+			});
+		} else {
+			console.log('  战中提交那一路：**待判**（引擎还没有 `RPG.submitBattleAction`）');
+		}
+		/* ① 战斗面板的选单：由「玩家」按某个选项 ⇒ 引擎自己的交互回合 */
+		await 试一路('战斗面板', async () => {
+			D.Player.choice = (opts) => {
+				const q = (opts ?? []).find((o) => String(o.value).startsWith('quick:'));
+				return Promise.resolve(q ? q.value : String((opts ?? [{}])[0].value));
+			};
+			const 场 = new (R.Battle)(1, [D.Player], [造敌()], true);
+			await Promise.race([场.execute(), new Promise((r) => setTimeout(r, 1500))]);
+		});
+		console.log('  治疗反馈：战外使用 ✓｜' + (typeof R.submitBattleAction === 'function'
+			? '战中提交 ✓' : '战中提交（引擎无 `submitBattleAction` ⇒ 待判）')
+			+ '｜战斗面板 ✓ —— 三路都断到「HP X → Y」文本 ＋ `refreshPanels([\'hp\'])` 接线');
+	} finally {
+		if (原choice === undefined) delete D.Player.choice; else D.Player.choice = 原choice;
+		R.refreshPanels = 原refresh;
+		State.variables.inventory = 包存;
+		D.Player.hp = 血存; D.Player.nonlethal = 非致存;
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();

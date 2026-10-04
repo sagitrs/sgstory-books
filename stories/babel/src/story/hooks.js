@@ -20,6 +20,7 @@
 
 /* 回合结束 ⇒ 刷面板（战斗内每次选择前都对齐；✗ 等段落重渲）。 */
 RPG.events.on('battle:turnEnd', () => {
+	setup.BABEL.记血?.();          // ★⑨：逐回合对齐「最后看到的 HP」（战斗中的伤害在这里被吸收）
 	RPG.refreshPanels?.();
 });
 
@@ -28,11 +29,39 @@ RPG.events.on('battle:end', () => {
 	RPG.refreshPanels?.();
 });
 
+/* ★`books#280` ⑨（操作者亲测 · 0.0.2 阻塞）：**治疗反馈 ＋ HP 实时刷新** —— 三路同口径。
+ *
+ *   勘察结论（关键）：三条路（① 战斗面板的选单／② 背包**战外**使用／③ 背包**战中提交**）
+ *   **最终都走引擎的 `RPG.act`**（统一入口 `#1752`）⇒ 都发同一个 `item:used`（引擎 `30-inventory.js`）。
+ *   ⇒ 本档**一处钩子**即覆盖三路（✗ 三处补丁：那会随某一路演化而漂，正是本舰队反复吃过的那种账）。
+ *
+ *   ① 反馈：把 `HP X → Y` 印在**使用反馈**里（只在 HP **升高**时印＝治疗；满血被引擎按设计拒 ⇒ 不印）。
+ *   ② 刷新：同一次里 `refreshPanels(['hp'])` ⇒ **页脚立刻变**（✗ 等段落重渲 —— 那正是 ⑨ 报的「不随用刷新」）。
+ *   ⚠「前值」＝玩家**最后看到**的那个数（`:passagedisplay`／`battle:start`／`battle:turnEnd` 各记一次）——
+ *     ✗ 拿不到「治疗前的真值」：`item:used` 在动作**之后**发，payload 里没有前后值（引擎侧只带 `id/name/action`）。 */
+const 血知 = { 值: null };
+/* ⚠ **装载序**：本档（`src/story/hooks.js`）**先于** `src/world/babel.js` 装载（按路径排序）⇒ 此刻
+ *   `setup.BABEL` 还没建 ⇒ 这里**先自建空壳**再挂；`world/babel.js:1009` 是
+ *   `Object.assign(setup.BABEL ?? {}, {…})` ⇒ **会合并进来**（✗ 不是覆盖）⇒ 这样挂是安全的。
+ *   （本席实测：不先建壳 ⇒ `Cannot set properties of undefined` ⇒ 整个用户脚本束崩 ⇒ verify 立即具名报出。） */
+setup.BABEL = setup.BABEL ?? {};
+/** 记「玩家最后看到的 HP」（⑨ 的「前值」来源；那些调用点都在**任何一次使用之前**）。 */
+setup.BABEL.记血 = () => { 血知.值 = setup.DND3.Player.hp; };
+
 RPG.events.on('item:used', (e) => {
 	if (e.action && e.action !== 'use') return;
 	const r = State.variables.babelRun;
 	if (r) r.itemsUsed = (r.itemsUsed ?? 0) + 1;
+	/* ① 治疗反馈（只报升高）＋ ② 页脚就地刷 —— 两件都只在这里做一处（三路共用）。 */
+	const 后 = setup.DND3.Player.hp;
+	const 前 = 血知.值;
+	if (前 != null && 后 > 前) RPG.perform(`${e.name ?? e.id}：HP ${前} → ${后}`);
+	血知.值 = 后;
+	if (typeof RPG.refreshPanels === 'function' && RPG.panels?.has?.('hp')) RPG.refreshPanels(['hp']);
 });
+
+/* ★⑨：进战斗时把「最后看到的 HP」对齐（战斗中伤害由 `battle:turnEnd` 逐回合对齐）。 */
+RPG.events.on('battle:start', () => { setup.BABEL.记血?.(); });
 
 /* ---------- ★`books#136`（F4）：读档 ⇒ 换一个「探索」场景实例（⇒ 场景头重印）----------
  *

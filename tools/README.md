@@ -23,6 +23,7 @@
 | `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
 | `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
 | `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面六臂：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面） |
+| `tools/e2e-280-heal-feedback.mjs` | `books#280` ⑨ 治疗反馈「HP X → Y」＋页脚 HP 面板随用刷新的**真 DOM 臂**（三路各断【文本】与【页脚真变】）＋ 双刀（文本面／页脚面各咬一次） |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |

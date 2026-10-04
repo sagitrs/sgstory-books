@@ -104,5 +104,6 @@ if (typeof R.noticeToggleHTML === 'function') {
  *   ⚠ 若将来出现非战斗施加（陷阱/环境/脚本），这条兜底就是唯一的对齐点 ⇒ **别删**（⑮ 有断言守它）。 */
 jQuery(document).on(':passagedisplay', () => {
 	setup.BABEL?.noteTraumas?.();
+	setup.BABEL?.记血?.();       // ★`books#280` ⑨：段落渲染后对齐「最后看到的 HP」（⑨ 的「前值」）
 	R.refreshPanels();
 });
