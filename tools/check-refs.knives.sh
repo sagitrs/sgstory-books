@@ -23,6 +23,37 @@ knife "K3 路径不存在" "d['场景'][0]['备注']+='　\`src/core/no-such-fil
 knife "K6 ★对象形内引用须被扫到" "d['场景'][0]['断言']['逻辑']={'说明':'　\`src/core/70-ui.js:99999\`（\`esc\`）'}" "行号越界"
 knife "K4 引用有歧义" "d['场景'][0]['备注']+='　\`README.md:1\`（\`x\`）'" "引用有歧义"
 knife "K5 散文形引用" "d['场景'][0]['备注']+='　\`src/core/70-ui.js\` 第 69 行'" "散文形"
+echo "=== ★--require-symbols（books#271 余项裁：明账 → 机械判据 · 默认关）==="
+# 造一处**无符号**引用（行号有效、内容非空 ⇒ 只能是「无显式符号」这一类）：
+cp "$B" "$J"
+python3 -c "
+import json;d=json.load(open('$J'));d['场景'][0]['备注']+='　\`src/core/70-ui.js:69\`';json.dump(d,open('$J','w'),ensure_ascii=False)"
+# ① 默认关：须 rc=0，且明账出声（这是本件**默认语义不变**的证据）
+out=$(node tools/check-refs.mjs --engine "$ENGINE" 2>&1); rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q "仅范围核"; then
+  printf "  ✓ %-26s rc=0 且明账仍出声\n" "无符引用·默认关"; pass=$((pass+1));
+else printf "  ✗ %-26s rc=%s（应 0）\n" "无符引用·默认关" "$rc"; fail=$((fail+1)); fi
+# ② 打开开关：须 rc=1，且**具名到那一处**（✗ 只报个数）
+out=$(node tools/check-refs.mjs --engine "$ENGINE" --require-symbols 2>&1); rc=$?
+if [ $rc -eq 1 ] && echo "$out" | grep -qF "没有显式符号" && echo "$out" | grep -qF "src/core/70-ui.js:69"; then
+  printf "  ✓ %-26s rc=1 且具名到该处\n" "无符引用·开关打开"; pass=$((pass+1));
+else printf "  ✗ %-26s rc=%s 未具名\n" "无符引用·开关打开" "$rc"; fail=$((fail+1)); fi
+# ③ 环境变量同效（供 CI／本地复跑，✗ 不必改命令行）
+out=$(REFS_REQUIRE_SYMBOLS=1 node tools/check-refs.mjs --engine "$ENGINE" 2>&1); rc=$?
+if [ $rc -eq 1 ] && echo "$out" | grep -qF "没有显式符号"; then
+  printf "  ✓ %-26s rc=1\n" "无符引用·环境变量"; pass=$((pass+1));
+else printf "  ✗ %-26s rc=%s\n" "无符引用·环境变量" "$rc"; fail=$((fail+1)); fi
+# ④ 反面对照：清单**本来就全带符号**时，开关打开也不该红（✗ 别做成「开了就红」）
+cp "$B" "$J"
+out=$(node tools/check-refs.mjs --engine "$ENGINE" --require-symbols 2>&1); rc=$?
+n=$(echo "$out" | grep -o "仅范围核 [0-9]*" | grep -o "[0-9]*" | head -1)
+if [ "${n:-x}" = "0" ]; then
+  [ $rc -eq 0 ] && { printf "  ✓ %-26s 明账 0 ⇒ rc=0\n" "开关·清单已全带符号"; pass=$((pass+1)); } \
+    || { printf "  ✗ %-26s 明账 0 但仍 rc=%s\n" "开关·清单已全带符号" "$rc"; fail=$((fail+1)); }
+else
+  printf "  · %-26s 明账今为 %s（≠0）⇒ 本支暂不可判（清单未刷完）\n" "开关·清单已全带符号" "${n:-?}"
+fi
+
 echo "=== 引擎缺失（须 rc=2 具名，✗ 静默跳过）==="
 out=$(node tools/check-refs.mjs --engine /tmp/__nope__ 2>&1); rc=$?
 echo "$out" | grep -qF "引擎检出不存在" && { echo "  ✓ rc=$rc 具名"; pass=$((pass+1)); } || { echo "  ✗ 未具名 rc=$rc"; fail=$((fail+1)); }
