@@ -3255,6 +3255,63 @@ head('㊻ `books#259` 裁 4 完形：系统入口只在页脚（剧情选项面�
 	console.log('  系统入口：地点动作表 0 处 ✓｜页脚在位（data-footer=save）✓｜战中仍禁存 ✓');
 }
 
+/* ── ㊼ `books#259` 裁（14:0x·writer 第三条 P1）：**跳过＝关面不补**（跳过态同层采集入口关闭）───
+ *
+ * 病（writer 真浏览器 · `#259` 评论 5980799946）：在**已跳过**的同层状态（`已跳过.L1=true`、节点 6、
+ *   `gathered=0`）真实点击「采集（碎石堆｜一次采净 6 件）」⇒ 得**石料 12**、`gathered 0→6`、节点 6→0
+ *   —— 「跳过只记一次**不补**」的「不补」没落住。
+ * 裁：`基础采集.when` 加 `&& !已跳过(L.id)`（与已战门**同格族**）；旧档读回跳过态**同样关**。
+ *
+ * 断什么：① 跳过态 ⇒ 采集面**不可执行**（★前提：节点仍有可采次数 —— 否则「门关」与「采空」同值 ⇒ 假绿）；
+ *   ② **读档回同态同闭**：本局账经存档往返（`Save.roundtrip`）回来 ⇒ `已跳过` 仍在 且 采集面仍闭；
+ *   ③ **正控**：撤回跳过那一笔 ⇒ 采集面**重新可用**（否则 ① 可能是恒真 —— 把门读成了常闭）；
+ *   ④ 跳过后**跳过入口自己**不再出现（现存形对，本笔只钉它别被顺手改坏）。
+ * 刀（记在提交信息）：拆 `&& !已跳过(L.id)` ⇒ ① 与 ② 红，复原回绿。
+ */
+head('㊼ `books#259` 裁（writer 第三条 P1）：跳过＝关面不补（跳过态采集不可执行·读档回同态同闭）');
+{
+	const 层 = 'L1';
+	const 节点 = B.nodeAt?.(层);
+	const 位存 = map.current;
+	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 次数存 = 节点?.charges;
+	const 采面 = () => (map.locations.get(层).actions ?? []).find(
+		(a) => /^采集（/.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+	const 跳面 = () => (map.locations.get(层).actions ?? []).find((a) => /不采了/.test(String(a.text ?? '')));
+	try {
+		ok(!!节点, '★L1 无采集节点（本格前提不成立）');
+		ok(typeof B.已跳过 === 'function' && typeof B.记跳过 === 'function',
+			`★机器件没导出（已跳过=${typeof B.已跳过}／记跳过=${typeof B.记跳过}）—— 判据取不到账`);
+		节点.charges = 6;                                     // ★保证有可采次数（否则门关与采空同值）
+		置已战(层);
+		delete (State.variables.babelRun.已跳过 ??= {})[层];
+		ok(采面().when() === true, '★正控失败：未采未跳（且已战）时采集面竟不可执行 —— 后面的断言会恒真');
+
+		B.记跳过(层);                                          // 玩家**明确跳过**一次
+		ok(采面().when() === false, '★**已跳过后**同层采集入口仍可执行 —— writer 实证的 P1-3（跳完再补采得石料 12）');
+		const 跳 = 跳面();
+		/* 口径：动作表是**静态**的（全量入表，可见性由 `when` 筛）⇒ 本条断的是「可见性」，✗ 不是「对象在不在」。 */
+		ok(!跳 || 跳.when() === false, '★跳过后「不采了」入口**仍可见**（跳过只记一次 ⇒ 入口该消失）');
+
+		/* ② 读档回同态同闭：本局账经存档往返回来（`babelRun` 是纯数据 ⇒ 这就是「读档」的数据面） */
+		const 档 = Save.roundtrip(State.variables.babelRun);
+		const 同态 = JSON.stringify(档?.已跳过) === JSON.stringify({ [层]: true });
+		State.variables.babelRun = 档;
+		ok(同态, `★读档回来的账不是跳过态（实得 ${JSON.stringify(档?.已跳过)}）`);
+		ok(B.已跳过(层) === true, '★读档后 `已跳过` 丢了（同态那半没落住）');
+		ok(采面().when() === false, '★**读档回跳过态**后采集面又开了 —— 裁文「旧档读回照账闭」的反臂');
+
+		/* ③ 正控：撤回跳过那一笔 ⇒ 采集面**重新可用**（证明 ① 的门跟着账走，✗ 恒假） */
+		delete State.variables.babelRun.已跳过[层];
+		ok(采面().when() === true, '★撤回跳过账后采集面仍不可执行 —— ① 那一条可能是恒真（把门读成了常闭）');
+		console.log('  跳过门：跳过态采集闭 ✓｜跳过入口消失 ✓｜读档回同态同闭 ✓｜撤回账后重新可用 ✓');
+	} finally {
+		if (节点) 节点.charges = 次数存;
+		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
+		if (位存) map.moveTo(位存);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
