@@ -377,6 +377,9 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		R.refreshPanels?.();
 		/* ★`books#180`：**只有真胜利**写进度（打晕／僵持／失败都不写）—— 头目硬门的数据源。 */
 		setup.BABEL.记战果?.(layer, 果);
+		/* ★`books#259` 裁 1（战斗不可跳）：**战后**置「本层已战」—— `world/babel.js` 的向上边与
+		 *   事件面都读它（✗ 战前置：打一半退出不该算已战；本处置在 `场.execute()` 之后 ⇒ 那是「打过了」）。 */
+		const _r = run(); (_r.已战 ??= {})[layer] = true;
 	}
 
 	/* ★`books#180`：头目战场上的**非胜利收场** ⇒ 退回**准备区**（操作者裁定「撤退落点＝准备区」；

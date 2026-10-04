@@ -176,6 +176,15 @@ State.variables.span1Harvests = 0;
 console.log('★口径（可复现性）：本档含**遭遇抽样**（L13 遭遇／事件账取序）⇒ **同树两跑 sha 可能不同**'
 	+ ' ⇒ 逐字节对照**不可用**；零回归请改用**构造证明**（断来源，✗ 断输出文本）。依据与例见 `tools/README.md`「读数的可复现口径」。');
 
+/* ★`books#259` 裁 1：给这些层**直置**「本层已战」—— 只给**不测战斗**的格做前置
+ *   （战斗路本身由 ㊷ 格两向判：无标记 ⇒ 事件面与向上边都不可见／有 ⇒ 都可见）。
+ *   直置的是**契约数据**（`$babelRun.已战`，`fight()` 战后写的同一个位置），✗ 不是绕过判定。 */
+const 置已战 = (...层) => {
+	const r = (State.variables.babelRun ??= {});
+	(r.已战 ??= {});
+	for (const id of 层) r.已战[id] = true;
+};
+
 head('① 装配面');
 ok(!!B, '故事脚本未挂上 `setup.BABEL`（脚本没被装载？）');
 ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
@@ -1265,6 +1274,7 @@ head('㉒ 选择制事件账（`books#133` 笔 1）');
 			console.log('  （本层无事件账 ⇒ 「择一面」不可判，红在上一条具名断言）');
 		} else {
 			const 首抽 = JSON.stringify(账.抽中);
+			置已战('L5', 'L6');          // ★裁 1 前置：事件面只在**战后**出现（本格不测战斗）
 			B.markUsed('L5', 账.抽中[0]);
 			ok(B.eventPending('L5', 'chest') === false && B.eventPending('L5', 'gather') === false
 				&& B.eventPending('L5', 'battle') === false,
@@ -1300,6 +1310,7 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 		.filter((a) => a.事件类 != null).map((a) => a.事件类).sort();
 
 	/* ① 真进层 ⇒ 可选面恰等于抽中的两类 */
+	置已战('L5');                    // ★裁 1 前置（本格测的是**事件面**，✗ 战斗）
 	R.give('pick');                          // ★笔 2 的工具门：L5 的采集要矿镐 ⇒ 不给就只剩另一类（见㉕⑥）
 	map.moveTo('L5');
 	const 账5 = State.variables.span1Events['L5'];
@@ -1314,6 +1325,7 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 	 *  ⚠ 本行**同时钉住次序**：把危害挪到抽签之前 ⇒ `ensureDraw` 的 `??=` 以为已抽过而不抽 ⇒ 立刻红。
 	 *  （首版本注释把次序写反了，dev-9 的 NIT① 抓到；实现一直是对的。） */
 	R.rng.setSequence([0.99, 0, 0.99]);     // 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 index(6)=5 ⇒ miss
+	置已战('L6');                    // ★裁 1 前置
 	map.moveTo('L6');
 	R.rng.reset();
 	const 账6 = State.variables.span1Events['L6'];
@@ -1482,6 +1494,7 @@ head('㉕ 工具耐久制（`books#133` 笔 2）');
 			R.rng.setSequence([0, 0, 0.99]);             // L7：抽签 ⇒ ['gather','battle']（index(3)=0 ⇒ chest；rest[gather,battle] index(2)=0 ⇒ gather）
 			map.moveTo('L7');
 			R.rng.reset();
+			置已战('L7');                // ★裁 1 前置（本格测工具门，✗ 战斗）
 			const 采动作 = () => (map.locations.get('L7').actions.find((a) => a.事件类 === 'gather'));
 			ok(!!采动作(), '★L7 的动作表里没有 `gather` 事件（动作表变了？）');
 			/* ★`books#212` 第 1 项改形（操作者裁定 00:2x·领队转）：**按钮改为常出**，把「为什么不行」
@@ -1691,16 +1704,20 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		const L9边 = map.exits.filter((e) => e.from === 'L9');
 		const 乙 = L9出口_已胜.length === 1 && /前进/.test(String(L9出口_已胜[0]?.text ?? ''));
 		ok(乙, `★已过头目后 L9 的可用出口不是「唯一的前进」（实得 ${JSON.stringify(L9出口_已胜.map((e) => e.text))}）`);
-		const 丙 = L9边.some((e) => e.to === 'L10-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L8')
+		/* ★`books#259` 裁 2（塔单向向上·裁（甲）从严 ✗ 例外边）：准备区**不再回到 L8**
+		 *   —— 补给（L8 温泉）必须在**攀过之前**完成（与操作者早裁③「L8 温泉满装→上 L9」自洽）。 */
+		const 丙 = L9边.some((e) => e.to === 'L10-camp') && !map.exitsFrom('L9-camp').some((e) => e.to === 'L8')
 			&& map.locations.has('L9-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L9');
 		ok(丙, `★L9 拆面坏了：战场→L10 ${L9边.some((e) => e.to === 'L10-camp')}／准备区存在 ${map.locations.has('L9-camp')}`
-			+ `／准备区→L8 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
+			+ `／准备区→L8（应 ✗）${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
 		State.variables.babelRun.bosses = 存进度 ?? {};
 		if (存新账 === undefined) delete State.variables.rpgProgress; else State.variables.rpgProgress = 存新账;
 		/* ③ 对照：非头目层不设限（守卫**按层**作用，✗ 全局摘除） */
+		置已战('L8');                // ★裁 1 前置：向上边只在**战后**开（本格测的是单向，✗ 战斗）
 		const L8出口 = map.exitsFrom('L8');
-		const 丁 = L8出口.length === 2;
-		ok(丁, `★非头目层 L8 的可用出口不是 2 条（${JSON.stringify(L8出口.map((e) => e.text))}）⇒ 守卫并非按层作用`);
+		/* ★`books#259` 裁 2：塔单向 ⇒ 非头目层的可用出口**只有向上那一条**（原断言「2 条」＝含向下回边）。 */
+		const 丁 = L8出口.length === 1 && /向上/.test(String(L8出口[0]?.text ?? ''));
+		ok(丁, `★非头目层 L8 的可用出口不是「只有向上一条」（${JSON.stringify(L8出口.map((e) => e.text))}）⇒ 单向往上不成立`);
 		/* ④ 两表同键配对 */
 		const 引擎层 = (D.LAYER_META_SPAN1 ?? []).map((l) => l?.id);
 		const 本地层 = (B.LAYER_META ?? []).map((l) => l?.id);
@@ -1715,7 +1732,8 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		/* ⑤ 接管面不动 */
 		const 己 = (B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub' && map.exitsFrom('L10-camp').some((e) => e.to === 'L9');
 		ok((B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub', '★L10 不再是 `hub`（接管面被改了）');
-		ok(map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 少了「退回第 9 层」那条边（衔接面被改了）');
+		/* ★`books#259` 裁 2：`L10-camp → L9` 的回边**按裁摘除**（原断言「少了这条边」＝旧双向语义）⇒ 现断**不在**。 */
+		ok(!map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 仍有回 L9 的边（裁 2 要求塔单向向上）');
 		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
 			+ `｜硬门（未胜 ${L9出口_未胜.length} 条 ⇒ 已胜 ${L9出口_已胜.length} 条「${L9出口_已胜[0]?.text ?? ''}」）${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
 			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
@@ -1863,18 +1881,28 @@ head('㉘ 预知实效（`books#164`）');
 		map.moveTo('L5'); map.moveTo('L6');            // L6 已抽定
 		ok(B.可预知('L5') === false, '★目标层已抽定后 L5 仍可预知（回边路径上会造出死选项）');
 
-		/* ⑦ 动作面：持有时恰三个；真点一次 ⇒ 入账且按钮全部退场 */
+		/* ⑦ ★`books#259` 裁 6：预知**已改为进层的门**（操作者原文「先预知，再进入下一层，再战斗」）——
+		 *   ①常驻按钮**退役**（✗ 两形并存：「随时可预知」与「进层那一刻问」互斥）
+		 *   ②门挂在**向上边**的 `action` 上，模态**恰 4 项**＝3 类 ＋ 不预知（操作者原文：后一项是「不预知」）
+		 *   ③选完即入账（`记预报`），此后该层门关（「每层一次」）。 */
 		清();
 		map.moveTo('L5');
-		const 钮 = 预知钮('L5');
-		ok(JSON.stringify(钮) === JSON.stringify(['battle', 'chest', 'gather']),
-			`★持有者进 L5 的预知按钮不是三类（实得 ${JSON.stringify(钮)}）`);
-		const 箱钮 = map.locations.get('L5').availableActions.find((x) => x.预知类 === 'chest');
-		if (箱钮) 箱钮.action();
-		ok(B.预报类('L6') === 'chest',
-			`★点「宝箱」后预报账没记下（实得 ${JSON.stringify(State.variables.span1Foresee)}）`);
 		ok(预知钮('L5').length === 0,
-			`★选定后按钮未退场（实得 ${JSON.stringify(预知钮('L5'))}）—— 「每层一次」在屏上不成立`);
+			`★常驻预知按钮仍在（实得 ${JSON.stringify(预知钮('L5'))}）—— 裁 6 要求改为「门」`);
+		const 上边 = (map.exitsFrom('L5') ?? []).find((e) => /向上/.test(String(e.text ?? '')));
+		ok(!!上边 && typeof 上边.action === 'function', '★向上边没有门（持有者攀层时不会出现 4 选项）');
+		{
+			const 原选 = D.Player.choice;
+			const 见 = [];
+			D.Player.choice = (选项) => { for (const o of 选项) 见.push(o.value); return Promise.resolve('chest'); };
+			try { 上边.action(); } finally { D.Player.choice = 原选; }
+			ok(见.length === 4 && 见.filter((v) => v != null).length === 3 && 见[见.length - 1] === null,
+				`★门的选项不是「3 类 ＋ 不预知」（实得 ${JSON.stringify(见)}）`);
+			await new Promise((r) => setTimeout(r, 0));        // 门内是 `.then` 入账 ⇒ 让微任务跑完再断
+		}
+		ok(B.预报类('L6') === 'chest',
+			`★从门里选「宝箱」后预报账没记下（实得 ${JSON.stringify(State.variables.span1Foresee)}）`);
+		ok(B.可预知('L5') === false, '★门选过之后本层仍可预知（「每层一次」在门上不成立）');
 
 		const 无预知同 = JSON.stringify(账6无?.抽中) === JSON.stringify(['chest', 'gather']);
 		const 形式同 = JSON.stringify(甲?.包) === JSON.stringify(乙?.包);
@@ -2049,6 +2077,7 @@ head('㉛ L8 温泉（`books#177`）');
 		const 耗时 = B.温泉耗时?.分钟;
 
 		/* ① 共存（两向）：择一之后**事件面清空**，而**温泉仍在** —— 这是「零耦合」的可判形 */
+		置已战('L8');                    // ★裁 1 前置（本格测「温泉与抽签零耦合」，✗ 战斗）
 		const 前_事件 = 事件钮().length, 前_温泉 = 温泉钮().length;
 		for (const k of (State.variables.span1Events['L8']?.抽中 ?? [])) B.markUsed('L8', k);
 		const 后_事件 = 事件钮().length, 后_温泉 = 温泉钮().length;
@@ -2235,9 +2264,11 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 			D.Player.maxHp = 存血.maxHp; D.Player.hp = 存血.hp; D.Player.nonlethal = 存血.非致命;
 		}
 
-		/* ③ 准备区可达温泉 */
+		/* ③ ★`books#259` 裁 2（单向从严）：准备区**不再回 L8** ⇒ 温泉必须在**攀过之前**泡
+		 *   （与操作者早裁③「L8 温泉满装→上 L9」自洽）⇒ 本格由「可达」改为**断其不在**，
+		 *   温泉动作面本身仍在（下一行照判 —— 它在 L8 上，只是**从准备区回不去**）。 */
 		const 备出 = map.exitsFrom('L9-camp').map((e) => e.to);
-		ok(备出.includes('L8'), `★准备区没有回 L8 的**可用**边（实得 ${JSON.stringify(备出)}）—— 「回温泉补给」不成立`);
+		ok(!备出.includes('L8'), `★准备区仍能回 L8（实得 ${JSON.stringify(备出)}）—— 裁 2 要求塔单向向上`);
 		map.moveTo('L8');
 		const 温泉在 = map.locations.get('L8').availableActions.some((a) => a.温泉 === true);
 		ok(温泉在, '★准备区可达 L8，但 L8 上没有温泉动作（`#179` 的入表断了？）');
@@ -2417,8 +2448,10 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 		const 边在 = (a, b) => (m.exits ?? []).some((e) => e.from === a && e.to === b);
 		const 可走 = (id) => (m.exitsFrom(id) ?? []).map((p) => (typeof p === 'string' ? p : p?.to));
 		ok(边在('L9', 聚), '★L9 到聚落的步行**边**没了（传送把步行取代掉了 —— 票面要两臂并存）');
-		ok(边在(聚, 'L9'), '★聚落回 L9 的步行**边**没了');
-		ok(可走(聚).includes('L9'), `★活人时聚落回 L9 走不了（实得 ${JSON.stringify(可走(聚))}）`);
+		/* ★`books#259` 裁 2：**聚落回 L9 的步行边按裁摘除**（原两条断言「边在／可走」＝旧双向语义）
+		 *   ⇒ 现断**不在**。传送臂（卷轴）与「L9 → 聚落」的**向上**步行臂照旧（上一行）。 */
+		ok(!边在(聚, 'L9'), '★聚落仍有回 L9 的步行边（裁 2 要求塔单向向上）');
+		ok(!可走(聚).includes('L9'), `★活人时聚落回 L9 仍走得通（实得 ${JSON.stringify(可走(聚))}）`);
 		/* ★出向那条**是被设计挡住的**：`#180` 头目硬门（唯一出口 ∧ 本局已过该场）。
 		 *   故这里**真走一遍**：记下战果 ⇒ 边应转为可走 ⇒ 步行臂才算成立（✗ 只断边在）。
 		 *   ⚠ 必须**快照并复原**进度账：本格留下的战果会让下游格看到「已过 L9」。 */
@@ -2958,6 +2991,53 @@ head('㊶ `sgstory#1936` 书侧消费臂改读账（往返 · 旧档迁移幂等
 	console.log('  账口：往返 ✓｜幂等 ✓｜旧档迁移＋归并 ✓｜消费臂（旧档开／打晕关／真胜开）✓｜端口回落 ✓');
 	}
 }
+/* ── ㊷ `books#259` 裁 1：**战斗不可跳**（无「已战」⇒ 事件面与向上边**都**不可见；有 ⇒ 都可见）──────
+ *
+ * 票面裁 1 原话：「战斗**不允许跳过** —— 每层严格『先战斗→再判定事件』；玩家不想触发事件可在
+ *   **事件入口**跳过」⇒ 三向都要判，缺一条就会出现「门关死卡住」或「战斗可跳」两种反向病：
+ *   ① 无标记 ⇒ **两者皆闭**（✗ 只判一边：只判事件面 ⇒ 玩家可越过战斗直接上行）
+ *   ② 有标记 ⇒ **两者皆开**（✗ 只判一边：只判向上边 ⇒ 事件面永久关闭）
+ *   ③ 事件入口的「跳过」⇒ 关的是**事件面**，✗ 不是路（向上边仍在）
+ * 刀（记在提交信息）：摘 `eventPending` 里的 `本层已战` ⇒ ①的事件面那半红；摘向上边那半 ⇒ ①的边那半红。
+ */
+head('㊷ `books#259` 裁 1：战斗不可跳（未战 ⇒ 边与面皆闭；已战 ⇒ 皆开；事件入口可跳过）');
+{
+	const 层 = 'L6';                                     // 事件层（L5–L8），且有基础遭遇动作
+	const 账存 = JSON.parse(JSON.stringify(State.variables.span1Events ?? null));
+	const 战存 = JSON.parse(JSON.stringify(State.variables.babelRun?.已战 ?? null));
+	const 位存 = map.current;
+	const 向上在 = () => map.exitsFrom(层).some((e) => /向上/.test(String(e.text ?? '')));
+	try {
+		map.moveTo(层);                                  // onEnter 里抽签（`babel.js:443`）
+		const 账 = State.variables.span1Events?.[层];
+		ok(!!账 && Array.isArray(账.抽中) && 账.抽中.length > 0,
+			`★本层没抽出账（onEnter 的 ensureDraw 没跑？）—— 本格前提不成立（实得 ${JSON.stringify(账)}）`);
+		/* ① 无标记 ⇒ 两者皆闭 */
+		(State.variables.babelRun.已战 ??= {});
+		delete State.variables.babelRun.已战[层];
+		ok(!向上在(), `★本层**未战**，向上边却开着（${JSON.stringify(map.exitsFrom(层).map((e) => e.text))}）—— 战斗可跳了`);
+		ok(账.抽中.every((k) => B.eventPending(层, k) === false),
+			'★本层**未战**，事件面却可选 —— 事件判定跑到战斗前面去了（裁 1 的「先战斗→再判定」不成立）');
+		/* ② 有标记 ⇒ 两者皆开 */
+		置已战(层);
+		ok(向上在(), '★已战之后向上边仍不开（门关死 ⇒ 玩家卡在这层出不去）');
+		ok(账.抽中.some((k) => B.eventPending(层, k) === true), '★已战之后事件面仍不可选（前置接反了）');
+		/* ③ 事件入口的「跳过」：关事件面，✗ 不关路 */
+		const 跳 = (map.locations.get(层).actions ?? []).find((a) => /继续向上/.test(String(a.text ?? '')));
+		ok(!!跳 && 跳.when() === true, '★已战之后没有「跳过事件」的入口（裁 1 的「可在事件入口跳过」无从体现）');
+		跳.action();
+		ok(账.抽中.every((k) => B.eventPending(层, k) === false), '★跳过后事件面仍可选');
+		ok(向上在(), '★跳过后向上边也被关了 —— 跳过的是**事件**，✗ 路');
+		console.log('  裁1：未战 ⇒ 边与面皆闭 ✓｜已战 ⇒ 皆开 ✓｜事件入口可跳过（面关·路边在）✓');
+	} finally {
+		if (账存 === null) delete State.variables.span1Events; else State.variables.span1Events = 账存;
+		if (State.variables.babelRun != null) {
+			if (战存 === null) delete State.variables.babelRun.已战; else State.variables.babelRun.已战 = 战存;
+		}
+		if (位存) map.moveTo(位存);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();

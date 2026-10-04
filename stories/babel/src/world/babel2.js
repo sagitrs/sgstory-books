@@ -149,10 +149,11 @@ for (let i = 0; i < SPAN2_LAYERS.length - 1; i++) {
 	const b = SPAN2_LAYERS[i + 1].id;
 	/* ★`books#176`：终局位闸门 —— 复用 `babel.js` 导出的**同一个** `边可否通行`（✗ 自建一份）。 */
 	map.addPath({ from: a, to: b, text: `向上，去第 ${i + 12} 层`, when: 边可否通行(a, b) });
-	map.addPath({ from: b, to: a, text: `向下，回第 ${i + 11} 层（段内自由）`, when: 边可否通行(b, a) });
+	/* ★`books#259` 裁 2（塔单向向上）：本行原为 `b → a` 的「向下，回第 N 层（段内自由）」—— **已摘**。
+	 *   ⚠ 同城内的往返（料场↔军械堆/马厩、准备区↔战场）**不在**裁 2 范围（那是城/层内语义），保留。 */
 }
 map.addPath({ from: 'L19', to: 'L20-forge', text: '走进城墙（第 20 层）', when: 边可否通行('L19', 'L20-forge') });
-map.addPath({ from: 'L20-forge', to: 'L19', text: '退回第 19 层（段内自由）', when: 边可否通行('L20-forge', 'L19') });
+/* ★`books#259` 裁 2（塔单向向上）：本行原为 `L20-forge → L19`「退回第 19 层（段内自由）」—— **已摘**（二段同样只可向上）。 */
 /* 故事侧两地点：从料场分出去的支线（单向去、可回料场） */
 map.addPath({ from: 'L20-settlement', to: 'L20-armory', text: '去军械堆', when: 边可否通行('L20-settlement', 'L20-armory') });
 map.addPath({ from: 'L20-armory', to: 'L20-settlement', text: '回料场', when: 边可否通行('L20-armory', 'L20-settlement') });
