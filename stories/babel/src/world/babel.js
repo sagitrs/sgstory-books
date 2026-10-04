@@ -370,7 +370,10 @@ const 基础采集动作 = (L) => ({
 		return left == null ? `采集（${L.gatherLabel}）`
 			: `采集（${L.gatherLabel}｜一次采净 ${left} 件）`;
 	},
-	when: () => (nodeAt(L.id)?.charges ?? 0) > 0,
+	/* ★P1（`books#259` 九用例#1 红 · writer 真浏览器 CDP 实证：首战前 `kills=0` 却**采净 6 件**）：
+	 *   基础采集是本层的**战内/战后**动作 ⇒ 与事件面、向上边**同一道门**（裁 1「先战斗→再判定事件」）。
+	 *   ⚠ 判据须**同时**有可采次数（否则「门关」与「采空」同值 ⇒ 假绿 —— 本席自家律条）。 */
+	when: () => (nodeAt(L.id)?.charges ?? 0) > 0 && 本层已战(L.id),
 	action: () => setup.BABEL.gather(),
 });
 /** 基础遭遇（**第一场**；三段皆留）：地图 action 跳独立段落坐战。
