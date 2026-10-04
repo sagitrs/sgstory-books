@@ -17,6 +17,11 @@
 | `tools/e2e-harness.mjs` | 浏览器 e2e，使用真 DOM |
 | `tools/e2e-drive.mjs` | 真产物的驾驶层 |
 | `tools/e2e-216-sidebar-save-dom.mjs` | 侧栏存档按钮的**真 DOM 臂**（战中禁点·点了也不落档 · 战后恢复且真落档 · 读档后无残影）＋ 两把刀 |
+| `tools/e2e-209-host-save.mjs` | `books#209` 宿主存档门禁的真宿主臂（战中禁存／战后委托／读档后面板归零） |
+| `tools/e2e-210-reserved-slots.mjs` | `books#257` 保留槽四臂（动作层 ✗ 执行层 · 保护该在动作层） |
+| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源） |
+| `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
+| `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
 | `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面六臂：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面） |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
