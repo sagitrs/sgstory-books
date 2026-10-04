@@ -197,6 +197,20 @@ jobs:
           grep -q '战斗格刀①' /tmp/e1950k.out || { echo "::error title=e2e-window::e2e-1950 的刀未打印（自检恐已退化 ⇒ 见 tools/e2e-drive.mjs）"; exit 1; }
           { echo '```'; tail -2 /tmp/e1950.out; echo '---'; tail -3 /tmp/e1950k.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── `#203`：**拒因可判**（A 轨校准链的长期化 · 领队裁 2026-10-04）──
+      #   为何单开一步：跑分器是**独立工具**，其汇总串不与别的步共享；混在一起说不清「哪句是谁的」。
+      #   ★取不到即红 ＋ `pipefail`（没有它，`| tee` 会吃掉 `node` 的非零退出码）。
+      - name: ★拒因可判（rejected 行明细 ＋ 派发 kind · #203）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/balance-babel.mjs --engine "$GITHUB_WORKSPACE/engine" --fixture 纯攻 --samples 3 --dump-tracks | tee /tmp/e203d.out
+          grep -q '★拒因可判：' /tmp/e203d.out || { echo "::error title=e2e-window::#203 未打印「★拒因可判」（汇总串丢了 ⇒ 见 tools/balance-babel.mjs）"; exit 1; }
+          if grep -q '✗ 有 .* 条被拒但' /tmp/e203d.out; then
+            echo "::error title=e2e-window::#203 有被拒却**没带明细** ⇒ 录过程断了"; exit 1
+          fi
+          { echo '```'; tail -2 /tmp/e203d.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
         run: |
