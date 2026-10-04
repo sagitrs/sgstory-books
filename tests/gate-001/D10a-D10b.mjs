@@ -49,10 +49,13 @@ const 单向=edges.filter(([a,b])=>!has(b,a));
 /* ★真模型：段界门是 **L10-gate→L11**（✗ L10-camp）—— 我首版写错节点名 */
 判('D10b-2 ★段界 10→11 有去无回', has('L10-gate','L11') && !has('L11','L10-gate'),
    `L10-gate→L11=${has('L10-gate','L11')} 回边=${has('L11','L10-gate')}`);
-const 段内双向=[['L1','L2'],['L2','L3'],['L9','L10-camp'],['L11','L12'],['L19','L20-forge']];
+/* ★`books#259` 裁 1（单向向上）：段内边**有去无回** —— 原格断「双向」，与裁冲突 ⇒ 按裁改断。
+ *   依据：`#259` comment 5980218866 二·1「五条 `D10b-3 段内 … 双向`，原文均 `去=true 回=false`：
+ *   与本次单向裁定相冲突，**须对齐判据**，不能要求产品恢复逆行来取绿」。 */
+const 段内单向=[['L1','L2'],['L2','L3'],['L9','L10-camp'],['L11','L12'],['L19','L20-forge']];
 /* ★「出口」的直接量＝结构出边 ∪ action（#126 的教训：✗ 只数 exitsFrom） */
 const actsOf=(id)=>(M.locations.get(id)?.actions||[]).length;
-for (const [a,b] of 段内双向) 判(`D10b-3 段内 ${a}↔${b} 双向`, (has(a,b)&&has(b,a))||null, `去=${has(a,b)} 回=${has(b,a)}`);
+for (const [a,b] of 段内单向) 判(`D10b-3 段内 ${a}→${b} 单向（有去无回）`, (has(a,b)&&!has(b,a))||null, `去=${has(a,b)} 回=${has(b,a)}（须 去=true 回=false）`);
 const 跨段向下=edges.filter(([a,b])=>{const na=parseInt(String(a).replace(/\D/g,''),10),nb=parseInt(String(b).replace(/\D/g,''),10);
   return Number.isFinite(na)&&Number.isFinite(nb)&&nb<na&&(na>=11&&nb<=10);});
 判('D10b-4 ★无跨段向下边（11+ ⇒ 10-）', 跨段向下.length===0, 跨段向下.map(e=>e.join('→')).join(',')||'无');

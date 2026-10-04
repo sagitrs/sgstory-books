@@ -24,7 +24,10 @@ D3.Player.hp=20; D3.Player.maxHp=20;
 判('A7-2 起手背包为空（空手前提）', (V().inventory||[]).length===0, JSON.stringify(V().inventory));
 
 await H.playPassage(s,'遭遇战');
-const 步=[]; let 空手项=false, 敌名=null, 结束=false;
+const 步=[]; let 空手项=false, 敌名=null;
+/* ★`#259` comment 5980218866 三：原把**一个布尔**同时用于「战斗收场」与「有出口」⇒ 拆双证：
+ *   `胜利`＝战斗真收场（kills 增 或 「继续探索」出现）｜`已战`＝有出口（「继续探索」在位）。 */
+let 胜利=false, 已战=false;
 for(let i=0;i<40;i++){   // ★上限放宽（一场 ≤8 回合 × 约 2 步 ＋ 出口）；首版写 12 ⇒ 撞上限得**不稳定的假红**
   await new Promise(r=>setTimeout(r,220));
   const b=D.choiceButtons(s);
@@ -32,15 +35,15 @@ for(let i=0;i<40;i++){   // ★上限放宽（一场 ≤8 回合 × 约 2 步 �
   步.push(b);
   if(b.some(x=>/空手打击/.test(x))) 空手项=true;
   if(b.some(x=>/幼獾|獾/.test(x))) 敌名=String(敌名||b.find(x=>/獾/.test(x)));
-  if(b.some(x=>/继续探索/.test(x))){ 结束=true; break; }        // 战斗收场
+  if(b.some(x=>/继续探索/.test(x))){ 已战=true; 胜利=true; break; }   // 战斗收场（★双证：已战＝有出口；胜利＝收场）
   const pick=b.find(x=>/空手打击/.test(x)) ?? b.find(x=>/獾/.test(x)) ?? b[0];
   const el=[...s.doc.querySelectorAll('.choice-box button')].find(x=>(x.textContent??'').trim()===pick);
   if(!el) break; el.click();
 }
 判('A7-3 ★交互战斗 UI 有「空手打击」常驻项', 空手项, JSON.stringify(步[0]||[]));
 判('A7-4 ★敌方为 L1 幼獾（✗ 引擎大獾/精英）', 敌名!=null, String(敌名));
-判('A7-5 ★空手数击后战斗收场（胜例可达）', 结束, `步数=${步.length}｜玩家 hp=${D3.Player.hp}｜★本格对步数上限敏感：上限过小会得「不稳定的假红」（我首版 12 即踩）`);
-判('A7-6 战斗结束后有出口（✗ 死路）', 结束, 结束?'「继续探索」在位':json({}) );
+判('A7-5 ★空手数击后战斗**收场**（胜例可达）', 胜利, `步数=${步.length}｜玩家 hp=${D3.Player.hp}｜★本格对步数上限敏感：上限过小会得「不稳定的假红」（我首版 12 即踩）`);
+判('A7-6 战斗结束后**有出口**（✗ 死路）', 已战, 已战?'「探索」在位':json({}) );
 function json(o){return JSON.stringify(o)}
 console.log(out.join('\n'));
 console.log(`\n  ⇒ 失败 ${out.filter(l=>l.startsWith('✗')).length} 条`);

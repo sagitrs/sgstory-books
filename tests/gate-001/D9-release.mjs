@@ -40,7 +40,7 @@ try{
   fs.unlinkSync(a); fs.unlinkSync(b);
 }catch(e){ 判('D9-3 同 pin 同参两次构建 sha1 相同', false, e.message.slice(0,80)); }
 /* ③ 变更日志在册 */
-const cands=['CHANGELOG.md','CHANGELOG','docs/CHANGELOG.md','stories/babel/CHANGELOG.md'];
+const cands=['CHANGELOG.md','CHANGELOG','docs/CHANGELOG.md','stories/babel/CHANGELOG.md','docs/playtest/CHANGELOG-babel-v0.0.1.md'];   // ★补：批次变更日志的真落点（#259 comment 5980218866 二·2）
 const found=cands.filter(p=>fs.existsSync(path.join(books,p)));
 判('D9-4 变更日志在册', found.length>0, found.join(',')||`候补：${cands.join('/')}`);
 try{ fs.unlinkSync(art); }catch(e){}   // 清本件自建产物（✗ 污染工作区）
