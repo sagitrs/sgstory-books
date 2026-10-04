@@ -19,6 +19,9 @@ on:
       #   ⇒ 「门跑在 CI 里、却测不到门」：改坏一门（或改完忘了自检）CI 一句话都不说。
       #   触发面要含它：`tests/gates/**`（本 workflow 跑的正是 `tests/gates/*.mjs`）。
       - 'tests/gates/**'
+      # ★`books#295` 同族（`#300` 先例）：gate-001 电池（判据件＋随跑快照）＝「门跑在 CI 里、却测不到门」
+      #   ⇒ 改它必须触发。★两份清单都补（只补一份 = 改了不跑）。
+      - 'tests/gate-001/**'
       - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
@@ -33,6 +36,9 @@ on:
       #   ⇒ 「门跑在 CI 里、却测不到门」：改坏一门（或改完忘了自检）CI 一句话都不说。
       #   触发面要含它：`tests/gates/**`（本 workflow 跑的正是 `tests/gates/*.mjs`）。
       - 'tests/gates/**'
+      # ★`books#295` 同族（`#300` 先例）：gate-001 电池（判据件＋随跑快照）＝「门跑在 CI 里、却测不到门」
+      #   ⇒ 改它必须触发。★两份清单都补（只补一份 = 改了不跑）。
+      - 'tests/gate-001/**'
       - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
