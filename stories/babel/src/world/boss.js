@@ -136,11 +136,29 @@ const 战果 = ({ foes, player, 战斗 = null } = {}) => {
 	if (全倒) return 'stunned';                              // §14 ⑥：打晕不开门（可配置翻面）
 	return 'stalemate';                                      // 回合打完双方仍在（含玩家主动收手）
 };
-/** 进度账：本局各场头目的战果（**只有** victory 会写进去）。 */
-const 进度账 = () => ((State.variables.babelRun ??= {}).bosses ??= {});
-const 已过 = (场) => 进度账()[场] === 'victory';
+/* ★`sgstory#1936` 第三面（书侧**消费臂改读账**）：本局的「已过」以**引擎的进度账**为准 ——
+ *   读口 `RPG.save.progress()`／写口 `RPG.save.recordCleared(id)`（两形**逐字同**，写口幂等且能归并旧形）。
+ * ⚠ **旧 pin 回落**：引擎没有该口时（`#1936` 之前的 pin）退回**旧形**（`$babelRun.bosses` 里值为
+ *   `'victory'` 的键）—— 判据与跑分器在旧 pin 上跑时必须**逐字同**，✗ 新口不在就换语义。
+ * ⚠ 新旧**只在引擎口这一处分叉**：写在口上、读也在口上 ⇒ 书侧**不产生第二套真值**。 */
+const 账口 = () => (typeof R.save?.progress === 'function' ? R.save.progress() : null);
+const 旧账表 = () => ((State.variables.babelRun ??= {}).bosses ??= {});
+/** 进度账：本局各场头目的战果（**只有** victory 会写进去）。有引擎口时按口上的账**现算**。 */
+const 进度账 = () => {
+	const 口 = 账口();
+	if (口) return Object.fromEntries(口.run.cleared.map((id) => [String(id), 'victory']));
+	return 旧账表();
+};
+const 已过 = (场) => {
+	const 口 = 账口();
+	if (口) return 口.run.cleared.includes(String(场));
+	return 旧账表()[场] === 'victory';
+};
 const 记战果 = (场, 果) => {
-	if (果 === 'victory') 进度账()[场] = 'victory';
+	if (果 === 'victory') {
+		if (typeof R.save?.recordCleared === 'function') R.save.recordCleared(场);
+		else 旧账表()[场] = 'victory';        // 旧 pin：一字不动地保留原写法
+	}
 	return 已过(场);
 };
 
