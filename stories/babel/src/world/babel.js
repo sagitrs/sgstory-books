@@ -721,7 +721,8 @@ map.locations.get('L1').actions.unshift({
 
 /* ---------- L3 固定事件：拾起矿镐（`books#133` 笔 2；设计稿 §2 L3「捡到矿镐」）----------
  * ★三件工具里唯一由**固定事件**给的一件（另两件按领队确认走 L5／L6 的宝箱表）。
- *   `R.give` 对 `stackable` 的工具会**并入**（耐久相加）⇒ 重复拾取不会留两把（`world/tools.js`）。 */
+ *   ★`books#259` 裁 3 起：工具 **`stackable: false`** ⇒ ✗ 再拾**并入**（耐久是**属性** ✗ 数量）；
+ *   本事件每局只触发一次 ⇒ 实际不会出现第二把（`world/tools.js` 头注同旨）。 */
 map.locations.get('L3').actions.unshift({
 	text: '拾起插在石缝里的矿镐',
 	when: () => !R.has('pick'),
