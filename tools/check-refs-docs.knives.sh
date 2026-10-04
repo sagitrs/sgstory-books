@@ -5,6 +5,17 @@
 set -uo pipefail
 cd "$(dirname "$(readlink -f "$0")")/.." || { echo "✗ 推不出仓根"; exit 2; }
 [ -n "${ENGINE:-}" ] || { echo "✗ 缺 ENGINE"; exit 2; }
+
+# ★`books#295` 勘察（tester-3）：本刀架**末步**断言「复原后 rc=0」——那只在**引擎树 == 声明 pin** 时成立。
+#   引擎树若是别的提交（实测 `ab809389`／`5f37582d`）：docs 扫描解析不过 ⇒ 末步两把一并红（`docs 复原异常 rc=1`
+#   ＋`清单面复原异常`）⇒ ★把**装置不匹配**误报成**判据红**（rc=1 ⇒ 看着像真缺陷）。故此处**先行自证**：
+#   ✗ 不是产品缺陷、✗ 不是过期引用，而是**换了引擎树** ⇒ 本席按本仓惯例「装置错 ⇒ rc=2」处置（✗ 静默跳过）。
+if ! node "$(dirname "$0")/check-engine-pin.mjs" --engine "$ENGINE" >/tmp/cl-docs-pin.out 2>&1; then
+  echo "✗ 装置错（✗ 不当判据红）：ENGINE 指向的引擎树 ≠ 声明 pin ⇒ 本刀架不适用"
+  sed 's/^/   /' /tmp/cl-docs-pin.out | head -4
+  echo "   ⇒ 修法：把 ENGINE 指向 .github/engine-ref.json 声明的那个提交的检出"
+  exit 2
+fi
 D=docs/plans/babel/outline.md
 J=stories/babel/scenarios/scenarios.json
 [ -f "$D" ] && [ -f "$J" ] || { echo "✗ 缺靶件"; exit 2; }
