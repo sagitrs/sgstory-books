@@ -5,9 +5,11 @@
  *   ① 文件存在（支持 `engine/`／`books/` **显式树限定**；无限定则后缀匹配、**本仓优先**，同一棵树多命中 ⇒ 红「有歧义 ⇒ 写全路径」）
  *   ② 行号在范围内、所引区间**非空**
  *   ③ ★**声明了符号的引用**（形如 `` `路径:行`（`符号`） ``）⇒ 所引行/区间必须**逐字**含该符号
+ *   ⑤ ★**`--require-symbols`（可选 · 默认关）**：打开后「仅范围核 > 0」即红（逐条具名）——
+ *      把「明账」变成**机械判据**；✗ 改默认属语义变更，须领队裁（本笔只加开关）。亦可 `REFS_REQUIRE_SYMBOLS=1`。
  *   ④ ★**散文形一律红**（如 `` `a.js` 第 12 行 ``）—— 规范形是 `路径:行`；散文形机械核不到内容（本席自己的更正注就用过该形 ⇒ 「通过 36」曾是**下界**）
  *
- * 用法：node tools/check-refs.mjs --engine <引擎检出> [清单文件]
+ * 用法：node tools/check-refs.mjs --engine <引擎检出> [清单文件] [--require-symbols] [--docs]
  *   `src/**`／`tests/**`／`vendor/**` 的引用落在**引擎检出**；`stories/**` 落在**本仓**；其余两棵树都试（本仓优先）。
  * 失败形：干净红 ＋ 汇总（崩溃亦具名）＋ rc≠0；★引擎缺失 ⇒ 具名 rc=2（✗ 静默跳过 —— 那会让这道门变装饰）。
  */
@@ -23,6 +25,14 @@ const ENGINE = argOf('--engine') ?? process.env.ENGINE ?? null;
 const JSONF = argv.find((a) => a.endsWith('.json')) ?? path.join(BOOKS, 'stories/babel/scenarios/scenarios.json');
 
 const DOCS = argv.includes('--docs');
+/* ★`--require-symbols`（`books#271` 余项落定后由领队裁：**明账变机械判据** · 另笔落）：
+ *   本件原先只在**明账**里报「仅范围核 N」并照旧 rc=0 —— 于是「作者忘了写符号」这类退化
+ *   **不回红**（`books#280` ⑥ 实测：只拆掉一个符号 ⇒ 红 0、rc 0，而明账变 1 ⇒ 只看 rc 会把
+ *   「少了锚」读成「通过」）。开关打开后：**仅范围核 > 0 ⇒ 红**（逐条具名，便于照单补）。
+ *   ⚠ 默认**关**（✗ 不改既有语义）：本仓其余笔的作者未必都在同一条船上，默认变硬会让他们的笔
+ *     突然变红 —— 那是判据面的**语义变更**，须由领队裁后再改默认。
+ *   ⚠ 亦可经环境变量 `REFS_REQUIRE_SYMBOLS=1` 打开（供 CI／本地复跑用，✗ 不必改命令行）。 */
+const 要求符号 = argv.includes('--require-symbols') || /^(1|true|yes)$/i.test(process.env.REFS_REQUIRE_SYMBOLS ?? '');
 // 豁免面（`#1842` 设计输入①）：`tools/refs-exemptions.json` 按**文件前缀**豁免 ⇒ 进「已豁免（计数出声）」，✗ 静默丢弃。
 const EXEMPT = (() => {
 	let list;
@@ -144,6 +154,7 @@ const rawOf = (r, field) => {
 };
 
 let 处 = 0, 符号核 = 0, 仅范围核 = 0;
+const 无符 = [];   // ★无显式符号的引用（`--require-symbols` 打开时逐条具名）
 for (const r of 场景) {
 	for (const field of FIELDS) {
 		const raw = rawOf(r, field);
@@ -156,7 +167,7 @@ for (const r of 场景) {
 			const seg = got.all.slice(from - 1, to).join('\n');
 			if (seg.trim() === '') { fail.push(`[${r.id}] ${at} 所指区段**空行** —— 行号漂了`); continue; }
 			const sym = raw.slice(m.index + m[0].length, m.index + m[0].length + 40).match(SYM)?.[1];
-			if (!sym) { 仅范围核++; continue; }
+			if (!sym) { 仅范围核++; 无符.push(`[${r.id} ⁄ ${field}] ${at}`); continue; }
 			if (!seg.includes(sym)) fail.push(`[${r.id}] ${at} **不含**其声明的符号 \`${sym}\` ⇒ 行号随版本漂了／指错了地方 —— 复核并同刷`);
 			else 符号核++;
 		}
@@ -169,6 +180,11 @@ for (const r of 场景) {
 console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
 console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜散文形**一律红**');
 console.log(`  通过 ${Math.max(0, 处 - fail.length)}｜不符 ${fail.length}　★明账：仅范围核 ${仅范围核}（＝待补显式符号，逐条递减到零）`);
+if (要求符号 && 仅范围核 > 0) {
+	fail.push(`★${仅范围核} 处引用**没有显式符号**（\`--require-symbols\` ⇒ 每处都须写成 \`路径:行\`（\`符号\`））`);
+	for (const w of 无符.slice(0, 12)) console.log(`  · 无符：${w}`);
+	if (无符.length > 12) console.log(`  · …（另 ${无符.length - 12} 处）`);
+}
 for (const f of fail.slice(0, 12)) console.log(`  ✗ ${f}`);
 if (fail.length > 12) console.log(`  …（另 ${fail.length - 12} 条）`);
 console.log(fail.length ? '✗ 清单引用核失败' : '✓ 清单引用核通过');
