@@ -1682,6 +1682,7 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		const 乙0 = L9出口_未胜.length === 0;
 		ok(乙0, `★未过头目时 L9 仍给出口（实得 ${JSON.stringify(L9出口_未胜.map((e) => e.text))}）—— 硬门失守`);
 		const 存进度 = JSON.parse(JSON.stringify(State.variables.babelRun?.bosses ?? null));
+		const 存新账 = JSON.parse(JSON.stringify(State.variables.rpgProgress ?? null));   // ★`#1936`：真值源在引擎账上，存档也得存它
 		B.记战果?.('L9', 'victory');
 		const L9出口_已胜 = map.exitsFrom('L9');
 		const L9边 = map.exits.filter((e) => e.from === 'L9');
@@ -1692,6 +1693,7 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		ok(丙, `★L9 拆面坏了：战场→L10 ${L9边.some((e) => e.to === 'L10-camp')}／准备区存在 ${map.locations.has('L9-camp')}`
 			+ `／准备区→L8 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
 		State.variables.babelRun.bosses = 存进度 ?? {};
+		if (存新账 === undefined) delete State.variables.rpgProgress; else State.variables.rpgProgress = 存新账;
 		/* ③ 对照：非头目层不设限（守卫**按层**作用，✗ 全局摘除） */
 		const L8出口 = map.exitsFrom('L8');
 		const 丁 = L8出口.length === 2;
@@ -2186,6 +2188,10 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 
 		/* ④ 门：未过 ⇒ 0 条；记 victory ⇒ 1 条 */
 		State.variables.babelRun.bosses = {};
+		if (State.variables.rpgProgress != null) delete State.variables.rpgProgress;   // ★`#1936`：真值源在引擎账上，清就得清新键
+		/* ★`#1936` 起真值源在**引擎账**上 ⇒ 清理也必须清新键（✗ 只清旧形：账里会留着前序格写的「已过」，
+		 *   门读数就成「未过却已开」—— 本条即由那次红暴露）。✗ 不给旧键加镜像：那会造出第二套真值。 */
+		if (State.variables.rpgProgress != null) delete State.variables.rpgProgress;
 		const 门_未过 = map.exitsFrom('L9').filter((e) => e.to === 'L10-camp').length;
 		B.记战果?.('L9', 'victory');
 		const 门_已过 = map.exitsFrom('L9').filter((e) => e.to === 'L10-camp').length;
@@ -2215,6 +2221,7 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 			const 存血 = { hp: D.Player.hp, maxHp: D.Player.maxHp, 非致命: D.Player.nonlethal ?? 0 };
 			D.Player.maxHp = 200; D.Player.hp = 200; D.Player.nonlethal = 0;
 			State.variables.babelRun.bosses = {};
+		if (State.variables.rpgProgress != null) delete State.variables.rpgProgress;   // ★`#1936`：真值源在引擎账上，清就得清新键
 			map.moveTo('L9');
 			await B.fight({ interactive: false });
 			const 消费位 = map.current;
@@ -2236,6 +2243,7 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 		if (头目) {
 			头目.hp = 3;
 			State.variables.babelRun.bosses = {};
+		if (State.variables.rpgProgress != null) delete State.variables.rpgProgress;   // ★`#1936`：真值源在引擎账上，清就得清新键
 			map.moveTo('L8'); map.moveTo('L9-camp'); map.moveTo('L9');
 			读数.复位后hp = 头目.hp;
 			ok(头目.hp === 头目.maxHp, `★重挑战没有满血复位（实得 ${头目.hp}／${头目.maxHp}）—— §14 ⑤`);
@@ -2253,6 +2261,7 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 		if (头目) { 头目.hp = 存.头目hp; 头目.effects = 存.头目效果; }
 		State.variables.babelRun = { ...存.run };
 		if (存.账 === undefined) delete State.variables.babelRun.bosses; else State.variables.babelRun.bosses = 存.账;
+		if (存.新账 === undefined) delete State.variables.rpgProgress; else State.variables.rpgProgress = 存.新账;
 		if (map.locations.has(存.位)) map.moveTo(存.位);
 	}
 }
@@ -2844,6 +2853,92 @@ head('㊵ 乙：旅程装备保证 ＋ L9 期望配平（`books#201`）');
 		if (头目 && Number.isFinite(存.头目hp)) 头目.hp = 存.头目hp;
 		if (存.武器) R.equip?.(存.武器);
 		R.rng.reset?.();
+	}
+}
+
+/* ── ㊶ `sgstory#1936` 第三面：书侧**消费臂改读账**（进度账进 State·接硬门面）────────────
+ *
+ * 票面三面：①**账读写往返** ②**旧档迁移（幂等）** ③**各门消费臂**。
+ * 本格判的是**书侧那一处单源**（`boss.js` 的 `进度账`／`已过`／`记战果`）—— 三臂（头目硬门／
+ * 传送／分段门）都经 `setup.BABEL.已过` 或 `记战果` 进出这一处（硬门的实际调用点在
+ * `babel.js` 的「唯一出口 ∧ 已过」那行），所以**这一处红了，三臂一起红**。
+ * ⚠ 引擎口（`RPG.save.progress`／`recordCleared`）**不在**时的回落也判（旧 pin 上跑分器/判据
+ *   必须逐字同）—— 这是本格的**刀**：撤掉口 ⇒ 必须走旧形，✗ 不是静默变成「一律未过」。
+ */
+head('㊶ `sgstory#1936` 书侧消费臂改读账（往返 · 旧档迁移幂等 · 消费臂 · 端口回落）');
+{
+	const B = setup.BABEL;
+	const R = setup.RPG;
+	const 口在 = typeof R.save?.progress === 'function' && typeof R.save?.recordCleared === 'function';
+	if (!口在) {
+		/* ★旧 pin（`#1936` 之前）走的就是**旧形回落** ⇒ 照本仓惯例「**记声明、不判红**」（同 `books#229`
+		 *   的独立格：「`RPG.outcomeResolver` 缺席（旧 pin 回落）⇒ 记声明、不判红」）—— 判的是**回落路本身**。 */
+		if (State.variables.babelRun != null) delete State.variables.babelRun.bosses;
+		State.variables.babelRun = Object.assign(State.variables.babelRun ?? {}, { bosses: { L9: 'victory' } });
+		ok(B.已过('L9') === true, '★回落路：旧形在位时消费臂读不出「已过」（旧档的硬门会全关）');
+		B.记战果('L7', 'victory');
+		ok(State.variables.babelRun.bosses.L7 === 'victory', '★回落路：引擎口缺席时写不回旧形');
+		console.log('  独立格：`RPG.save.progress`／`recordCleared` **缺席**（旧 pin 回落）⇒ 记声明、不判红；'
+			+ '回落路本身已判（旧档读得出／写得回）');
+		if (State.variables.babelRun != null) delete State.variables.babelRun.bosses;
+	} else {
+	const 清 = () => {
+		if (State.variables.rpgProgress != null) delete State.variables.rpgProgress;
+		if (State.variables.babelRun != null) delete State.variables.babelRun.bosses;
+	};
+	/* ---------- ① 往返：写在口上 ⇒ 读在口上；同一笔写两次 ⇒ 账不变（幂等） ---------- */
+	清();
+	B.记战果('L9', 'victory');
+	const 账1 = R.save.progress();
+	ok(账1.run.cleared.includes('L9'),
+		`★写口没把「已过」写进账（实得 ${JSON.stringify(账1.run.cleared)}）—— 硬门据此判，会一直关着`);
+	ok(State.variables.rpgProgress?.run?.cleared?.includes('L9') === true,
+		'★账没落在 State 的**新键** `rpgProgress` 上 —— 存档带不走它（往返就断在这里）');
+	B.记战果('L9', 'victory');
+	ok(R.save.progress().run.cleared.filter((x) => x === 'L9').length === 1,
+		'★同一场写两次账里出现了两条 —— 写口不幂等（集合语义被破坏）');
+	/* ---------- ② 迁移：旧形在位、新键缺位 ⇒ 读得出；补写一笔 ⇒ **归并**（旧进度不丢）＋ 幂等 ---------- */
+	清();
+	State.variables.babelRun = Object.assign(State.variables.babelRun ?? {}, { bosses: { L9: 'victory' } });
+	ok(R.save.progress().run.cleared.includes('L9'),
+		'★旧档（`$babelRun.bosses` 形）读不出「已过」—— 老存档的硬门会全部退回未过');
+	ok(B.已过('L9') === true, '★旧档的「已过」没进消费臂（`已过` 与账口不同源？）');
+	B.记战果('L8', 'victory');                      // 补写**另一场** ⇒ 旧那场必须还在
+	const 账2 = R.save.progress().run.cleared.slice().sort().join(',');
+	ok(账2 === 'L8,L9', `★归并没做全（期望 L8,L9，实得 ${账2}）—— 补写一笔就让旧档进度消失`);
+	B.记战果('L8', 'victory'); B.记战果('L9', 'victory');
+	ok(R.save.progress().run.cleared.slice().sort().join(',') === 'L8,L9', '★重复写破坏了账（幂等不成立）');
+	/* ---------- ③ 消费臂：旧档 ⇒ 门开；打晕（stunned）⇒ 门**关**；真胜利 ⇒ 门开 ---------- */
+	清();
+	State.variables.babelRun = Object.assign(State.variables.babelRun ?? {}, { bosses: { L9: 'victory' } });
+	ok(B.已过('L9') === true, '★消费臂①（硬门读口）：旧档已过却读成未过 ⇒ 硬门对老存档永远关着');
+	清();
+	B.记战果('L9', 'stunned');
+	ok(B.已过('L9') === false && R.save.progress().run.cleared.length === 0,
+		'★消费臂②：**打晕**竟写进了账（§14 ⑥「打晕不开门」被破）—— 硬门会对着一场未胜的战斗开');
+	B.记战果('L9', 'victory');
+	ok(B.已过('L9') === true, '★消费臂③：真胜利之后硬门没开（账写了而消费臂读不到 ⇒ 两条真值）');
+	/* ---------- 刀（回落）：撤掉引擎口 ⇒ 必须走**旧形**，✗ 静默变「一律未过」 ---------- */
+	{
+		const 真 = { progress: R.save.progress, recordCleared: R.save.recordCleared };
+		let 可撤 = true;
+		try { delete R.save.progress; delete R.save.recordCleared; } catch { 可撤 = false; }
+		if (可撤) {
+			清();
+			State.variables.babelRun = Object.assign(State.variables.babelRun ?? {}, { bosses: { L9: 'victory' } });
+			ok(setup.BABEL.已过('L9') === true,
+				'★回落臂：引擎口缺席时旧档读不出（旧 pin 上跑分器/判据会与老引擎**语义不同**）');
+			setup.BABEL.记战果('L7', 'victory');
+			ok(State.variables.babelRun.bosses.L7 === 'victory',
+				'★回落臂：引擎口缺席时写不回旧形（旧 pin 上「已过」永远写不上）');
+			Object.assign(R.save, 真);
+			ok(typeof R.save.progress === 'function' && typeof R.save.recordCleared === 'function', '★口没复原（本格污染后续）');
+		} else {
+			console.log('  回落臂跳过：`R.save` 不可改（冻结）⇒ 该臂须由引擎侧单测覆盖');
+		}
+	}
+	清();
+	console.log('  账口：往返 ✓｜幂等 ✓｜旧档迁移＋归并 ✓｜消费臂（旧档开／打晕关／真胜开）✓｜端口回落 ✓');
 	}
 }
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
