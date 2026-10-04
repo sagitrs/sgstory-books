@@ -4,6 +4,10 @@
 
 ---
 
+## 游戏测试指导
+
+[游戏测试指南](docs/playtest/game-testing-guide.md)说明如何准备、操作、观察并提交报告。人类读[手工试玩章](docs/playtest/game-testing-guide.md#人类测试人员)，bot 读[浏览器实测章](docs/playtest/game-testing-guide.md#bot-测试人员)；两者共用版本与存档约定、报告模板，不必阅读对方的技术步骤。故事玩法仍以本次测试版本的说明为准，试玩不等于发布验收。
+
 ## 测试工具
 
 测试工具根：tools/
