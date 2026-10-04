@@ -2,6 +2,18 @@
 
 这是一个给人玩的东西，不是测试夹具。它会被构建成一个单文件网页，双击就能玩。夹具也就是 e2e 用例在 `tests/e2e/old-house/`，那一份是给 CI 用的，本目录这一份是给试玩者用的。
 
+## 本作装哪些规则包（`story.json` 的 `packs`）
+
+`stories/babel/story.json` 声明本作**只装哪些规则包**（`sgstory#295` 甲）：
+
+- **声明了 `packs`**（本作现在就是 `["dnd3"]`）：产物只装这些规则包与 `src/core/**`（core 恒入）；
+- **没声明** ： **全装**（＝该口引入前的行为）。
+
+⚠ **生效条件**：本仓构建用的引擎是**声明 pin**（`.github/engine-ref.json`）那份，因此清单要等 pin
+**抬到含 `sagitrs/sgstory#2000` 的提交后**才生效；在那之前它**不生效也不报错**（那份 `build.py` 不读
+`story.json`，所以产物逐字节不变）。判据 `tests/gates/pack-manifest.mjs`（含**能力门**：引擎有该口时
+才真构建并断「产物只装已声明包」，否则**明印「待判」** —— 不当作绿）。
+
 ## 怎么构建
 
 本仓只放故事，引擎按 pin 检出，这是 `books#76` 相 A 的约定。因此构建时要同时给出引擎检出目录。
@@ -14,7 +26,7 @@ git -C /tmp/engine checkout "$(jq -r .ref .github/engine-ref.json)"
 # ② 构建（★故事目录给**绝对路径**：`build.py` 对相对路径会先拼到**引擎仓根**）
 python3 /tmp/engine/build.py "$PWD/stories/babel" --out babel-trial.html
 
-# ③ 装配自检（同一份脚本随故事走 ⇒ 用 `--engine` 指引擎检出目录）
+# ③ 装配自检（同一份脚本随故事走 ： 用 `--engine` 指引擎检出目录）
 node stories/babel/verify.mjs --engine /tmp/engine
 ```
 
@@ -68,9 +80,9 @@ stories/babel/
 └── src/
     ├── meta/{storydata,init}.twee ← 故事元数据／StoryInit（$player 必须给全，含 effects）
     ├── story/{play.twee,hooks.js} ← 可玩线段落／事件钩子（读数）
-    ├── ui/ui.twee                 ← 状态栏（体力/位置/创伤/背包）＋样式
-    ├── world/babel.js             ← 一段全图 L1–L10（L10 取包里的实例）＋「层地点」构造形
-    ├── world/babel2.js            ← 二段接入：L11–L20（含军械堆/马厩）＋ 10→11 挂图
+    ├── ui/ui.twee                 ← 状态栏（体力/位置/创伤/背包）与样式
+    ├── world/babel.js             ← 一段全图 L1–L10（L10 取包里的实例）与「层地点」构造形
+    ├── world/babel2.js            ← 二段接入：L11–L20（含军械堆/马厩）与 10→11 挂图
     └── world/encounters.js        ← 遭遇·采集·战斗·锻造的桥（读数与调用点）
 ```
 

@@ -11,6 +11,13 @@
  *      （＝引擎 pin 早于 `sagitsr/sgstory#2000`）⇒ **明确印「待判」**（✗ 不算绿 —— 假绿比红坏）。
  *      ⇒ 这条会随 books 的引擎 pin 抬上去**自动生效**，✗ 不靠人回来补。
  *
+ * ## ★清单的**两态**（写给读这档的人）
+ *   · **声明了 `packs`**（本仓现在就是：`["dnd3"]`）⇒ 产物**只装**这些规则包 ＋ `src/core/**`（core 恒入）；
+ *   · **没清单／没这个键** ⇒ **全装**（＝该口引入前的行为；引擎侧逐字节同旧的读数见 `sagitsr/sgstory#2000`）。
+ *   ⚠ **生效条件**：本仓的构建用**声明 pin** 的引擎（`.github/engine-ref.json`）⇒ 清单**只有在 pin
+ *     抬到含 `sagitsr/sgstory#2000` 的提交后才生效**；在那之前它**不生效也不报错**（旧 build.py 不读 story.json
+ *     ⇒ 产物逐字节不变）。★这正是本门 ③ 用「能力门」而不是「直接断言」的理由。
+ *
  * 用法：node tests/gates/pack-manifest.mjs --engine <引擎检出> [--selftest]
  * 退出码：0＝门绿（②③ 或 ②＋「待判」）；1＝有红（逐条具名）；2＝装置错（缺清单／缺引擎检出／构建跑不起来）
  */
@@ -37,7 +44,16 @@ function main() {
 	if (!fs.existsSync(清单)) { console.error(`✗ 装置错：缺清单 ${清单} ⇒ **证不出**`); process.exit(2); }
 
 	const 红 = [];
-	const 声明 = JSON.parse(fs.readFileSync(清单, 'utf8'))?.packs;
+	/* ★坏 JSON 要**具名红**（`rc=1` ＋ 说清是哪个文件坏了）—— ✗ 让它以「未捕获异常」的形炸出去：
+	 *   那种形**分不清**「清单坏了」与「装置坏了」（后者 rc=2 才是对的语义）。 */
+	let 档;
+	try {
+		档 = JSON.parse(fs.readFileSync(清单, 'utf8'));
+	} catch (e) {
+		console.error(`✗ 清单读不出／不是合法 JSON：${清单} —— ${e.message}`);
+		process.exit(1);
+	}
+	const 声明 = 档?.packs;
 	if (!Array.isArray(声明) || !声明.length || !声明.every((x) => typeof x === 'string' && x)) {
 		console.error(`✗ 清单 \`packs\` 须是**非空字符串数组**：${JSON.stringify(声明)}`);
 		process.exit(1);
@@ -85,11 +101,16 @@ if (isMain && argv.includes('--selftest')) {
 	const A = 跑();
 	const 红对 = A.status === 1 && /nosuchpack-xyz/.test(A.stdout);
 	console.log(`  ${红对 ? '✓' : '✗'} 刀 K1：清单含不存在 id ⇒ rc=${A.status}（期望 1 且具名「nosuchpack-xyz」）`);
+	/* ★K2：坏 JSON ⇒ 须 rc=1 且**具名到文件**（✗ 未捕获异常 —— 那分不清「清单坏」与「装置坏」） */
+	fs.writeFileSync(清单, '{ not json\n');
+	const C = 跑();
+	const 坏对 = C.status === 1 && /不是合法 JSON/.test(C.stdout + C.stderr);
+	console.log(`  ${坏对 ? '✓' : '✗'} 刀 K2：坏 JSON ⇒ rc=${C.status}（期望 1 且具名「不是合法 JSON」）`);
 	fs.writeFileSync(清单, 备份);
 	const B = 跑();
 	const 复原对 = fs.readFileSync(清单).equals(备份) && B.status === 0;
-	console.log(`  ${复原对 ? '✓' : '✗'} 刀 K2：复原 ⇒ rc=${B.status}（期望 0）且清单逐字节同`);
-	process.exit(红对 && 复原对 ? 0 : 1);
+	console.log(`  ${复原对 ? '✓' : '✗'} 刀 K3：复原 ⇒ rc=${B.status}（期望 0）且清单逐字节同`);
+	process.exit(红对 && 坏对 && 复原对 ? 0 : 1);
 }
 
 if (isMain && !argv.includes('--selftest')) main();
