@@ -32,6 +32,48 @@ if (!fs.existsSync(shimsPath)) {
 		+ '\n  ⇒ 拆分仓布局请显式给：node stories/babel/verify.mjs --engine <sgstory 检出目录>');
 	process.exit(2);
 }
+/* ---------- ★**引擎产物新鲜度守卫**（dev-9 撤回件教训 · 照 `#221` 形：mtime 比对 ＋ 具名红）----------
+ *   `:83` 装载的是 `<引擎树>/tests/unit/dist/bundle.js` —— 这是**构建产物**。
+ *   ⚠ 引擎树若是「检出后**没重烘**」的状态（只 `git checkout <sha>` 就跑、新 `git worktree`、
+ *     或换了 `--engine` 指到另一份检出）⇒ 读到的就是**旧产物** ⇒ 本脚本量的是**另一棵树** ✗，
+ *     而**每一节的绿/红都照旧打印** ⇒ 那一族的后果叫「**二分全废**」（每一步都看着对，量的都不是当前源码）✓。
+ *   ⇒ 此处按 **mtime** 比对：产物必须**不早于**引擎源码里最新的那一份（含 `build.py`）；
+ *     否则**具名红 ＋ 给出重建命令**（✗ 不静默、✗ 不降级成警告）。
+ *   ★**✗ 不设旁路开关**：能绕过的守卫等于没有守卫（本舰队「陈旧产物」族已栽多次）。 */
+const 引擎产物 = path.join(root, 'tests/unit/dist/bundle.js');
+const 引擎构建输入 = (() => {
+	const 集 = [];
+	const 走 = (d) => {
+		let 列; try { 列 = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+		for (const e of 列) {
+			const p2 = path.join(d, e.name);
+			if (e.isDirectory()) 走(p2);
+			else if (/\.(js|mjs|cjs|json)$/.test(e.name)) 集.push(p2);
+		}
+	};
+	走(path.join(root, 'src'));
+	const bp = path.join(root, 'build.py');
+	if (fs.existsSync(bp)) 集.push(bp);
+	return 集;
+})();
+if (!fs.existsSync(引擎产物)) {
+	console.error(`✗ 缺引擎产物：${引擎产物}\n  ⇒ 先构建：python3 ${path.join(root, 'build.py')}`);
+	process.exit(2);
+}
+{
+	let 最新 = null;
+	for (const p2 of 引擎构建输入) {
+		let t2 = 0; try { t2 = fs.statSync(p2).mtimeMs; } catch { continue; }
+		if (最新 == null || t2 > 最新.t) 最新 = { p: p2, t: t2 };
+	}
+	if (最新 && fs.statSync(引擎产物).mtimeMs < 最新.t) {
+		console.error(`✗ 引擎产物**陈旧**：${path.relative(root, 引擎产物)} 早于 ${path.relative(root, 最新.p)}`);
+		console.error(`  ⇒ 先重烘：python3 ${path.join(root, 'build.py')}`);
+		console.error('  ★✗ 别拿旧产物跑读数 —— 那正是「二分全废」族：每一步都看着绿/红，量的却都不是当前源码。');
+		process.exit(2);
+	}
+}
+
 const load = (f) => eval(fs.readFileSync(f, 'utf8'));
 
 /* ---------- 断言收集（✗ 用 assert 立刻抛：装配检查要一次看全部问题）---------- */
