@@ -283,7 +283,7 @@ const EVENT_ACTIONS = {
 			const 前缀 = 具 ? `用${具.name}采集` : '采集';
 			const 耐久 = 具?.charges != null ? `｜${具.name}耐久 ${具.charges}` : '';
 			return left == null ? `${前缀}（${L.gatherLabel}${耐久}）`
-				: `${前缀}（${L.gatherLabel}｜还可采 ${left} 次${耐久}）`;
+				: `${前缀}（${L.gatherLabel}｜一次采净 ${left} 件${耐久}）`;
 		},
 		/* ★`books#212` 第 1 项（操作者试玩：「预知『会有采集』但**无入口无原因**」）——
 		 *   原先 `when` 带**工具门** ⇒ 缺工具时按钮**不显示** ✗（玩家只看到"这里会有采集"而无从得知为什么进不去）。
@@ -331,7 +331,7 @@ const 基础采集动作 = (L) => ({
 		const n = nodeAt(L.id);
 		const left = n?.charges;
 		return left == null ? `采集（${L.gatherLabel}）`
-			: `采集（${L.gatherLabel}｜还可采 ${left} 次）`;
+			: `采集（${L.gatherLabel}｜一次采净 ${left} 件）`;
 	},
 	when: () => (nodeAt(L.id)?.charges ?? 0) > 0,
 	action: () => setup.BABEL.gather(),

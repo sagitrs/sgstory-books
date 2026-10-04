@@ -121,14 +121,20 @@ setup.BABEL.gather = () => {
 	 *   而 `现制采集()` 会扣 `charges`。旧形把它写在调用**之后**，于是**采空那一击**（采前 1 件）
 	 *   被读成「采前无货」⇒ **不扣耐久**（操作者试玩实测：最后一次采集后耐久停在 1）。 */
 	const 采前有货 = (setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0;
-	const res = 现制采集();
-	/* ★「采成**才**扣」的判据取**两条**：引擎判 `applied` **且**节点采前确实有货 ——
-	 *   ⚠ 空节点时引擎仍回 `applied`（它「采到了 0 件」），若只看 status 会**白扣 1 点耐久**
-	 *   （本席 ㉕ 的⑤臂实测撞到：铁斧 3 ⇒ 2）。玩法里 `when` 已挡住空节点，这条是**纵深防御**。 */
-	if (res && res.status === 'applied' && slot && 采前有货) 扣耐久(slot);
-	return res;
+	/* ★`books#259` 裁 5「采集**无消耗** ⇒ **一次性全采**」＋裁①「**耐久按件扣**」（保工具经济：
+	 *   6 耐久＝6 件 ⇒ 采 6 件掉 6 点 ⇒ ✗ 一次动作只掉 1 ⇒ 也 ✗ 白送）。
+	 *   ⇒ 循环**采到该处采净**或**工具耗尽**为止；每**成功一件**扣 1 ✓（「采成才扣」的判据每条都照旧 ✓）。 */
+	if (!采前有货) return 0;      // ★`#171` 的纵深防御：采前无货 ⇒ 一件都不采、✗ 不扣（`when` 本已挡住）
+	let 件数 = 0;
+	while ((setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0) {
+		if (slot && (slot.charges ?? 0) <= 0) break;      // 没耐久 ⇒ 采不动（`扣耐久` 到 0 会摘件）
+		const res = 现制采集();
+		if (!res || res.status !== 'applied') break;      // 采不成 ⇒ 不扣（纵深防御 ✓）
+		件数 += 1;
+		if (slot) 扣耐久(slot);
+	}
+	return 件数;
 };
-
 setup.BABEL.工具 = Object.assign(setup.BABEL.工具 ?? {}, {
 	TOOL_CHARGES, TOOLS, 工具层表,        // ★导出**表本身**：判据按表取读数（平衡只改表）
 	需要工具, 持工具, 可采, 工具读数, 扣耐久,

@@ -248,20 +248,28 @@ ok(!采集点ids.some((id) => R.has(id)), '起点背包里不该有采集点（`
 const 采集动作 = (locId) => map.locations.get(locId).availableActions
 	.find((a) => String(typeof a.text === 'function' ? a.text() : a.text).startsWith('采集（'));
 ok(!!采集动作('L1'), 'L1 没有「采集（…）」动作（地点节点形）');
+/* ★`books#259` 裁 5：**文案必须在采前取** —— 一次采净后该节点空、`when` 不成立 ⇒ **动作不再存在** ✓
+ *   （旧形在采后取文案 ⇒ 新语义下必然拿到 `undefined` ✗，那是**语义变的正确后果** ✗ 不是回归 ✓）。 */
+const 文案前 = String(typeof 采集动作('L1')?.text === 'function' ? 采集动作('L1').text() : 采集动作('L1')?.text);
 const 节点账 = () => State.variables.gatherNodes ?? {};
 const 取账 = (locId) => 节点账()[locId];
 const 采前 = 取账('L1')?.charges ?? null;
 const before = State.variables.babelRun.gathered;
 if (采集动作('L1')) 采集动作('L1').action();
-ok(State.variables.babelRun.gathered === before + 1, `采集读数没涨：${before} → ${State.variables.babelRun.gathered}`);
+const 应采件数 = 采前;    // ★采**前**件数（`采前` 在动作之前取的 ✓ —— ✗ 不能在这里读 `取账`，那已经是采后 ✗）
+ok(State.variables.babelRun.gathered === before + 应采件数,
+	`★一趟应采净该处（gathered 应 ${before}→${before + 应采件数}；实得：${before} → ${State.variables.babelRun.gathered}）`);
 ok(R.has('rock'), '采集没有产出石料（`yields` 未生效？）');
 /* ★两向断：① 产出**进背包** ② 节点**留账**且 charges **扣了**（✗ 采了不耗）。 */
 ok(!采集点ids.some((id) => R.has(id)), `★采集后**背包里仍无**采集点（实得：${R.inventoryLabel()}）`);
 const 采后 = 取账('L1')?.charges ?? null;
-ok(采前 != null && 采后 === 采前 - 1, `★节点 charges 应扣 1（账：${采前} → ${采后}）`);
+ok(采前 != null && 采后 === 0, `★一趟应把该处**采净**（账：${采前} → ${采后}，应 → 0）`);
 /* 动作文案带次数（`#1887` 的显示面迁到这里） */
-const 文案 = String(typeof 采集动作('L1')?.text === 'function' ? 采集动作('L1').text() : 采集动作('L1')?.text);
-ok(/还可采 \d+ 次/.test(文案), `★动作文案应带剩余次数（实得：${文案}）`);
+ok(/一次采净 \d+ 件/.test(文案前), `★采前文案应写明「一次采净 N 件」（实得：${文案前}）`);
+/* ★两向（裁 5）：采**后**该处已净 ⇒ 这个动作**不该存在** ✓（「事件用后不补」✓）—— ✗ 不是"文案里还剩几次" ✓ */
+ok(采集动作('L1') === undefined || 采集动作('L1') === null,
+	`★采净后动作应消失（实得：${typeof 采集动作('L1')?.text === 'function' ? 采集动作('L1').text() : String(采集动作('L1')?.text)}）`);
+const 文案 = 文案前;    // ★后面的读数行仍在用 `文案`（保持一处名 ✓）
 console.log(`  背包：${R.inventoryLabel()}｜节点=${JSON.stringify(取账('L1'))}｜动作=「${文案}」`);
 
 /* ---------- ⑤ 遭遇 + 战斗（#1784 的 API 缺席 / 在场两种形）---------- */
@@ -530,7 +538,7 @@ head('⑪ 锻造闭环（料场 ⇒ 图纸 ⇒ 铁器）');
 	ok(R.has('wood'), '采集木料没有产出木材（锻造的输入之一）');
 	/* ★两向断（`#116` 的核心）：节点**留账**且 charges 扣 1；产出**进背包**，节点**不进背包**。 */
 	const 木节点后 = State.variables.gatherNodes?.['L20-settlement']?.charges ?? null;
-	ok(木节点前 != null && 木节点后 === 木节点前 - 1, `★料场节点 charges 应扣 1（账：${木节点前} → ${木节点后}）`);
+	ok(木节点前 != null && 木节点后 === 0, `★料场一趟应**采净**（账：${木节点前} → ${木节点后}，应 → 0）`);
 	ok(!R.has('dead-wood'), '★料场采集后**背包里不该有采集点**（`#116`：玩家不持有采集点）');
 
 	const countOf = (id) => (State.variables.inventory ?? []).filter((s) => s.id === id)
