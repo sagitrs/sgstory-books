@@ -38,8 +38,10 @@ import {createRequire} from 'node:module';
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
 const arg = (f, d) => { const i = argv.indexOf(f); return i>=0 ? argv[i+1] : d; };
-const B = arg('--books', process.cwd());
-const 产物 = arg('--art', path.join(B,'stories/babel/babel-trial.html'));
+/* ★相对路径一律先 `path.resolve`（`#287`／`#290` 同源）：否则报错里的路径是相对的，读的人
+ *   在别的 cwd 下找不到那个档 —— ★故下面凡"找不到"一律**点名绝对路径**。 */
+const B = path.resolve(arg('--books', process.cwd()));
+const 产物 = path.resolve(arg('--art', path.join(B,'stories/babel/babel-trial.html')));
 const PW = process.env.PW_DIR || path.join(process.env.HOME,'bots/home/sagitrs-tester-4/tmp/pw');
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME,'.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');
 
@@ -49,7 +51,11 @@ const ok = (名, 条件, 读='') => { (条件?档:红).push(条件?`  ✓ ${名}
 let chromium;
 try { chromium = createRequire(path.join(PW,'noop.js'))('playwright').chromium; }
 catch (e) { console.error(`✗ 环境错（取不到 playwright：${PW}）：${e.message}`); process.exit(2); }
-if (!fs.existsSync(产物)) { console.error(`✗ 环境错（产物不在：${产物}）⇒ 先 python3 <引擎>/build.py <books>/stories/babel --out babel-trial.html`); process.exit(2); }
+if (!fs.existsSync(产物)) { console.error(
+  `✗ 环境错（产物不在）\n    解析出的**绝对路径**：${产物}\n    （--books 解析为：${B}）\n` +
+  `  ⇒ 先 python3 <引擎检出>/build.py ${B}/stories/babel --out babel-trial.html`); process.exit(2); }
+if (!fs.existsSync(path.join(B,'.github/engine-ref.json'))) console.error(
+  `  ⚠ 提示：--books 解析出的绝对路径 ${B} 里没有 .github/engine-ref.json —— 它可能不是 books 检出`);
 
 const HEAD = (()=>{try{
   const raw = fs.readFileSync(path.join(B,'.git/HEAD'),'utf8').trim();
