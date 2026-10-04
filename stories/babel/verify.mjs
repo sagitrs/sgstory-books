@@ -3701,7 +3701,7 @@ head('第 53 格 `books#280` ⑦：L4 宝箱先后（钥匙先到 ⇒ 必可开�
  *   ⑤ **正控**：空背包 ⇒ 明印「（空）」且入口仍在（✗ 消失）。
  * 刀（记在提交信息）：K1 把效果行写成硬编码 ⇒ ② 红；K2 拆掉战中的只读分支 ⇒ ④ 红；各自按字节复原。
  */
-head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效果同源·就地使用·战中只读）');
+head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效果同源·就地使用·战中可提交【能力门】）');
 {
 	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
 	const 血存 = D.Player.hp;
@@ -3735,21 +3735,87 @@ head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效�
 		ok(State.variables.inventory.find((x) => x.id === 'bandage')?.charges === 1,
 			'★用掉一次后剩余次数没落袋（charges 未提交 ⇒ 副本与背包脱钩）');
 
-		/* ④ 战中：仍列出，但**无**回合契约之外的可点使用入口 */
+		/* ④ 战中：**随能力而定** —— 引擎有提交口 ⇒ 可点件走本回合那条路；没有 ⇒ 老口径（只列不可点）。 */
+		const 有提交口 = typeof R.submitBattleAction === 'function';
 		setup.BABEL.战中 = true;
 		const 战html = R.bagHTML();
 		ok(战html.includes('绷带'), '★战中视图不再列出道具（看是安全的 ⇒ ✗ 整块消失）');
-		ok(!/data-item=/.test(战html) && !/rpg-item-link/.test(战html),
-			'★战中出现了可点的使用入口 —— 回合契约之外的第二条路（③a 的同一条裁定）');
-		ok(/战斗面板/.test(战html), '★战中只说「不能用」、没说**去哪用**（✗ 静默降级）');
+		if (有提交口) {
+			ok(/class="rpg-bag-submit"[^>]*data-bag-submit="bandage"/.test(战html)
+				|| /data-bag-submit="bandage"[^>]*class="rpg-bag-submit"/.test(战html),
+				'★引擎有提交口，战中却没有可提交件（✗ 退回了老口径？）');
+			ok(!/rpg-item-link/.test(战html), '★战中混进了战外那条**不占回合**的路（`.rpg-item-link` ⇒ 点一下用掉一件药却不耗回合）');
+			ok(/占用本回合/.test(战html), '★战中提示没说**代价**（占本回合）');
+		} else {
+			ok(!/data-bag-submit=/.test(战html) && !/rpg-item-link/.test(战html),
+				'★引擎**没有**提交口，战中却给了可点件 —— 那会是一条不占回合的路（③a 的同一条裁定）');
+			ok(/战斗面板/.test(战html), '★战中只说「不能用」、没说**去哪用**（✗ 静默降级）');
+			console.log('  战中的可提交面：**待判**（引擎还没有 `RPG.submitBattleAction` ⇒ 只验老口径；抬 pin 后自动真判）');
+		}
 		setup.BABEL.战中 = false;
-		ok(/data-item=/.test(R.bagHTML()), '★退出战斗后没有恢复可点件（只读态粘住了）');
+		const 平html = R.bagHTML();
+		ok(/data-item="bandage"/.test(平html), '★退出战斗后没有恢复战外的可点件（只读态粘住了）');
+		ok(!/data-bag-submit=/.test(平html), '★战外出现了战中那条提交面（两条路混了）');
 
-		/* ⑤ 正控：空背包 */
+		/* ④b **真有提交口时**：真跑一场交互战 ⇒ 提交**真生效** ＋ **回合真耗**（与手动那局成对照）。
+		 *  ⚠ 装置要点：提交必须在**循环正等着**那一刻到（浏览器里就是玩家点背包那一下）——
+		 *    ① 桩要**悬着**（✗ 立刻 resolve：内层 promise 先答 ⇒ 提交成空转，本席首版即这么红的）；
+		 *    ② 循环得先跑起来（`await` 一个宏任务）再提交，否则战斗还没登记、`submitBattleAction` 答 `no-battle`。 */
+		if (有提交口) {
+			const 记 = [];
+			const 悬起 = [];          // 桩每次提问挂一个「点击」回调（只有测试会点 ⇒ 可证「玩家没点」）
+			let 点过 = 0;
+			const 原choice = D.Player.choice;
+			const 计数 = () => { let n = 0; const 退 = R.events.on('battle:turnEnd', () => { n += 1; }); return { 读: () => n, 退 }; };
+			const 造敌 = () => new (R.Character)({ name: '装置靶', hp: 1, maxHp: 1, stats: { dmg: '0', atkBonus: 0 } });
+			const 限时 = (p, ms, 名) => Promise.race([p, new Promise((r) => setTimeout(() => r(名), ms))]);
+			try {
+				State.variables.inventory = [{ id: 'bandage', charges: 2 }];
+				D.Player.hp = D.Player.maxHp - 10; D.Player.nonlethal = 0;
+				const 血前 = D.Player.hp;
+				D.Player.choice = (opts) => {
+					记.push(opts.map((o) => o.value));
+					return new Promise((res) => { 悬起.push(() => { 点过 += 1; res('skip'); }); });   // 只有测试会「点」
+				};
+				const 场 = new (R.Battle)(1, [D.Player], [造敌()], true);
+				const 计1 = 计数();
+				const p1 = 场.execute();
+				await new Promise((r) => setTimeout(r, 0));                  // 让循环跑到「等玩家」那一问
+				const r提交 = R.bagSubmit ? R.bagSubmit('bandage') : R.submitBattleAction({ item: 'bandage' });
+				const 果1 = await 限时(p1, 3000, '（超时）');
+				计1.退();
+				ok(果1 !== '（超时）', '★提交后战斗没往下走（3 秒超时）—— 提交没接上循环那一问（✗ 死等）');
+				ok(r提交?.ok === true, `★战中提交被拒：${JSON.stringify(r提交)}`);
+				ok(D.Player.hp === 血前 + 5, `★战中点用没真生效：血 ${血前} ⇒ ${D.Player.hp}（应 +5）`);
+				/* ★最强读数：玩家**一次没点**（`点过 === 0`），那一手却发生了 ⇒ 提交确实答了循环那一问。 */
+				ok(点过 === 0, `★玩家没点，却有 ${点过} 次由测试作答（选项 ${JSON.stringify(记)}）—— 读的是菜单那一路，✗ 提交`);
+				/* 对照局：同一场形、不提交（桩由测试「点跳过」）⇒ 回合边界条数须相同。 */
+				State.variables.inventory = [{ id: 'bandage', charges: 2 }];
+				D.Player.hp = D.Player.maxHp - 10;
+				悬起.length = 0; 点过 = 0;
+				const 场2 = new (R.Battle)(1, [D.Player], [造敌()], true);
+				const 计2 = 计数();
+				const p2 = 场2.execute();
+				await new Promise((r) => setTimeout(r, 0));
+				悬起.forEach((点) => 点());                                   // 手动那局：由「玩家」作答
+				const 果2 = await 限时(p2, 3000, '（超时）');
+				计2.退();
+				ok(果2 !== '（超时）', '★对照局（手动）没跑完（3 秒超时）—— 装置病');
+				ok(计1.读() === 计2.读(), `★回合真耗对不上：提交局 ${计1.读()} 次回合边界，手动局 ${计2.读()} 次 —— 两条账`);
+			} finally {
+				if (原choice === undefined) delete D.Player.choice; else D.Player.choice = 原choice;
+				R.rng.reset();
+			}
+		}
+
+		/* ⑤ 正控：空背包 ⇒ 明印「（空）」且入口仍在（✗ 消失／✗ 报错）。 */
 		State.variables.inventory = [];
 		const 空 = R.bagHTML();
 		ok(/背包（0 件）/.test(空) && 空.includes('（空）'), '★空背包未明印「（空）」（✗ 报错／✗ 空白一片）');
-		console.log('  背包视图：列出齐全 ✓｜说明与效果同源 ✓｜点用真生效（绷带 +5、次数 2⇒1）✓｜战中只列不可点＋指路 ✓｜空背包明印（空）✓');
+
+		console.log('  背包视图：列出齐全 ✓｜说明与效果同源 ✓｜战外点用真生效（绷带 +5、次数 2⇒1）✓｜'
+			+ (有提交口 ? '战中可提交（真生效 ＋ 回合真耗与手动同数）✓' : '战中只列不可点＋指路（引擎无提交口 ⇒ 待判）✓')
+			+ '｜空背包明印（空）✓');
 	} finally {
 		State.variables.inventory = 包存;
 		D.Player.hp = 血存;
