@@ -11,6 +11,7 @@
 | 路径 | 一句话用途 |
 |---|---|
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
+| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；`--selftest` 合成例 7 例） |
 | `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
 | `tools/check-baseline.mjs` | 基线核（与声明基线比对；不符即报，✗ 不自动刷新） |
 | `tools/check-content-inventory.mjs` | 内容清点（★舱单核对：实存 vs 清单；#347 登记制的同族） |
@@ -255,3 +256,13 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | **固定命令** | `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-playtest.mjs --books <books 检出>`；`PW_DIR` 可指定 playwright 模块目录，`CHROME_BIN` 可指定浏览器。★跑前须构建**本仓根**的产物。 |
 | **期望读数** | 起手打印**候选钉死三项**（books HEAD ／ `engine-ref.json` 的 pin ／ 产物 sha1）——★**换候选重跑先核这三项**，任一不同则读数**不可与旧报告直接比对**。末行 `⇒ 通过 N｜失败 M`。退出码 `0`＝全过／`1`＝有红（逐条具名）／`2`＝**环境错**（引擎根／产物／jsdom／浏览器 ✓ ✗ 不当判据红）。 |
 | **设立理由** | `books#280`（操作者试玩批）的修正件（`#282`①`#283`④`#284`⑤`#285`③a）改的都是**玩家面上看得见的行为**；判据格（`verify.mjs` ㊼ 等）判的是**逻辑面** ⇒ 需要一层**真浏览器**把"玩家真看到什么"独立量出来。★本档**只报试玩／受控自动化读数**，✗ **不构成发布裁定**（发布裁定以判据格与门为准）。 |
+
+## 12. `check-premerge.mjs` —— 合前检查器（把「附三」从文字变成机器说了算）
+
+| 项 | 内容 |
+|---|---|
+| **清单** | `tools/check-premerge.mjs` —— 落 `tools/README.md` **附三（合前检查）** 那两条：★**①基座同尖**（`merge-base(现main,票头) === 现main`）★**②回退行 0**（对现 main 的 `--numstat` 里没有「只删不加」的档）；★给了 `--base` 再算 **③patch-id**（逐字同 ⇒ 纯 rebase ⇒ 读数沿用）。 |
+| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--main origin/main] [--base <旧头>] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。 |
+| **期望读数** | 开头打印**明账**（patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；纯改名/二进制档请人眼过）。末行 `⇒ ★通过（…）` 或 `⇒ ★判据红 N 条`。退出码 `0` 全绿／`1` 判据红（★逐条具名：哪个档只删不加／patch-id 不同）／`2` **装置错**（✗ 不当判据红：不在 git 仓／取不到 main 或票头）。 |
+| **设立理由** | `books#296`／`#303`／`#305`／`#310` 那四笔「看着干净、合了会坏」的票换来的：★基座落后 ⇒ 对现 main 的 diff 带**回退行** ⇒ 合入抹掉别的笔刚合的东西；★`mergeable_state=clean` **看不出来**这一类。`#315` 先把口径写进 README（附三）＋ 给出实例；本件把口径做成**可跑件**——★README 是"人读过才会跑"，本器是"跑不跑由机器说话"。 |
+| **自检（`--selftest`·合成例 7 例）** | `K1` 落后头 ⇒ ① 判红（**门能红**）｜`K2`/`K3` 同尖干净头 ⇒ ① 绿 ＋ ② 回退行 0（**门不滥红**）｜`K4` 同尖但只删不加 ⇒ ② **检出该档**（② 有牙）｜`K5` 纯 rebase ⇒ patch-id 逐字同｜`K6` 内容有变 ⇒ patch-id 不同｜`K7` 不存在的仓 ⇒ **标为装置错**（✗ 不当判据红）。★自检与主流程**共用同一判据函数**（`检查一`/`检查二`），✗ 不是另写一套。 |
