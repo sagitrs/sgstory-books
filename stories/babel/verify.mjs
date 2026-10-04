@@ -3691,6 +3691,72 @@ head('第 53 格 `books#280` ⑦：L4 宝箱先后（钥匙先到 ⇒ 必可开�
 	}
 }
 
+/* ── 第 54 格 `books#280` ⑧：「打开背包」视图（常驻入口 ＋ 全道具 ＋ 详细效果 ＋ 就地使用）────────
+ *
+ * 形（票面）：入口**常驻**；列出全部道具＋详细效果；每件**就地使用**；战中＝与 ③ 同语义。
+ * 断什么：① **列出齐全**（条目与背包同源，含 `×N` 后缀与「已装备」标记）② **描述/效果与定义同源**
+ *   （拿一颗**哨兵实例**过逐件渲染：改定义的 `desc`／`stats.hp` ⇒ 文本跟着变；✗ 视图里再抄一份）
+ *   ③ **使用真生效**（走引擎自己的点击口 `RPG.itemClick` ⇒ 绷带治 5、剩余次数 −1）
+ *   ④ **战中入口只读**（仍列出、但**没有**可点的 `data-item` 锚；印白话指向战斗面板）
+ *   ⑤ **正控**：空背包 ⇒ 明印「（空）」且入口仍在（✗ 消失）。
+ * 刀（记在提交信息）：K1 把效果行写成硬编码 ⇒ ② 红；K2 拆掉战中的只读分支 ⇒ ④ 红；各自按字节复原。
+ */
+head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效果同源·就地使用·战中只读）');
+{
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 血存 = D.Player.hp;
+	const 战中存 = setup.BABEL.战中;
+	try {
+		ok(typeof R.bagHTML === 'function' && R.panels?.has?.('bag'), '★没有注册「背包视图」面板（⑧ 的常驻入口没了）');
+
+		/* ① 列出齐全 */
+		State.variables.inventory = [{ id: 'bandage', charges: 2 }, { id: 'pick', charges: 6, equipped: true }];
+		const 条 = R.bagSlots();
+		ok(JSON.stringify(条.map((e) => e.id)) === JSON.stringify(['bandage', 'pick']),
+			`★视图条目与背包**不同源**：${JSON.stringify(条.map((e) => e.id))}`);
+		const html = R.bagHTML();
+		ok(/背包（2 件）/.test(html), '★摘要里没有件数（入口还在不在？）');
+		for (const 期望 of ['绷带', '×2', '矿镐', '（已装备）', R.createItem('bandage').desc]) {
+			ok(html.includes(期望), `★视图里缺「${期望}」—— 列出不齐全（或缺同源说明）`);
+		}
+
+		/* ② 描述/效果**与定义同源**：哨兵实例 */
+		const 哨 = R.createItem('bandage', { desc: '哨兵说明-9', stats: { hp: 42 } });
+		const 哨html = R.bagItemHTML({ id: 'bandage', name: 哨.name, item: 哨, equipped: false });
+		ok(哨html.includes('哨兵说明-9'), '★逐件渲染的说明**不是**取自道具定义（可能是视图里另抄的一份）');
+		ok(哨html.includes(`治疗：42`), `★效果行没有跟着定义走（实得：${(哨html.match(/治疗：[^｜<]*/) ?? ['（无）'])[0]}）`);
+
+		/* ③ 就地使用**真生效**（走引擎自己的点击口） */
+		D.Player.hp = Math.max(1, D.Player.maxHp - 10);
+		const 血前 = D.Player.hp;
+		ok(/data-item="bandage"/.test(R.bagHTML()), '★战外的道具名不是可点件（就地使用入口没了）');
+		R.itemClick('bandage');
+		ok(D.Player.hp === 血前 + 5, `★点用绷带没真生效：血 ${血前} ⇒ ${D.Player.hp}（应 +5）`);
+		ok(State.variables.inventory.find((x) => x.id === 'bandage')?.charges === 1,
+			'★用掉一次后剩余次数没落袋（charges 未提交 ⇒ 副本与背包脱钩）');
+
+		/* ④ 战中：仍列出，但**无**回合契约之外的可点使用入口 */
+		setup.BABEL.战中 = true;
+		const 战html = R.bagHTML();
+		ok(战html.includes('绷带'), '★战中视图不再列出道具（看是安全的 ⇒ ✗ 整块消失）');
+		ok(!/data-item=/.test(战html) && !/rpg-item-link/.test(战html),
+			'★战中出现了可点的使用入口 —— 回合契约之外的第二条路（③a 的同一条裁定）');
+		ok(/战斗面板/.test(战html), '★战中只说「不能用」、没说**去哪用**（✗ 静默降级）');
+		setup.BABEL.战中 = false;
+		ok(/data-item=/.test(R.bagHTML()), '★退出战斗后没有恢复可点件（只读态粘住了）');
+
+		/* ⑤ 正控：空背包 */
+		State.variables.inventory = [];
+		const 空 = R.bagHTML();
+		ok(/背包（0 件）/.test(空) && 空.includes('（空）'), '★空背包未明印「（空）」（✗ 报错／✗ 空白一片）');
+		console.log('  背包视图：列出齐全 ✓｜说明与效果同源 ✓｜点用真生效（绷带 +5、次数 2⇒1）✓｜战中只列不可点＋指路 ✓｜空背包明印（空）✓');
+	} finally {
+		State.variables.inventory = 包存;
+		D.Player.hp = 血存;
+		setup.BABEL.战中 = 战中存;
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
