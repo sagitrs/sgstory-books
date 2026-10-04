@@ -1691,16 +1691,19 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		const L9边 = map.exits.filter((e) => e.from === 'L9');
 		const 乙 = L9出口_已胜.length === 1 && /前进/.test(String(L9出口_已胜[0]?.text ?? ''));
 		ok(乙, `★已过头目后 L9 的可用出口不是「唯一的前进」（实得 ${JSON.stringify(L9出口_已胜.map((e) => e.text))}）`);
-		const 丙 = L9边.some((e) => e.to === 'L10-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L8')
+		/* ★`books#259` 裁 2（塔单向向上·裁（甲）从严 ✗ 例外边）：准备区**不再回到 L8**
+		 *   —— 补给（L8 温泉）必须在**攀过之前**完成（与操作者早裁③「L8 温泉满装→上 L9」自洽）。 */
+		const 丙 = L9边.some((e) => e.to === 'L10-camp') && !map.exitsFrom('L9-camp').some((e) => e.to === 'L8')
 			&& map.locations.has('L9-camp') && map.exitsFrom('L9-camp').some((e) => e.to === 'L9');
 		ok(丙, `★L9 拆面坏了：战场→L10 ${L9边.some((e) => e.to === 'L10-camp')}／准备区存在 ${map.locations.has('L9-camp')}`
-			+ `／准备区→L8 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
+			+ `／准备区→L8（应 ✗）${map.exitsFrom('L9-camp').some((e) => e.to === 'L8')}／准备区→战场 ${map.exitsFrom('L9-camp').some((e) => e.to === 'L9')}`);
 		State.variables.babelRun.bosses = 存进度 ?? {};
 		if (存新账 === undefined) delete State.variables.rpgProgress; else State.variables.rpgProgress = 存新账;
 		/* ③ 对照：非头目层不设限（守卫**按层**作用，✗ 全局摘除） */
 		const L8出口 = map.exitsFrom('L8');
-		const 丁 = L8出口.length === 2;
-		ok(丁, `★非头目层 L8 的可用出口不是 2 条（${JSON.stringify(L8出口.map((e) => e.text))}）⇒ 守卫并非按层作用`);
+		/* ★`books#259` 裁 2：塔单向 ⇒ 非头目层的可用出口**只有向上那一条**（原断言「2 条」＝含向下回边）。 */
+		const 丁 = L8出口.length === 1 && /向上/.test(String(L8出口[0]?.text ?? ''));
+		ok(丁, `★非头目层 L8 的可用出口不是「只有向上一条」（${JSON.stringify(L8出口.map((e) => e.text))}）⇒ 单向往上不成立`);
 		/* ④ 两表同键配对 */
 		const 引擎层 = (D.LAYER_META_SPAN1 ?? []).map((l) => l?.id);
 		const 本地层 = (B.LAYER_META ?? []).map((l) => l?.id);
@@ -1715,7 +1718,8 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		/* ⑤ 接管面不动 */
 		const 己 = (B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub' && map.exitsFrom('L10-camp').some((e) => e.to === 'L9');
 		ok((B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub', '★L10 不再是 `hub`（接管面被改了）');
-		ok(map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 少了「退回第 9 层」那条边（衔接面被改了）');
+		/* ★`books#259` 裁 2：`L10-camp → L9` 的回边**按裁摘除**（原断言「少了这条边」＝旧双向语义）⇒ 现断**不在**。 */
+		ok(!map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 仍有回 L9 的边（裁 2 要求塔单向向上）');
 		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
 			+ `｜硬门（未胜 ${L9出口_未胜.length} 条 ⇒ 已胜 ${L9出口_已胜.length} 条「${L9出口_已胜[0]?.text ?? ''}」）${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
 			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
@@ -2235,9 +2239,11 @@ head('㉜ 头目硬门·准备区（`books#180`）');
 			D.Player.maxHp = 存血.maxHp; D.Player.hp = 存血.hp; D.Player.nonlethal = 存血.非致命;
 		}
 
-		/* ③ 准备区可达温泉 */
+		/* ③ ★`books#259` 裁 2（单向从严）：准备区**不再回 L8** ⇒ 温泉必须在**攀过之前**泡
+		 *   （与操作者早裁③「L8 温泉满装→上 L9」自洽）⇒ 本格由「可达」改为**断其不在**，
+		 *   温泉动作面本身仍在（下一行照判 —— 它在 L8 上，只是**从准备区回不去**）。 */
 		const 备出 = map.exitsFrom('L9-camp').map((e) => e.to);
-		ok(备出.includes('L8'), `★准备区没有回 L8 的**可用**边（实得 ${JSON.stringify(备出)}）—— 「回温泉补给」不成立`);
+		ok(!备出.includes('L8'), `★准备区仍能回 L8（实得 ${JSON.stringify(备出)}）—— 裁 2 要求塔单向向上`);
 		map.moveTo('L8');
 		const 温泉在 = map.locations.get('L8').availableActions.some((a) => a.温泉 === true);
 		ok(温泉在, '★准备区可达 L8，但 L8 上没有温泉动作（`#179` 的入表断了？）');
@@ -2417,8 +2423,10 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 		const 边在 = (a, b) => (m.exits ?? []).some((e) => e.from === a && e.to === b);
 		const 可走 = (id) => (m.exitsFrom(id) ?? []).map((p) => (typeof p === 'string' ? p : p?.to));
 		ok(边在('L9', 聚), '★L9 到聚落的步行**边**没了（传送把步行取代掉了 —— 票面要两臂并存）');
-		ok(边在(聚, 'L9'), '★聚落回 L9 的步行**边**没了');
-		ok(可走(聚).includes('L9'), `★活人时聚落回 L9 走不了（实得 ${JSON.stringify(可走(聚))}）`);
+		/* ★`books#259` 裁 2：**聚落回 L9 的步行边按裁摘除**（原两条断言「边在／可走」＝旧双向语义）
+		 *   ⇒ 现断**不在**。传送臂（卷轴）与「L9 → 聚落」的**向上**步行臂照旧（上一行）。 */
+		ok(!边在(聚, 'L9'), '★聚落仍有回 L9 的步行边（裁 2 要求塔单向向上）');
+		ok(!可走(聚).includes('L9'), `★活人时聚落回 L9 仍走得通（实得 ${JSON.stringify(可走(聚))}）`);
 		/* ★出向那条**是被设计挡住的**：`#180` 头目硬门（唯一出口 ∧ 本局已过该场）。
 		 *   故这里**真走一遍**：记下战果 ⇒ 边应转为可走 ⇒ 步行臂才算成立（✗ 只断边在）。
 		 *   ⚠ 必须**快照并复原**进度账：本格留下的战果会让下游格看到「已过 L9」。 */
