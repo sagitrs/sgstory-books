@@ -211,6 +211,21 @@ jobs:
           fi
           { echo '```'; tail -2 /tmp/e203d.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── `books#233` 后续：**被拒路径激励**（领队 2026-10-04 01:46 排）──
+      #   为何单开一步：`#203` 那步跑 `纯攻` ⇒ 读数 `rejected=0` ⇒ 「★明细=」／「★派发=」两栏与
+      #   `M<N` 那条红**从未被真读数激励过**（判据在、样本不在）。本步用「乱用」夹具（故意点非武器件）
+      #   逼出**真被拒**读数，并**强制** `rejected>0` ⇒ 那两栏有了样本。
+      #   ★`M<N` 自身有牙由 `--selftest` ⑦ 证（藏一条明细 ⇒ 小结自己报账）✓。
+      - name: ★拒因可判·被拒路径激励（#233 后续）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/balance-babel.mjs --engine "$GITHUB_WORKSPACE/engine" --fixture 乱用 --samples 3 --dump-tracks | tee /tmp/e233r.out
+          grep -q '★拒因可判：' /tmp/e233r.out || { echo "::error title=e2e-window::#233 未打印「★拒因可判」（汇总串丢了）"; exit 1; }
+          grep -Eq '★拒因可判：rejected=[1-9][0-9]* ' /tmp/e233r.out || { echo "::error title=e2e-window::#233 被拒路径**没被激励**（rejected=0）⇒ 夹具/策略失效"; exit 1; }
+          grep -Eq '★拒因可判：rejected=([1-9][0-9]*) 带明细=\1$' /tmp/e233r.out || { echo "::error title=e2e-window::#233 有被拒但**明细数对不上** ⇒ 录过程断了"; exit 1; }
+          { echo '```'; tail -2 /tmp/e233r.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
       - name: 引擎仓没被写脏（归因）
         run: |
