@@ -153,9 +153,36 @@ jobs:
 
       # ── 清单引用核（乙步；`#80` tester-4 裁乙）：K13 只查引用**有形**，本步查其**内容** ——
       #    文件存在／行号在范围内／声明了符号的引用须逐字含之／散文形一律红。
-      - name: 清单引用核（行号须含所声明的符号）
+      # ★`books#271` 余项（领队 2026-10-04 裁 · **T 批面**）：本步带 `--require-symbols`。
+      #   此前「仅范围核 N」只是**明账**（N>0 也 rc=0）⇒ 作者忘了写符号**不回红**
+      #   （实测：只拆掉一处已声明的符号 ⇒ 不符 0／rc 0，而明账变 1）。清单已刷到 N=0
+      #   （`#289`）⇒ 从此这条明账是**机械判据**：任何无符引用会让本步具名红。
+      - name: 清单引用核（行号须含所声明的符号；★明账即判据）
         working-directory: books
-        run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine"
+        run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols
+
+      # ★门必须**红得了**（同「恒绿门自证」的体例）：往**临时**清单里塞一处无符引用，
+      #   断言本门确实 rc≠0 且具名到那一处 ⇒ 证明上面的开关**没被写成装饰**；随后按字节复原。
+      - name: ★引用核门自证（注入无符引用 ⇒ 须 rc≠0 且具名）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          cp stories/babel/scenarios/scenarios.json /tmp/scen.bak
+          python3 - <<'PY'
+          import json
+          p = 'stories/babel/scenarios/scenarios.json'
+          d = json.load(open(p, encoding='utf-8'))
+          d['场景'][0]['备注'] += '　`src/core/70-ui.js:69`'   # 无显式符号（行号有效、内容非空）
+          json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
+          PY
+          if node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols > /tmp/refs.out 2>&1; then
+            cp /tmp/scen.bak stories/babel/scenarios/scenarios.json
+            echo "✗ 注入无符引用后本门仍绿 ⇒ --require-symbols 没生效（门是装饰）"; cat /tmp/refs.out; exit 1
+          fi
+          cp /tmp/scen.bak stories/babel/scenarios/scenarios.json
+          grep -qF "src/core/70-ui.js:69" /tmp/refs.out || { echo "✗ 红了但没具名到注入那一处"; cat /tmp/refs.out; exit 1; }
+          echo "✓ 门红得了且具名（--require-symbols 生效）；清单已复原"
+          git diff --quiet -- stories/babel/scenarios/scenarios.json || { echo "✗ 清单未复原（✗ 留脏）"; exit 1; }
 
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
