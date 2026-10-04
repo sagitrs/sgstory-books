@@ -21,7 +21,7 @@
  *   python3 <引擎>/build.py <本仓>/stories/babel --out babel-trial.html   # 先构建（harness 有新鲜度守卫）
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出>
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出> --selftest          # 刀：摘一个注册 ⇒ A 须红
- *   0 = 三面全过；1 = 有红；2 = 环境错（引擎根／产物／jsdom，具名）
+ *   0 = 全过（含 ★`#1983` 声明的 css 落宿主 inline style）；1 = 有红；2 = 环境错（引擎根／产物／jsdom，具名）
  */
 import process from 'node:process';
 import { resolveEnv, boot } from './e2e-harness.mjs';
@@ -234,5 +234,5 @@ if (fails.length) {
 	for (const f of fails) console.error(`  ✗ ${f}`);
 	process.exit(1);
 }
-console.log('\n✓ e2e-1763 三面全过（注册⇒常驻渲染 ＋ 域刷新局部性 ＋ 计数恰 +1）');
+console.log('\n✓ e2e-1763 全过（含 ★`#1983` 声明的 css 落宿主 inline style）（注册⇒常驻渲染 ＋ 域刷新局部性 ＋ 计数恰 +1）');
 process.exit(0);
