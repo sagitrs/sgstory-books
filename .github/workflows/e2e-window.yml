@@ -69,6 +69,22 @@ jobs:
       #     本席实测即如此：4 个 step 先后红在 `unbound variable`，而**它们干的正事全部成功**
       #     （见下方「瞬时安装」的读数）⇒ 会**把「workflow 不可演练」伪装成「步骤失败」**。
       #     ⇒ 兼容写法**不损 CI**、又让本 workflow **可被演练** —— 演练正是本仓查 CI 缺陷的手段。
+      - name: ★引擎检出 == 声明 pin（具名红 · `books#198` 教训机械化）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # ★门测开跑前先断这条：旧 pin ⇒ 一片红会被当产品缺陷白烧一轮（`books#198` 实例）。
+          #   不一致 ⇒ rc=1 具名红；不是 git 树／缺 pin 文件 ⇒ rc=2 环境错（都✗ 不静默跳过）。
+          node tools/check-engine-pin.mjs --engine "$GITHUB_WORKSPACE/engine"
+
+      - name: ★机读基线表（形状与「未判具名」· 0.0.2 门测用）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # 守的是「可判性」：每行字段齐、结论取值合法、**未判必须具名**（✗ 留空＝静默跳过）。
+          # ★发布口径另有 `--release`（有 `阻塞` 即红）：留到零阻塞判定那一步再上。
+          node tools/check-baseline.mjs
+
       - name: 核检出面（打印实际被验的树；✗ 让人以为验了 pin）
         working-directory: engine
         run: |
