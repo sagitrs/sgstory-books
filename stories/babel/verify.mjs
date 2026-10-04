@@ -3093,6 +3093,39 @@ head('★㊸ `books#259` 裁 4：快存放页脚（可存判据 ＋ 战中禁存
 /* ★本格**未**覆盖（✗ 免得读者当已护）：①页脚元素在**真实 DOM** 里可见/禁用 ②点它之后**宿主槽真有值**
  *   —— 两者都要真 DOM ⇒ 归 `tools/e2e-*`（本仓 210／216 族 ✓）。本格断的是**入口的决定与动作** ✓。 */
 
+/* ── ★`sgstory#1991`：登记过的域键**必须在审计面看得见**（两向 ＋ 两刀）──────────────────
+ *
+ * 为什么要有这一格：本笔（`babelRun` 进保存域契约）原先**只有一行、没有判据** —— 下刀（把那行摘掉）
+ * `verify.mjs` **仍全绿** ✗ ⇒ 「加了键但漏登记」这类错**判据看不见** ✓。本格补上那对牙 ✓。
+ * 断什么（两向）：①**声明表里的每个键** ⇒ 要么进 `envelope().domains`（本局有值 ✓）要么进 `audit().absent`
+ *   （已声明但本局没写过 ✓ —— 两种**都算**"审计面看得见" ✓）②**未登记**的键 ⇒ **两个面都不许出现** ✓
+ *   （★只断①的话，一个「恒把什么都报出来」的实现也会绿 ✗）。
+ */
+head('★㊹ `sgstory#1991`：登记的域键在审计面可见（两向）');
+{
+	const R = setup.RPG, B = setup.BABEL;
+	const 表 = B.保存域键 ?? [];
+	ok(Array.isArray(表) && 表.length > 0, '★`setup.BABEL.保存域键` 缺席或为空（一处表没导出？）');
+	const env = R.save.envelope(), au = R.save.audit();
+	const 可见 = (k) => env.domains.includes(k) || (au.absent ?? []).includes(k);
+	/* ★★必须**点名**本票那个键（`babelRun`）—— ✗ 不能只断"表里的键都可见" ✗：
+	 *   那条断言的**期望来自被测物自己**（`B.保存域键`）⇒ 把 `babelRun` 从表里**摘掉**，
+	 *   期望也跟着缩 ✗ ⇒ **刀A 实测仍全绿** ✗（我第一次就写成这样 ✓，下刀才发现 ✓）。
+	 *   ⇒ **独立的那一句**：本票要的就是"这个键在审计面看得见" ✓，与表里有没有它**无关** ✓。 */
+	ok(可见('babelRun'), `★本票那个键 \`babelRun\` 在审计面**看不见**（domains ${JSON.stringify(env.domains)}／absent ${JSON.stringify(au.absent)}）—— 保存域契约没登记它`);
+	const 漏 = 表.filter((k) => !可见(k));
+	ok(漏.length === 0, `★声明过的域键在审计面看不见：${JSON.stringify(漏)}（domains ${JSON.stringify(env.domains)}／absent ${JSON.stringify(au.absent)}）`);
+	/* ★反面臂：**未登记**的键不许被"顺带报出来" ✓ */
+	const 测试键 = '__未登记的测试键__';
+	const 存 = State.variables[测试键];
+	State.variables[测试键] = 1;
+	const env2 = R.save.envelope(), au2 = R.save.audit();
+	const 溜进 = env2.domains.includes(测试键) || (au2.absent ?? []).includes(测试键);
+	if (存 === undefined) delete State.variables[测试键]; else State.variables[测试键] = 存;
+	ok(!溜进, `★**未登记**的键出现在了审计面（domains ${JSON.stringify(env2.domains)}）⇒ 那不是"看得见"，是"什么都报"`);
+	console.log(`  域键审计：声明 ${表.length} 个全可见 ✓｜未登记键未溜进 ✓（domains ${env.domains.length} 个）`);
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
