@@ -3453,6 +3453,10 @@ head('㊿ `books#280` ⑤：宝箱硬开（持工具必开·代价先明示·耐
 	const 位存 = map.current;
 	const 甲存 = JSON.parse(JSON.stringify(State.variables.span1Arc?.chests ?? null));
 	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	/* ★`books#280` ⑦：本格在**战后**语境下测箱的动作面 —— 箱入口自 ⑦ 起挂「本层已战('L4')」门
+	 *   ⇒ 不摆这个前置，本格末两条（「锁死后两入口皆闭」）会**因为门本来就没开**而假绿（同族：读数对、牙不在）。 */
+	const 战存2 = JSON.parse(JSON.stringify(State.variables.babelRun?.已战 ?? null));
+	(State.variables.babelRun ??= {}); (State.variables.babelRun.已战 ??= {}); State.variables.babelRun.已战.L4 = true;
 	const 行 = () => __host.host.lines().map((x) => String(x));
 	const 面 = (re) => (map.locations.get('L4').actions ?? []).find(
 		(a) => re.test(String(typeof a.text === 'function' ? a.text() : a.text)));
@@ -3501,6 +3505,7 @@ head('㊿ `books#280` ⑤：宝箱硬开（持工具必开·代价先明示·耐
 	} finally {
 		if (甲存 === null) delete State.variables.span1Arc.chests; else State.variables.span1Arc.chests = 甲存;
 		State.variables.inventory = 包存;
+		if (战存2 === null) delete State.variables.babelRun.已战; else State.variables.babelRun.已战 = 战存2;
 		if (位存) map.moveTo(位存);
 	}
 }
@@ -3597,6 +3602,92 @@ head('第 52 格 `books#280` ⑥：首载变体判定（无档 ⇒ 不出「从�
 			+ '｜有档 ⇒ 出 ✓｜单槽读失败不传播 ✓');
 	} finally {
 		if (原宿主 === undefined) delete globalThis.SugarCube; else globalThis.SugarCube = 原宿主;
+	}
+}
+
+/* ── 第 53 格 `books#280` ⑦：L4 宝箱的**先后**（钥匙先到 ⇒ 箱子必可开；✗ 教学段里的「可能永久锁死」）────
+ *
+ * 病（操作者亲测 17:3x）：L4 谷穗崖只见「硬开」＋那句「砸不开就再也打不开了」——教学范围内给玩家一个
+ *   **可能永久锁死**的箱子。勘察：钥匙由**胜利**支「必掉」（`弧必掉.L4 = ['iron-key']`，
+ *   `world/encounters.js` 的胜利支循环），而箱的两个入口此前**只**判 `!L4已了()` ⇒ **未战**（＝还没有钥匙）
+ *   就能看见硬开。修（操作者示）：**门跟着钥匙走** —— 箱只在战后出现（那时钥匙必在手）⇒「用钥匙开」必成；
+ *   「硬开」保留作**无钥匙兜底**（✗ 不删）。
+ *
+ * 断什么：① **战前**箱两入口**均不可见**（教学段先打后开）② **真战斗**（同一装置：表覆写成软目标 ＋
+ *   钉死随机流）⇒ 胜后钥匙**真在包**（活行读数：必掉不是只写在表上）③ 战后「用铁钥匙开箱」可见
+ *   且**必成**（点它 ⇒ 箱开 ＋ 甲入包 ＋ 钥匙被取走）④ **兜底仍在**：已战但**无钥匙**时「硬开」可见
+ *   （警示文案在；持镐 ⇒ 必开）⑤ **正控**：已了 ⇒ 两入口皆闭。
+ * 刀（记在提交信息）：把 `L4可开()` 里的 `本层已战('L4')` 拆掉 ⇒ ① 红，复原回绿。
+ */
+head('第 53 格 `books#280` ⑦：L4 宝箱先后（钥匙先到 ⇒ 必可开；硬开留作无钥匙兜底）');
+{
+	const 位存 = map.current;
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 甲存 = JSON.parse(JSON.stringify(State.variables.span1Arc ?? null));
+	const 战存 = JSON.parse(JSON.stringify(State.variables.babelRun?.已战 ?? null));
+	const 原表 = R.encounterTable?.('span1') ?? null;
+	const 面 = (re) => (map.locations.get('L4').actions ?? []).find(
+		(a) => re.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+	/** 已战账（**可写**的引用；`delete (… ??= {}).x` 不是合法左值 ⇒ 单独立一个）。 */
+	const 已战账 = () => ((State.variables.babelRun ??= {}).已战 ??= {});
+	const 钥匙开 = 面(/^用铁钥匙开箱/), 硬开 = 面(/^硬开/);
+	const 有甲 = () => (State.variables.inventory ?? []).some((x) => x.id === 'mail');
+	try {
+		ok(!!钥匙开 && !!硬开, '★L4 箱的两入口不全（动作表变了？）');
+		map.moveTo('L4');
+		State.variables.span1Arc = {};                       // 箱态清零（✗ 受前面格影响）
+		delete 已战账().L4;
+
+		/* ① 战前：两入口皆不可见 */
+		ok(钥匙开.when() === false, '★**战前**「用铁钥匙开箱」竟然可见');
+		ok(硬开.when() === false, '★**战前**「硬开」竟然可见 —— 教学段里就会出现那个**可能永久锁死**的箱子（⑦ 的病）');
+
+		/* ② 真战斗（表覆写成软目标 ＋ 钉死随机流）⇒ 胜 ⇒ 钥匙**真在包** */
+		if (原表) {
+			R.registerEncounterTable('span1', Object.assign({}, 原表, {
+				L4: { encounters: [{ ref: 'verify-drop-dummy', weight: 1 }], loot: [] },   // 空随机掉落 ⇒ 断的就是「必掉面」
+			}));
+		}
+		State.variables.inventory = [];
+		R.give('sword'); R.equip('sword');                    // 徒手＝非致命（打晕 ≠ 胜利）⇒ 持械走致命路
+		D.Player.hp = D.Player.maxHp; D.Player.nonlethal = 0;
+		R.rng.set(() => 0.99);                                // 必中重击 ⇒ 软目标一击毙
+		await B.fight({ interactive: false });
+		R.rng.reset();
+		ok(R.has('iron-key'), '★L4 战后钥匙**没在包**（「必掉」只写在表上、没真给）—— ⑦ 的门就挂在它身上');
+		ok(State.variables.babelRun?.已战?.L4 === true, '★战后「已战」账没记上（⑦ 的门读的就是它）');
+
+		/* ③ 战后：钥匙开可见且**必成** */
+		ok(钥匙开.when() === true, '★战后（钥匙必在手）「用铁钥匙开箱」却不可见');
+		State.variables.inventory = State.variables.inventory.filter((x) => !['mail', 'iron-key'].includes(x.id));
+		R.give('iron-key');
+		钥匙开.action();
+		ok(State.variables.span1Arc?.chests?.['chest-l4']?.opened === true, '★钥匙开没有把箱记为 opened');
+		ok(有甲(), '★钥匙开没给铁环甲');
+		ok(!R.has('iron-key'), '★钥匙开没有**消耗**钥匙');
+
+		/* ④ 兜底仍在：已战 ＋ **无钥匙** ⇒ 硬开可见（警示文案在；持镐 ⇒ 必开） */
+		State.variables.span1Arc = {};
+		delete 已战账().L4; 已战账().L4 = true;
+		State.variables.inventory = [];
+		ok(钥匙开.when() === false, '★无钥匙时「用铁钥匙开箱」竟可见');
+		ok(硬开.when() === true, '★已战但无钥匙时「硬开」不见了 —— 兜底分支被 ⑦ 顺手删了？');
+		ok(/砸不开就再也打不开了/.test(String(硬开.text)), '★兜底入口未明示不可逆代价');
+		R.give('pick');
+		硬开.action();
+		ok(State.variables.span1Arc?.chests?.['chest-l4']?.broken === true,
+			'★持镐硬开没砸开（兜底分支应是**必成**的：⑤ 的保证）');
+
+		/* ⑤ 正控：已了 ⇒ 两入口皆闭 */
+		ok(钥匙开.when() === false && 硬开.when() === false, '★箱已了，两入口却仍有可用的');
+		console.log('  L4 箱：战前两入口闭 ✓｜真战斗必掉钥匙 ✓｜战后钥匙开必成（耗钥匙）✓｜无钥匙兜底硬开必成 ✓｜已了两闭 ✓');
+	} finally {
+		if (原表) R.registerEncounterTable('span1', 原表);
+		R.rng.reset();
+		State.variables.inventory = 包存;
+		if (甲存 === null) delete State.variables.span1Arc; else State.variables.span1Arc = 甲存;
+		if (战存 === null) delete State.variables.babelRun.已战; else State.variables.babelRun.已战 = 战存;
+		if (位存) map.moveTo(位存);
 	}
 }
 
