@@ -14,6 +14,10 @@ on:
     paths:
       - 'stories/babel/**'
       - 'tests/scenario/**'      # ★#1814 末件：场景链住这里 ⇒ 只改它也必须触发（✗ 漏则「改了不跑」）
+      # ★`books#295` 装置缺口（tester-3 核出）：门档住在这里 —— 而**只改门档**的笔此前**不触发 CI**
+      #   ⇒ 「门跑在 CI 里、却测不到门」：改坏一门（或改完忘了自检）CI 一句话都不说。
+      #   触发面要含它：`tests/gates/**`（本 workflow 跑的正是 `tests/gates/*.mjs`）。
+      - 'tests/gates/**'
       - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
@@ -24,6 +28,10 @@ on:
     paths:
       - 'stories/babel/**'
       - 'tests/scenario/**'      # ★#1814 末件：场景链住这里 ⇒ 只改它也必须触发（✗ 漏则「改了不跑」）
+      # ★`books#295` 装置缺口（tester-3 核出）：门档住在这里 —— 而**只改门档**的笔此前**不触发 CI**
+      #   ⇒ 「门跑在 CI 里、却测不到门」：改坏一门（或改完忘了自检）CI 一句话都不说。
+      #   触发面要含它：`tests/gates/**`（本 workflow 跑的正是 `tests/gates/*.mjs`）。
+      - 'tests/gates/**'
       - 'tools/**'               # ★演练器（rehearse-workflow.py）改动同样须触发
       - '.github/engine-ref.json'
       - '.github/workflows/babel-tests.yml'
