@@ -90,7 +90,8 @@ const 选目标 = (options, ctx) => (/草药糊|绷带/.test(String(ctx?.上次�
 const 武器字 = /长剑|短剑|铁镐|斧头|铁锹|匕首/;
 const 防具字 = /盾|甲|衣|铠|盔/;
 const 是武器项 = (o) => 武器字.test(String(o.text)) && !防具字.test(String(o.text));
-const 选攻击 = (options) => options.find((o) => /已装备/.test(o.text) && 是武器项(o))          // ① 装上那件
+const 选攻击 = (options, ctx) => options.find((o) => ctx?.手上快用 != null && o.value === ctx.手上快用)   // ① ★结构锚：手上那把（值形比对）
+	?? options.find((o) => /已装备/.test(o.text) && 是武器项(o))          // ① 装上那件
 	?? options.find((o) => 是武器项(o) && !/跳过|探索/.test(o.text))                          // ② 其余武器项
 	?? options.find((o) => /攻击|打击|挥|砍|劈/.test(o.text) && !防具字.test(o.text) && !/跳过|探索/.test(o.text))  // ③ 泛攻击词（仍排除防具）
 	?? options.find((o) => /空手/.test(o.text));                                             // ④ 空手打击
@@ -99,7 +100,7 @@ const STRATEGIES = {
 	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
 	'纯攻': (options, ctx) => {
 		if (目标步(options)) return 选敌方(options);
-		const 攻 = 选攻击(options);
+		const 攻 = 选攻击(options, ctx);
 		if (攻) return 攻.value;
 		const 空手 = options.find((o) => /空手/.test(o.text));
 		if (空手) return 空手.value;
@@ -112,7 +113,7 @@ const STRATEGIES = {
 			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
 			if (治) return 治.value;
 		}
-		const 攻 = 选攻击(options);
+		const 攻 = 选攻击(options, ctx);
 		if (攻) return 攻.value;
 		return options[0].value;
 	},
@@ -449,6 +450,17 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				 *   先前只有「自己血比」⇒ 目标步**一律选敌方** ⇒ `防疗` 夹具**永远不会治疗**
 				 *   （把治疗品从各 1 件加到各 4 件，读数与回合数**一字不变** —— `tester-3` 实测）。 */
 				上次选文案: 轨迹.at(-1)?.选文案 ?? null,
+				/* ★**结构锚**（`developer-9` 02:07 建议；正与「文案可能陈旧 ⇒ ✗ 凭它判来源」同族）：
+				 *   引擎的快捷用件项值形＝`quick:<下标>:use`（下标＝**库存下标**，与件选项 `String(i)` 同源）
+				 *   ⇒ 由库存里 `equipped===true` 的那件解出下标 ⇒ 「手上那把」按**件 id** 认，✗ 不靠「已装备」字样。 */
+				手上快用: (() => {
+					try {
+						const 装 = SC.setup.RPG.equippedIn?.('weapon') ?? null;
+						if (!装) return null;
+						const i = (V().inventory ?? []).findIndex((x) => x.equipped === true && x.id === 装.id);
+						return i >= 0 ? `quick:${i}:use` : null;
+					} catch { return null; }
+				})(),
 			};
 			const pick = 策略(o, ctx);
 			const hit = o.find((x) => x.value === pick) ?? o[0];
