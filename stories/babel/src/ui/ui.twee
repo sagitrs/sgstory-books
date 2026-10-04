@@ -9,7 +9,7 @@
 	<span class="panel" data-panel="hp"></span>｜<span class="panel" data-panel="location"></span>｜<span class="panel" data-panel="trauma"></span>｜<span class="panel inventory-links" data-panel="inventory"></span>
 </div>
 <div class="noticebar" data-panel="notice"></div>
-/* ★`books#280` ⑧（操作者建议 · 0.0.3）：**背包视图** —— 常驻入口（每段落都在）＋全道具列表＋就地使用。
+/* ★`books#280` ⑧（操作者建议 · 后续版本）：**背包视图** —— 常驻入口（每段落都在）＋全道具列表＋就地使用。
  *   与 `notice` 面同族：twee 只留骨架，内容一律由 `ui/bag.js` 的 `R.bagHTML()` 给（面板注册名 `bag`）。 */
 <div class="bagbar" data-panel="bag"></div>
 /* ★`books#188` P1-2／P1-4：**战斗面**两块 —— 敌组状态与治疗读数（只战斗内有内容，平时为空）。
