@@ -12,7 +12,7 @@
 
 测试工具根：tools/
 
-明细见 [`tools/README.md`](tools/README.md)，其中九件工具逐件载明四项内容，分别是清单、固定命令、期望读数与设立理由。
+明细见 [`tools/README.md`](tools/README.md)，其中十三件工具逐件载明四项内容，分别是清单、固定命令、期望读数与设立理由。
 <!-- test-tool-root: tools/ -->
 
 **根外具名例外。** 本仓的测试工具根是 `tools/`，但反向搜索证实存在竞争根，共五处，因此本声明的口径是逐处具名，而不是声称唯一根。这五处分别如下。第一处是 [`tests/scenario/run.mjs`](tests/scenario/run.mjs)，它是场景链 runner，NOT_JUDGED 基线也放在那里。第二处是 [`stories/babel/verify.mjs`](stories/babel/verify.mjs)，它是故事侧装配自检。第三处是 [`stories/babel/scenarios/validate.mjs`](stories/babel/scenarios/validate.mjs)，它是清单自检。第四处是 [`stories/babel/scenarios/knives.sh`](stories/babel/scenarios/knives.sh)，它是清单自检的刀，共十五条，用来断哪一条红。第五处是 [`stories/babel/scenarios/render-table.mjs`](stories/babel/scenarios/render-table.mjs)，它是清单表渲染，票面表就是它的输出。
@@ -25,7 +25,16 @@
 
 ### 明细
 
-以下明细按 `#300` 条款⑤的「两次法则」入册。用法逐件见各档文件头。
+以下明细按 `gsvector-process#300` 条款⑤「**落盘判准与准入**」（条文落点 `rules/tester.md`）入册。用法逐件见各档文件头。
 
 - [`check-refs-recheck.mjs`](tools/check-refs-recheck.mjs) 是引用核的独立复算器，既是同名判据的第二实现，也做独立清点。它枚举整份清单，而不使用被核对象的字段白名单，因此对账差集就是覆盖缺口。命令是 `node tools/check-refs-recheck.mjs --engine <引擎检出@pin> --compare`。
 - [`e2e-drive.mjs`](tools/e2e-drive.mjs) 是真产物驾驶层，通过 `import` 上一件的 `boot()` 工作。它读档往返，涉及 `Save.slots` 与 `Engine.show`，也做自环就地重绘与正文行读数。命令是 `node tools/e2e-drive.mjs --engine <引擎检出@pin>`。加上 `--require <面>` 可以把明账面升为硬判。
+- [`e2e-280-heal-feedback.mjs`](tools/e2e-280-heal-feedback.mjs) 是 `books#280` ⑨（治疗反馈 ＋ 页脚 HP 随用刷新）的**真浏览器臂**：
+  三路（战斗面板／背包战外／背包战中提交）各断【文本 `HP X → Y`】与【页脚 DOM 真变】，`--selftest` 双刀。
+  命令形 `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>`；
+  退出码 `0` 过／`1` 红／`2` **装置错**（缺浏览器或产物 ⇒ ✗ 不当判据红）。★本件**暂未接 CI**（仓内工具，体例同 `rehearse-workflow.py`）。
+- [`check-premerge.mjs`](tools/check-premerge.mjs) 是**合前检查器**（把 `tools/README.md` 附三从文字变成可跑件）：
+  ① 基座同尖（`merge-base(现 main, 票头) === 现 main`）② 回退行 0（对现 main 的 `--numstat` 无「只删不加」的档）
+  ③ 给了 `--base` 再算 `patch-id`（逐字同 ⇒ 纯 rebase ⇒ 先前读数沿用）。命令形 `node tools/check-premerge.mjs --head <票头> [--base <旧头>]`；
+  `--selftest` 合成例 7 例（真 `git init` 仓）；退出码 `0` 全绿（**打印两条读数**）／`1` 判据红（具名）／`2` 装置错。
+  ★明账：patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；**纯改名／二进制**档请人眼看。
