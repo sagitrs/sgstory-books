@@ -11,6 +11,8 @@
 | 路径 | 一句话用途 |
 |---|---|
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
+| `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
+| `tools/check-baseline.mjs` | 基线核（与声明基线比对；不符即报，✗ 不自动刷新） |
 | `tools/check-refs.knives.sh` | 引用核的正向刀，每刀须红在对的支 |
 | `tools/check-refs-docs.knives.sh` | docs 报告态的负向刀 |
 | `tools/check-refs-recheck.mjs` | 引用核的独立复算器，即第二双眼睛 |
