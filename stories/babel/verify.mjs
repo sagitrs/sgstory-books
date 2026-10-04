@@ -3213,6 +3213,48 @@ head('㊺ `books#259` 裁（writer 第二条 P1）：胜利后未采净、未明
 	}
 }
 
+/* ── ㊻ `books#259` 裁 4 **完形**：**系统入口只在页脚**（剧情选项面不得有快存／快读）─────────────
+ *
+ * 病（writer 补充观察一 · `#259` 评论 5980218866）：L1 首战后与 L2 的真实页面里，正文 `.choice-box` 内
+ *   仍有「快存（记下这一刻）」「快读（回到上一次快存）」两钮（另有页脚 `.footersave` 那一个）⇒ **重复入口**。
+ * 裁（领队 13:1x）：**旧 choice-box 双钮移除** —— 一处源动作区清理·保页脚唯一入口·**战内禁存语义不变**。
+ *
+ * 断什么：
+ *   ① 任一**地点**的动作表文本**不得含系统入口词**（`快存／快读／管理`）—— 读数须 0 处；
+ *   ② **正控**（✗ 别把「删干净」读成合规）：系统入口**仍在页脚** —— `页脚可存／页脚快存` 在位，
+ *      且 `:: PassageFooter` 源里 `data-footer="save"` 在；
+ *   ③ 战内语义**不变**：战中 `页脚可存()` 为假（与 ㊸ 同源；本格只作「本笔没动它」的锚）。
+ * 刀（记在提交信息）：把双钮**塞回**（往某层动作表加一条 `快存（记下这一刻）`）⇒ ① 红，复原回绿。
+ */
+head('㊻ `books#259` 裁 4 完形：系统入口只在页脚（剧情选项面须无快存／快读）');
+{
+	const B = setup.BABEL;
+	const 词 = /快存|快读|管理/;
+	const 命中 = [];
+	for (const [id, loc] of map.locations) {
+		for (const a of (loc.actions ?? [])) {
+			const t = String(typeof a.text === 'function' ? a.text() : a.text);
+			if (词.test(t)) 命中.push(`${id}：${t}`);
+		}
+	}
+	ok(命中.length === 0, `★剧情选项面仍有系统入口（须只在页脚）：${JSON.stringify(命中.slice(0, 6))}`
+		+ `${命中.length > 6 ? `（共 ${命中.length} 处）` : ''}`);
+	/* ② 正控：系统入口**仍在页脚**（✗ 别把「删干净」读成合规） */
+	ok(typeof B.页脚可存 === 'function' && typeof B.页脚快存 === 'function',
+		`★页脚系统入口不在位（页脚可存=${typeof B.页脚可存}／页脚快存=${typeof B.页脚快存}）`
+		+ ' —— 那就不是「移到页脚」，是「删掉了」');
+	const 页脚源 = fs.readFileSync(path.join(here, 'src', 'ui', 'ui.twee'), 'utf8');
+	ok(/::\s*PassageFooter/.test(页脚源) && /data-footer="save"/.test(页脚源),
+		'★`:: PassageFooter`（或它的 `data-footer="save"`）不在源里 —— 页脚系统区被拆了？');
+	/* ③ 战内语义不变（同源；判据本体在 ㊸，本格只作「本笔没动它」的锚） */
+	const 存战 = B.战中;
+	try {
+		B.战中 = true;
+		ok(B.页脚可存() === false, '★战中页脚变成可存了 —— 本笔只该删重复入口，✗ 动禁存语义');
+	} finally { B.战中 = 存战; }
+	console.log('  系统入口：地点动作表 0 处 ✓｜页脚在位（data-footer=save）✓｜战中仍禁存 ✓');
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
