@@ -21,6 +21,7 @@
  *   python3 <引擎>/build.py <本仓>/stories/babel --out babel-trial.html   # 先构建（harness 有新鲜度守卫）
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出>
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出> --selftest          # 刀：摘一个注册 ⇒ A 须红
+ *   ⚠ 臂 D（`sgstory#1983` css 落宿主）须引擎含 `RPG.panelCSS`；缺则**记声明·不判红** ✓。
  *   0 = 全过（含 ★`#1983` 声明的 css 落宿主 inline style）；1 = 有红；2 = 环境错（引擎根／产物／jsdom，具名）
  */
 import process from 'node:process';
@@ -83,6 +84,10 @@ async function 判(env) {
 	 *   本臂判**故事侧**是否为它落 `style.setProperty` —— ★判**输出**（`getPropertyValue`），
 	 *   ✗ 不在故事侧再算一次「哪个键生效」（那是引擎 `tintOf` 的活）✓。
 	 *   ★用**测试用面板**（`#1983` 领队裁 (2)：✗ 不让 A2 实面稀释关键路径 ✓）。 */
+	/* ★**能力门**（`tester-3` 建议·照 `pack-manifest` 与本装置 C 臂的形）：引擎树若**还没有** `RPG.panelCSS`
+	 *   （早于 `sgstory#1983` 落点）⇒ 本臂**记声明·✗ 不判红** ⇒ pin 树本地复现不会因此撞红 ✓。 */
+	const 有panelCSS = typeof R.panelCSS === 'function';
+	if (!有panelCSS) console.log('  ⏳【D css 落宿主】**记声明**：`RPG.panelCSS` 未在位（本引擎树早于 `sgstory#1983` 的落点）⇒ 本臂**不判红** ✓；要判它请用含 `panelCSS` 的引擎树 ✓');
 	const 测试域 = '[data-panel="ut-css"]';
 	const 测试变量 = '--ut-tint';
 	const 测试色 = 'rgb(1, 2, 3)';
@@ -101,14 +106,14 @@ async function 判(env) {
 		? el.style.getPropertyValue(测试变量) : null;
 	const 宿主D = s.doc.querySelector(测试域);
 	读数.臂D_css = { 返回: 刷D, 宿主在: !!宿主D, 实得: 取值(宿主D), 期望: 测试色 };
-	ok(取值(宿主D) === 测试色,
+	ok(!有panelCSS || 取值(宿主D) === 测试色,
 		`★【D css 落宿主】面板声明的 \`${测试变量}\` 应**逐字**落到宿主 inline style＝${S(测试色)}`
 		+ `（实得 ${S(读数.臂D_css.实得)}；刷新返回 ${S(刷D)}）`
 		+ ` —— ★写了 \`css\` 却没落到 \`setProperty\` ⇒ 本格红 ✓`);
 	/* 反向：未声明 `cssVar` 的面板（hp）⇒ 不得被写上我们的变量 ✓ */
 	const 宿主hp = s.doc.querySelector('.statusbar [data-panel="hp"]');
 	读数.臂D_反向 = { hp宿主在: !!宿主hp, hp该变量取值: 取值(宿主hp) };
-	ok(读数.臂D_反向.hp该变量取值 === '',
+	ok(!有panelCSS || 读数.臂D_反向.hp该变量取值 === '',
 		`★【D 反向】未声明 \`cssVar\` 的面板**不得**被写上该变量（实得 ${S(读数.臂D_反向.hp该变量取值)}）`
 		+ ` ⇒ 「没声明」与「声明了空」必须不同形 ✓`);
 
