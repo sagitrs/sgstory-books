@@ -90,6 +90,61 @@ async function 判(env) {
 		+ ' ⇒ 局部刷新破了（玩家侧表现为：刷一处、闪全条／丢焦点 ✓）');
 	ok(后.hp === 前.hp + 1, `★【B 域刷新】hp 的渲染计数应**恰 +1**（实得 ${前.hp} ⇒ ${后.hp}）✓`);
 
+	/* ── 臂 C：**按域刷新的局部性**（`#1985` 落的 `refreshDomain` ✓）——
+	 *   ★故事侧 5 个面板目前**都未声明域** ✗（`refresh` 走缺省 `null`）⇒ 产品侧「段内改一域」**尚未接线** ✓。
+	 *     故本臂用**探针面板**（自建两个域 ＋ 自插宿主）在**真 DOM ＋ 真 writer** 上断「按域只刷该域」✓。
+	 *   ★这一条**只证 API 与 writer 的局部性**；「谁在段内去调刷新」＝产品侧接线，✗ 不在本臂（见头注明账）。 */
+	/* ★**缺席闸**（本仓惯例：缺席 ⇒ **记声明、不判红** ✗ 不假装通过 ✓）：
+	 *   本仓 `engine-ref.json` 的 pin 若**早于** `#1985`（`refreshDomain` 落点），此面在夜窗会因
+	 *   「`R.refreshDomain is not a function`」**假红** ✗ ⇒ 这里**先探在位**：缺席 ⇒ 印一行**记声明**并
+	 *   **跳过本臂的断言**（✗ 不记红 ✓）；pin 抬升后**本臂自动开咬** ✓（✗ 不需要再改档 ✓）。 */
+	if (typeof R.refreshDomain !== 'function' || typeof R.panelsInDomain !== 'function') {
+		console.log('  ⏳【C 按域刷新】**记声明**：`RPG.refreshDomain`／`panelsInDomain` 未在位'
+			+ '（本仓 pin 早于 `#1985` 的落点）⇒ 本臂**不判红** ✓；pin 抬升后自动开咬 ✓');
+		读数.臂C_缺席 = { refreshDomain: typeof R.refreshDomain, panelsInDomain: typeof R.panelsInDomain };
+	} else {
+	{
+		const 域A = 't1763-dom-a', 域B = 't1763-dom-b';
+		const 插宿主 = (id) => {
+			const el = s.doc.createElement('span');
+			el.setAttribute('data-panel', id);
+			(s.doc.querySelector('.statusbar') ?? s.doc.body).appendChild(el);
+			return el;
+		};
+		插宿主('t1763-dom-a1'); 插宿主('t1763-dom-b1');
+		let 注册错 = null;
+		try {
+			R.registerPanel('t1763-dom-a1', { name: '域A探针', host: '[data-panel="t1763-dom-a1"]', refresh: 域A, render: () => '<b>A</b>' });
+			R.registerPanel('t1763-dom-b1', { name: '域B探针', host: '[data-panel="t1763-dom-b1"]', refresh: 域B, render: () => '<b>B</b>' });
+		} catch (e) { 注册错 = e; }
+		ok(注册错 === null, `★【C 按域刷新】探针面板注册失败（${注册错 && 注册错.message}）⇒ 按域面判不了 ✓`);
+
+		const 前C = Object.fromEntries(面板.concat(['t1763-dom-a1', 't1763-dom-b1']).map((id) => [id, R.panelRenderCount(id)]));
+		const 域列 = (() => { try { return R.panelsInDomain(域A); } catch (e) { return { 抛: e.message }; } })();
+		const 靶C = (() => { try { return R.refreshDomain(域A); } catch (e) { return { 抛: e.message }; } })();
+		await new Promise((r) => setTimeout(r, 50));
+		const 后C = Object.fromEntries(面板.concat(['t1763-dom-a1', 't1763-dom-b1']).map((id) => [id, R.panelRenderCount(id)]));
+		读数.臂C_按域 = { 域列, 返回: 靶C, 前: 前C, 后: 后C };
+		ok(JSON.stringify(域列) === JSON.stringify(['t1763-dom-a1']),
+			`★【C 按域刷新】\`panelsInDomain('${域A}')\` 应**恰**列出域 A 的面板（实得 ${S(域列)}）✓`);
+		ok(靶C && JSON.stringify(靶C.rendered) === JSON.stringify(['t1763-dom-a1']) && 靶C.无面板 === false,
+			`★【C 按域刷新】\`refreshDomain('${域A}')\` 应**恰**重绘域 A（实得 ${S(靶C)}）✓`);
+		const 动了他域C = 面板.concat(['t1763-dom-b1']).filter((id) => 后C[id] !== 前C[id]);
+		ok(动了他域C.length === 0,
+			`★【C 按域刷新】**改一域动了他域**（计数变了：${S(动了他域C.map((id) => [id, 前C[id], 后C[id]]))}）`
+			+ ' ⇒ 产品侧表现即「刷一处、闪全条／丢焦点」✓ —— ✗ 这是本票红线 ✓');
+		ok(后C['t1763-dom-a1'] === 前C['t1763-dom-a1'] + 1, `★【C 按域刷新】域 A 面板计数应**恰 +1**（实得 ${前C['t1763-dom-a1']} ⇒ ${后C['t1763-dom-a1']}）✓`);
+
+		/* 两个「不同形」：空域**抛**；未声明域 ⇒ `无面板: true`（✗ 不静默返回空 ✓） */
+		let 空域抛 = null;
+		try { R.refreshDomain(''); } catch (e) { 空域抛 = e.message; }
+		const 未声明 = (() => { try { return R.refreshDomain('t1763-未声明的域'); } catch (e) { return { 抛: e.message }; } })();
+		读数.臂C_两形 = { 空域抛, 未声明 };
+		ok(空域抛 !== null, '★【C 按域刷新】空域应**具名抛**（✗ 与「域里没面板」同形 ✓）');
+		ok(未声明 && 未声明.无面板 === true, `★【C 按域刷新】未声明的域应报 \`无面板: true\`（实得 ${S(未声明)}）✓`);
+	}
+	}
+
 	return { fails, 读数 };
 }
 
@@ -102,25 +157,31 @@ if (自检) {
 	const env2 = resolveEnv(process.argv[process.argv.indexOf('--engine') + 1]);
 	const html = path2.join(env2.repo ?? path2.resolve(import.meta.dirname, '..'), 'stories/babel/babel-trial.html');
 	const 原 = fs2.readFileSync(html, 'utf8');
-	const 找 = "registerPanel('trauma'";
-	if (!原.includes(找)) {
-		console.error(`✗ 刀替换**未命中**（产物里找不到 \`${找}\`）⇒ 刀没落在被测物上（产物变了就同步改刀 ✓）`);
-		process.exit(2);
+	/* 两条刀，各拔一处、各须红在**自己那一面**：
+	 *   ① 摘掉一个面板注册 ⇒ **A 面**红（注册⇒常驻渲染的前提没了 ✓）；
+	 *   ② 让 `refreshDomain` 忽略域（退化成全量）⇒ **C 面**红（「改一域✗动他域」是票面红线 ✓）。
+	 *   ⚠ 刀① 打在**产物文本**上，✗ 不改源码（改了不重建 ⇒ 刀没落在被测物上，本舰队栽过两次 ✓）。
+	 *   ⚠ 刀② 必须**保持返回形**（`无面板` 不给 `ids.length` 崩）—— 否则红是**装置级**（崩），
+	 *     按纪律「崩溃不算红」✗（我在 `#1985` 复核时先栽过一次 ✓）。 */
+	const 刀 = [
+		{ id: '摘掉一个注册', 找: "registerPanel('trauma'", 换: "registerPanel('__knife_off_trauma'", 面: /【A/ },
+		{ id: 'refreshDomain 忽略域', 找: "const ids = RPG.panelsInDomain(域);\n\tconst r = RPG.refreshPanels(ids, opts);\n\treturn { 域, rendered: r.rendered, skipped: r.skipped, 无面板: ids.length === 0 };",
+		  换: "const ids = null;\n\tconst r = RPG.refreshPanels(ids, opts);\n\treturn { 域, rendered: r.rendered, skipped: r.skipped, 无面板: false };", 面: /【C/ },
+	];
+	let 不中 = 0;
+	for (const k of 刀) {
+		if (!原.includes(k.找)) { console.error(`✗ 刀「${k.id}」替换**未命中**（产物里找不到靶）⇒ 刀没落在被测物上（产物变了就同步改刀 ✓）`); 不中++; continue; }
+		const 刀本 = html.replace(/\.html$/, `.__knife-${process.pid}-${不中}.html`);
+		fs2.writeFileSync(刀本, 原.replace(k.找, k.换));
+		try {
+			const { fails } = await 判({ ...env2, htmlPath: 刀本 });
+			const 命中 = fails.filter((f) => k.面.test(f));
+			if (命中.length) console.log(`✓ 刀「${k.id}」⇒ 该面**如期红**：${命中.length} 条（${命中[0].slice(0, 60)}…）`);
+			else { console.error(`✗ 刀「${k.id}」⇒ **零红**（该面没咬住）—— 判据没牙：${JSON.stringify(fails.slice(0, 2))}`); 不中++; }
+		} finally { try { fs2.unlinkSync(刀本); } catch { /* 清不掉不掩盖结论 */ } }
 	}
-	/* ★靶产物写到**另起的临时档**，再把 `htmlPath` **覆盖进 env** ——
-	 *   `e2e-harness` 的产物路径是写死的（`storyDir/babel-trial.html`）✗ 不认环境变量
-	 *   ⇒ 直接改 env 对象最干净（✗ 不动真产物、✗ 自造开关）✓。 */
-	const 刀本 = html.replace(/\.html$/, `.__knife-${process.pid}.html`);
-	fs2.writeFileSync(刀本, 原.replace(找, "registerPanel('__knife_off_trauma'"));
-	try {
-		const { fails } = await 判({ ...env2, htmlPath: 刀本 });
-		const 命中 = fails.filter((f) => /【A/.test(f)).length > 0;   // ★按**报文真前缀**匹配（✗ 别照抄我脑里的串）
-		if (命中) { console.log('✓ 刀（摘掉一个注册）⇒ A 面**如期红**：' + fails.filter((f) => f.includes('【A')).length + ' 条'); process.exit(0); }
-		console.error('✗ 刀（摘掉一个注册）⇒ **零红**（A 面没咬住）—— 判据没牙：' + JSON.stringify(fails.slice(0, 2)));
-		process.exit(1);
-	} finally { try { fs2.unlinkSync(刀本); } catch { /* 清不掉不掩盖结论 */ } }
+	process.exit(不中 ? 1 : 0);
 }
-
 let env;
 try { env = resolveEnv(process.argv[process.argv.indexOf('--engine') + 1]); }
 catch (e) { console.error(`✗ 环境错：${e.message}`); process.exit(2); }
