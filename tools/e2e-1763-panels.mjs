@@ -21,7 +21,8 @@
  *   python3 <引擎>/build.py <本仓>/stories/babel --out babel-trial.html   # 先构建（harness 有新鲜度守卫）
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出>
  *   node tools/e2e-1763-panels.mjs --engine <引擎检出> --selftest          # 刀：摘一个注册 ⇒ A 须红
- *   0 = 三面全过；1 = 有红；2 = 环境错（引擎根／产物／jsdom，具名）
+ *   ⚠ 臂 D（`sgstory#1983` css 落宿主）须引擎含 `RPG.panelCSS`；缺则**记声明·不判红** ✓。
+ *   0 = 全过（含 ★`#1983` 声明的 css 落宿主 inline style）；1 = 有红；2 = 环境错（引擎根／产物／jsdom，具名）
  */
 import process from 'node:process';
 import { resolveEnv, boot } from './e2e-harness.mjs';
@@ -75,6 +76,46 @@ async function 判(env) {
 	ok(第二次 && Array.isArray(第二次.skipped) && 第二次.skipped.length === 0
 		&& 状态栏面板.every((id) => 读数.臂A_第二刷.宿主[id].在),
 		`★【A 常驻】再刷一次后**状态栏宿主掉了或 skipped 非空**（实得 ${S(读数.臂A_第二刷)}）⇒ 不「常驻」✓`);
+
+	/* ── 臂 D：`sgstory#1983`（B2）—— 面板声明的 CSS 须**落到宿主 inline style** ──
+	 *
+	 *   引擎侧已在传：`refreshPanels` 调 writer 时带 `{ preserve, css: RPG.panelCSS(id) }`
+	 *   （`css = { [cssVar]: 当前色 }`；**缺声明 ⇒ `null`** ✓）。
+	 *   本臂判**故事侧**是否为它落 `style.setProperty` —— ★判**输出**（`getPropertyValue`），
+	 *   ✗ 不在故事侧再算一次「哪个键生效」（那是引擎 `tintOf` 的活）✓。
+	 *   ★用**测试用面板**（`#1983` 领队裁 (2)：✗ 不让 A2 实面稀释关键路径 ✓）。 */
+	/* ★**能力门**（`tester-3` 建议·照 `pack-manifest` 与本装置 C 臂的形）：引擎树若**还没有** `RPG.panelCSS`
+	 *   （早于 `sgstory#1983` 落点）⇒ 本臂**记声明·✗ 不判红** ⇒ pin 树本地复现不会因此撞红 ✓。 */
+	const 有panelCSS = typeof R.panelCSS === 'function';
+	if (!有panelCSS) console.log('  ⏳【D css 落宿主】**记声明**：`RPG.panelCSS` 未在位（本引擎树早于 `sgstory#1983` 的落点）⇒ 本臂**不判红** ✓；要判它请用含 `panelCSS` 的引擎树 ✓');
+	const 测试域 = '[data-panel="ut-css"]';
+	const 测试变量 = '--ut-tint';
+	const 测试色 = 'rgb(1, 2, 3)';
+	try {
+		R.registerPanel('ut-css', {
+			name: '测试色板', host: 测试域, render: () => '<span>ut</span>',
+			cssVar: 测试变量, tint: { 中毒: 测试色 }, tintOf: () => '中毒',
+		});
+	} catch (e) { /* 注册失败 ⇒ 下面宿主取值必空 ⇒ 本臂红（具名）✓ */ }
+	const 造宿主 = s.doc.createElement('div');
+	造宿主.setAttribute('data-panel', 'ut-css');
+	(s.doc.querySelector('.statusbar') ?? s.doc.body).appendChild(造宿主);
+	let 刷D = null;
+	try { 刷D = R.refreshPanels(['ut-css']); } catch (e) { 刷D = { 抛: e.message }; }
+	const 取值 = (el) => (el && el.style && typeof el.style.getPropertyValue === 'function')
+		? el.style.getPropertyValue(测试变量) : null;
+	const 宿主D = s.doc.querySelector(测试域);
+	读数.臂D_css = { 返回: 刷D, 宿主在: !!宿主D, 实得: 取值(宿主D), 期望: 测试色 };
+	ok(!有panelCSS || 取值(宿主D) === 测试色,
+		`★【D css 落宿主】面板声明的 \`${测试变量}\` 应**逐字**落到宿主 inline style＝${S(测试色)}`
+		+ `（实得 ${S(读数.臂D_css.实得)}；刷新返回 ${S(刷D)}）`
+		+ ` —— ★写了 \`css\` 却没落到 \`setProperty\` ⇒ 本格红 ✓`);
+	/* 反向：未声明 `cssVar` 的面板（hp）⇒ 不得被写上我们的变量 ✓ */
+	const 宿主hp = s.doc.querySelector('.statusbar [data-panel="hp"]');
+	读数.臂D_反向 = { hp宿主在: !!宿主hp, hp该变量取值: 取值(宿主hp) };
+	ok(!有panelCSS || 读数.臂D_反向.hp该变量取值 === '',
+		`★【D 反向】未声明 \`cssVar\` 的面板**不得**被写上该变量（实得 ${S(读数.臂D_反向.hp该变量取值)}）`
+		+ ` ⇒ 「没声明」与「声明了空」必须不同形 ✓`);
 
 	/* ── 臂 B：域刷新（局部性）——只刷 hp ⇒ 其余计数不动 ── */
 	const 前 = Object.fromEntries(面板.map((id) => [id, R.panelRenderCount(id)]));
@@ -164,6 +205,8 @@ if (自检) {
 	 *   ⚠ 刀② 必须**保持返回形**（`无面板` 不给 `ids.length` 崩）—— 否则红是**装置级**（崩），
 	 *     按纪律「崩溃不算红」✗（我在 `#1985` 复核时先栽过一次 ✓）。 */
 	const 刀 = [
+		/* ★`sgstory#1983` 的刀：把「落 css」那行改成**只算不落** ⇒ 【D】**具名红**、反向臂**仍绿** ✓ */
+		{ id: 'css 只算不落（不 setProperty）', 找: '根.style.setProperty(k, css[k]);', 换: 'void 0;', 面: /【D/ },
 		{ id: '摘掉一个注册', 找: "registerPanel('trauma'", 换: "registerPanel('__knife_off_trauma'", 面: /【A/ },
 		{ id: 'refreshDomain 忽略域', 找: "const ids = RPG.panelsInDomain(域);\n\tconst r = RPG.refreshPanels(ids, opts);\n\treturn { 域, rendered: r.rendered, skipped: r.skipped, 无面板: ids.length === 0 };",
 		  换: "const ids = null;\n\tconst r = RPG.refreshPanels(ids, opts);\n\treturn { 域, rendered: r.rendered, skipped: r.skipped, 无面板: false };", 面: /【C/ },
@@ -196,5 +239,5 @@ if (fails.length) {
 	for (const f of fails) console.error(`  ✗ ${f}`);
 	process.exit(1);
 }
-console.log('\n✓ e2e-1763 三面全过（注册⇒常驻渲染 ＋ 域刷新局部性 ＋ 计数恰 +1）');
+console.log('\n✓ e2e-1763 全过（含 ★`#1983` 声明的 css 落宿主 inline style）（注册⇒常驻渲染 ＋ 域刷新局部性 ＋ 计数恰 +1）');
 process.exit(0);
