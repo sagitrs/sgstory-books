@@ -17,6 +17,12 @@
 | `tools/e2e-harness.mjs` | 浏览器 e2e，使用真 DOM |
 | `tools/e2e-drive.mjs` | 真产物的驾驶层 |
 | `tools/e2e-216-sidebar-save-dom.mjs` | 侧栏存档按钮的**真 DOM 臂**（战中禁点·点了也不落档 · 战后恢复且真落档 · 读档后无残影）＋ 两把刀 |
+| `tools/e2e-209-host-save.mjs` | `books#209` 宿主存档门禁的真宿主臂（战中禁存／战后委托／读档后面板归零） |
+| `tools/e2e-210-reserved-slots.mjs` | `books#257` 保留槽四臂（动作层 ✗ 执行层 · 保护该在动作层） |
+| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源） |
+| `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
+| `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
+| `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面六臂：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面） |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |
@@ -177,3 +183,12 @@
 产物也落错位置，并把 `tests/unit/dist/**` 写进**引擎检出**（撞上工作流那道「引擎仓没被写脏」步）。
 ⇒ 本目录各装置的提示已改成**绝对路径**形（`books#220` dev-10 实测旧提示逐字跑不通）；权威步序见
 `.github/workflows/babel-tests.yml` 的「构建」步 ✓。
+
+## 11. `e2e-280-playtest.mjs` —— 操作者试玩批的真浏览器臂（L1 面）
+
+| 项 | 内容 |
+|---|---|
+| **清单** | `tools/e2e-280-playtest.mjs` —— 用真浏览器（Playwright/Chromium）走 writer 的复现路径，判**玩家真看得到／点得到**那面。六臂：①遭遇＝每层一次（**胜后入口不在**／**未胜·僵持后回屏仍在**）②采净正文「采得」**恰 1 行** ③**低层宝箱缺席闸**（宝箱是 **L5+** 抽签事件 ⇒ L1 本就不存在，记声明 ✗ 判红）④低层页脚**只有只读**「快存」标签 ⑤上行门三臂（未采未跳闭／跳过开／采净开）⑥跳过态**采集入口不在**（P1-3 一次一件不补） |
+| **固定命令** | `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-playtest.mjs --books <books 检出>`；`PW_DIR` 可指定 playwright 模块目录，`CHROME_BIN` 可指定浏览器。★跑前须构建**本仓根**的产物。 |
+| **期望读数** | 起手打印**候选钉死三项**（books HEAD ／ `engine-ref.json` 的 pin ／ 产物 sha1）——★**换候选重跑先核这三项**，任一不同则读数**不可与旧报告直接比对**。末行 `⇒ 通过 N｜失败 M`。退出码 `0`＝全过／`1`＝有红（逐条具名）／`2`＝**环境错**（引擎根／产物／jsdom／浏览器 ✓ ✗ 不当判据红）。 |
+| **设立理由** | `books#280`（操作者试玩批）的修正件（`#282`①`#283`④`#284`⑤`#285`③a）改的都是**玩家面上看得见的行为**；判据格（`verify.mjs` ㊼ 等）判的是**逻辑面** ⇒ 需要一层**真浏览器**把"玩家真看到什么"独立量出来。★本档**只报试玩／受控自动化读数**，✗ **不构成发布裁定**（发布裁定以判据格与门为准）。 |
