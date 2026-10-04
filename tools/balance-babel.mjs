@@ -348,7 +348,9 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 		}
 	};
 	const 原Act = R.act;
-	R.act = function (actor, itemId, target) {
+	/* ★`#203`：包装器**必须原样透传第 4 参 `action`**（引擎签名 `RPG.act(actor, itemRef, target, action='use', from)`）；
+	 *   旧形丢第 4 参（转调也只传三个）⇒ 凡传 `'equip'` 的调用都被改成缺省 `'use'` ⇒ 量到的「派发」是假的。 */
+	R.act = function (actor, itemId, target, action) {
 		const 前 = new Map([...名册.keys()].map((u) => [u, u?.hp]));
 		const 记录 = (ret) => {
 			const 掉 = [];
@@ -368,10 +370,19 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				选文案: m?.阵营 === '己方' ? (轨迹.at(-1)?.选文案 ?? null) : null,
 				靶: target ? String(target?.name ?? '?') : null,
 				结果: (ret && typeof ret === 'object') ? `${ret.status ?? '?'}${ret.reason ? '/' + ret.reason : ''}` : String(ret),
-				掉血: 掉,
+				/* ★`#203` 长期化（领队裁 2026-10-04）：「拒因**可判**」—— 录返回物其余字段（✗ 不带 `item` 整件）。
+				 *   本弧已用三回（heal 白过／`#217`／乙支 equip 派发）⇒ 常备。 */
+				明细: (ret && typeof ret === 'object') ? JSON.stringify(ret, (k, v) => (k === 'item' ? undefined : v)) : null,
+								/* ★`#203` 长期化（领队裁）：「拒因**可判**」—— 被拒那笔补记**派发 kind**（传入 action ＋ 件 id）。
+				 *   ⚠ 只报**可信两项**；✗ 不报「件上有没有 used/actions」—— 那两栏我加过，**阳性对照**（已知在册的 `sword`）也是空 ⇒ **探针错**，已撤 ✓。 */
+				派发: (() => {
+					const 名 = String(Array.isArray(itemId) ? itemId[0] : (itemId ?? ''));
+					return JSON.stringify({ 传入action: String(action ?? '(未传 ⇒ 缺省)'), 件id: 名 });
+				})(),
+掉血: 掉,
 			});
 		};
-		const ret = 原Act.call(this, actor, itemId, target);
+		const ret = 原Act.call(this, actor, itemId, target, action);
 		if (ret && typeof ret.then === 'function') return ret.then((r) => { 记录(r); return r; });
 		记录(ret);
 		return ret;
@@ -500,7 +511,7 @@ function 轨迹行(样) {
 	for (const r of 样.动作录 ?? []) {
 		const 掉 = (r.掉血 ?? []).map((x) => `${x.名}(${x.阵营}) −${x.掉血} ⇒ ${x.剩}${x.上限 ? '/' + x.上限 : ''}`).join('、') || '无人掉血';
 		行.push(`    #${r.序} ${r.阵营}${r.行动者}｜动作=${r.动作}${r.选文案 ? `（选：${r.选文案}）` : ''}`
-			+ `｜靶=${r.靶 ?? '—'}｜结果=${r.结果} → ${掉}`);
+			+ `｜靶=${r.靶 ?? '—'}｜结果=${r.结果} → ${掉}${r.明细 && /rejected/.test(r.结果) ? '｜★明细=' + r.明细 + (r.派发 ? '｜★派发=' + r.派发 : '') : ''}`);
 	}
 	if ((样.动作录 ?? []).length === 0) 行.push('    （本样本**一次动作都没有**：引擎入口 `RPG.act` 未被打过）');
 	return 行;
@@ -508,12 +519,14 @@ function 轨迹行(样) {
 
 /** 一串样本的小结：**动作次数／按结果分类**（接受 vs 各拒绝理由）＋双方总伤 —— 「分不清三件事」时先看这几样。 */
 function 轨迹小结(样本) {
+	let 拒 = 0, 拒带明细 = 0;
 	let 动作 = 0, 接受 = 0, 掉血过 = 0, 己方动作 = 0, 己方接受 = 0, 己方总伤 = 0, 敌方总伤 = 0;
 	const 结果表 = new Map();
 	for (const s of 样本) {
 		for (const r of s.动作录 ?? []) {
 			动作++;
 			结果表.set(r.结果, (结果表.get(r.结果) ?? 0) + 1);
+			if (/^rejected/.test(String(r.结果))) { 拒++; if (r.明细) 拒带明细++; }
 			const 接 = /^applied/.test(String(r.结果)) || r.结果 === 'true' || /^[0-9]+$/.test(String(r.结果));
 			if (接) 接受++;
 			if ((r.掉血 ?? []).length > 0) 掉血过++;
@@ -527,7 +540,8 @@ function 轨迹小结(样本) {
 	const 比例 = (a, b) => (b ? `${((a / b) * 100).toFixed(0)}%` : '—');
 	return `小结：样本 ${样本.length}｜**动作 ${动作} 次**（己方 ${己方动作}）｜判为接受 ${接受}/${动作}（${比例(接受, 动作)}；己方 ${己方接受}/${己方动作}）`
 		+ `｜有掉血的动作 ${掉血过}/${动作}｜己方总伤 ${己方总伤}（每场 ${样本.length ? (己方总伤 / 样本.length).toFixed(1) : '—'}）｜敌方总伤 ${敌方总伤}（每场 ${样本.length ? (敌方总伤 / 样本.length).toFixed(1) : '—'}）`
-		+ `\n  结果分布：` + [...结果表.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join('｜');
+		+ `\n  结果分布：` + [...结果表.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}×${v}`).join('｜')
+		+ `\n  ★拒因可判：rejected=${拒} 带明细=${拒带明细}` + (拒 > 0 && 拒带明细 < 拒 ? `（✗ 有 ${拒 - 拒带明细} 条被拒但**没带明细** ⇒ 录过程断了）` : '');
 }
 
 /** ★`books#203` 诊断要的那一行（作者提、领队批）：把**选择轨迹**逐格印出来 ——
