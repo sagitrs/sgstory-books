@@ -13,28 +13,28 @@
 [RPG] 遭遇表「span1」重复注册：将被覆盖。
 [RPG] 层表「span1」重复注册：将被覆盖。
   ★逐地点（直接量：出边 ＋ action ＋ 白名单）
-  ○ L1                 出边=0 action=7
-  ○ L2                 出边=0 action=6
-  ○ L3                 出边=0 action=7
-  ○ L4                 出边=0 action=8
-  ○ L5                 出边=0 action=7
-  ○ L6                 出边=0 action=7
-  ○ L7                 出边=0 action=7
-  ○ L8                 出边=0 action=8
-  ○ L9                 出边=0 action=6
+  ○ L1                 出边=0 action=5
+  ○ L2                 出边=0 action=4
+  ○ L3                 出边=0 action=5
+  ○ L4                 出边=0 action=6
+  ○ L5                 出边=0 action=5
+  ○ L6                 出边=0 action=5
+  ○ L7                 出边=0 action=5
+  ○ L8                 出边=0 action=6
+  ○ L9                 出边=0 action=4
   ○ L9-camp            出边=1 action=0
   ○ L10-camp           出边=1 action=2
   ○ L10-settlement     出边=1 action=3
   ○ L10-gate           出边=1 action=0
-  ○ L11                出边=1 action=5
-  ○ L12                出边=1 action=5
-  ○ L13                出边=1 action=5
-  ○ L14                出边=1 action=5
-  ○ L15                出边=1 action=5
-  ○ L16                出边=1 action=5
-  ○ L17                出边=1 action=5
-  ○ L18                出边=1 action=5
-  ○ L19                出边=1 action=5
+  ○ L11                出边=1 action=3
+  ○ L12                出边=1 action=3
+  ○ L13                出边=1 action=3
+  ○ L14                出边=1 action=3
+  ○ L15                出边=1 action=3
+  ○ L16                出边=1 action=3
+  ○ L17                出边=1 action=3
+  ○ L18                出边=1 action=3
+  ○ L19                出边=1 action=3
   ○ L20-forge          出边=1 action=2
   ○ L20-settlement     出边=4 action=2
   ○ L20-gate           出边=0 action=1
