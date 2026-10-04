@@ -184,6 +184,17 @@ jobs:
           echo "✓ 门红得了且具名（--require-symbols 生效）；清单已复原"
           git diff --quiet -- stories/babel/scenarios/scenarios.json || { echo "✗ 清单未复原（✗ 留脏）"; exit 1; }
 
+      # ── 步骤键形门（`sgstory#1994` 的教训机械化；`sgstory-books#263` 同族：本仓 workflows 的**结构**也得有门）──
+      #   ★为何是**本仓副本**而不是调引擎那份：本仓 CI 的引擎树停在声明 pin，而该门引入于 pin **之后**
+      #     （引入提交 `d167d679`）⇒ 引擎树里此刻没有它。取舍与同步要求写在 `tests/gates/workflow-steps.mjs` 档头。
+      - name: 步骤键形门（每步须有 run/uses · 块内 run 不重复 · workflow 须有 name）
+        working-directory: books
+        run: node tests/gates/workflow-steps.mjs
+
+      - name: ★步骤键形门自检（K0/K4 绿 · K1/K2/K3 红 · K5 装置错 rc=2）
+        working-directory: books
+        run: node tests/gates/workflow-steps.selftest.mjs
+
       - name: 装配自检（verify.mjs 随故事走，引擎在别处 ⇒ `--engine`）
         working-directory: books
         run: node stories/babel/verify.mjs --engine "$GITHUB_WORKSPACE/engine"

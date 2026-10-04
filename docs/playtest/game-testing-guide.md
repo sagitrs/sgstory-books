@@ -140,6 +140,7 @@
 | [场景链](../../tests/scenario/run.mjs)、[装配自检](../../stories/babel/verify.mjs)、[引用核](../../tools/check-refs.mjs) | 各自声明并实际触发的逻辑、装配或引用检查 | 全剧情、真实布局、阅读与触控 |
 | [e2e-harness](../../tools/e2e-harness.mjs)、[e2e-drive](../../tools/e2e-drive.mjs) | 当前实现使用 jsdom，能做脚本 DOM/保存/接线回归；部分场景直铺状态 | 真实浏览器启动、整页重载、滚动尺寸、字形或设备体验 |
 | [balance-babel](../../tools/balance-babel.mjs) | 指定引擎、夹具、策略与随机流下的战斗统计 | 正常旅程到达、界面按钮、玩家理解与完整发布门 |
+| [步骤键形门](../../tests/gates/workflow-steps.mjs)（同目录 `workflow-steps.selftest.mjs` 是它的六刀自检） | 本仓 `.github/workflows/**` 的**结构**面：每步须有 `run` 或 `uses`、一个步块里 `run` 至多一次、每个 workflow 须有非空顶层 `name`（这三条各自会指名到「文件:行 与步名」）。据 `sgstory#1994` 的一次真事机械化：`name:` 与 `run:` 被插开，会让 GitHub 判整个 workflow 无效（一个 run 都不起），或让重复键 last-wins 顶掉前者（步名与实跑不符） | (1)这是**结构**门，不判步名与命令是否相称（那要读命令语义）(2)不判 workflow 的其它 schema（触发条件、表达式等）(3)行扫不理解 `with:` 块与多行字符串，值里恰好出现形如 `run:` 的行可能误报（把该值写更深缩进或改用 `uses` 即可） |
 | [gate-001 门测电池](../../tests/gate-001/)（入口 `run-all.sh`，12 件判据档 ＋ `README.md` 前置两条） | 0.0.1 门测那一批的机械面（D1 到 D10 各件 ＋ A7／A8 弧判据）；入口自带**语法闸**与**最小出声条数**守卫，因此「坏档／早退」会以**红旗（rc=2）**暴露，不会被当成判据红 | (1)**不代建产物**（须先照 `README.md` 在**本书仓内**构建，不用别的树去 build）(2)记录的是 **0.0.1 那代 pin**（拿今天的 main 配旧清单，会红在与本批无关处）(3)以 jsdom 为主，视觉、窄屏与玩家理解仍属人工面 |
 
 工具名字或索引中的「真 DOM」不是布局验收证据；以实际运行器和覆盖面为准。用例中的待判/未机械判项须逐条保留，不能合并进绿。[夜窗流程](../../.github/workflows/e2e-window.yml)会调用这些 jsdom 驱动，但它不是逐 PR 门，也不等于真实浏览器布局验收。
