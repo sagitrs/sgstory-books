@@ -3494,6 +3494,50 @@ head('㊿ `books#280` ⑤：宝箱硬开（持工具必开·代价先明示·耐
 	}
 }
 
+/* ── 第 51 格 `books#280` ③a：战斗中页脚背包面**只读**（「使用道具」的唯一入口是战斗面板）──────────────
+ *
+ * 病（操作者试玩）：有草药/绷带时，**页脚的道具链接**点一下即治疗，且**不消耗战斗回合**
+ *   —— 与战斗面板的「使用…（消耗本回合）」同一件事两条规矩。
+ * 裁定（本席 2026-10-04，取「战中禁用页脚治疗」支）：页脚在战中**降级为只读标签** ＋ 一句白话指向合法入口。
+ *
+ * 断什么：① 战中 ⇒ 渲染面**无 `data-item=`**（不可点）＋ 有白话（提到「战斗面板」与「占用本回合」）
+ *   ② 非战 ⇒ **有 `data-item=`**（正控：✗ 两向都禁 ⇒ 探索时也用不了道具）
+ *   ③ **同形**（换面✗掉信息）：两向去掉 HTML 标记后的**文本**逐字相同，且等于 `RPG.inventoryLabel()`
+ *   ④ 缺省正控：`setup.BABEL.战中` 为 `false`／缺省 ⇒ 走链接面（防「渲染永远只读」）
+ * 刀（记在提交信息）：拆掉 `战中` 那支 ⇒ ①③ 红，复原回绿。
+ */
+head('第 51 格 `books#280` ③a：战斗中页脚背包面只读（使用道具的唯一入口是战斗面板）');
+{
+	const 件存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 旗存 = setup.BABEL.战中;
+	const 渲染 = () => R.panels.get('inventory')?.render?.() ?? '';
+	const 去标 = (x) => String(x).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+	try {
+		State.variables.inventory = [];
+		R.give('bandage');
+		setup.BABEL.战中 = true;
+		const 战中面 = 渲染();
+		ok(!/data-item=/.test(战中面), `★战斗中页脚仍给了可点道具（会绕开战斗回合）：${JSON.stringify(战中面)}`);
+		ok(/战斗面板/.test(战中面), `★禁用的同时应有一句白话指向合法入口：${JSON.stringify(战中面)}`);
+		ok(/占用本回合/.test(战中面), `★白话应说清代价（占用本回合）：${JSON.stringify(战中面)}`);
+
+		setup.BABEL.战中 = false;
+		const 平时面 = 渲染();
+		ok(/data-item=/.test(平时面), `★非战斗时页脚道具应可点（正控）：${JSON.stringify(平时面)}`);
+
+		const 期望文本 = R.inventoryLabel();
+		ok(去标(平时面) === 期望文本, `★平时面去掉标记后应与只读标签逐字同形：${JSON.stringify(去标(平时面))} ≠ ${JSON.stringify(期望文本)}`);
+		ok(去标(战中面).replace(/（战斗中：[^）]*）/, '').trim() === 期望文本,
+			`★战中面换面后**掉了信息**（应只剩只读标签＋白话）：${JSON.stringify(去标(战中面))}`);
+
+		ok(setup.BABEL.战中 === false && /data-item=/.test(渲染()), '★战后页脚未回到可点面（缺省正控）');
+		console.log(`  页脚背包面：战中 ⇒ 只读（无 data-item）＋白话 ✓｜平时 ⇒ 可点 ✓｜两向文本同形 ✓`);
+	} finally {
+		State.variables.inventory = 件存;
+		setup.BABEL.战中 = 旗存;
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
