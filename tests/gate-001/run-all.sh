@@ -8,7 +8,7 @@
 #   且跑完须**同读出声面**：`rc≠0` 但 **零条 `✗`** ⇒ **红旗（装置坏，✗ 缺陷）**，
 #   ✗ 不得计入「失败 N 条」。
 #
-# 用法：cd <books 检出> && ENGINE=<引擎检出> bash ~/bots/home/sagitrs-tester-4/gate-001/run-all.sh
+# 用法：cd <books 检出> && ENGINE=<引擎检出> bash tests/gate-001/run-all.sh
 # ══════════════════════════════════════════════════════════════════════════════
 set -u
 G="$(cd "$(dirname "$0")" && pwd)"
