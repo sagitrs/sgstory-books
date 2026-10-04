@@ -177,6 +177,47 @@
 这里要说明的是「同一装具」四个字的分量：换一支装具跑第二遍不叫复现，
 那是同一装具跑两次的另一种写法，两者的结论都只覆盖那一支装具。
 
+## 附三：合前检查（★每票合入前跑一遍 · 两条）
+
+这两条是 2026-10-04 一天里、用四笔「看着干净、合了会坏」的票换来的：
+`books#296`／`#303`／`#305`／`#310` 各自**基座落后** ⇒ 对**现 main** 的 diff 里带着**回退行**
+（合入会抹掉别的笔刚合的东西：`tests/gates/*`、`tools/e2e-1763-panels.mjs`、`tools/README.md` 的登记行…）。
+★`mergeable_state=clean` **看不出来**这一类 —— 它只答「能不能自动合」，✗ 不答「这条分支是不是握着旧版本的内容」。
+
+### 检查一：基座同尖 ＋ 回退行 0（★合前必跑）
+
+```console
+$ MB=$(git merge-base origin/main <票头>)
+$ [ "$MB" = "$(git rev-parse origin/main)" ] || echo "✗ 落后：先 rebase 到现 main"
+$ git diff --numstat origin/main <票头> | awk '$1=="0"{print "✗ 回退行（只删不加）："$3}'
+```
+
+判据：**merge-base 必须等于现 main（同尖）**，且对现 main 的 diff 里**没有「只删不加」的档**。
+两条任一不成立 ⇒ ★**先 rebase，再谈内容**：内容面可以已经核好，基座旧照样拦住（`books#296` 那次，
+对当时 main 的 diff 是 22 档 ＋103/−1468 ⇒ 合了会删掉一整天新落的装置件）。
+
+### 检查二：patch-id 证「纯 rebase」（⇒ ★读数不重跑的硬证）
+
+被要求 rebase 时，作者常要重推一版。**若这一版只是换基座**，那先前已核过的读数（文风／链接／跑数／
+刀）**不必重跑** —— 但这句话要有据，据就是 **patch-id**（同一改动集在不同基座上的稳定指纹）：
+
+```console
+$ 旧=$(git diff $(git merge-base origin/main <旧头>) <旧头> | git patch-id --stable | cut -d' ' -f1)
+$ 新=$(git diff $(git merge-base origin/main <新头>) <新头> | git patch-id --stable | cut -d' ' -f1)
+$ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数沿用" || echo "✗ 内容有变 ⇒ 读数须重跑"
+```
+
+★实例（`books#310`）：rebase 前后 `72edfe5fe69e08d8223022931581a65306a19c38` **逐字同** ⇒
+该笔 T 面读数（四档 `--body` 全 rc=0、`--selftest` 17/17、链接 43/0）**沿用不重跑** ✓。
+★反之 patch-id 不同 ⇒ 说明**不只是换基座**（内容改了）⇒ 该核的全核 ✓。
+
+### 两条之外、仍要做的两件
+
+- **触发面**：★只改 `tests/gate-001/**` 的笔，其触发面自证只能在**合入后**（合并前 CI 跑的是旧触发面，
+  见 `books#313` 的注 ✓）；`docs/**` 之类不在 `paths` 里的笔，其「CI 绿」是**空条件**（✗ 不是「未绿」）✓。
+- **装置面**：读数一律取自**干净树**（`git archive origin/main` 或等价），且**先读该树自己的
+  `.github/engine-ref.json`**，✗ 别拿别的树跑；装置错（rc=2）与判据红（rc=1）分开记（见上文「退出码三分」）。
+
 ## 10. `balance-babel.mjs` —— 战斗跑分器（LegacyBattleRunner）
 
 | 项 | 内容 |
