@@ -960,7 +960,11 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
  *  新键**加在这里**，✗ 再写一段登记代码。
  *  ★`#1902`：本表**导出**（`setup.BABEL.保存域键`）—— 审计面按它**逐键**取读数（✗ 在判据里重写一份键表：
  *    那样「加了键但漏登记」正是判据看不见的那一种）。 */
-const 保存域键 = ['span1Arc', 'span1Events', 'span1Foresee'];
+/* ★`sgstory#1991`（`#1936` 收口时记的债）：本局的 `babelRun`（含 `bosses`／`时间` 等**旧键**）此前**不在**保存域契约里
+ *   ⇒ `envelope().domains` 与 `audit()` **看不到它**（审计缺口 ✓，✗ 不是丢档——进档由序列化宿主完成 ✓）。
+ *   它本就是**本局的故事状态** ⇒ 归域与 `span1Farms`／`span1Harvests`／`rpgProgress` **同一个** `byPack` ✓（`80-save.js:69-73` ✓）。
+ *   ★新键仍**加在这张表里**（一处定义 ✓）—— ✗ 再写一段登记代码 ✓。 */
+const 保存域键 = ['span1Arc', 'span1Events', 'span1Foresee', 'babelRun'];
 const 登记域 = () => {
 	const keys = 保存域键;
 	if (typeof R.save?.declareDomain !== 'function') {
