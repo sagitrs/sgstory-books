@@ -153,6 +153,7 @@ const FIXTURES = [
 		 *     （`books#179` 未入 main）**已过时**（`#179` 已合 `2006a51`）—— 两处都是 `books#182` 的 RC 点。 */
 		摆位: (R, D3, B, s) => {
 			R.give('sword'); R.equip('sword');
+			B.乙保证?.();          // books#201：乙的保证集（自发换掉手上那把基础长剑）
 			R.give('mail'); R.equip('mail');
 			R.give('bandage'); R.give('herb-poultice');
 			/* 先降状态（否则「温泉有没有用」这一面读不出来）—— 但**须留活着**：
@@ -190,6 +191,7 @@ const FIXTURES = [
 		策略: '纯攻',
 		摆位: (R, D3, B, s) => {
 			R.give('sword'); R.equip('sword');
+			B.乙保证?.();          // books#201：乙的保证集（自发换掉手上那把基础长剑）
 			R.give('mail'); R.equip('mail');
 			R.give('bandage'); R.give('herb-poultice');
 			D3.Player.hp = Math.max(6, Math.floor(D3.Player.maxHp / 3));
@@ -209,6 +211,7 @@ const FIXTURES = [
 		策略: '纯攻',
 		摆位: (R, D3, B, s) => {
 			R.give('sword'); R.equip('sword');
+			B.乙保证?.();          // books#201：乙的保证集（自发换掉手上那把基础长剑）
 			R.give('mail'); R.equip('mail');
 			R.give('bandage'); R.give('herb-poultice');
 			D3.Player.hp = D3.Player.maxHp;
