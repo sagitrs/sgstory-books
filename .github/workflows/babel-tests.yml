@@ -1,6 +1,7 @@
 name: babel-tests
 
 # 巴别井 · 试玩版（`books#76` 相 A）—— 故事在**本仓**，引擎按 **pin 检出**：
+# ★**本 job 的仓在 `books/`**（CI checkout 把本仓放在 `books/` 子路径下 ✓）⇒ 每一步凡要跑仓内脚本／读仓内档的，**都要带 `working-directory: books`** ✗ 漏了就会在错误的工作目录里跑（`#304` 实测：新两步漏了它 ⇒ 本票 CI 红 ✓，而**本地从仓根跑是绿的** ✗ ⇒ ★**workflow 面的刀必须在 CI 验**，本地绿不算 ✓）。
 #   编译（引擎 `build.py` ＋ 本仓故事 ⇒ **单文件**）＋ **装配自检**（`stories/babel/verify.mjs`，随故事走）。
 #
 # 归因口径（与 `pr-gate`／`pages` 同）：① 读本仓声明件 `.github/engine-ref.json` 的 ref 检出引擎
@@ -170,8 +171,10 @@ jobs:
         run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols
 
       - name: 内容边界登记表（#1988 切片① · 新档未登记 ⇒ 红）
+        working-directory: books
         run: node tools/check-content-inventory.mjs
       - name: 内容边界登记表 · 自检
+        working-directory: books
         run: node tools/check-content-inventory.mjs --selftest
 
       # ★门必须**红得了**（同「恒绿门自证」的体例）：往**临时**清单里塞一处无符引用，
