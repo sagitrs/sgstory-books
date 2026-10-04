@@ -227,6 +227,31 @@ jobs:
           { echo '```'; tail -2 /tmp/e233r.out; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
       # ── 归因：引擎源不得被写脏（build 产物除外）── 与 `babel-tests.yml` 同取向 ──
+      - name: ★L9 承诺带守卫 · 温泉（`--enforce-target` · N=200 · #170 第 2 步）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # ★`pipelinefail` 由 pipefail 兜住：`--enforce-target` 下不在 70–85% 带内即非零退出 ⇒
+          #   本步**即**红（✗ 不靠再写一条 grep 判带）✓；下面的 grep 只证「读数真跑出来了」。
+          node tools/balance-babel.mjs --engine "$GITHUB_WORKSPACE/engine" --fixture "温泉→L9 头目" --samples 200 --enforce-target | tee /tmp/e170w.out
+          grep -q '击败率' /tmp/e170w.out || { echo "::error title=e2e-window::#170 温泉格没打印击败率（读数没跑到 ⇒ 绿的没有根据）"; exit 1; }
+
+      - name: ★L9 承诺带守卫 · 满装（`--enforce-target` · N=200 · #170 第 2 步）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/balance-babel.mjs --engine "$GITHUB_WORKSPACE/engine" --fixture "满装→L9 头目" --samples 200 --enforce-target | tee /tmp/e170m.out
+          grep -q '击败率' /tmp/e170m.out || { echo "::error title=e2e-window::#170 满装格没打印击败率（读数没跑到 ⇒ 绿的没有根据）"; exit 1; }
+
+      - name: ★L9 对照格 · 不温泉（**印读数 ✗ 不入 enforce** · 证明豁免真生效）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          # ★这一步骤故意**也**带 `--enforce-target`：它**必须** rc=0 —— 因为它已被标为「对照格」⇒
+          #   ✗ 不入 enforce ✓。若哪天豁免失效（例如守卫回退），它当场 rc=1 ⇒ 本步红 ✓（✗ 不靠人记）。
+          node tools/balance-babel.mjs --engine "$GITHUB_WORKSPACE/engine" --fixture "不温泉→L9 头目" --samples 200 --enforce-target | tee /tmp/e170c.out
+          grep -q '⏳ 对照格：' /tmp/e170c.out || { echo "::error title=e2e-window::#170 对照格豁免没生效（读数未被标为对照 ⇒ 假红风险回来了）"; exit 1; }
+
       - name: 引擎仓没被写脏（归因）
         run: |
           set -euo pipefail
