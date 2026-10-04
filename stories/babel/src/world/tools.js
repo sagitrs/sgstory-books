@@ -112,6 +112,42 @@ const 现制采集 = setup.BABEL.gather;
 if (typeof 现制采集 !== 'function') {
 	throw new Error('tools.js：`#116` 的现制采集缺席（`world/encounters.js` 必须排在 `world/tools.js` 之前装载）');
 }
+/* ---------- `books#280` ④：采集汇总（一次采净 ＝ **一行**）----------
+ * 出处（操作者试玩 14:3x）：一次采净**逐件刷屏**（「－1 碎石堆」＋「采得：石料 ×2。」× 6 ＝ 12 行）
+ *   ⇒ 压为一行「采得：石料 ×12」，**节点耗尽信息保留**。
+ * ★手法（✗ 改引擎，✗ 劫持 `Object.prototype.perform`）：循环期间把**通知档**切到 `'key'` ——
+ *   引擎那几行都是 `default` 通道（log 级）⇒ **只进通知中心（可回看）**、✗ 进正文；
+ *   循环结束后由本档统一印**一行**汇总（走 `'loot'` 通道 ＝ key 级 ⇒ 任何档下都进正文）。
+ *   ⚠ 档位**必**在 `finally` 复原（✗ 改玩家的档）；两向都不得静默：没采到也要有话说（见下）。
+ * ★求差取的是**真产出**（背包计数器前后差），✗ 重算产出表 —— 产出表带概率／数量骰时，重算即第二份源。
+ */
+/** 玩家背包的「id → 数量」（★按**引擎自己的计数约定**：可堆叠件用 `charges` 记数 ⇒ `charges ?? n ?? 1`）。 */
+const 背包计数 = () => {
+	const out = {};
+	for (const s of (R.playerActor()?.items ?? [])) out[s.id] = (out[s.id] ?? 0) + (s.charges ?? s.n ?? 1);
+	return out;
+};
+/** 一件产出的人读标签（★后缀取**引擎单点** `RPG.itemCountSuffix`：✗ 在故事侧另写一份「×N」）。 */
+const 产出标签 = (id, n) => {
+	const 名 = R.items?.has?.(id) ? R.createItem(id).name : id;
+	const 后缀 = typeof R.itemCountSuffix === 'function' ? R.itemCountSuffix({ id, charges: n }) : `×${n}`;
+	return `${名}${后缀}`;
+};
+/** 印汇总：得物逐项；采尽则带上「已采尽」；**每件都没采到**也要有话说（✗ 静默）。 */
+const 印采集汇总 = (前, layer) => {
+	const 后 = 背包计数();
+	const 得 = Object.keys(后).filter((id) => (后[id] ?? 0) > (前[id] ?? 0))
+		.map((id) => 产出标签(id, 后[id] - (前[id] ?? 0)));
+	const 名 = setup.BABEL.map?.locations?.get(layer)?.name ?? '这里';
+	if (!得.length) {
+		/* 采了但一件未得（概率全未命中）——引擎那时自己会印一行；本档在此补一句**可读**的话。 */
+		R.perform(`在「${名}」处什么也没采到。`, { channel: 'loot' });
+		return;
+	}
+	const 尽 = (setup.BABEL.nodeAt?.(layer)?.charges ?? 0) <= 0 ? '（此处已采尽）' : '';
+	R.perform(`采得：${得.join('、')}${尽}`, { channel: 'loot' });
+};
+
 setup.BABEL.gather = () => {
 	const layer = setup.BABEL.map?.current ?? null;
 	const kind = 需要工具(layer);
@@ -126,13 +162,21 @@ setup.BABEL.gather = () => {
 	 *   ⇒ 循环**采到该处采净**或**工具耗尽**为止；每**成功一件**扣 1 ✓（「采成才扣」的判据每条都照旧 ✓）。 */
 	if (!采前有货) return 0;      // ★`#171` 的纵深防御：采前无货 ⇒ 一件都不采、✗ 不扣（`when` 本已挡住）
 	let 件数 = 0;
-	while ((setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0) {
-		if (slot && (slot.charges ?? 0) <= 0) break;      // 没耐久 ⇒ 采不动（`扣耐久` 到 0 会摘件）
-		const res = 现制采集();
-		if (!res || res.status !== 'applied') break;      // 采不成 ⇒ 不扣（纵深防御 ✓）
-		件数 += 1;
-		if (slot) 扣耐久(slot);
+	const 档存 = R.noticeFilter;                            // ★`books#280` ④：档位存后复原（✗ 改玩家的档）
+	const 前 = 背包计数();                                  // ★汇总取**真产出**（前后差）
+	try {
+		R.setNoticeFilter?.('key');                     // 逐件行只进通知中心（可回看）
+		while ((setup.BABEL.nodeAt?.(layer)?.charges ?? 0) > 0) {
+			if (slot && (slot.charges ?? 0) <= 0) break;      // 没耐久 ⇒ 采不动（`扣耐久` 到 0 会摘件）
+			const res = 现制采集();
+			if (!res || res.status !== 'applied') break;      // 采不成 ⇒ 不扣（纵深防御 ✓）
+			件数 += 1;
+			if (slot) 扣耐久(slot);
+		}
+	} finally {
+		R.setNoticeFilter?.(档存);                      // ★必复原（✗ 把玩家的档留在「仅关键」）
 	}
+	if (件数 > 0) 印采集汇总(前, layer);
 	return 件数;
 };
 setup.BABEL.工具 = Object.assign(setup.BABEL.工具 ?? {}, {
