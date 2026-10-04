@@ -36,6 +36,10 @@ for (const [id, meta] of Object.entries(TOOLS)) {
 		desc: meta.desc,
 		stackable: true,                 // ★⇒ `RPG.give` 再拾同类时**并入**（耐久相加）
 		charges: TOOL_CHARGES,
+		/* ★`books#212` 第 3 项：**声明**这件是「耐久制」（✗ 堆叠件）⇒ 背包行印「（耐久 N）」而不是「×N」
+		 *   （操作者原文：「『铁铲×6』实为剩余次数——标『耐久 6』与数量区分」）。缝在引擎
+		 *   `RPG.itemCountSuffix`（单点），故事侧只**声明** ✓。 */
+		stats: { durability: true },
 		/** 背包里点它 ⇒ **拒绝**（`used()` 返回 `false` ⇒ `act` 不提交、**不扣耐久** —— `#1801` 的契约），
 		 *  并给一句白话：工具要对着能采的东西用。
 		 *  ★`sgstory#1906` §G（`books#166` 的第⑦面）：这句是**瞬时说明**（「为什么用不了」）⇒ 走**通知面**

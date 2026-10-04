@@ -359,6 +359,9 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		if (loot.length > 0) {
 			R.perform(`战利品：${loot.map((l) => `${R.items.has(l.id) ? R.createItem(l.id).name : l.id}×${l.n}`).join('、')}。`);
 		}
+		/* ★`books#211` F-04（操作者试玩）：胜利用**正文**报了战利品，而**背包**要等「继续探索」才更新
+		 *   ⇒ 结算后**立即**刷面板（`#137` 的 `refreshPanels` 族 —— 与战斗中掉落同一收口）。 */
+		R.refreshPanels?.();
 		/* ★`books#180`：**只有真胜利**写进度（打晕／僵持／失败都不写）—— 头目硬门的数据源。 */
 		setup.BABEL.记战果?.(layer, 果);
 	}
