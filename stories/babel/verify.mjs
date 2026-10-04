@@ -3147,6 +3147,71 @@ head('★㊹ `sgstory#1991`：登记的域键在审计面可见（两向）');
 	ok(!溜进, `★**未登记**的键出现在了审计面（domains ${JSON.stringify(env2.domains)}）⇒ 那不是"看得见"，是"什么都报"`);
 	console.log(`  域键审计：声明 ${表.length} 个全可见 ✓｜未登记键未溜进 ✓（domains ${env.domains.length} 个）`);
 }
+/* ── ㊺ `books#259` 裁（12:0x·writer 第二条 P1）：**固定事件阶段未了 ⇒ 向上的路不开** ─────────────
+ *
+ * 裁文原话：基础采集（及同类层内固定事件）**属事件阶段**，上行门＝三层
+ *   `已战 && 事件账[L] ∈ {完成, 已跳过}`；**非例外**：「跳过」必须是**玩家明确动作一次**，
+ *   缺账或直接上行不算；完成形＝采净该层节点（D 件语义）；聚落层与抽签层（L5–L8）照既有例外/机制。
+ *
+ * 三臂（writer 实证那条 P1 的**反臂与正臂**）：
+ *   ① **胜利后未采净、未跳过 ⇒ 向上边不在**（writer 实证：`kills=1`、`charges=6` 却已到 L2）；
+ *   ② **采净 ⇒ 在**（完成形）；③ **明确跳过一次 ⇒ 在**（玩家动作，✗ 缺账）。
+ * ★臂③前段是**正控**：把节点改回未采净后，向上边必须**重新关上** —— 否则臂②可能是恒真（
+ *   「一直开着」也会把②判绿），那就把「门」读成了「常开」。
+ * 刀（记在提交信息）：拆 `事件阶段已了`（恒真）⇒ 本格 ①与③前段各一条红，复原回绿。
+ */
+head('㊺ `books#259` 裁（writer 第二条 P1）：胜利后未采净、未明确跳过 ⇒ 不得上行（采净／跳过各放行）');
+{
+	const 层 = 'L1';
+	const 节点 = B.nodeAt?.(层);
+	const 位存 = map.current;
+	const 战存 = JSON.parse(JSON.stringify(State.variables.babelRun?.已战 ?? null));
+	const 跳过存 = JSON.parse(JSON.stringify(State.variables.babelRun?.已跳过 ?? null));
+	const 次数存 = 节点?.charges;
+	const 向上在 = () => map.exitsFrom(层).some((e) => /向上/.test(String(e.text ?? '')));
+	try {
+		ok(!!节点, `★L1 无采集节点（本格前提不成立：${JSON.stringify(节点)}）`);
+		置已战(层);                                       // 前置：裁 1 的门已过（战斗打过了）
+		delete (State.variables.babelRun.已跳过 ??= {})[层];
+
+		/* ① 胜利后未采净、未跳过 ⇒ 向上边**不在** */
+		节点.charges = 6;
+		ok(!向上在(), `★胜利后**未采净也未跳过**，向上边却开着（charges=${节点.charges}）`
+			+ ' —— writer 第二条 P1（实证：`kills=1`、`gathered=0` 却已到 L2）');
+
+		/* ② 采净 ⇒ **在**（完成形＝采净该层节点） */
+		节点.charges = 0;
+		ok(向上在(), '★采净之后向上边仍不开（门关死了）');
+
+		/* ③ 明确跳过 ⇒ **在**（★前段是正控：回未采净 ⇒ 必须重新关） */
+		节点.charges = 6;
+		ok(!向上在(), '★把节点改回未采净后向上边仍开着 —— ②那一臂可能是恒真（把门读成了常开）');
+		const 跳 = (map.locations.get(层).actions ?? []).find((a) => /不采了/.test(String(a.text ?? '')));
+		ok(!!跳, '★未采净时没有「跳过」入口 —— 裁文的「跳过必须是玩家明确动作一次」无从体现');
+		ok(跳.when() === true, '★未采净时跳过入口不可见（那就只剩「必须采净」一条路）');
+		跳.action();
+		ok(向上在(), '★**明确跳过一次**之后向上边仍不开 —— 裁文允许跳过形放行');
+
+		/* ★正控：跳过记的是**本层**（✗ 一处跳过就把全塔放行 —— 那是「记成全局翻面」的常见写法） */
+		ok(B.事件阶段已了(层) === true, '★跳过之后本层事件阶段仍判为未了');
+		const 节点2 = B.nodeAt('L2');
+		if (节点2) {
+			const 存2 = 节点2.charges;
+			节点2.charges = 3;                            // ★保证未采净（否则「不适用」与「已了」同值）
+			ok(B.事件阶段已了('L2') === false,
+				`★跳过记到了别层（本层门失效 ⇒ 任一层跳过会把全塔放行）；L2 读数 ${B.事件阶段已了('L2')}`);
+			节点2.charges = 存2;
+		}
+		console.log('  事件门：未采未跳 ⇒ 路闭 ✓｜采净 ⇒ 路开 ✓｜明确跳过一次 ⇒ 路开 ✓｜跳过只记本层 ✓');
+	} finally {
+		if (节点) 节点.charges = 次数存;
+		if (State.variables.babelRun != null) {
+			if (战存 === null) delete State.variables.babelRun.已战; else State.variables.babelRun.已战 = 战存;
+			if (跳过存 === null) delete State.variables.babelRun.已跳过; else State.variables.babelRun.已跳过 = 跳过存;
+		}
+		if (位存) map.moveTo(位存);
+	}
+}
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
