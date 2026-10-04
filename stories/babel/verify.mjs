@@ -3423,6 +3423,77 @@ head('㊾ `books#280` ④：一次采净只印一行（逐件行降为通知中�
 	}
 }
 
+/* ── ㊿ `books#280` ⑤：宝箱硬开 —— **持工具必开（成功形）**＋代价先明示＋耐久只在成功扣 ─────────
+ *
+ * 病（操作者试玩）：用镐砸箱 ⇒「锁芯里传来金属断裂的死涩声响——它被彻底锁死了」（文案读作失败、甲拿不到）。
+ * 勘察结论（本席，行号/事实均取自码）：硬开原先走 `R.equippedWeapon()`——那是**武器**面，而 L4 手上
+ *   多半只有 L3 拾起的**矿镐（工具·无 `dmg`）** ⇒ 伤害≈0 ⇒ 6 HP 箱**永远砸不开** ⇒ 每次都落「锁死」支。
+ * 修：① 硬开改走**数据声明的器械伤害**（持工具必开 ⇒ **成功形**文案）② 入口文案**先明示**不可逆
+ *   ③ 耐久**只在成功**扣 1（对齐 D 件「采成才扣」）；④ 失败形（赤手）仍保留「不可逆二择」。
+ *
+ * 断什么：① 持镐 ⇒ 箱破 ＋ 甲入包 ＋ **无「锁死」行** ＋ 镐耐久 6→5
+ *   ② 无工具（赤手）⇒ 箱**锁死** ＋ 甲未得 ＋ 「锁死」行在
+ *   ③ **正控：不可逆**——锁死后两个入口（钥匙开／硬开）均不可见
+ *   ④ **正控：耐久只在成功支扣**——失败那支跑完，背包里**无新增／扣减**（按 `charges` 和比对）
+ * 刀（记在提交信息）：把硬开改回 `equippedWeapon()` ⇒ ① 红，复原回绿。
+ */
+head('㊿ `books#280` ⑤：宝箱硬开（持工具必开·代价先明示·耐久只在成功扣·失败不可逆）');
+{
+	const 位存 = map.current;
+	const 甲存 = JSON.parse(JSON.stringify(State.variables.span1Arc?.chests ?? null));
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 行 = () => __host.host.lines().map((x) => String(x));
+	const 面 = (re) => (map.locations.get('L4').actions ?? []).find(
+		(a) => re.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+	/** 造一只**指定 hp** 的箱态（复位用；★逐臂给定 hp ⇒ 读数不靠运气）。 */
+	const 造箱 = (hp) => { const v = (State.variables.span1Arc ??= {}); (v.chests ??= {}); v.chests['chest-l4'] = { hp, opened: false, broken: false, locked: false }; };
+	const 箱态 = () => State.variables.span1Arc.chests['chest-l4'];
+	const 有甲 = () => (State.variables.inventory ?? []).some((x) => x.id === 'mail');
+	const 镐 = () => (State.variables.inventory ?? []).find((x) => x.id === 'pick');
+	const 扣总 = () => (R.playerActor()?.items ?? []).reduce((n, s) => n + (s.charges ?? s.n ?? 1), 0);
+	try {
+		map.moveTo('L4');
+		const 硬 = 面(/^硬开/);
+		ok(!!硬, '★L4 动作表里找不到硬开入口（动作表变了？）');
+		ok(/砸不开就再也打不开了/.test(String(硬.text)), `★入口文案未明示不可逆代价：${JSON.stringify(String(硬.text))}`);
+
+		/* ① 持镐 ⇒ **成功形** */
+		State.variables.inventory = State.variables.inventory.filter((x) => x.id !== 'pick');
+		R.give('pick');
+		造箱(6);
+		__host.host.reset();
+		硬.action();
+		const 行1 = 行();
+		ok(箱态()?.broken === true, `★持镐硬开没砸开（实得 ${JSON.stringify(箱态())}）—— 修前就是这条永远不成立`);
+		ok(有甲(), '★砸开了却没拿到铁环甲');
+		ok(!行1.some((l) => /锁死/.test(l)), `★持镐成功形里仍印了「锁死」：${JSON.stringify(行1.filter((l) => /锁死/.test(l)))}`);
+		ok(行1.some((l) => /下裂开一道口子/.test(l)), `★成功形文案不在（应有一句读作成功的话）：${JSON.stringify(行1.slice(-3))}`);
+		ok(镐()?.charges === 5, `★成功硬开应在**工具**上扣 1 点耐久（实得 ${JSON.stringify(镐()?.charges)}）`);
+
+		/* ② 无工具 ⇒ 锁死（不可逆二择保留）
+		 *   ⚠ 本臂须**先清干净**：① 已把甲放进包（不带清 ⇒ 「没发甲」那条会因**上一臂的残留**而假红）。 */
+		State.variables.inventory = State.variables.inventory.filter((x) => x.id !== 'pick' && x.id !== 'mail');
+		造箱(99);            // ★本臂判的是**失败支** ⇒ hp 抬到挥击上限之上（✗ 靠运气）
+		__host.host.reset();
+		const 包前 = 扣总();
+		硬.action();
+		const 行2 = 行();
+		ok(箱态()?.locked === true, `★赤手硬开没锁死（实得 ${JSON.stringify(箱态())}）—— 不可逆二择被拆了？`);
+		ok(!有甲(), '★锁死那支竟然也发了甲');
+		ok(行2.some((l) => /锁死/.test(l)), `★锁死支没有可读文案：${JSON.stringify(行2.slice(-3))}`);
+		ok(扣总() === 包前, `★失败支改了背包总量（前 ${包前} ⇒ 后 ${扣总()}）—— 耐久只许在**成功**支扣（D 件语义）`);
+
+		/* ③ 正控：不可逆——锁死后两个入口都没了 */
+		ok(面(/^硬开/)?.when?.() === false, '★锁死后硬开入口仍可用（不可逆性被破）');
+		ok(面(/^用铁钥匙开箱/)?.when?.() === false, '★锁死后钥匙入口仍可用（引擎 `lockNow()` 的语义被绕过）');
+		console.log(`  宝箱硬开：持镐 ⇒ 破开＋甲 ✓（镐耐久 6⇒5）｜赤手 ⇒ 锁死＋甲不得 ✓｜锁死后两入口皆闭 ✓`);
+	} finally {
+		if (甲存 === null) delete State.variables.span1Arc.chests; else State.variables.span1Arc.chests = 甲存;
+		State.variables.inventory = 包存;
+		if (位存) map.moveTo(位存);
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
