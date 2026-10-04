@@ -169,6 +169,11 @@ jobs:
         working-directory: books
         run: node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols
 
+      - name: 内容边界登记表（#1988 切片① · 新档未登记 ⇒ 红）
+        run: node tools/check-content-inventory.mjs
+      - name: 内容边界登记表 · 自检
+        run: node tools/check-content-inventory.mjs --selftest
+
       # ★门必须**红得了**（同「恒绿门自证」的体例）：往**临时**清单里塞一处无符引用，
       #   断言本门确实 rc≠0 且具名到那一处 ⇒ 证明上面的开关**没被写成装饰**；随后按字节复原。
       - name: ★引用核门自证（注入无符引用 ⇒ 须 rc≠0 且具名）
