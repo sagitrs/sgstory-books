@@ -22,11 +22,23 @@ const 表路径 = 'stories/babel/content-inventory.json';
 export function 核对(盘上, 表) {
 	const 登记 = new Set((表.档 ?? []).map((x) => x.path));
 	const 实有 = new Set(盘上);
+	/* ★`#1988` 切片②-1：类别**必须是已定义的**（✗ 表里冒出一个没定义过的类别 ⇒ 红） */
+	const 定义表 = 表.类别定义 ?? {};
+	const 未定义类别 = [...new Set((表.档 ?? []).map((x) => x.类别))].filter((c) => !(c in 定义表)).sort();
 	return {
 		未登记: [...实有].filter((p) => !登记.has(p)).sort(),
 		空登记: [...登记].filter((p) => !实有.has(p)).sort(),
 		重复: ( 表.档 ?? []).map((x) => x.path).filter((p, i, a) => a.indexOf(p) !== i),
+		未定义类别,
 	};
+}
+/** ★**叙事文案密度**（防「抄 A 成 B」假绿）：数一数该档里"像玩家能读的话"的中文串常量。
+ *  ⚠ 它是**弱判据**（✗ 分不清"叙事"与"错误提示"✓）—— 但它能抓住**最要命的那一种假绿**：
+ * 把**纯逻辑档**标成『内容（叙事）』✓（那种档的密度**必然**趋 0 ✓）。
+ *  ★阈值与判据形都在**清单里一处声明**（✗ 别在代码里写死 ✓）。 */
+export function 叙事密度(正文) {
+	const 命中 = 正文.match(/['"`][^'"`]*[\u4e00-\u9fa5]{4,}[^'"`]*['"`]/g) || [];
+	return 命中.length;
 }
 
 const 自检 = process.argv.includes('--selftest');
@@ -36,14 +48,18 @@ if (自检) {
 	const 一 = 核对(['a.js', 'b.js', '新档.js'], 表);
 	const 二 = 核对(['a.js'], 表);
 	const 三 = 核对(['a.js', 'b.js'], { 档: [{ path: 'a.js' }, { path: 'a.js' }] });
+	const 四 = 核对(['a.js','b.js'], { 档: [{ path: 'a.js', 类别: '内容（叙事）' }, { path: 'b.js', 类别: '★没定义过' }], 类别定义: { '内容（叙事）': {} } });
+	const 五 = [叙事密度("const a = '这是一句够长的中文文案用来数';"), 叙事密度('const f = (x) => x + 1;')];
 	const 果 = [
 		[一.未登记.join(',') === '新档.js', '①盘上有表里无 ⇒ 须抓出「新档.js」'],
 		[二.空登记.join(',') === 'b.js', '②表里有盘上无 ⇒ 须抓出「b.js」'],
 		[三.重复.join(',') === 'a.js', '③重复登记 ⇒ 须抓出'],
+		[四.未定义类别.join(',') === '★没定义过', '④类别未定义 ⇒ 须抓出「★没定义过」'],
+		[五[0] === 1 && 五[1] === 0, '⑤叙事密度：有文案 ⇒ 1；纯逻辑 ⇒ 0'],
 	];
 	let ok = true;
 	for (const [过, 名] of 果) { console.log((过 ? '✓' : '✗') + ' ' + 名); if (!过) ok = false; }
-	console.log(ok ? '✓ 自检 3/3 如期（两向 ＋ 重复）' : '✗ 自检失败');
+	console.log(ok ? '✓ 自检 5/5 如期（两向 ＋ 重复 ＋ 类别未定义 ＋ 叙事密度）' : '✗ 自检失败');
 	process.exit(ok ? 0 : 1);
 }
 
@@ -53,10 +69,25 @@ try { 表 = JSON.parse(readFileSync(表路径, 'utf8')); }
 catch (e) { console.error(`✗ 装置错：登记表不是合法 JSON —— ${e.message}`); process.exit(2); }
 const scope = 表.scope ?? 'stories/babel/src';
 const 盘上 = execFileSync('git', ['ls-files', scope], { encoding: 'utf8' }).split('\n').filter(Boolean);
-const { 未登记, 空登记, 重复 } = 核对(盘上, 表);
+const { 未登记, 空登记, 重复, 未定义类别 } = 核对(盘上, 表);
+/* ★密度断（只对『内容（叙事）』类 ✓；阈值取自清单 ✓）： */
+const 阈值 = 表.类别定义?.['内容（叙事）']?.阈值;
+const 密度红 = [];
+if (typeof 阈值 === 'number') {
+	for (const x of 表.档 ?? []) {
+		if (x.类别 !== '内容（叙事）') continue;
+		let 正文 = '';
+		try { 正文 = readFileSync(x.path, 'utf8'); } catch { 密度红.push([x.path, '读不到']); continue; }
+		const n = 叙事密度(正文);
+		if (n < 阈值) 密度红.push([x.path, `叙事文案 ${n} 处 < 阈值 ${阈值}`]);
+	}
+}
 let 红 = 0;
 for (const p of 未登记) { console.error(`✗ [未登记] ${p} —— 盘上有、表里没有 ⇒ 新档落地了但**边界没登记**（在 ${表路径} 的「档」里加一条 ✓）`); 红++; }
 for (const p of 空登记) { console.error(`✗ [空登记] ${p} —— 表里有、盘上没了 ⇒ **删档没销号**（✗ 别让登记表变成空文 ✓）`); 红++; }
 for (const p of 重复) { console.error(`✗ [重复] ${p} —— 同一档登记了两次`); 红++; }
+for (const c of 未定义类别) { console.error(`✗ [类别未定义] ${c} —— 表里出现了没定义过的类别 ⇒ 先在「类别定义」里给它一句定义与判据形（✗ 别让类别悄悄长出来）`); 红++; }
+for (const [p, 因] of 密度红) { console.error(`✗ [内容类密度] ${p} —— ${因} ⇒ ★这档标成了『内容（叙事）』但里面几乎没有叙事文案 ⇒ **抄 A 成 B 假绿**（把逻辑档标成了内容）`); 红++; }
 if (红) { console.error(`✗ 内容边界登记表与现状不一致：${红} 条`); process.exit(1); }
-console.log(`✓ 内容边界登记表与现状一致（${盘上.length} 档｜未登记 0｜空登记 0）`);
+const 待细目 = (表.档 ?? []).filter((x) => x.类别 === '待细目').length;
+console.log(`✓ 内容边界登记表与现状一致（${盘上.length} 档｜未登记 0｜空登记 0｜类别定义 ${Object.keys(表.类别定义 ?? {}).length} 类｜★待细目 ${待细目} 档）`);
