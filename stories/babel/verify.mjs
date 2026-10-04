@@ -203,6 +203,7 @@ for (const id of CLIMB_LAYERS) {
 	const loc = map.locations.get(id);
 	ok(!!loc, `缺层 ${id}`);
 	if (!loc) continue;
+	置已战(id);        // ★P1 前置（`books#259` 裁 1）：基础采集是战内/战后动作 ⇒ 断「每层有采集」前须先置已战
 	const acts = loc.availableActions.map((a) => (typeof a.text === 'function' ? a.text() : a.text));
 	/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的采集位改为「抽中的事件」** ⇒ 那四层不断无条件采集，
 	 *   改断「池里那三条事件动作**全在表**（由 when 筛）」＋ 未抽中时**不出现**（见㉓格）。
@@ -249,6 +250,9 @@ console.log(`  L10-gate ⇒ ${gate.map((e) => e.to).join('、')}｜L11 回边 ${
 	+ `｜L20-gate 出口 ${map.exitsFrom('L20-gate').length} 条（L21 未挂 ✓）`);
 
 /* ---------- ④ 采集（`#116`：节点挂**地点**，✗ 进背包）---------- */
+/* ★P1 前置（`books#259` 裁 1）：基础采集是**战内/战后**动作 ⇒ 本格断「动作在不在」之前须先置「已战」。 */
+置已战('L1', 'L2', 'L3', 'L4', 'L9', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19');   // ★按本格实际断言的那些层显式置位
+/* ⚠ 不能用 `gatherPoints` 动态取：本格位置很靠前，那时 `world/encounters.js` 的 `gatherPoints` 还没建 ⇒ 取到空表。 */
 head('④ 采集闭环（L1 的碎石堆 · 地点节点形）');
 map.moveTo('L1');
 const 采集点ids = ['stone-pile', 'dead-wood', 'flint-seam', 'wild-grain', 'copper-vein'];
@@ -3036,7 +3040,25 @@ head('㊷ `books#259` 裁 1：战斗不可跳（未战 ⇒ 边与面皆闭；已
 		跳.action();
 		ok(账.抽中.every((k) => B.eventPending(层, k) === false), '★跳过后事件面仍可选');
 		ok(向上在(), '★跳过后向上边也被关了 —— 跳过的是**事件**，✗ 路');
-		console.log('  裁1：未战 ⇒ 边与面皆闭 ✓｜已战 ⇒ 皆开 ✓｜事件入口可跳过（面关·路边在）✓');
+		/* ④ ★P1（`books#259` 九用例#1 红 · writer 真浏览器 CDP 实证：首战前 `kills=0` 却**采净 6 件**）：
+		 *   基础采集也是本层动作 ⇒ 与事件面同一道门。判据须**同时**保证「有可采次数」——
+		 *   否则「门关」与「采空」同值 ⇒ **假绿**（判据要能区分它要判的那件事）。 */
+		{
+			const 采层 = 'L1';
+			const 节点 = B.nodeAt?.(采层);
+			ok(!!节点, '★L1 没有采集节点（本臂前置不成立）');
+			const 原次数 = 节点.charges;
+			节点.charges = 5;                                 // ★保证有货（否则门关与采空同值）
+			const 采 = (map.locations.get(采层).actions ?? []).find(
+				(a) => /^采集（/.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+			ok(!!采, '★L1 的动作表里找不到基础采集动作（动作表变了？）');
+			delete (State.variables.babelRun.已战 ?? {})[采层];
+			ok(采.when() === false, '★**首战前**基础采集仍可执行 —— writer 实证的那条 P1（kills=0 却采净 6 件）');
+			置已战(采层);
+			ok(采.when() === true, '★已战之后基础采集反而不可执行（门接反了）');
+			节点.charges = 原次数;                             // 复原节点账（✗ 污染下游格）
+		}
+		console.log('  裁1：未战 ⇒ 边与面皆闭 ✓｜已战 ⇒ 皆开 ✓｜事件入口可跳过（面关·路边在）✓｜基础采集同门 ✓');
 	} finally {
 		if (账存 === null) delete State.variables.span1Events; else State.variables.span1Events = 账存;
 		if (State.variables.babelRun != null) {
