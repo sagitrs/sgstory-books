@@ -285,9 +285,27 @@ const EVENT_ACTIONS = {
 			return left == null ? `${前缀}（${L.gatherLabel}${耐久}）`
 				: `${前缀}（${L.gatherLabel}｜还可采 ${left} 次${耐久}）`;
 		},
-		when: () => eventPending(L.id, 'gather') && (nodeAt(L.id)?.charges ?? 0) > 0
-			&& (setup.BABEL.工具?.可采?.(L.id) ?? true),
+		/* ★`books#212` 第 1 项（操作者试玩：「预知『会有采集』但**无入口无原因**」）——
+		 *   原先 `when` 带**工具门** ⇒ 缺工具时按钮**不显示** ✗（玩家只看到"这里会有采集"而无从得知为什么进不去）。
+		 *   现改为：**只要本层抽中了采集事件就出按钮** ✓，把「为什么不行」交给 `action` **说明白** ✓
+		 *   ——★两种「不行」的文案**按码实况**写（票面原文）：
+		 *     · 缺工具 ⇒「此处可采集，需要：铁铲（未持有）」（**✗ 不消费** ⇒ 拿到工具回来还能采 ✓）
+		 *     · 已采过 ⇒「本处已采集过（事件用后不补）」
+		 *   ⚠ `when` 仍须**只读**（同 `eventsOf` 的说明）⇒ 两条文案都放在 `action` 里 ✓。 */
+		when: () => eventPending(L.id, 'gather') && (nodeAt(L.id)?.charges ?? 0) > 0,
 		action: () => {
+			/* ① 缺工具：说明白，**✗ 不 markUsed** —— 否则「事件用后不补」会把一次可以补的采集吃掉 ✗ */
+			if (!(setup.BABEL.工具?.可采?.(L.id) ?? true)) {
+				const 工具面 = setup.BABEL.工具;
+				const 名 = 工具面?.TOOLS?.[工具面?.需要工具?.(L.id)]?.name ?? '对应的工具';
+				R.perform(`此处可采集，需要：${名}（未持有）。`);
+				return;
+			}
+			/* ② 采点已空（纵深防御：`when` 已挡，但层回边可达 ⇒ 到这儿也要有话说） */
+			if ((nodeAt(L.id)?.charges ?? 0) <= 0) {
+				R.perform('本处已采集过（事件用后不补）。');
+				return;
+			}
 			markUsed(L.id, 'gather');
 			setup.BABEL.gather();
 		},

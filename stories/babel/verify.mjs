@@ -1439,7 +1439,23 @@ head('㉕ 工具耐久制（`books#133` 笔 2）');
 			R.rng.reset();
 			const 采动作 = () => (map.locations.get('L7').actions.find((a) => a.事件类 === 'gather'));
 			ok(!!采动作(), '★L7 的动作表里没有 `gather` 事件（动作表变了？）');
-			ok(采动作().when() === false, '★没有对应工具时 `gather` 仍可选（假选项：点进去才被告知没工具）');
+			/* ★`books#212` 第 1 项改形（操作者裁定 00:2x·领队转）：**按钮改为常出**，把「为什么不行」
+			 *   交给动作**说明白**（原先缺工具就**不出按钮** ⇒ 玩家只看到"这里会有采集"而无从得知原因 ✗）。
+			 *   本格随之改断**三面**：①`when` 为**真**（入口在 ⇒ 玩家点得到）；②动作**不消费**事件
+			 *   （拿到工具回来还能采 ✓）；③动作给出**可读原因**（缺哪一件 ⇒ 按码实况，✗ 按愿望写）。 */
+			ok(采动作().when() === true, '★缺工具时 `gather` 竟**不可选**（本票改为「入口常出 ＋ 动作说明原因」⇒ 入口消失会让玩家无从得知原因）');
+			{
+				/* 账键实名是「已用」（`span1Events[L].已用` ＝ 抽中的类）⇒ ✗ 我首版猜的 `.used`（✗ 凭记忆写内部名）。 */
+				const 账 = () => State.variables.span1Events?.L7?.已用 ?? null;
+				const 前消费 = 账();
+				const 前文 = [];
+				const 原perform = setup.RPG.perform;
+				setup.RPG.perform = function (...a) { 前文.push(String(a[0] ?? '')); return 原perform.apply(this, a); };
+				try { 采动作().action(); } finally { setup.RPG.perform = 原perform; }
+				ok(前文.some((行) => /此处可采集，需要：/.test(行)),
+					`★缺工具时点了采集，却没给**可读原因**（上屏=${JSON.stringify(前文)}）`);
+				ok(账() === 前消费, `★缺工具时点采集**把事件消费掉了**（已用 ${JSON.stringify(前消费)} ⇒ ${JSON.stringify(账())}）—— 拿到工具回来就不能采了`);
+			}
 			R.give('axe');
 			ok(采动作().when() === true, '★手上有铁斧了，`gather` 仍不可选（工具门接线断了）');
 			/* ⑧ ★`books#166` 的第七面 ＋ `sgstory#1906` §G：**背包里直接使用工具**须
