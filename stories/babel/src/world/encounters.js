@@ -277,6 +277,26 @@ setup.BABEL.战前保底 = (来源 = '整备') => {
 };
 
 /** **快读**：槽位空 ⇒ 出声回落（✗ 静默无反应 —— 那会让按钮看起来坏了）。 */
+/* ★`books#259` 裁 4：**快存放页脚**（✗ 藏在选项里）—— 页脚入口的**可用性判据**与**动作**都放这里 ✓：
+ *   · `页脚可存()`：**与 `快存` 同源**（`!战中 && 可存?.(槽位.快存)` ✓），✗ 不另写一套判据（`#213`／`#224`
+ *     的「战中禁存」只有一个源 ✓）。
+ *   · `页脚快存()`：不可存 ⇒ **印一句可读原因**并返回 `false`（✗ 静默）；可存 ⇒ 走**系统路径** `快存(...)` ✓
+ *     （与 `books#257` **臂 D** 同一调用形 ✓ —— 页脚是"**系统写自己的保留槽**"，✗ 不是让玩家挑槽的手动入口 ✓）。
+ *   ★判据够得着：两处都在 `setup.BABEL` 上 ⇒ `verify.mjs` 可**直调**（✗ 不必靠 DOM 才能判 ✓）。 */
+setup.BABEL.槽位 = 槽位;    // ★判据够得着（一处名 ✓）：页脚快存断的是「写的是不是**那个保留槽**」✓
+setup.BABEL.页脚可存 = () => (!setup.BABEL.战中) && (setup.BABEL.可存?.(槽位.快存) === true);
+setup.BABEL.页脚快存 = () => {
+	if (!setup.BABEL.页脚可存()) {
+		const 因 = setup.BABEL.战中 ? '战斗中不能存档' : '这个档位现在存不了';
+		if (typeof RPG.pushNotice === 'function') RPG.pushNotice(`${因}。`);
+		else RPG.perform?.(`${因}。`);
+		return false;
+	}
+	const r = setup.BABEL.快存(槽位.快存);
+	if (r === true && typeof RPG.pushNotice === 'function') RPG.pushNotice('已快存。');
+	return r;
+};
+
 setup.BABEL.快读 = (slot = 槽位.快存) => {
 	const S = 宿主槽();
 	if (typeof S?.load !== 'function' || typeof S.isEmpty !== 'function') {
