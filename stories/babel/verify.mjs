@@ -1881,18 +1881,28 @@ head('㉘ 预知实效（`books#164`）');
 		map.moveTo('L5'); map.moveTo('L6');            // L6 已抽定
 		ok(B.可预知('L5') === false, '★目标层已抽定后 L5 仍可预知（回边路径上会造出死选项）');
 
-		/* ⑦ 动作面：持有时恰三个；真点一次 ⇒ 入账且按钮全部退场 */
+		/* ⑦ ★`books#259` 裁 6：预知**已改为进层的门**（操作者原文「先预知，再进入下一层，再战斗」）——
+		 *   ①常驻按钮**退役**（✗ 两形并存：「随时可预知」与「进层那一刻问」互斥）
+		 *   ②门挂在**向上边**的 `action` 上，模态**恰 4 项**＝3 类 ＋ 不预知（操作者原文：后一项是「不预知」）
+		 *   ③选完即入账（`记预报`），此后该层门关（「每层一次」）。 */
 		清();
 		map.moveTo('L5');
-		const 钮 = 预知钮('L5');
-		ok(JSON.stringify(钮) === JSON.stringify(['battle', 'chest', 'gather']),
-			`★持有者进 L5 的预知按钮不是三类（实得 ${JSON.stringify(钮)}）`);
-		const 箱钮 = map.locations.get('L5').availableActions.find((x) => x.预知类 === 'chest');
-		if (箱钮) 箱钮.action();
-		ok(B.预报类('L6') === 'chest',
-			`★点「宝箱」后预报账没记下（实得 ${JSON.stringify(State.variables.span1Foresee)}）`);
 		ok(预知钮('L5').length === 0,
-			`★选定后按钮未退场（实得 ${JSON.stringify(预知钮('L5'))}）—— 「每层一次」在屏上不成立`);
+			`★常驻预知按钮仍在（实得 ${JSON.stringify(预知钮('L5'))}）—— 裁 6 要求改为「门」`);
+		const 上边 = (map.exitsFrom('L5') ?? []).find((e) => /向上/.test(String(e.text ?? '')));
+		ok(!!上边 && typeof 上边.action === 'function', '★向上边没有门（持有者攀层时不会出现 4 选项）');
+		{
+			const 原选 = D.Player.choice;
+			const 见 = [];
+			D.Player.choice = (选项) => { for (const o of 选项) 见.push(o.value); return Promise.resolve('chest'); };
+			try { 上边.action(); } finally { D.Player.choice = 原选; }
+			ok(见.length === 4 && 见.filter((v) => v != null).length === 3 && 见[见.length - 1] === null,
+				`★门的选项不是「3 类 ＋ 不预知」（实得 ${JSON.stringify(见)}）`);
+			await new Promise((r) => setTimeout(r, 0));        // 门内是 `.then` 入账 ⇒ 让微任务跑完再断
+		}
+		ok(B.预报类('L6') === 'chest',
+			`★从门里选「宝箱」后预报账没记下（实得 ${JSON.stringify(State.variables.span1Foresee)}）`);
+		ok(B.可预知('L5') === false, '★门选过之后本层仍可预知（「每层一次」在门上不成立）');
 
 		const 无预知同 = JSON.stringify(账6无?.抽中) === JSON.stringify(['chest', 'gather']);
 		const 形式同 = JSON.stringify(甲?.包) === JSON.stringify(乙?.包);
