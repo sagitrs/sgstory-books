@@ -91,3 +91,10 @@ if [ "$tot_redflag" -gt 0 ]; then
   exit 2
 fi
 echo "  ⇒ 读数可用（红旗 0）$( [ "$tot_fail" -gt 0 ] && echo "· 判据红 $tot_fail 条（见上，逐条具名）" || echo "· 判据红 0" )"
+
+# ── ★出仓口：`KEEP_LOGS=<目录>` ⇒ 另存一份到仓外（★默认行为不变：日志仍随跑就地更新留仓）──
+if [ -n "${KEEP_LOGS:-}" ]; then
+  mkdir -p "$KEEP_LOGS" 2>/dev/null && cp -f "$G"/.run.*.log "$KEEP_LOGS"/ 2>/dev/null \
+    && echo "★KEEP_LOGS：本轮日志已另存至 $KEEP_LOGS（仓内那份仍保留）" \
+    || echo "★KEEP_LOGS：另存失败（$KEEP_LOGS）—— 仓内那份不受影响"
+fi
