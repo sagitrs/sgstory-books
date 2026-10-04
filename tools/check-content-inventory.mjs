@@ -1,0 +1,62 @@
+/* 内容边界登记表的**机械守卫**（`sgstory#1988` 阶段 5·切片①；领队 18:07 裁甲+丙）
+ *
+ * 用法：`node tools/check-content-inventory.mjs [--selftest]`
+ * 退出码：0＝表与现状一致 ✓；1＝不一致（逐条具名）；2＝装置错（登记表读不到／不是 JSON ✓）。
+ *
+ * ## 为什么要有它
+ * 「内容」与「版式/骨架」的边界此前**只活在人的记忆里** ⇒ 新档一落地没人知道它算哪一类 ✓。
+ * 本门把边界变成**可复算**的：**每个档都要在 `stories/babel/content-inventory.json` 里登记** ✓。
+ * ★**两向都断**（`#1991` 判据半的教训：只断一个方向 ⇒ 一个"恒报全部"的实现也会绿 ✗）：
+ *   ①**盘上有、表里无** ⇒ 红（新档未登记 ✓ —— 这是本门的主职 ✓）
+ *   ②**表里有、盘上无** ⇒ 红（登记成了空文 ✓ —— 删档没销号 ✓）
+ * ## 本门**不**判什么（✗ 免得当已护）
+ *   · ✗ 不判「类别对不对」（那是评审的活 ✓，人写的依据在表里逐条可查 ✓）
+ *   · ✗ 不判内容应不应该在 JS（那是**切片②**的事 ✓，本门先钉边界 ✓）
+ */
+import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+const 表路径 = 'stories/babel/content-inventory.json';
+
+/** 纯函数：给「盘上档列表」与「登记表」⇒ 得差异（⇒ 可被自检直接喂合成数据 ✓）。 */
+export function 核对(盘上, 表) {
+	const 登记 = new Set((表.档 ?? []).map((x) => x.path));
+	const 实有 = new Set(盘上);
+	return {
+		未登记: [...实有].filter((p) => !登记.has(p)).sort(),
+		空登记: [...登记].filter((p) => !实有.has(p)).sort(),
+		重复: ( 表.档 ?? []).map((x) => x.path).filter((p, i, a) => a.indexOf(p) !== i),
+	};
+}
+
+const 自检 = process.argv.includes('--selftest');
+if (自检) {
+	/* ★刀：本门的两把牙 —— 各喂一组**合成**数据（✗ 不碰真盘 ✓ ⇒ 判据的期望不与被测物同源 ✓） */
+	const 表 = { 档: [{ path: 'a.js' }, { path: 'b.js' }] };
+	const 一 = 核对(['a.js', 'b.js', '新档.js'], 表);
+	const 二 = 核对(['a.js'], 表);
+	const 三 = 核对(['a.js', 'b.js'], { 档: [{ path: 'a.js' }, { path: 'a.js' }] });
+	const 果 = [
+		[一.未登记.join(',') === '新档.js', '①盘上有表里无 ⇒ 须抓出「新档.js」'],
+		[二.空登记.join(',') === 'b.js', '②表里有盘上无 ⇒ 须抓出「b.js」'],
+		[三.重复.join(',') === 'a.js', '③重复登记 ⇒ 须抓出'],
+	];
+	let ok = true;
+	for (const [过, 名] of 果) { console.log((过 ? '✓' : '✗') + ' ' + 名); if (!过) ok = false; }
+	console.log(ok ? '✓ 自检 3/3 如期（两向 ＋ 重复）' : '✗ 自检失败');
+	process.exit(ok ? 0 : 1);
+}
+
+if (!existsSync(表路径)) { console.error(`✗ 装置错：登记表不在 ${表路径}（先落切片①的登记表 ✓）`); process.exit(2); }
+let 表;
+try { 表 = JSON.parse(readFileSync(表路径, 'utf8')); }
+catch (e) { console.error(`✗ 装置错：登记表不是合法 JSON —— ${e.message}`); process.exit(2); }
+const scope = 表.scope ?? 'stories/babel/src';
+const 盘上 = execFileSync('git', ['ls-files', scope], { encoding: 'utf8' }).split('\n').filter(Boolean);
+const { 未登记, 空登记, 重复 } = 核对(盘上, 表);
+let 红 = 0;
+for (const p of 未登记) { console.error(`✗ [未登记] ${p} —— 盘上有、表里没有 ⇒ 新档落地了但**边界没登记**（在 ${表路径} 的「档」里加一条 ✓）`); 红++; }
+for (const p of 空登记) { console.error(`✗ [空登记] ${p} —— 表里有、盘上没了 ⇒ **删档没销号**（✗ 别让登记表变成空文 ✓）`); 红++; }
+for (const p of 重复) { console.error(`✗ [重复] ${p} —— 同一档登记了两次`); 红++; }
+if (红) { console.error(`✗ 内容边界登记表与现状不一致：${红} 条`); process.exit(1); }
+console.log(`✓ 内容边界登记表与现状一致（${盘上.length} 档｜未登记 0｜空登记 0）`);

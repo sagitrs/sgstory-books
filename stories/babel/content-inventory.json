@@ -1,0 +1,81 @@
+{
+  "scope": "stories/babel/src",
+  "规则": "每档须登记；新档出现而未登记 ⇒ 门红（两向：登记了但盘上无档亦红）",
+  "档": [
+    {
+      "path": "stories/babel/src/meta/init.twee",
+      "类别": "元数据",
+      "依据": "meta = 作品元信息（非叙事内容）"
+    },
+    {
+      "path": "stories/babel/src/meta/storydata.twee",
+      "类别": "元数据",
+      "依据": "meta = 作品元信息（非叙事内容）"
+    },
+    {
+      "path": "stories/babel/src/story/hooks.js",
+      "类别": "段落骨架",
+      "依据": "story = 段落与出口骨架（twee）；含少量过场叙事，**待细目**"
+    },
+    {
+      "path": "stories/babel/src/story/play.twee",
+      "类别": "段落骨架",
+      "依据": "story = 段落与出口骨架（twee）；含少量过场叙事，**待细目**"
+    },
+    {
+      "path": "stories/babel/src/ui/bag.js",
+      "类别": "呈现/版式",
+      "依据": "ui = 面板与样式骨架（`:: PassageFooter`/`:: StoryStylesheet`）＋渲染函数；✗ 非内容定义"
+    },
+    {
+      "path": "stories/babel/src/ui/battle.js",
+      "类别": "呈现/版式",
+      "依据": "ui = 面板与样式骨架（`:: PassageFooter`/`:: StoryStylesheet`）＋渲染函数；✗ 非内容定义"
+    },
+    {
+      "path": "stories/babel/src/ui/panels.js",
+      "类别": "呈现/版式",
+      "依据": "ui = 面板与样式骨架（`:: PassageFooter`/`:: StoryStylesheet`）＋渲染函数；✗ 非内容定义"
+    },
+    {
+      "path": "stories/babel/src/ui/ui.twee",
+      "类别": "呈现/版式",
+      "依据": "ui = 面板与样式骨架（`:: PassageFooter`/`:: StoryStylesheet`）＋渲染函数；✗ 非内容定义"
+    },
+    {
+      "path": "stories/babel/src/world/babel.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/babel2.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/boss.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/encounters.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/hazards.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/teleport.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    },
+    {
+      "path": "stories/babel/src/world/tools.js",
+      "类别": "内容＋规则",
+      "依据": "world = 事件表/遭遇/工具/数值/进程（本作内容主体）；**待细目**（内容 vs 规则尚未拆分）"
+    }
+  ]
+}
