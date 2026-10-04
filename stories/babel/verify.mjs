@@ -3538,6 +3538,57 @@ head('第 51 格 `books#280` ③a：战斗中页脚背包面只读（使用道�
 	}
 }
 
+/* ── 第 52 格 `books#280` ⑥：首载变体判定（无档 ⇒ 不出「从存档继续」；有档 ⇒ 出）────────────────
+ *
+ * 病（操作者试玩 ＋ 本席真浏览器复现）：**全新 profile、零存档、首载**即见
+ *   「刷新（重载页面）之后，请从存档继续」—— 初见玩家**无处可继续**，文案与初态不符
+ *   （两个独立 profile 同象；读数与截图见 PR 正文）。
+ * 勘察：那句原先是 `开始` 段落的**静态**文本（✗ 没有任何首载判定）⇒ 本笔给它一个判据源：
+ *   `setup.BABEL.有档()`（**本档案里有没有可继续的档**）。
+ *   ★取「有无档」✗ 不取「是不是首载」：后者在页面上**不可得**（同一段落渲染时分不出「首载」与
+ *     「刷新后仍停在开始段」），而玩家此时能做的动作恰好就是「从存档继续」。
+ *
+ * 断什么：① 能力缺席 ⇒ `false`（✗ 抛）② 槽 3 有档 ⇒ `true` ③ 全空 ⇒ `false`
+ *   ④ **单槽读失败不传播**（跳过该槽继续看）⑤ 段落结构：那句在**有档支**、初态支**不得**含「从存档继续」
+ *   且初态支要告诉新玩家去哪存 ⑥ **正控**：有档支里那句仍在（✗ 把判据做成「永远不出」）
+ * 刀（记在提交信息）：拆掉 `<<if 有档()>>`（回到静态那句）⇒ ⑤ 红，复原回绿。
+ */
+head('第 52 格 `books#280` ⑥：首载变体判定（无档 ⇒ 不出「从存档继续」；有档 ⇒ 出）');
+{
+	const 原宿主 = globalThis.SugarCube;
+	const 桩 = (has) => {
+		globalThis.SugarCube = { Save: { slots: { has } }, Config: { saves: { maxSlotSaves: 8 } } };
+	};
+	const twee = fs.readFileSync(path.join(storySrc, 'story', 'play.twee'), 'utf8');
+	const 段 = twee.slice(twee.indexOf(':: 开始'), twee.indexOf(':: L1 苏醒'));
+	const iIf = 段.indexOf('<<if setup.BABEL.有档()>>');
+	const iElse = 段.indexOf('<<else>>');
+	const iEnd = 段.indexOf('<</if>>');
+	try {
+		ok(typeof setup.BABEL.有档 === 'function', '★`有档()` 不在 —— 首载变体没有判据源');
+		delete globalThis.SugarCube;
+		ok(setup.BABEL.有档() === false, '★无宿主槽时应回落 `false`（✗ 抛／✗ 判成有档）');
+		桩((i) => i === 3);
+		ok(setup.BABEL.有档() === true, '★槽 3 有档时 `有档()` 应为 `true`');
+		桩(() => false);
+		ok(setup.BABEL.有档() === false, '★全空时应为 `false`');
+		桩((i) => { if (i === 0) throw new Error('桩：读失败'); return i === 5; });
+		ok(setup.BABEL.有档() === true, '★单槽读失败不应整支抛（应跳过该槽、继续看后面）');
+
+		ok(iIf > -1 && iElse > iIf && iEnd > iElse,
+			'★开始段落里那句**没有被 `<<if setup.BABEL.有档()>>` 分变体包住**（修前就是静态那句）');
+		const 有档支 = 段.slice(iIf, iElse);
+		const 初态支 = 段.slice(iElse, iEnd);
+		ok(/请从存档继续/.test(有档支), '★「请从存档继续」应在**有档支**（✗ 落到初态支）');
+		ok(!/请从存档继续/.test(初态支), '★初态支不得出现「请从存档继续」—— 正是本笔要修的形');
+		ok(/快存/.test(初态支), '★初态支应告诉新玩家**去哪存**（页脚「快存」）');
+		console.log('  首载变体：无档 ⇒ 不出「从存档继续」（改讲不会自动保存＋去哪存）✓'
+			+ '｜有档 ⇒ 出 ✓｜单槽读失败不传播 ✓');
+	} finally {
+		if (原宿主 === undefined) delete globalThis.SugarCube; else globalThis.SugarCube = 原宿主;
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 printSummary();
