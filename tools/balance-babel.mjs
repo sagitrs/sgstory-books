@@ -80,11 +80,27 @@ const 选己方 = (options) => {
  *  先前一律选敌方 ⇒ `防疗` 夹具名不副实（量的是「带治疗件但从不使用」）。 */
 const 选目标 = (options, ctx) => (/草药糊|绷带/.test(String(ctx?.上次选文案 ?? '')) ? 选己方(options) : 选敌方(options));
 
+/* ★攻击步「优先**已装备武器**」（领队 2026-10-04 02:05 裁；乙支验收判据所本） ——
+ *   理由：真玩家拿乙的保证，就是**装上那把剑去打** ✓。引擎把「快捷用件」排在候选**前面**
+ *   （本轮实测选项真形：`{text:'用已装备淬火长剑攻击', value:'quick:1:use'}` 在前、
+ *    `{text:'淬火长剑（已装备）', value:'1'}` 在后；`重木盾` 亦同形且**排在剑之前**）。
+ *   ⚠ 判「武器」须 **含武器字 ∧ 不含防具字**（`#217`／`#228` 口径）——盾类选项文案**也**含「攻击」
+ *     （`用已装备重木盾攻击` ✓）⇒ 只按 `/攻击/` 取 `find` **首项**会挑中**盾** ✗（本轮实测即此）。
+ *   ⚠ 策略须**纯函数式**（同轨迹重放逐字同）：只读 `options`／`ctx` ✓。 */
+const 武器字 = /长剑|短剑|铁镐|斧头|铁锹|匕首/;
+const 防具字 = /盾|甲|衣|铠|盔/;
+const 是武器项 = (o) => 武器字.test(String(o.text)) && !防具字.test(String(o.text));
+const 选攻击 = (options, ctx) => options.find((o) => ctx?.手上快用 != null && o.value === ctx.手上快用)   // ① ★结构锚：手上那把（值形比对）
+	?? options.find((o) => /已装备/.test(o.text) && 是武器项(o))          // ① 装上那件
+	?? options.find((o) => 是武器项(o) && !/跳过|探索/.test(o.text))                          // ② 其余武器项
+	?? options.find((o) => /攻击|打击|挥|砍|劈/.test(o.text) && !防具字.test(o.text) && !/跳过|探索/.test(o.text))  // ③ 泛攻击词（仍排除防具）
+	?? options.find((o) => /空手/.test(o.text));                                             // ④ 空手打击
+
 const STRATEGIES = {
 	/* 纯攻：优先「使用」已装备的武器打第一个敌人；没有武器就打空手。 */
 	'纯攻': (options, ctx) => {
 		if (目标步(options)) return 选敌方(options);
-		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		const 攻 = 选攻击(options, ctx);
 		if (攻) return 攻.value;
 		const 空手 = options.find((o) => /空手/.test(o.text));
 		if (空手) return 空手.value;
@@ -97,7 +113,7 @@ const STRATEGIES = {
 			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
 			if (治) return 治.value;
 		}
-		const 攻 = options.find((o) => /长剑|铁镐|斧头|铁锹|匕首|攻击|打击|挥|砍|劈/.test(o.text) && !/跳过/.test(o.text));
+		const 攻 = 选攻击(options, ctx);
 		if (攻) return 攻.value;
 		return options[0].value;
 	},
@@ -434,6 +450,17 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				 *   先前只有「自己血比」⇒ 目标步**一律选敌方** ⇒ `防疗` 夹具**永远不会治疗**
 				 *   （把治疗品从各 1 件加到各 4 件，读数与回合数**一字不变** —— `tester-3` 实测）。 */
 				上次选文案: 轨迹.at(-1)?.选文案 ?? null,
+				/* ★**结构锚**（`developer-9` 02:07 建议；正与「文案可能陈旧 ⇒ ✗ 凭它判来源」同族）：
+				 *   引擎的快捷用件项值形＝`quick:<下标>:use`（下标＝**库存下标**，与件选项 `String(i)` 同源）
+				 *   ⇒ 由库存里 `equipped===true` 的那件解出下标 ⇒ 「手上那把」按**件 id** 认，✗ 不靠「已装备」字样。 */
+				手上快用: (() => {
+					try {
+						const 装 = SC.setup.RPG.equippedIn?.('weapon') ?? null;
+						if (!装) return null;
+						const i = (V().inventory ?? []).findIndex((x) => x.equipped === true && x.id === 装.id);
+						return i >= 0 ? `quick:${i}:use` : null;
+					} catch { return null; }
+				})(),
 			};
 			const pick = 策略(o, ctx);
 			const hit = o.find((x) => x.value === pick) ?? o[0];
