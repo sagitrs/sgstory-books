@@ -27,6 +27,17 @@ R.panelWriter = (host, html, opts = {}) => {
 		$host.find(sel).each(function () { if (this.open === true) keep.push(sel); });
 	}
 	$host.html(html);
+	/* ★`sgstory#1983`（B2·机制强度＝呈现强度）：把引擎交来的 `css` 对（`{变量名: 色值}`）落进宿主 ——
+	 *   ★写**根元素**的 inline style（`style.setProperty` ✓）。
+	 *   ★**✗ 不在故事侧再算一次「哪个键生效」**：那是引擎 `tintOf` 的活 ✓（`#1992` D 面点名的那条否法）。
+	 *   ★`null`／非对象（未声明）⇒ **不动任何样式** ⇒ 未声明的面板**逐字不变** ✓（零回归）。 */
+	const css = opts.css;
+	if (css && typeof css === 'object') {
+		const 根 = $host[0];
+		if (根 && 根.style && typeof 根.style.setProperty === 'function') {
+			for (const k of Object.keys(css)) 根.style.setProperty(k, css[k]);
+		}
+	}
 	for (const sel of keep) $host.find(sel).each(function () { this.open = true; });
 	return true;
 };
