@@ -832,10 +832,11 @@ map.locations.get('L3').actions.unshift({
  *   （`DND3.meleeAttack`）⇒ ✗ 旁路、✗ 重造机制；代价是「硬开只有一下」（够不够看数值）。
  * ★**不可逆**（设计要的「有代价的二择」）：挥击**没砸开** ⇒ 箱盖变形、钥匙再也拧不动 ⇒ `lockNow()`。 */
 const L4_CHEST_ID = 'chest-l4';
+const L4箱hp = 6;
 const L4箱态 = () => {
 	const v = State.variables.span1Arc;
 	if (!v.chests) v.chests = {};
-	if (!v.chests[L4_CHEST_ID]) v.chests[L4_CHEST_ID] = { hp: 6, opened: false, broken: false, locked: false };
+	if (!v.chests[L4_CHEST_ID]) v.chests[L4_CHEST_ID] = { hp: L4箱hp, opened: false, broken: false, locked: false };
 	return v.chests[L4_CHEST_ID];
 };
 /** 按存态**重建**箱实例（✗ 常驻对象 —— 那次读档后即与存档脱节）。 */
@@ -846,6 +847,22 @@ const L4箱 = () => {
 	return c;
 };
 const L4已了 = () => { const s = L4箱态(); return s.opened || s.broken || s.locked; };
+/* ★`books#280` ⑤（勘察结论 · 操作者试玩实录）：硬开原先走 `R.equippedWeapon()` —— 那是**武器**面，
+ *   而 L4 手上多半只有 L3 拾起的**矿镐（工具·无 `dmg`）** ⇒ 伤害≈0 ⇒ **6 HP 箱永远砸不开**
+ *   ⇒ 每次硬开都落「锁死」支（操作者实证：文案读作失败、铁环甲拿不到、打不过狼）。
+ *   ⇒ 本表＝**硬开器械的一次挥击伤害**（数据一处；判定仍走引擎同一条伤害面 `DND3.meleeAttack`）。
+ *     ⚠ 下界须 **≥ `L4箱hp`**（`1d6+5` ⇒ 6~11）—— 那是「**持工具必开**」这句话的实现，✗ 数值偏好。
+ *   ⇒ 失败形（赤手／无工具）仍保留「不可逆二择」（设计要的代价），但**入口文案先明示**（✗ 事后才告知）。 */
+const 硬开伤害 = Object.freeze({ pick: '1d6+5', shovel: '1d6+5', axe: '1d6+6' });
+/** 手上的硬开器械：优先工具（有则用它，✗ 回落武器面）；✗ 无工具 ⇒ 返回值 `器: null`（赤手）。 */
+const 硬开器械 = () => {
+	const id = Object.keys(硬开伤害).find((k) => R.has?.(k)) ?? null;
+	if (!id) return { 名: '赤手', 器: null };
+	const 名 = TOOLS_名(id);
+	return { 名, 器: { id, name: 名, stats: { dmg: 硬开伤害[id] }, equipped: true } };
+};
+/** 工具名（`world/tools.js` 后装载 ⇒ 能力探测；缺席时回落到 id，✗ 静默空串）。 */
+const TOOLS_名 = (id) => setup.BABEL?.工具?.TOOLS?.[id]?.name ?? id;
 const L4中甲入包 = (s) => {
 	R.give('mail');
 	R.perform('箱盖翻过去，里头垫着干草 —— 一件铁环甲，还带着别人的味道。');
@@ -864,21 +881,26 @@ map.locations.get('L4').actions.unshift(
 		},
 	},
 	{
-		text: '硬开（抡起手里的家伙砸箱盖）',
+		/* ★`books#280` ⑤：入口文案**先明示**代价（✗ 事后才告知）——不改设计，改的是「玩家能不能自己做决定」。 */
+		text: '硬开（抡起手里的家伙砸箱盖——**砸不开就再也打不开了**）',
 		when: () => !L4已了(),
 		action: () => {
 			const s = L4箱态();
 			const c = L4箱();
-			/* 走引擎**同一条**伤害面：玩家手上的武器（无武器 ⇒ 空手，`unarmedItem` 已 equipped ⟹ 不会卡在拔出分支）。 */
-			const w = R.equippedWeapon() ?? DND3.Player.unarmed.item;
+			/* 走引擎**同一条**伤害面：优先工具（见 `硬开器械`）；✗ 无工具 ⇒ 回落武器／赤手（虚线保留）。 */
+			const { 名, 器 } = 硬开器械();
+			const w = 器 ?? (R.equippedWeapon() ?? DND3.Player.unarmed.item);
 			DND3.meleeAttack(w, c, DND3.Player);
 			s.hp = c.hp;
 			if (c.isBroken) {
 				s.broken = true;
-				R.perform('箱板裂开一道口子，你把它掰开。');
+				R.perform(`箱板在${名}下裂开一道口子，你把它掰开。`);   // ★**成功形**文案（✗ 只印引擎的「锁死」那句）
+				/* ★耐久**只在成功**扣 1（对齐 D 件「采成才扣」的语义）—— ✗ 在锁死支里也扣。 */
+				const slot = 器 ? (State.variables.inventory ?? []).find((x) => x.id === 器.id) : null;
+				if (slot) setup.BABEL.工具?.扣耐久?.(slot);
 				L4中甲入包(s);
 			} else {
-				/* ★**不可逆**：没砸开 ⇒ 箱盖变形，钥匙也拧不动了（引擎的 `lockNow()` 形）。 */
+				/* ★**不可逆**（设计要的「有代价的二择」）：没砸开 ⇒ 箱盖变形，钥匙也拧不动了（引擎的 `lockNow()` 形）。 */
 				c.lockNow();
 				s.locked = true;
 			}
