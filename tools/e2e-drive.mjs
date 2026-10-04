@@ -254,7 +254,7 @@ if (has('--selftest')) {
 
 	/* ★面 N 的**刀**（`books#133` 笔 2）：证明「无工具 ⇒ 该事件不出按钮，给上工具 ⇒ 出」这条**红得了** ——
 	 *   唯一变量＝**背包里那件工具**（其余全不动）：同一账、同一注入下读数**翻面**。 */
-	let N无工具 = null, N有工具 = null;
+	let N无工具 = null, N有工具 = null , N无消费 = null;
 	{
 		const B = s.SC.setup.BABEL, R = s.SC.setup.RPG;
 		const 包 = s.SC.State.variables.inventory;
@@ -264,11 +264,18 @@ if (has('--selftest')) {
 		B.map.moveTo('L7');
 		R.rng.reset();
 		const 采 = () => B.map.locations.get('L7').actions.find((a) => a.事件类 === 'gather');
-		N无工具 = 采().when() === false;
+		/* ★`books#212` 新契约（入口常出）：刀也随之改**两向** ——
+		 *   ①无斧 ⇒ 入口**在**（`when()` 真 ✓）且点它**不消费事件**（理由由动作说明 ✓）；
+		 *   ②给斧 ⇒ 仍可选（可采那条路由面 N 的按钮与 `verify` ㉕ 的「真采到」共同证 ✓）。
+		 *   ★两向仍**可辨**（差在"消费没消费"✓）⇒ 刀义保住 ✓（✗ 不是把刀删掉 ✓）。 */
+		N无工具 = 采().when() === true;
+		采().action();
+		N无消费 = (s.SC.State.variables.span1Events?.L7?.已用 ?? null) === null;
 		R.give('axe');
 		N有工具 = 采().when() === true;
 	}
-	F('★面 N 两向：同一注入下，无斧 ⇒ 不可选、给斧 ⇒ 可选（读数随**背包**翻面，✗ 恒定）', N无工具 === true && N有工具 === true);
+	F('★面 N 两向：无斧 ⇒ 入口**在**且动作**不消费**（理由由动作给）；给斧 ⇒ 可选（两向仍可辨：差在消费）',
+		N无工具 === true && N无消费 === true && N有工具 === true);
 
 	/* ★面 O 的**刀**（`books#133` 笔 3）：唯一出口的读数**随层表的 `boss` 标记翻面** ——
 	 *   摘掉标记 ⇒ L9 立刻回到 2 条可用出口（证明守卫读的是**表**，✗ 硬写的层名 `=== 'L9'`）。 */
@@ -516,13 +523,13 @@ if (has('--selftest')) {
 		`★面 N：注入后 L7 的抽中与手算不符（手算 ['chest','gather']；实得 ${JSON.stringify(N账?.抽中)}）`);
 	/* ★`books#212` 第 1 项改形（操作者裁定 00:2x）：**入口改为常出** ⇒ 本面由「没有按钮」翻成「按钮在」；
 	 *   而「为什么不行」由动作说明白 ⇒ 那条链在 `verify` ㉕ 格里断（那里能就地调动作并截 `perform`）✓。 */
-	ok(N无.length === 1, `★面 N：手上**没有**铁斧时采集按钮**不在**（${JSON.stringify(N无)}）—— 本票已改为「入口常出 ＋ 动作说明原因」`);
+	ok(N无.length === 1, `★面 N：手上没有铁斧时采集按钮**应在**（入口常出 ✓）；若不在 ⇒ 「入口常出＋动作说明原因」这条契约被改回去了（实得 ${JSON.stringify(N无)}）`);
 	ok(choiceButtons(s).some((t) => t.includes('箱子')), '★面 N：另一类事件按钮（箱子）也不在 ⇒ 事件面本身没起来，本面读数不成立');
 	s.SC.setup.RPG.give('axe');
 	await playPassage(s, '探索'); await tick(250);            // 就地重画（同一段落、同一账）
 	const N有 = 采按钮(s);
 	ok(N有.length === 1, `★面 N：给了铁斧之后采集按钮仍不出现（实得 ${JSON.stringify(N有)}）—— 工具门接线断了`);
-	if (N有.length === 1 && N无.length === 0) console.log(`  面 N ✓ 工具门：无斧 ⇒ 采集按钮 0 个；给斧 ⇒ ${JSON.stringify(N有)}`);
+	if (N有.length === 1 && N无.length === 1) console.log(`  面 N ✓ 入口常出：无斧 ⇒ 采集按钮**在**（理由由动作给）；给斧 ⇒ ${JSON.stringify(N有)}`);
 
 	/* ══ 面 O（**硬判**）：L9 头目弧的**唯一出口**（`books#133` 笔 3）════════════════
 	 * 玩家可见的形＝「选项中只有一个」：L9 的出口只出「前进」那一条（✗ 向上／向下两条都出）。
