@@ -475,6 +475,74 @@ const makeLayerLocation = (L) => new R.Location({
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * ★`books#201` **乙笔：旅程装备保证**（操作者裁定 2026-10-03「方向＝乙」）
+ *
+ *   裁定原话：**盾牌／护甲必到手**（L1-8 沿途发放去随机化，**满装备＝设计保证而非运气**）；
+ *   方法＝**期望值设计**（解析式算清再落数值）；跑分器＝**验证工具**（✗ 设计工具）。
+ *
+ *   期望依据（`books#201` 票面的算式与敏感度表）：现状 TTK 14.3 ＞ 回合上限 8 ⇒ **结构性不可胜**
+ *   （实测 4.7–5.0% 胜／85–89% 阵亡）。要落进 §14 ⑩ 的 **70–85%** 带内，需三件事同时成立：
+ *     ①玩家 AC 15→17（重木盾）②攻击加值 +1→+4 ③武器有效伤害 1d8+1（均 5.5）→ 2d6+3（均 10）
+ *   ⇒ 模型读数 **72.6% 胜／13.4% 阵亡**（`#201` 票面敏感度表；权威复核＝跑分器 100 样本）。
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 淬火长剑（乙的武器那一半）────────────────────────────────────────────
+ * 期望依据：**原值** 剑 `1d8`（有效 1d8+1，均 5.5）⇒ **新值** `2d6+2`。
+ *   ⚠ 写法说明：引擎近战**把角色 str 加值加进伤害**（头目 1d8 ＋ str 16(+3) ＝ 1d8+3，`tester-3` 的分解）
+ *   ⇒ 玩家 str 12(+1) 下，`2d6+2` 的**有效**伤害正是 **2d6+3（均 10）**，与票面达线组合同口径。
+ *   ⚠ `atkBonus: 4`：引擎口径为「件上有 `atkBonus` 时**以它为准**」（头目件 `atkBonus: 5` 而 str+bab 合计 6
+ *   ⇒ 实测命中 +5 ⇒ 见 `#185` 的探针）⇒ 玩家攻击 **+4**，即票面第 ② 项。
+ *   ⚠ 这两条**都是「读码推断」，故判据必须真打一爪去量**（`verify.mjs` ㊴：真命中记伤害/命中加值）——
+ *     ✗ 不把推断当读数。 */
+R.defItem({
+	id: 'sword-quenched', name: '淬火长剑',
+	desc: '刃口重新淬过火，颜色发青；握把上缠的布还是热的。比捡来那把称手得多。',
+	stats: {
+		dmg: '2d6+2',        // ＋玩家 str +1 ⇒ 有效 2d6+3（均 10），期望依据见上
+		crit: 2,             // 重击倍率 ×2
+		critMin: 19,         // 威胁范围 19–20（与制式长剑同）
+		type: 'slashing',
+		prof: 'martial',
+		atkBonus: 4,         // 玩家攻击 +4（票面第 ② 项）
+		weight: 4, cost: 40,
+	},
+	charges: null, stackable: false, weapon: true, slot: 'weapon',
+	actions: { equip: R.slotEquip, unequip: R.slotUnequip },
+	/* ⚠ `defItem` 要求**默认动作** `used(that, from)`（缺它直接具名抛 —— 本笔第一版就撞了这条，
+	 *   由 `verify.mjs` 的兜底打印出来）·转发返回值同引擎剑（攻击层 `return false` 时须如实传出）。 */
+	used(that, from) { return DND3.meleeAttack(this, that, from); },
+});
+
+/** ★乙的**保证点**：进 L9 门前营地即**无条件**到手（重木盾 ＋ 淬火长剑）并**当场装上**。
+ *   ✗ 做成「可选动作」：那还是「记得点才算」，与裁定的「**保证**而非运气」相反。
+ *   形：**幂等**（重复进营地不重复发放/不重复出声）；导出以便判据**直调**（✗ 只能靠走位触发）。 */
+const 乙保证 = () => {
+	const 得 = [];
+	if (!R.has('heavy-wooden-shield')) { R.give('heavy-wooden-shield'); 得.push('重木盾'); }
+	if (RPG.equippedIn('shield')?.id !== 'heavy-wooden-shield') R.equip('heavy-wooden-shield');
+	if (!R.has('sword-quenched')) { R.give('sword-quenched'); 得.push('淬火长剑'); }
+	/* ⚠ **同槽被占时 `slotEquip` 会显式拒绝**（`30-inventory.js:177-180`：「正占着…槽——先卸下它。」
+	 *   并 `return false`）⇒ 我首版直接 `R.equip('sword-quenched')` **必然被拒**（手上已有基础长剑）
+	 *   ⇒ 乙的武器从未上身（轨迹实证：`sword-quenched` 只出现在「被拒」行里、战场动作 id 恒为 `sword`；
+	 *   连带的两个「口径差」也由此而来：真打用的是基础长剑，✗ 不是淬火剑）。
+	 *   ⇒ 正确做法：**先走件自己的卸下动作**（`slotUnequip` 挂在件上，`this` 即该件 —— 与引擎契约同路），
+	 *     再装。⚠ 我第二版误用 `R.unequip(id)` ⇒ 引出 `Cannot read properties of null` ✗（接口没读就改）。 */
+	/* ⚠ 走**官方 API** `RPG.unequip(id)`（`30-inventory.js:310`：`unequip = (id) => useItem(id, null, null, 'unequip')`）
+	 *   —— ✗ 不要自己 `旧件.actions.unequip.call(旧件)`：那只改**实例**的 `equipped`，✗ 不写回**背包快照**
+	 *   （`RPG.commit` 才提交 `equipped` ⇒ 槽位看起来仍被占 ⇒ 接下来的 `equip` 仍被拒 ⇒ 实测照旧 `sword`）。
+	 *   ⚠ 我上一版用 `R.unequip(id)` 时见到的 `Cannot read properties of null (reading 'hp')` **不是**这条调用形式的错
+	 *   —— 那是**工具包装器 `R.act` 丢第 4 参**（把 `action` 折成缺省 `use`）的 bug（`tester-3` 已修，随小笔落）。 */
+	const 卸槽 = (槽) => {
+		const 旧件 = RPG.equippedIn(槽);
+		if (!旧件 || 旧件.id === 'sword-quenched') return;
+		RPG.unequip(旧件.id);
+	};
+	if (RPG.equippedIn('weapon')?.id !== 'sword-quenched') { 卸槽('weapon'); R.equip('sword-quenched'); }
+	if (得.length) R.perform(`你把这一段路上攒下的称手东西都带上了：${得.join('、')}。`);
+	return 得;
+};
+
 /* ---------- ★`books#180`：L9 拆「准备区 ＋ 战场」----------
  * 设计原话「固定事件＝玩家看到出口；选项**唯一**＝前进」说的是**战场里**（✗ 整层）——
  *   拆开后：准备区＝撤退落点＋**合法回 L8 温泉**的补给点；战场＝迎战不眠者，出口仍唯一（且受进度约束）。
@@ -491,7 +559,14 @@ map.addLocation(准备区);
  *   ★保留旧钩（`onEnter` 是**单值属性**，直接赋值会静默吃掉既存副作用 —— 同 `战场` 那处的形）。 */
 {
 	const 旧入 = 准备区.onEnter;
-	准备区.onEnter = (loc) => { 旧入?.(loc); setup.BABEL.战前保底?.('门前营地'); };
+	准备区.onEnter = (loc) => {
+		旧入?.(loc);
+		/* ★`books#201` 乙：**先发保证装备、再写战前保底** —— 次序有意：
+		 *   保底槽 1 存的是「进营地那一刻」的状态 ⇒ 装备必须先到手，否则保底存了一份「没盾没剑」的档，
+		 *   玩家读档回来又得重走一遍（`#183` 的整备点自动写槽 1）。 */
+		setup.BABEL.乙保证?.();
+		setup.BABEL.战前保底?.('门前营地');
+	};
 }
 /** L9 的**入口**（上行走到的是准备区，✗ 战场；下行从准备区回 L8）。 */
 const 入层口 = (id) => (id === 'L9' ? 'L9-camp' : id);
@@ -863,7 +938,9 @@ setup.BABEL.保存域键 = 保存域键;   // ★`#1902`：审计面按此表逐
 /* ★`books#178` 件 2 的需求：**「只给活人」这个闸门必须能被别档取用**（同源，✗ 各自重写一份判活）。
  *   件 2 的营火交易挂在**引擎侧地点**上，绕不过本档 `.map(只给活人)` 那道过滤 ⇒ 只有导出它，
  *   挂上去的动才与地图动作受**同一道**闸门（`#176` 终局后 hub 不给动作的判据据此成立）。 */
-setup.BABEL.只给活人 = 只给活人;   // ★导出以便判据可**真调用**（✗ 只能静态核）
+setup.BABEL.只给活人 = 只给活人;
+setup.BABEL.乙保证 = 乙保证;          // ★`books#201` 乙：判据可**真调用**（✗ 只能静态核）
+setup.BABEL.是头目战场 = 是头目战场;  // ★`books#201`：`fight()`（跑分器走的真路）据此在该层发保证装备
 R.registerScene(makeExploreScene());
 
 /* ---------- 永久被动「预知」（**注册面已迁引擎档** · `#1909`／`sgstory#1930`）----------
