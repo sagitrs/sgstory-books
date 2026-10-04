@@ -217,7 +217,11 @@ for (const id of CLIMB_LAYERS) {
 	} else {
 		ok(acts.some((t) => t.includes('采集')), `${id} 没有采集动作`);
 	}
-	ok(acts.some((t) => t.includes('遭遇')), `${id} 没有遭遇动作（第一场战斗三段皆留）`);
+	/* ★`books#280` ①（同笔重取）：本格上面 `置已战(id)` 是**前置**，而遭遇面自本笔起**跟着已战账走**
+	 *   （胜利即耗）⇒ 若仍按 `availableActions` 断「有遭遇」，就与本格自己的前置**自相矛盾**。
+	 *   ⇒ 口径改为断**动作表的存在性**（`loc.actions`：静态入表、由 `when` 筛）；可用性那半由 ㊽ 格三向判。 */
+	const 形 = (a) => (typeof a.text === 'function' ? a.text() : a.text);
+	ok(loc.actions.some((a) => 形(a).includes('遭遇')), `${id} 没有遭遇动作（第一场战斗三段皆留；本行断**表存在性**）`);
 	ok(!!B.gatherOf(id), `${id} 没有配采集点`);
 	if (typeof R.layerOfLocation === 'function') ok(R.layerOfLocation(id)?.id === id, `${id} 判不出层（层表未配对？）`);
 	console.log(`  ${id}：采集点 ${B.gatherOf(id)}｜动作 ${acts.length} 个`);
@@ -1348,16 +1352,21 @@ head('㉓ 选择制动作面（`books#133` 笔 1）');
 
 	/* ③④⑤ 择一：两类一起退场；基础遭遇**不受影响**；账不变（不重抽） */
 	const loc6 = map.locations.get('L6');
+	const 遭遇形 = (a) => (typeof a.text === 'function' ? a.text() : a.text);
+	const 遭面6 = () => loc6.actions.find((a) => 遭遇形(a).includes('遭遇'));
+	/* ★`books#280` ①（同笔重取）：遭遇的可用性现由**已战账**筛（胜利即耗），而本格上面已 `置已战('L6')`
+	 *   ⇒ 口径改为「择一**前后同值**」：断的是「事件面与基础遭遇面**零耦合**」，✗ 不是「恒可用」。 */
+	const 遇前 = typeof 遭面6()?.when === 'function' ? 遭面6().when() : null;
 	const 选中 = loc6.actions.find((a) => a.事件类 === 可事件('L6')[0]);
 	ok(!!选中, '★取不到抽中类的动作对象（动作表与`事件类`标记不一致）');
 	if (选中) 选中.action();
-	const 遭遇形 = (a) => (typeof a.text === 'function' ? a.text() : a.text);
 	/* ★`dev-9` NIT-5 的同族：日志里的 `✓` 须**按读数条件**印（✗ 无条件印 —— 臂 B 下会照印「已清 ✓」） */
 	const 清 = 可事件('L6').length === 0;
-	const 遭遇在 = loc6.availableActions.some((a) => 遭遇形(a).includes('遭遇'));
+	const 遇后 = typeof 遭面6()?.when === 'function' ? 遭面6().when() : null;
+	const 遭遇在 = !!遭面6() && 遇前 === 遇后;
 	const 账静 = JSON.stringify(State.variables.span1Events['L6'].抽中) === JSON.stringify(['battle', 'chest']);
 	ok(清, `★择一之后本层事件面没退场（还可选 ${JSON.stringify(可事件('L6'))}）`);
-	ok(遭遇在, '★择一之后**基础遭遇**也没了（第一场战斗须保留）');
+	ok(遭遇在, `★择一改变了基础遭遇的可用性（表在 ${!!遭面6()}；前 ${遇前} ⇒ 后 ${遇后}）—— 两张面应零耦合`);
 	ok(账静, '★择一之后重抽了');
 	console.log(`  事件面：L5 抽中 ${JSON.stringify(账5?.抽中)} ⇒ 可选 ${JSON.stringify(甲可)}｜`
 		+ `强制抽 ['battle','chest'] ⇒ 采集不可选${!可事件('L6').includes('gather') ? ' ✓' : ' ✗'}`
@@ -3308,6 +3317,44 @@ head('㊼ `books#259` 裁（writer 第三条 P1）：跳过＝关面不补（跳
 	} finally {
 		if (节点) 节点.charges = 次数存;
 		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
+		if (位存) map.moveTo(位存);
+	}
+}
+
+/* ── ㊽ `books#280` ①：**遭遇＝每层一次**（胜利即耗；撤退／失败可重试）──────────────────
+ *
+ * 病（操作者试玩 14:3x）：原地反复「遭遇」杀獾 ⇒ **旧硬币无限刷**。
+ * 裁（修向）：`遭遇` 的 `when` 加 `&& !本层已战`——「首战＝该层唯一战斗」是裁 1 的语义；
+ *   而 `已战` **只在胜利置位**（`encounters.js:402` 在 `果 === 'victory'` 支里）
+ *   ⇒ 撤退／失败可重试的**口径不变**（✗ 把「打过一场」当「打过了」）。
+ *
+ * 断什么：① 未战（含撤退／失败后）⇒ 遭遇面**可用**（可重试这半不能被闸刀顺手切掉）；
+ *   ② 已战（胜利）⇒ 遭遇面**不可用**（操作者实证那条）；③ **正控**：撤回已战账 ⇒ 面**重新可用**
+ *   （否则 ① 可能是恒真——把门读成了常开）。
+ * 刀（记在提交信息）：拆 `&& !本层已战(L.id)` ⇒ ② 红，复原回绿。
+ */
+head('㊽ `books#280` ①：遭遇＝每层一次（胜利即耗；撤退／失败可重试）');
+{
+	const 层 = 'L1';
+	const 战存 = JSON.parse(JSON.stringify(State.variables.babelRun?.已战 ?? null));
+	const 位存 = map.current;
+	const 遭面 = () => (map.locations.get(层).actions ?? []).find(
+		(a) => /^遭遇（/.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+	try {
+		const 遭 = 遭面();
+		ok(!!遭, '★L1 动作表里找不到基础遭遇动作（动作表变了？）');
+		delete (State.variables.babelRun.已战 ??= {})[层];
+		ok(遭.when() === true, '★未战（含撤退／失败后）时遭遇面不可用 —— 裁文要「撤退／失败可重试」');
+		置已战(层);                                              // 前置：胜利（`fight()` 只在胜利支写这个账）
+		ok(遭.when() === false, '★**已战**后遭遇面仍可用 —— 操作者实证的无限刷獾（旧硬币无限刷）');
+		/* ③ 正控：撤回已战账 ⇒ 面**重新可用**（证 ① 跟着账走，✗ 恒真） */
+		delete State.variables.babelRun.已战[层];
+		ok(遭.when() === true, '★撤回已战账后遭遇面仍不可用 —— ① 那一条可能是恒真（把门读成了常开）');
+		console.log('  遭遇门：未战可重试 ✓｜已战即闭（✗ 无限刷）✓｜撤回账后重新可用 ✓');
+	} finally {
+		if (State.variables.babelRun != null) {
+			if (战存 === null) delete State.variables.babelRun.已战; else State.variables.babelRun.已战 = 战存;
+		}
 		if (位存) map.moveTo(位存);
 	}
 }

@@ -429,7 +429,12 @@ const 基础采集动作 = (L) => ({
  *   开发者信号走 `console.warn`（票号/源码路径是写给接线者的），玩家层只出白话。 */
 const 基础遭遇动作 = (L) => ({
 	text: '遭遇（往上走之前，先看有什么挡路）',
-	when: () => (typeof R.inGradient === 'function' ? R.inGradient(L.id) : true),
+	/* ★`books#280` ①（操作者试玩：「原地反复遭遇杀獾 ⇒ 旧硬币无限刷」）：
+	 *   首战＝该层**唯一**战斗（裁 1「每层严格『先战斗→再判定事件』」的语义）⇒ `when` 加 `!本层已战`。
+	 *   ⚠ 口径**不变**：`已战` 只在**胜利**置位（`encounters.js` 的 `fight()` 在 `果 === 'victory'` 支里写）
+	 *     ⇒ **撤退／失败／僵持／击晕可重试**（那时账仍假 ⇒ 入口仍在）—— ✗ 把「打过一场」当「打过了」。
+	 *   判据：`verify.mjs` ㊽（未战可重试／已战即闭／撤回账后重新可用）＋刀（拆本行 ⇒ 红）。 */
+	when: () => (typeof R.inGradient === 'function' ? R.inGradient(L.id) : true) && !本层已战(L.id),
 	action: () => SugarCube.Engine.play('遭遇战'),
 });
 
