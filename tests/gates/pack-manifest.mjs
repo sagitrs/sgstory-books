@@ -53,44 +53,52 @@ function main() {
 		console.error(`✗ 清单读不出／不是合法 JSON：${清单} —— ${e.message}`);
 		process.exit(1);
 	}
-	const 声明 = 档?.packs;
-	if (!Array.isArray(声明) || !声明.length || !声明.every((x) => typeof x === 'string' && x)) {
-		console.error(`✗ 清单 \`packs\` 须是**非空字符串数组**：${JSON.stringify(声明)}`);
+	/* ★`books#280` ⑭ 后的**全装态**：清单**未声明** `packs` 是**合法**且**有意义**的一态 ——
+	 *   语义＝**全装**（＝`packs` 口引入前的行为，`sgstory#2000`）。★本席 2026-10-05 实测教训：
+	 *   本门原版把「未声明」当**错**（硬 `exit(1)`）⇒ 只 revert 声明的那一笔会被本门**咬住** ——
+	 *   即「判据与产品语义不同步」。⇒ 拆成两态各断各的（下面 ③＝声明态／④＝全装态）。 */
+	const 声明 = Array.isArray(档?.packs) ? 档.packs : null;
+	if (声明 !== null && (!声明.length || !声明.every((x) => typeof x === 'string' && x))) {
+		console.error(`✗ 清单 \`packs\` 若给，须是**非空字符串数组**：${JSON.stringify(声明)}`);
 		process.exit(1);
 	}
-	console.log(`  清单声明规则包：${声明.join('、')}`);
-
-	/* ② 包 id 必须在引擎检出里真有（✗ 拼错 ⇒ 提前到门里红） */
-	const 缺 = 声明.filter((id) => !fs.existsSync(path.join(ENGINE, 'src', 'dnd', id, '00-init.js')));
-	if (缺.length) 红.push(`② 清单声明的包在引擎检出里不存在（✗ 拼错？）：${缺.join('、')} —— 包 id ＝ \`src/dnd/<id>/00-init.js\` 的目录名`);
-	const 可用 = fs.existsSync(path.join(ENGINE, 'src', 'dnd'))
-		? fs.readdirSync(path.join(ENGINE, 'src', 'dnd')).filter((d) => fs.existsSync(path.join(ENGINE, 'src', 'dnd', d, '00-init.js'))).sort()
-		: [];
-	console.log(`  引擎可用规则包：${可用.join('、') || '（无）'}`);
-
-	/* ③ 能力门：引擎有 packs 口 ⇒ 真构建并断「未声明的包不在产物里」；没有 ⇒ 明印「待判」 */
-	/* ★② 已红 ⇒ **跳过** ③：那时真构建会因「未知包 id」而失败，把它当「装置错（rc=2）」会把
-	 *   ② 的红**遮掉**（本席首版即此病，被自检刀 K1 当场咬住：期望 rc=1＋具名，实得 rc=2）。 */
-	const 引擎源码 = 红.length ? '' : fs.readFileSync(path.join(ENGINE, 'build.py'), 'utf8');
-	const 有口 = 引擎源码.includes('故事清单规则包');
-	if (红.length) {
-		console.log('  · ③ 跳过（② 已红：先报「清单声明的包不存在」，✗ 拿构建失败当装置错）');
-	} else if (!有口) {
-		console.log(`  · ③ **待判**：引擎 pin 的 build.py 还没有 packs 口（sagitsr/sgstory#2000 之后才有）`
-			+ ` ⇒ 本仓清单**此刻不生效**（也不报错：该 pin 的构建不读 story.json）—— 抬 pin 后本臂自动生效`);
-	} else {
-		const 出 = path.join(os.tmpdir(), `books-packcheck-${process.pid}.html`);
-		const r = spawnSync('python3', [path.join(ENGINE, 'build.py'), path.join(ROOT, 'stories', 'babel'), '--out', 出], { encoding: 'utf8' });
-		if (r.status !== 0) { console.log(`✗ ③ 真构建失败（装置面）：\n${(r.stdout ?? '') + (r.stderr ?? '')}`.slice(0, 600)); process.exit(2); }
-		const 实装 = packIdsIn(fs.readFileSync(出, 'utf8'));
-		const 多装 = 实装.filter((id) => !声明.includes(id));
-		if (多装.length) 红.push(`③ 产物里出现了**未声明**的规则包：${多装.join('、')}（声明：${声明.join('、')}）⇒ 清单没生效或有包在清单口之外被装入`);
-		console.log(`  ③ 产物里的规则包：${实装.join('、') || '（无）'}（声明：${声明.join('、')}）`);
-		fs.rmSync(出, { force: true });
+	const 全装态 = 声明 === null;
+	/* ★`books#280` ⑭ 后（0.0.2 取稳）**本仓此刻不得声明 `packs`**：声明 ⇒ 产物只装 dnd3 ⇒ 「dnd3 独活」
+	 *   ⇒ 每战**必晕 ✗ 杀**（有剑 3+1／空手 1+1 皆晕）⇒ `kills` 恒 0 ⇒ **首战门永闭 ⇒ 主线不可通关**。
+	 *   ⇒ 本门在本仓的**当前口径＝全装**：未声明 ⇒ 断「真全装」；一旦有人声明 ⇒ **判据红**（✗ 崩溃）。
+	 *   ⚠ `packs` **口**仍是**引擎能力**（`sgstory#2000`，别的故事可用）—— 退掉的是**本仓的声明**，✗ 不是口。 */
+	if (!全装态) {
+		console.log('✗ 门红：');
+		console.log(`  · 本仓此刻**不得**声明 \`packs\`（现声明：${JSON.stringify(声明)}）—— 声明 ⇒ dnd3 独活 ⇒ 每战必晕 ✗ 杀`);
+		console.log('    ⇒ `kills` 恒 0 ⇒ 首战门永闭 ⇒ 主线不可通关（`books#280` ⑭）；0.0.2 取稳口径＝**全装**（✗ 声明）。');
+		console.log('    ⚠ 复核该缺陷的因与修：`sgstory#2011`（菜单必须留**手上那件武器**的攻击项）。');
+		process.exit(1);
 	}
+	console.log('  清单**未声明** `packs` ⇒ 语义＝**全装**（＝本口引入前的行为）');
+
+	/* ── ④ **全装态**：构建日志须印「全装」＋ 产物里须**多于一个**规则包（＝旧已验行为）── */
+	{
+		const 源码4 = fs.readFileSync(path.join(ENGINE, 'build.py'), 'utf8');
+		if (!源码4.includes('故事清单规则包')) {
+			console.log('  · ④ **待判**：引擎 pin 的 build.py 还没有 packs 口 ⇒ 全装是**唯一**行为（✗ 无可判之差）—— 抬 pin 后自动生效');
+		} else {
+			const 出4 = path.join(os.tmpdir(), `books-fullinstall-${process.pid}.html`);
+			const r4 = spawnSync('python3', [path.join(ENGINE, 'build.py'), path.join(ROOT, 'stories', 'babel'), '--out', 出4], { encoding: 'utf8' });
+			if (r4.status !== 0) { console.log(`✗ ④ 真构建失败（装置面）：\n${(r4.stdout ?? '') + (r4.stderr ?? '')}`.slice(0, 600)); process.exit(2); }
+			const 日志 = String(r4.stdout ?? '') + String(r4.stderr ?? '');
+			const 实装4 = packIdsIn(fs.readFileSync(出4, 'utf8'));
+			if (!/全装/.test(日志)) 红.push('④ 未声明 `packs` ⇒ 构建日志**没印「全装」**（应印「清单未声明 ⇒ 全装」）—— 语义与产物不符');
+			if (实装4.length < 2) 红.push(`④ 全装态下产物里只有 ${实装4.length} 个规则包（${实装4.join('、')}）⇒ **没真全装**（旧已验行为＝两包都在）`);
+			console.log(`  ④ 构建日志含「全装」＝${/全装/.test(日志)}｜产物里的规则包：${实装4.join('、') || '（无）'}`);
+			fs.rmSync(出4, { force: true });
+		}
+	}
+	/* ⚠ 声明态的三臂（清单合法／包 id 存在／产物只装已声明）**随本仓进入全装态而暂不适用**：
+	 *   它们由 `#280` ⑩ 的旧口径带来；本仓此刻 ✗ 声明（上面早退即拦）⇒ 那三臂在此**不可达**。
+	 *   若将来本仓再声明（版本窗口另裁），按这三条恢复即用（它们仍在 git 历史与本席的 ⑩ 笔里）。 */
 
 	if (红.length) { console.log('✗ 门红：'); 红.forEach((x) => console.log(`  · ${x}`)); process.exit(1); }
-	console.log(`✓ 门绿（清单合法${有口 ? ' 且产物只装已声明包' : '；③ 待判（引擎 pin 未含 packs 口）'}）`);
+	console.log(`✓ 门绿（清单${全装态 ? '**未声明** ⇒ 全装态' : '合法'}${全装态 ? '' : (有口 ? ' 且产物只装已声明包' : '；③ 待判（引擎 pin 未含 packs 口）')}）`);
 }
 
 /* 自检刀：把清单改成含一个**不存在**的 id ⇒ ② 必须红；复原后门必须绿（按字节分毫还原） */
