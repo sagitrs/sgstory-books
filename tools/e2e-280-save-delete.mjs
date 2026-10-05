@@ -12,6 +12,15 @@
  *     每轮删一个可用槽 ⇒ 再对**非保留码**逐个做**行为探测**（清掉该码 ⇒ 点该行 `save` 钮 ⇒ 读
  *     `Save.slots.has(码)`)⇒ 全须为真 ✓。★这是唯一抓得住「被克隆掉监听器」的探法：
  *     克隆**保留类名与 id**、只丢监听器 ⇒ 只有行为探测能分辨 ✓。
+ *   **臂③ 保留槽：**程序化（非受信）事件**也**不得真落档**（★被绕过/被克隆掉守卫的那条路）：
+ *     写保留槽 ⇒ 重渲染 ⇒ ★**用 `dispatchEvent(new MouseEvent('click'))`（`isTrusted=false`）**
+ *     直接打到该行 `delete` 控件（✗ 不先看它 `disabled` 与否 —— 那正是「看着正常」的成因）⇒
+ *     再读 `Save.slots.has(码)` ⇒ ★**点前/点后都须为 true**（＝该档未被真删 ✓）。
+ *     ★为什么单独立这一臂：臂① 看的是**标记/禁用**（markup 面），而引擎的既有修法是
+ *       **捕获期吞事件**（行为面）—— 只把 markup 修回来的实现能过臂①，却仍会被这一臂咬住 ✓。
+ *     ★**现况＝红**（本席实测：现 main 上 `has` 由 true 变 false ⇒ 保留槽**真的被删掉** ✓）。
+ *     ★这一臂的**机制级**判别力（摘掉捕获监听 ⇒ 它须红）只能在**带该修的树**上跑 ⇒ 属那一笔的事 ✓；
+ *       本档的 `--selftest` 只自证**本臂读数管线的**判别力（见 K7/K8 ✓，✗ 不冒充机制证明）。
  *
  * ## ★缺席闸（✗ 假红 ✗ 假绿）
  *   若该面**本就不在**（没有 `SugarCube.UI.saves`／`#saves-list` 渲染不出／没有 `RPG.reservedSlots`
@@ -48,6 +57,13 @@ export function 判保留行(行) {
 export function 判栏位可用(各码结果) {
   return Object.entries(各码结果 || {}).filter(([, v]) => v !== true).map(([k]) => k);
 }
+/** 臂③ 程序化点击是否**真落档**（被绕过）。入形 {点前, 点后} ⇒ 出判定。
+ *  ★只判「有没有被真删」这一件事（✗ 不据类名/disabled 推断 ✓）。
+ *  ★点前无档 ⇒ 本探**不成立**（装置/前置不足）⇒ `不成立:true`，✗ 计红 ✗ 计绿。 */
+export function 判程序化落档({ 点前, 点后 } = {}) {
+  if (点前 !== true) return { 不成立: true, 合格: null, 说明: `点前 has=${JSON.stringify(点前)}（前置不足：该码点前就没有档）` };
+  return { 不成立: false, 合格: 点后 === true, 说明: `点前 has=true｜点后 has=${JSON.stringify(点后)}${点后 === true ? '（未被真删 ✓）' : '（★被真删了 ✗）'}` };
+}
 
 /* ============ --selftest：双刀（★合成样本 ⇒ 判据的期望不与被测物同源 ✓）============ */
 if (has('--selftest')) {
@@ -68,7 +84,11 @@ if (has('--selftest')) {
   检查('K5 正例：全部落档 ⇒ 臂② 无不合格', 判栏位可用({ 0: true, 5: true }).length === 0, '[]');
   // K6 缺控件/空行 ⇒ ✗ 不留死角
   检查('K6 无控件的行 ⇒ 臂① 不合格', 判保留行({ 行类: 'rpg-reserved-row', 文: '槽位 4 （系统）', 钮: [] }).合格 === false, '控件数 0');
-  console.log(红.length ? `\n  ⇒ 自检失败 ${红.length} 条\n${红.join('\n')}` : '\n  ⇒ 自检：6/6 如期（★两臂的函数与主流程共用 ✓）');
+  // K7/K8：臂③ 的**读数管线**（★只证「真删 ⇒ 报红；未删 ⇒ 报绿」，✗ 不冒充「捕获监听」的机制证明）
+  检查('K7 臂③ 未被真删 ⇒ 合格', 判程序化落档({ 点前: true, 点后: true }).合格 === true, JSON.stringify(判程序化落档({ 点前: true, 点后: true })));
+  检查('K8 刀：程序化点击**被真删** ⇒ 臂③ 不合格', 判程序化落档({ 点前: true, 点后: false }).合格 === false, JSON.stringify(判程序化落档({ 点前: true, 点后: false })));
+  检查('K9 点前就无档 ⇒ 臂③ **不成立**（✗ 不当红 ✗ 当绿）', 判程序化落档({ 点前: false, 点后: false }).不成立 === true, JSON.stringify(判程序化落档({ 点前: false, 点后: false })));
+  console.log(红.length ? `\n  ⇒ 自检失败 ${红.length} 条\n${红.join('\n')}` : '\n  ⇒ 自检：9/9 如期（★三臂的函数与主流程共用 ✓）');
   process.exit(红.length ? 1 : 0);
 }
 
@@ -120,6 +140,23 @@ try {
     const v = 判保留行(后);
     ok('臂① 保留槽（码 ' + 码 + '）写入并**重渲染后**仍受保护（系统标记 ＋ 控件不可用）',
        v.合格 === true, `写口=${写}｜写前合格=${判保留行(前).合格}｜写后 有标记=${v.有标记} 全禁=${v.全禁}｜行文="${(后?.文||'').slice(0,40)}"`);
+    /* ── 臂③ 保留槽：程序化（非受信）click 不得真落档 ── */
+    {
+      await 开弹(p);
+      const 写口3 = await 求(p, `(function(){try{const f=SugarCube.setup?.BABEL?.['快存']; if(typeof f!=='function') return 'no-fn';
+        f(${码}); return 'ok'}catch(e){return 'ERR:'+String(e).slice(0,50)}})()`);
+      await p.waitForTimeout(1100); await 开弹(p);
+      const 点前 = await 有档(p, 码);
+      const 事件 = await 求(p, `(function(){const x=document.getElementById('saves-delete-${码}');
+        if(!x) return JSON.stringify({存在:false});
+        const ev=new MouseEvent('click',{bubbles:true,cancelable:true}); const 未阻止=x.dispatchEvent(ev);
+        return JSON.stringify({存在:true, disabled:!!x.disabled, isTrusted:ev.isTrusted, 未被阻止:未阻止})})()`);
+      await p.waitForTimeout(900); await 开弹(p);
+      const 点后 = await 有档(p, 码);
+      const w = 判程序化落档({ 点前, 点后 });
+      if (w.不成立) 待.push(`  ⏳ 待判（臂③ 前置不足）：写口=${写口3}｜${w.说明}`);
+      else ok('臂③ 保留槽：程序化（非受信）click 打到其 delete ⇒ 该档**不得**被真删', w.合格 === true, `${w.说明}｜事件=${事件}`);
+    }
     /* ── 臂② 连删 N 轮后栏位仍可用（行为级）── */
     const 码池 = (await 行形(p)).map((r) => Number(r.码)).filter((n) => Number.isInteger(n) && !保.includes(n));
     let 首坏 = null, 装置可疑 = null;
