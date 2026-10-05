@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="260" viewBox="0 0 360 260">
+  <title>幼獾轮廓样张</title>
+  <rect width="360" height="260" rx="20" fill="#202c32"/>
+  <ellipse cx="185" cy="219" rx="132" ry="14" fill="#101a20"/>
+  <path d="M236 128L307 148L325 171L282 183Z" fill="#5d7379"/>
+  <ellipse cx="202" cy="157" rx="102" ry="55" fill="#6f878b" stroke="#a9bcbd" stroke-width="3"/>
+  <path d="M132 180L122 217H154L172 180M238 180L231 217H264L282 178" fill="#344a53"/>
+  <circle cx="97" cy="126" r="51" fill="#d0d4c9" stroke="#a9bcbd" stroke-width="3"/>
+  <circle cx="63" cy="83" r="17" fill="#5d7379"/>
+  <circle cx="123" cy="82" r="17" fill="#5d7379"/>
+  <path d="M57 93L81 97L99 164L75 167Z M112 94L134 91L125 166L107 163Z" fill="#344a53"/>
+  <ellipse cx="98" cy="157" rx="22" ry="17" fill="#dce0d4"/>
+  <ellipse cx="98" cy="157" rx="12" ry="8" fill="#13232c"/>
+  <circle cx="78" cy="119" r="5" fill="#13232c"/>
+  <circle cx="117" cy="119" r="5" fill="#13232c"/>
+  <path d="M152 139L184 122M204 120L233 136" fill="none" stroke="#a9bcbd" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -42,6 +42,8 @@
 | `tools/run-l10-checks.py` | 本地复现 16 个必跑 CI 等效检查与一个补充组，逐步日志／反向刀／17 步结果；不是 Actions |
 | `tools/verify-l10-city.mjs` | L10 无头装配判据模块，随故事主 verify 执行，不是独立 CLI |
 | `tools/e2e-314-l10-city.mjs` | L10 真 Chromium 点击、宿主存档往返、刷新、返程及两个终局；资源注入不是平衡验收 |
+| `tools/e2e-311-visual.mjs` | `books#311` 完整产物素材字节／装饰 DOM／具名图片故障与重绘不变性（jsdom，不判解码／布局／字体） |
+| `tools/e2e-311-layout.mjs` | `books#311` 原生 Chromium 两视口几何、具名战期 CSS 夹具与 CSS 四刀 |
 
 ## 退出码三分：`0`／`1`／`2` 各指什么（★读任何读数前先看这一节）
 
@@ -347,7 +349,7 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 |---|---|
 | **清单** | `tools/check-readme-tables.mjs` —— 扫给定 Markdown 档，对**每一张表**逐行核「未转义竖线数 ＝ 本表表头」；不符者**逐条具名**（行号｜单元数｜应为｜该行前 70 字）。★只判**结构**，不判列宽／列名／内容（内容面属 `check-norms-symbols.py`）。★分隔符口径与 GFM 同：**未转义**的竖线才算，`\|` 不算；★代码跨里的**裸**竖线**照样分格**（GFM 如此）。 |
 | **固定命令** | `node tools/check-readme-tables.mjs [<md 档> ...]`（缺省 `tools/README.md`，路径相对**仓根**）；自检 `node tools/check-readme-tables.mjs --selftest`（六例：正例／★粘行刀／转义形正反／非表文本／空行截断）。 |
-| **期望读数** | 正向输出是 `✓ 表格结构核通过（表 N｜不符 0）`，退出码为零；本候选实读 `tools/README.md` 为 24 表、不符 0。有坏行则逐条印 `✗ <档>:<行号> —— 单元 X，应为 Y（≠ 本表表头）｜<该行>` 并退出一；找不到档时具名退出二。历史真档负控 `git show beb159fd:tools/README.md` 须报行 328、单元 8、应为 3，退出一，这是当时人工抓到的坏行。 |
+| **期望读数** | 正向输出是 `✓ 表格结构核通过（表 N｜不符 0）`，退出码为零。表数由本次扫描输出，不维护易漂移的总数。有坏行则逐条印 `✗ <档>:<行号> —— 单元 X，应为 Y（≠ 本表表头）｜<该行>` 并退出一；找不到档时具名退出二。历史真档负控 `git show beb159fd:tools/README.md` 须报行 328、单元 8、应为 3，退出一，这是当时人工抓到的坏行。 |
 | **设立理由** | `books#358` 实测：`tools/README.md` ⑫ 段曾被**把两行粘成一行**（一行 855 字符，吞并「设立理由」并夹进一段提交摘要）⇒ 该段条目 **4 项变 3 项**，违本档「工具的 README 条目必载四项」；而**渲染出来只是列错位，CI 与肉眼都不拦**。⇒ 把那个判据机械化。★为何必须按「未转义」数：⑫ 段原有的 `save\|load\|delete` 就写在代码跨里，GFM 下它**照样分格**（须写 `\|`）——本件按同一口径判，故它既能抓住粘行，也不会把**已转义**的行误判。 |
 
 ## 20. `verify-l10-city.mjs` —— L10 无头装配判据模块
@@ -385,3 +387,24 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | **固定命令** | `node tools/check-workflow-pin-ref.mjs`；自检 `node tools/check-workflow-pin-ref.mjs --selftest` |
 | **期望读数** | 正向输出是 `✓ 引擎检出＝声明 pin（两单对称…）`，退出码为零。自检输出是 `自检：通过 3｜失败 0`（①回落 main ②撤空值守卫 两刀各须红在对的支 ＋ ③复原绿）。反例：任一刀不红在对的支 ⇒ 退出码为一。装置错（缺 workflow 档）⇒ `2` 且具名。 |
 | **设立理由** | `books#375` 实测：该 workflow 的引擎检出缺省打 `main`，而它**下一步**又要求「检出等于声明 pin」（`books#198` 教训机械化）⇒ 两句互斥 ⇒ **引擎 main 每前进一次那次 nightly 必红**（声明 `789762d9` vs 检出 `c3c6366a`），其后真判据一次未跑、门存在的理由（`#1856`：只有真 DOM 照得出的形）恰好失效。本判据把「检出单认 pin 单」这条不变式机械化 —— ★本步判**意图**，下一步 `check-engine-pin.mjs` 判**结果**，两步合起来才是闭环。 |
+
+## 24. `e2e-311-visual.mjs` —— 低层装饰呈现的真 DOM 臂
+
+先用声明的引擎重建 `stories/babel/babel-trial.html`（绝对故事路径）。固定入口：
+`timeout 60 node tools/e2e-311-visual.mjs --engine <引擎检出>`。
+
+期望：非零 `total`、`failed: 0`、rc 0；断言或产品异常 rc 1；缺参数、产物、jsdom 或引擎 HEAD 与完整 pin 错配等装置问题 rc 2。
+消费完整产物与声明源字节，断只读表、正文标题／页脚画像、页头与系统控件源码换行不生成空白 `<br>`、具名合成 `error/load`、
+20 次刷新不写领域／回合／存档与缺素材文字回退；另以具名 `Engine.play('探索')` 铺初载，
+判页头早于异步地图入场时环境图仍由已有面板刷新接线到 L1。这不是正常玩家输入。
+原因：无头装配夹具不执行真实 DOM 错误委托，也不足以判断地图入场与页头的先后。
+**jsdom 不解码图片、不判字体／布局；图片失败是显式注入的夹具，不是玩家遇到的加载失败。**
+这条 DOM 臂目前是本地／独立窗口入口，未新增 CI workflow；CI 的 `verify.mjs` 第 62 格覆盖纯渲染臂。
+
+## 25. `e2e-311-layout.mjs` —— 两种视口的原生几何与四刀
+
+- **清单**：完整产物、两个独立 Chromium context。720×500／DPR2 的侧栏必须展开，正文左缘须不小于侧栏右缘；390×844／DPR1／模拟触控下，人物不与切换按钮相交，fixed HUD 在首屏且标题在其下；两臂均无横向溢出。再以具名 DOM-only `body.战中` CSS 夹具检查隐藏侧栏不留下占位、标题在 fixed HUD 下；不设置游戏的「战中」标志、不模拟战斗或门禁。
+- **固定命令**：先按声明 pin 重建产物，再执行 `PW_DIR=<含 node_modules/playwright 的目录> CHROME_BIN=<Chrome 可执行文件> timeout 60 node tools/e2e-311-layout.mjs --books "$PWD" --engine <完整 pin 检出>`；追加 `--selftest` 跑四刀。若浏览器缺系统库，以本席私有 `LD_LIBRARY_PATH` 补齐；临时目录用本席 `~/tmp`，不全局安装。
+- **期望读数**：JSON `cases` 恰两臂、`initialFailures: []`、`rc: 0`。自检须分别具名 `ZOOM_SIDEBAR_OVERLAP`／`NARROW_PORTRAIT_OVERLAP`；两个视口的战期 CSS 刀各须具名 `COMBAT_HIDDEN_SIDEBAR_SPACE`／`COMBAT_HUD_TITLE`。每刀恢复后 `restoredFailures: []`，退出战期 CSS 夹具后所测源／存档不变。产品／断言 rc1；缺参数、精确 pin 错配、缺产物／Playwright／浏览器等装置错 rc2；不以缺席计绿。
+- **设立理由**：只查 CSS 文本或 jsdom 看不见真正遮挡。四刀只临时覆写 CSS，以同一几何判词核前件、故障与恢复；不改文件、不给装备、不跳段落、不抽随机、不存档。
+- **边界与 CI 引用面**：720×500 是实际桌面 200% 缩放观察所对应的 **CSS 视口模型**，本工具不操作浏览器工具栏缩放；390×844 不是物理手机。只通过真实链接进入 L1 后量几何，不判长 HUD、字体、八图解码、完整 WCAG 或首次全量重绘的文字变化。这是本地独立入口，未修改 `.github/workflows/**`；既有 `babel-tests.yml` 仍调用 `verify.mjs` 第62格，不声称 CI 已调用本工具。

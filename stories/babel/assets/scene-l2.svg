@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360">
+  <title>低层倒木与断阶环境样张</title>
+  <desc>结构性的环境轮廓，不包含敌情、采集剩余或上行许可。</desc>
+  <defs><linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#233a43"/><stop offset="1" stop-color="#14232c"/></linearGradient></defs>
+  <rect width="1280" height="360" fill="url(#wall)"/>
+  <path d="M0 0H252L291 145L218 231L266 360H0Z M1280 0H1119L1031 108L1104 266L1075 360H1280Z" fill="#15252e"/>
+  <path d="M94 277L712 102L736 156L121 330Z" fill="#665f4d" stroke="#9d9374" stroke-width="5"/>
+  <path d="M124 295L683 132M240 307L694 156" stroke="#93886c" stroke-width="4"/>
+  <path d="M773 288H1034V319H773Z M843 231H1105V264H843Z M912 171H1111V205H912Z M978 111H1180V144H978Z" fill="#577077" stroke="#809497" stroke-width="3"/>
+  <path d="M761 316L1153 100" fill="none" stroke="#9d9374" stroke-width="9"/>
+  <path d="M0 327L200 302L402 336L681 308L857 332L1076 311L1280 326V360H0Z" fill="#2d3d43"/>
+  <path d="M321 130L361 24M885 40L942 0" stroke="#4c676c" stroke-width="5"/>
+</svg>

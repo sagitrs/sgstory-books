@@ -3964,6 +3964,61 @@ head('第 56 格 `books#280` ⑩：战斗菜单只留战斗行动（道具收敛
 	}
 }
 
+/* ── 第 62 格 books#311：装饰渲染的文字回退／无副作用（无头夹具，非布局或图片解码） ── */
+head('第 62 格 books#311：装饰素材映射·文字回退·重绘不结算（无头夹具）');
+{
+	const savedAssets = Object.getOwnPropertyDescriptor(setup, 'storyAssets');
+	const savedMap = B.map;
+	const savedRandom = Math.random;
+	const savedRng = new Map(Object.entries(R.rng).filter(([, value]) => typeof value === 'function'));
+	const before = JSON.stringify(State.variables);
+	const fixture = { src: 'data:image/svg+xml;base64,PHN2Zy8+', width: 64, height: 80 };
+	try {
+		Object.defineProperty(setup, 'storyAssets', { value: undefined, configurable: true });
+		ok(B.visual.playerHTML() === '' && B.visual.itemHTML('sword') === '', '★无素材表时未回退为纯文字');
+		const samples = Object.fromEntries([
+			'babel-player', 'babel-enemy-cub', 'babel-enemy-badger', 'babel-item-sword',
+			'babel-item-coin', 'babel-item-stone', 'babel-scene-l1', 'babel-scene-l2', 'undefined',
+		].map((id) => [id, fixture]));
+		Object.defineProperty(setup, 'storyAssets', { value: samples, configurable: true });
+		const image = B.visual.playerHTML();
+		ok(image.includes('width="64" height="80"') && image.includes('alt="" aria-hidden="true"'), '★图片无固有尺寸或装饰语义');
+		ok(!/<(?:a|button)\b|\son(?:click|load)=/.test(image), '★图片偷带动作入口');
+		for (const [id, asset] of [['sword', 'sword'], ['coin', 'coin'], ['rock', 'stone']]) {
+			ok(B.visual.itemHTML(id).includes(`data-babel-asset="babel-item-${asset}"`), `★${id} 图标未按既有道具 ID 映射`);
+		}
+		ok(B.visual.itemHTML('unknown') === '' && B.visual.enemyHTML({ name: '未知敌人' }) === '', '★未知实体错配图片／偷露敌情');
+		ok(B.visual.enemyHTML({ name: '幼獾' }).includes('babel-enemy-cub'), '★幼獾样张缺席');
+		ok(B.visual.enemyHTML({ name: '精英·獾' }).includes('babel-enemy-badger'), '★精英既有命名未共用獾轮廓');
+		B.map = { current: 'L1' };
+		ok(B.visual.sceneHTML().includes('babel-scene-l1'), '★L1 环境图未按当前位置读取');
+		B.map.current = 'L2';
+		ok(B.visual.sceneHTML().includes('babel-scene-l2'), '★L2 环境图未按当前位置读取');
+		B.map.current = 'L20';
+		ok(B.visual.sceneHTML() === '', '★无样张层被伪造环境图');
+		B.map.current = 'L1';
+		Math.random = () => { throw new Error('visual render consumed random'); };
+		for (const name of savedRng.keys()) R.rng[name] = Math.random;
+		for (let i = 0; i < 50; i++) {
+			B.visual.playerHTML(); B.visual.sceneHTML(); B.visual.itemHTML('sword'); B.visual.enemyHTML({ name: '幼獾' });
+		}
+		ok(JSON.stringify(State.variables) === before, '★装饰重绘写入了游戏状态');
+		const sword = R.createItem('sword');
+		const line = R.bagItemHTML({ id: 'sword', name: sword.name, item: sword, equipped: true });
+		ok(line.includes('babel-item-sword') && line.includes('长剑') && line.includes('（已装备）'), '★缩略图吞掉道具名／装备标记');
+		for (const bad of [{ ...fixture, src: 'https://example.invalid/a.svg' }, { ...fixture, width: 0 }]) {
+			Object.defineProperty(setup, 'storyAssets', { value: { 'babel-player': bad }, configurable: true });
+			ok(B.visual.playerHTML() === '', '★非法运行时描述未退回文字');
+		}
+		console.log('  16 项装饰判据（含两非法描述臂）｜50 轮纯重绘｜无头夹具不判解码／布局');
+	} finally {
+		Math.random = savedRandom;
+		for (const [name, value] of savedRng) R.rng[name] = value;
+		B.map = savedMap;
+		if (savedAssets) Object.defineProperty(setup, 'storyAssets', savedAssets); else delete setup.storyAssets;
+	}
+}
+
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
 /* ── ㊿ `books#280` ⑪：开箱**恰得一件**（入包统一由「箱自己的 loot」一处源）─────────────

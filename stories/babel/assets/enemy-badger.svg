@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="260" viewBox="0 0 360 260">
+  <title>獾轮廓样张</title>
+  <desc>普通獾与现有精英命名共用轮廓，不暗示额外数值或特殊能力。</desc>
+  <rect width="360" height="260" rx="20" fill="#202c32"/>
+  <ellipse cx="185" cy="222" rx="138" ry="15" fill="#101a20"/>
+  <path d="M248 120L318 143L333 168L283 176Z" fill="#4e6971"/>
+  <path d="M111 180Q110 101 205 103Q297 98 311 171L269 197H142Z" fill="#6c858b" stroke="#a7b9b9" stroke-width="3"/>
+  <path d="M140 181L125 218H162L181 180M240 178L230 218H271L287 173" fill="#304852"/>
+  <path d="M53 125Q60 85 117 92L154 132L133 174L78 183L39 161Z" fill="#d0d4c9" stroke="#a7b9b9" stroke-width="3"/>
+  <circle cx="88" cy="91" r="15" fill="#4e6971"/>
+  <circle cx="128" cy="95" r="13" fill="#4e6971"/>
+  <path d="M70 106L94 99L119 158L95 166Z M117 110L137 114L141 155L125 165Z" fill="#304852"/>
+  <ellipse cx="47" cy="157" rx="11" ry="8" fill="#13232c"/>
+  <circle cx="87" cy="125" r="5" fill="#13232c"/>
+  <path d="M172 124L198 114M217 115L251 133M163 143L188 130" fill="none" stroke="#a7b9b9" stroke-width="4" stroke-linecap="round"/>
+</svg>

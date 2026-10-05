@@ -93,7 +93,7 @@ RB.bagItemHTML = (e) => {
 	const 效果 = RB.bagEffects(e.item);
 	/* ⚠ 行标记用 `data-bag-item`（✗ `data-item`）：引擎的点击绑定认 `.rpg-item-link`，而 `data-item`
 	 *   是**可点件**的属性名 —— 混用会让「战中还有没有可点件」这类判据读错面（本席首跑实测：那一格红在 <li> 上）。 */
-	return `<li data-bag-item="${转义(e.id)}">${左}`
+	return `<li data-bag-item="${转义(e.id)}">${setup.BABEL.visual.itemHTML(e.id)}${左}`
 		+ `<span class="rpg-bag-equipped">${e.equipped ? '（已装备）' : ''}</span>`
 		+ `<div class="rpg-bag-desc">${转义(e.item?.desc)}</div>`
 		+ (效果.length > 0 ? `<div class="rpg-bag-effect">${转义(效果.join('｜'))}</div>` : '')

@@ -14,7 +14,7 @@
       ],
       "断言": {
         "逻辑": "map.current 逐跳 L20-settlement → L20-gate；且 L20-gate 无出边（越层动作面为空）",
-        "渲染": "location 面板文本随跳变（`.statusbar [data-panel=\"location\"]`，`ui/ui.twee:4（`别藏`）`）：「城墙根」→ 石门（地点名实指 `src/dnd/dnd3/scenes/span2-hub.js:84`（`L20-settlement`）／`:110`）；该面板**刷新计数**每跳 +1"
+        "渲染": "location 面板文本随跳变（`.statusbar [data-panel=\"location\"]`，`ui/ui.twee:17（`location`）`）：「城墙根」→ 石门（地点名实指 `src/dnd/dnd3/scenes/span2-hub.js:84`（`L20-settlement`）／`:110`）；该面板**刷新计数**每跳 +1"
       },
       "锚": [
         "books#70",
@@ -41,7 +41,7 @@
       "动作": [],
       "断言": {
         "逻辑": "chain-shirt **仍解析到 dnd-5e 包**（dnd3 的 scale-mail 不抢占同名 id）—— 装备/查看两向都指向各自包",
-        "渲染": "背包里两条**道具链接**各自成行，其**文本分别取自各自包的条目名**：`.inventory-links a[data-item]`（`ui/ui.twee:4（`别藏`）` ＋ `src/core/70-ui.js:57`（`RPG.refuse`）；两向都能点（✗ 一处被同名件吞掉）"
+        "渲染": "背包里两条**道具链接**各自成行，其**文本分别取自各自包的条目名**：`.inventory-links a[data-item]`（`ui/ui.twee:17（`inventory-links`）` ＋ `src/core/70-ui.js:57`（`RPG.refuse`）；两向都能点（✗ 一处被同名件吞掉）"
       },
       "锚": [
         "#1743"
@@ -102,7 +102,7 @@
       ],
       "断言": {
         "逻辑": "RPG.stockOf(c,'iron-ore') **直读 character.stats**，往返不变（✗ 镜像/缓存）",
-        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:70`（`RPG.itemRejectText`） 才带 `×N`；`.inventory-links a[data-item]`（`ui/ui.twee:4（`别藏`）` ＋ `src/core/70-ui.js:85`（`RPG.itemLink`）））；往返后**逐字不变**"
+        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:70`（`RPG.itemRejectText`） 才带 `×N`；`.inventory-links a[data-item]`（`ui/ui.twee:17（`inventory-links`）` ＋ `src/core/70-ui.js:85`（`RPG.itemLink`）））；往返后**逐字不变**"
       },
       "锚": [
         "#1782",
@@ -129,7 +129,7 @@
       ],
       "断言": {
         "逻辑": "三条各进对应 key 通道；过滤器 all↔key 切换只改可见集，**缓冲（含有界被挡行）不变**",
-        "渲染": "`.noticebar`（`ui/ui.twee:6`（`快存`），`data-panel=\"notice\"`）活行随过滤器显隐；`a.rpg-notice-toggle` 切 all↔key；`.rpg-notice-box` 里**被挡行仍在缓冲**（切回 all 能看见）"
+        "渲染": "`.noticebar`（`ui/ui.twee:19`（`noticebar`），`data-panel=\"notice\"`）活行随过滤器显隐；`a.rpg-notice-toggle` 切 all↔key；`.rpg-notice-box` 里**被挡行仍在缓冲**（切回 all 能看见）"
       },
       "锚": [
         "#1802"
@@ -150,7 +150,7 @@
       "动作": [],
       "断言": {
         "逻辑": "点击走 `itemAction`（真实动作）⇒ 状态按该条目动作表变",
-        "渲染": "渲染出的每个道具链接**文本 == 该条目的 `inventoryLabel` 文本**（同一渲染源 `src/core/70-ui.js:94`（`RPG.inventoryLinks`））；点 `.inventory-links a[data-item]`（`ui/ui.twee:4（`别藏`）` ＋ `src/core/70-ui.js:38`（`RPG.itemClick`）） 触发该条目动作（活行断言，✗ 读源码）"
+        "渲染": "渲染出的每个道具链接**文本 == 该条目的 `inventoryLabel` 文本**（同一渲染源 `src/core/70-ui.js:94`（`RPG.inventoryLinks`））；点 `.inventory-links a[data-item]`（`ui/ui.twee:17（`inventory-links`）` ＋ `src/core/70-ui.js:38`（`RPG.itemClick`）） 触发该条目动作（活行断言，✗ 读源码）"
       },
       "锚": [
         "#1799"
@@ -174,7 +174,7 @@
       "动作": [],
       "断言": {
         "逻辑": "拾取/使用只重绘**受影响**的面板 —— 其余面板**渲染计数不变**；未注册面板 id ⇒ 出声（✗ 静默）",
-        "渲染": "`.statusbar [data-panel=\"<名>\"]`（`ui/ui.twee:4（`别藏`）`；五名 hp／location／trauma／inventory／notice）**词边界**匹配（✗ `.statusbarX` 变体漏判）；活行随刷新更新"
+        "渲染": "`.statusbar [data-panel=\"<名>\"]`（`ui/ui.twee:15（`statusbar`）`；五名 hp／location／trauma／inventory／notice）**词边界**匹配（✗ `.statusbarX` 变体漏判）；活行随刷新更新"
       },
       "锚": [
         "#1815"
@@ -401,7 +401,7 @@
       ],
       "断言": {
         "逻辑": "HP +2（**house rule** 值）、充能 2→1→0；**双向**：充能 0 时使用**被拒**（✗ 静默 no-op）；往返后充能数不变",
-        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:421`（`attack`）／`src/core/70-ui.js:70`（`RPG.itemRejectText`））；★**双向**分两面：①**0 充能槽**（可由 fixture 造）⇒ 渲染 **`×0`**（新形**自解释**，✗ 无「已用尽」字样）；②**正常用尽**⇒ 该槽**被摘**、该行**消失**（**符号实指**：`RPG.take` 委托 `RPG.withdraw`，后者的 `if (slot.charges <= 0) list.splice(i, 1)`；另两条同判据路径 `RPG.act` 的 `'use'` 分支／`35-gather.js` 采空自摘；**行号辅助** `src/core/30-inventory.js:55`（`return`）；往返后文本不变"
+        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:619`（`RPG.inventoryLabel`）／`src/core/70-ui.js:70`（`RPG.itemRejectText`））；★**双向**分两面：①**0 充能槽**（可由 fixture 造）⇒ 渲染 **`×0`**（新形**自解释**，✗ 无「已用尽」字样）；②**正常用尽**⇒ 该槽**被摘**、该行**消失**（**符号实指**：`RPG.take` 委托 `RPG.withdraw`，后者的 `if (slot.charges <= 0) list.splice(i, 1)`；另两条同判据路径 `RPG.act` 的 `'use'` 分支／`35-gather.js` 采空自摘；**行号辅助** `src/core/30-inventory.js:55`（`return`）；往返后文本不变"
       },
       "锚": [
         "#1748",
