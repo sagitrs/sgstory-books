@@ -37,7 +37,7 @@ const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const B = path.resolve(arg('--books', process.cwd()));
 const 产物 = path.resolve(arg('--art', path.join(B, 'stories/babel/babel-trial.html')));
-const PW = process.env.PW_DIR || path.join(process.env.HOME, 'bots/home/sagitrs-tester-4/tmp/pw');
+const PW = process.env.PW_DIR || path.join(process.env.HOME, 'tmp/pw');   // ★本席自备（✗ 不指别的席位 home —— 守边界；同 `#323` 族修法）
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME, '.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');
 
 const 档 = [], 红 = [];
@@ -113,6 +113,20 @@ try {
   if (造 !== 'ok') { console.error(`✗ 装置错（✗ 不当判据红）：造绷带失败 —— ${造}`); process.exit(2); }
   说明('  · 装置声明：起手背包只有剑 ⇒ 本跑**造了一件绷带**；★"造件 vs 真捡件"渲染是否逐字同，本档 ✗ 不判');
   await 点真('遭遇'); await p.waitForTimeout(1500);
+  /* ★`books#280` ②-2 落地后（pin 起）「遭遇」会先停在**遭遇停**屏（描述 ＋ 「迎战／查看」两选项），
+   *   ✗ 不是直接进战斗 —— 本档须**先迎战**才进得了真战斗。（否则战斗菜单不在 ⇒ `data-bag-submit` 链不在
+   *   ⇒ 读出来是「找不到目标」，看着像 ⑧ 的病、其实是**没进战斗**。★同坑本席在 ⑮ 首跑时踩过一次 ✓） */
+  {
+    const 停屏 = await 段内();
+    if (停屏.some((x) => x.includes('迎战'))) {
+      const r = await 点真('迎战'); await p.waitForTimeout(1600);
+      说明(`  · 遭遇停 → 迎战：${r.成 ? '已点 ✓' : '点不上 ✗（' + r.因 + '）'}`);
+    } else {
+      说明(`  · 本跳未见「迎战」（②-2 未落或该层无停）⇒ 直接按战斗面继续`);
+    }
+    const 在战 = await p.evaluate(() => /空手打击|跳过本回合/.test(document.getElementById('passages')?.innerText || ''));
+    说明(`  · 战斗屏确认：${在战 ? '已在战斗 ✓' : '★未在战斗 ✗（后续若「找不到目标」，须按此归因，✗ 不记作 ⑧ 的病）'}｜停屏段内=${JSON.stringify(停屏.slice(0, 6))}`);
+  }
 
   const 前 = await 状态();
   const 正文前 = await 正文();
