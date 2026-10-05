@@ -157,8 +157,19 @@ try {
   const 点 = async (t) => { const l = p.locator('#passages a,#passages button').filter({ hasText: t }).first();
     if (await l.count() === 0) return false; try { await l.click({ timeout: 3500 }); await p.waitForTimeout(800); } catch (e) {} return true; };
   const 读kills = () => p.evaluate(() => { try { const k = SugarCube.State.variables.babelRun?.kills; return Number.isFinite(k) ? k : null; } catch (e) { return null; } });
+  /* ★②-1 **到达拍**：`books#351` 起它改由 `onEnter` 的一次性 `choice` 包装承担 ⇒ **每次进层都先停一拍**
+   *   （`.choice-box` 里一枚 `^（到达）` 的钮）。★✗ 先点过它，后面的「拾起／遭遇」**一个都取不到** ——
+   *   本档自 `#351` 起就因此**静默双红**（臂① 菜单=[]、臂② kills 0⇒0），而 ★**CI ✗ 跑本族** ⇒ 无人照见。
+   *   ★取法照 `tools/e2e-drive.mjs` 的 `清到达拍`（同一语义：点拍 ⇒ 回到本层选项面）。 */
+  const 清到达拍 = async () => {
+    const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
+    if (await l.count() === 0) return false;
+    await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true;
+  };
   /* 起手（★只拾起，✗ 不点武器名 —— 那是卸装；见 `books#280` ⑭ 的 `#328` 更正）*/
-  await 点('睁开眼'); await 点('站起来'); await p.waitForTimeout(600); await 点('拾起'); await p.waitForTimeout(300);
+  await 点('睁开眼（普通）'); await 点('站起来'); await p.waitForTimeout(600);
+  await 清到达拍(); await p.waitForTimeout(400);   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
+  await 点('拾起'); await p.waitForTimeout(300);
   await 点('遭遇'); await p.waitForTimeout(1400);
   const 停屏 = await 链接();
   if (停屏.some((x) => x.includes('迎战'))) { await 点('迎战'); await p.waitForTimeout(1500); }   // ★②-2 停屏 ⇒ 先迎战（✗ 否则「找不到目标」会像 ⑧ 的病）
