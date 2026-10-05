@@ -14,6 +14,7 @@
 | `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；`--selftest` 合成例 7 例） |
 | `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
 | `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
+| `tools/check-twee-tags.mjs` | twee **标签配平**（逐段：闭合标签数 ≤ 开标签数；`#354` 那类静默孤儿标签；`--selftest` 五臂） |
 | `tools/check-baseline.mjs` | 基线核（与声明基线比对；不符即报，✗ 不自动刷新） |
 | `tools/check-content-inventory.mjs` | 内容清点（★舱单核对：实存 vs 清单；#347 登记制的同族） |
 | `tools/check-refs.knives.sh` | 引用核的正向刀，每刀须红在对的支 |
@@ -380,3 +381,13 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | **固定命令** | `node tools/check-workflow-pin-ref.mjs`；自检 `node tools/check-workflow-pin-ref.mjs --selftest` |
 | **期望读数** | 正向输出是 `✓ 引擎检出＝声明 pin（两单对称…）`，退出码为零。自检输出是 `自检：通过 3｜失败 0`（①回落 main ②撤空值守卫 两刀各须红在对的支 ＋ ③复原绿）。反例：任一刀不红在对的支 ⇒ 退出码为一。装置错（缺 workflow 档）⇒ `2` 且具名。 |
 | **设立理由** | `books#375` 实测：该 workflow 的引擎检出缺省打 `main`，而它**下一步**又要求「检出等于声明 pin」（`books#198` 教训机械化）⇒ 两句互斥 ⇒ **引擎 main 每前进一次那次 nightly 必红**（声明 `789762d9` vs 检出 `c3c6366a`），其后真判据一次未跑、门存在的理由（`#1856`：只有真 DOM 照得出的形）恰好失效。本判据把「检出单认 pin 单」这条不变式机械化 —— ★本步判**意图**，下一步 `check-engine-pin.mjs` 判**结果**，两步合起来才是闭环。 |
+
+
+## 22. `check-twee-tags.mjs` —— twee **标签配平**门（`books#379`）
+
+| 项 | 内容 |
+|---|---|
+| **清单** | 扫 `stories/babel/src` 下全部 `.twee`，**逐段**（按 `:: 段名`）核 `<</if>>`／`<</unless>>` 的出现数 **≤** `<<if>>`／`<<unless>>` 的出现数；超量段落**具名 ＋ 行号**。★注释（`/* … */`、`/% … %/`）先剥（档头注释里常举例写标签 ⇒ 不剥必误报 ✗）。 |
+| **固定命令** | `node tools/check-twee-tags.mjs`（`--root <故事源目录>` 可换根）；自检 `node tools/check-twee-tags.mjs --selftest` |
+| **期望读数** | 正向输出是 `✓ twee 标签配平门通过（4 档／12 段；仅判「闭多于开」这一向 · 注释先剥）`，退出码为零。自检输出是 `自检：通过 5｜失败 0`。装置错（目录缺／无 `.twee`）⇒ rc=2 具名，✗ 不静默当绿。 |
+| **设立理由** | `#354` 实测：外科式摘除只摘一半 ⇒ 段尾留下孤儿 `<</if>>` ⇒ **漏进正文**（真机可见），而当时装置与真机判据**都不报警** ✗（操作者报错才现形）。★为何只判一个方向：`<<unless>>` 允许用 `<</if>>` 闭合 ⇒ 等号会误报 ✗；为何不判「开多于闭」：那是编译期的事（装配自检那步看着 ✓）。 |
