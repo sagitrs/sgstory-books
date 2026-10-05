@@ -81,7 +81,16 @@ const 上行在 = async p => (await 链接(p)).some(x=>x.startsWith('向上，�
 const 采集在 = async p => (await 链接(p)).some(x=>x.startsWith('采集'));
 const 到L1事件屏 = async p => {
   await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
-  await 点(p,'拾起'); await p.waitForTimeout(300); await 点(p,'长剑'); await p.waitForTimeout(300);
+  /* ★★★`#280` ⑭ 实测（A/B 隔离，♪变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
+   *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。
+   *   ⑩（`itemsInBag`）上线后菜单**只留在手上的武器** ⇒ 卸掉之后菜单只剩「空手打击」
+   *   ⇒ 打不死幼獾 ⇒ `kills` 恒 0（★本档上一版就是这么把臂跑红的，✗ 不是产品问题 · 见 `books#280` ⑭）。
+   *   故此处**只拾起**（✗ 不再点「长剑」）—— 并把这条前件**钉成断言**（✗ 不成立就明印"后续读数不可用"）。 */
+  await 点(p,'拾起'); await p.waitForTimeout(400);
+  {
+    const 装备 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
+    if (装备 !== true) 档.push(`  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped=${JSON.stringify(装备)}）`);
+  }
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
   for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 链接(p);
     if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
