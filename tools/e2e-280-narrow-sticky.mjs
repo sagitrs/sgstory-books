@@ -81,8 +81,8 @@ const 跑 = async (b, vp) => {
 	const p = await c.newPage();
 	await p.goto('file://' + 产物);
 	await p.waitForTimeout(2600);                       // 同 `#280-playtest` 的 boot 等待
-	/* 走到会渲染页脚的段（开始 ⇒ 睁开眼 ⇒ …）—— 用现成的故事链接推进两步即可（✗ 不硬造段落）。 */
-	for (const 步 of ['睁开眼（普通）', '站起来，活动一下手脚']) {
+	/* 走到会渲染页脚的段（开始 ⇒ 战斗教学 ⇒ …）—— 用现成的故事链接推进两步即可（✗ 不硬造段落）。 */
+	for (const 步 of ['战斗教学（普通）', '站起来，活动一下手脚']) {
 		const 链 = p.locator(`a:has-text("${步}")`).first();
 		if (await 链.count() > 0) { await 链.click(); await p.waitForTimeout(400); }
 	}

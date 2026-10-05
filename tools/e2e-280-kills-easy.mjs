@@ -167,7 +167,7 @@ try {
     await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true;
   };
   /* 起手（★只拾起，✗ 不点武器名 —— 那是卸装；见 `books#280` ⑭ 的 `#328` 更正）*/
-  await 点('睁开眼（普通）'); await 点('站起来'); await p.waitForTimeout(600);
+  await 点('战斗教学（普通）'); await 点('站起来'); await p.waitForTimeout(600);
   await 清到达拍(); await p.waitForTimeout(400);   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
   await 点('拾起'); await p.waitForTimeout(300);
   await 点('遭遇'); await p.waitForTimeout(1400);

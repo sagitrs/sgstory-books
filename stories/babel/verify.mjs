@@ -4168,98 +4168,80 @@ head('58 `books#280` ⑮：战中的页脚背包须可提交（门 ＋ 刷新钩
 }
 
 
-/* ── 59 `books#280` ⑬：**简单档**（成军一处源 · 生命减半 · 旗标随档 · 缺省零回归）──────────
+/* ── 59 `books#280` ⑬ **终形**：**并轨常驻**（怪 ÷2 · 我 ×2）＋ **两条教学入口** ────────────
  *
- * 形（票面四条）：开局两选（普通／简单）；简单 ⇒ **挡路者生命减半**；旗标入 `$babelRun`（随档往返）；
- *   游戏中可见（面板带「（简单）」，**普通档不显示**）。
- * 断什么（★都读**真值**，✗ 不读源码文本）：
- *   ① **对照**：**同一 ref** 两模式成军 ⇒ 简单 `maxHp` ＝ `max(1, ⌊普通/2⌋)`（★同一 ref 两跑 ⇒
- *      ✗ 不是「换个怪」的假对照；★`max(1,…)` 是「✗ 不许出现 0 血敌人」的落点）；
- *   ② **归属**：旗标住 `$babelRun`（本格断的是**该键**的 JSON 往返后仍在 —— 票面口径；
- *      ⚠ 真·整档存档往返由 `#178` 族的槽位格与真浏览器装置覆盖，✗ 本格不冒充）；
- *   ③ **零回归（最重要）**：**未设难度**时成军结果与「直接 `fresh(...)`」**逐字同**（同 hp／同 maxHp）——
- *      探针一：用真 `fresh`（引擎侧成军原语）对照；
- * 刀（记在提交信息）：刀① 摘掉成军里的难度调整 ⇒ ① 红；刀② 把旗标改住顶层 `State.variables` ⇒ ① 与 ② 红。
+ * 形（操作者令 2026-10-05 · 协调方准）：
+ *   · **值无条件**：成军 ⇒ 挡路者生命**恒** `max(1,⌊满/2⌋)`；`开局()` ⇒ 玩家初始生命**恒 ×2**；
+ *   · **✗ 无难度开关**：`$babelRun.难度`／`setup.BABEL.设难度`／面板「（简单）」标**整族已撤** ✓
+ *     （★旧档里若残留 `难度` 键 ⇒ **忽略不读** ✓，本格顺带把它断出来 ✓）；
+ *   · **两入口**：「战斗教学」⇒ `L1 苏醒`｜「跳过教学」⇒ `直达十层()` ⇒ `L10-camp`（kit 照旧 ✓）。
+ * 断什么（★读真值）：
+ *   ① **同 ref 恒减半**：同一 ref 成军 ⇒ `maxHp` ＝ `max(1,⌊fresh 满血/2⌋)`（对照臂＝直接 `fresh` ✓）；
+ *   ② **无旗标**：`typeof setup.BABEL.设难度 === 'undefined'` ✓；
+ *   ③ **玩家生命恒 ×2**：`开局()` ⇒ `hp/maxHp` ＝ 基数 ×2 ✓，且**重复调用不越乘** ✓（基数账只记一次 ✓）；
+ *   ④ **跳过入口的三笔账**：九层「已战＋已跳过」全置 ✓ ∧ `已过('L9')` 为真（走写口 ✓）∧ 落点 `L10-camp` ✓。
+ * 刀（记在提交信息）：刀① 摘掉成军里的减半 ⇒ ① 红；刀② 摘掉开局里的 ×2 ⇒ ③ 红。
  */
-head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随档·缺省零回归）');
+head('59 `books#280` ⑬ 终形：并轨常驻（怪÷2·我×2·无旗标）＋两条教学入口');
 {
 	const B = setup.BABEL, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
 	const 层存 = map.current;
 	const 原玩家血 = State.variables.player ? { hp: State.variables.player.hp, maxHp: State.variables.player.maxHp } : null;
 	try {
-		/* ① 对照：同一 ref（用 L1 层抽一个；抽到就两模式各成军一次） */
+		/* ① 同 ref 恒减半：对照臂＝直接 fresh；被测臂＝成军 */
 		map.moveTo('L1');
 		State.variables.babelRun = {};
 		const rolled = (typeof R.rollEncounter === 'function') ? R.rollEncounter('L1', { count: 1 }) : [];
 		const ref = rolled?.[0]?.ref ?? null;
 		ok(!!ref, '★【⑬ ①】L1 抽不出遭遇 ⇒ 本格对照臂取不到样本（装置不足，✗ 不当判据红）');
 		if (ref) {
-			const 成军 = B.成军 ?? null;
-			ok(typeof 成军 === 'function', '★【⑬】`成军` 未导出到 `setup.BABEL`（一处源的口要可判）');
-			if (typeof 成军 === 'function') {
-				State.variables.babelRun = { 难度: undefined }; delete State.variables.babelRun.难度;
-				const 普通 = 成军([{ ref }])[0];
-				const 普血 = Number(普通.maxHp ?? 普通.hp);
-				B.设难度('简单');
-				const 简单 = 成军([{ ref }])[0];
-				const 简血 = Number(简单.maxHp ?? 简单.hp);
-				ok(简血 === Math.max(1, Math.floor(普血 / 2)),
-					`★【⑬ ①】同一 ref 两模式：简单血应 ＝ max(1,⌊普通/2⌋) ＝ ${Math.max(1, Math.floor(普血 / 2))}`
-					+ `（实得 普通 ${普血}／简单 ${简血}）`);
-				/* ② 归属：旗标在 `$babelRun` 的 JSON 往返后仍在（票面口径） */
-				const 往返 = JSON.parse(JSON.stringify(State.variables.babelRun ?? {}));
-				ok(往返?.难度 === '简单', `★【⑬ ②】旗标须住 \`$babelRun\`（往返后仍在）—— 实得 ${JSON.stringify(往返)}`);
-				/* ③ 零回归：未设难度 ⇒ 与直接 fresh 逐字同 */
-				B.设难度(null);
-				const 空档 = 成军([{ ref }])[0];
-				ok(Number(空档.maxHp ?? 空档.hp) === 普血 && Number(空档.hp) === Number(普通.hp),
-					`★【⑬ ③】未设难度时成军须与普通档**逐字同**（实得 ${空档.hp}/${空档.maxHp} vs ${普通.hp}/${普通.maxHp}）`);
-				if (简血 === Math.max(1, Math.floor(普血 / 2))) {
-					console.log(`  简单档：同 ref 对照 ✓（普通 ${普血} ⇒ 简单 ${简血}）｜旗标随 $babelRun ✓｜缺省零回归 ✓`
-						+ `｜面板可见 ${/（简单）/.test(String(R.panelHTML?.( 'location' ) ?? '')) ? '✓' : '（面板文本未取到，本格不判）'}`);
-				}
-			}
+			/* ★对照臂＝**引擎原语**（✗ 不调故事层的局部 `fresh` —— 装置取不到 ✓）：
+			 *   `R.characters.get(ref)` ⇒ 序列化 ⇒ `R.Character.revive(...)` ＝ `encounters.js` 的 `fresh` **逐字同法** ✓。 */
+			const 生 = (() => {
+				try {
+					const proto = R.characters.get(ref);
+					if (!proto) return null;
+					return R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON())));
+				} catch (e) { return null; }
+			})();
+			const 满 = Number(生?.maxHp ?? 生?.hp ?? 0);
+			const 成 = B.成军([{ ref }])[0];
+			const 成血 = Number(成.maxHp ?? 成.hp);
+			ok(满 > 0 && 成血 === Math.max(1, Math.floor(满 / 2)),
+				`★【⑬ ①】挡路者生命须**恒**减半：应 ＝ max(1,⌊满/2⌋) ＝ ${Math.max(1, Math.floor(满 / 2))}`
+				+ `（实得 满 ${满} ⇒ 成军 ${成血}）`);
+			if (成血 === Math.max(1, Math.floor(满 / 2))) console.log(`  并轨·挡路者：同一 ref 恒减半 ✓（满 ${满} ⇒ ${成血}）`);
 		}
-		/* ④ **玩家初始生命翻倍**（⑬ 补笔 · 操作者令 2026-10-05）：
-		 *   `开局('简单')` ⇒ `hp`／`maxHp` **同乘 2**；`开局(null)` ⇒ **回构造点原值**（逐字不动 ✓）。
-		 *   ★起点同一：先**清基数** ⇒ 让它按当前 `$player` 重记（✗ 免得拿被抬过的值当底 ✓）。 */
+		/* ② 无旗标（✗ 无难度开关） */
+		ok(typeof B.设难度 === 'undefined', '★【⑬ ②】难度开关须**整族已撤**（`setup.BABEL.设难度` 不该存在）');
+		/* ③ 玩家初始生命恒 ×2 ＋ 重复调用不越乘 */
 		{
 			const P = State.variables.player;
 			if (P) {
 				const 底 = { hp: P.hp, maxHp: P.maxHp };
 				delete State.variables.babelRun.生命基数;
-				B.开局('简单');
-				const 简P = { hp: P.hp, maxHp: P.maxHp };
-				B.开局(null);
-				const 普P = { hp: P.hp, maxHp: P.maxHp };
-				ok(简P.hp === 底.hp * 2 && 简P.maxHp === 底.maxHp * 2
-					&& 普P.hp === 底.hp && 普P.maxHp === 底.maxHp,
-					`★【⑬ ④】简单档玩家初始生命须 ＝ 普通 ×2，且普通档逐字不动`
-					+ `（底 ${底.hp}/${底.maxHp} ⇒ 简单 ${简P.hp}/${简P.maxHp}｜普通 ${普P.hp}/${普P.maxHp}）`);
-				if (简P.maxHp === 底.maxHp * 2) console.log(`  ⑬ 补笔·玩家生命：简单 ${简P.hp}/${简P.maxHp} ＝ 普通 ${普P.hp}/${普P.maxHp} 的 ×2 ✓`);
-			} else {
-				ok(true, '（无 `$player` 面 ⇒ 本臂不判）');
-			}
+				B.开局();
+				const 一 = { hp: P.hp, maxHp: P.maxHp };
+				B.开局();                                       // ★第二次（须不越乘）
+				const 二 = { hp: P.hp, maxHp: P.maxHp };
+				ok(一.hp === 底.hp * 2 && 一.maxHp === 底.maxHp * 2,
+					`★【⑬ ③】玩家初始生命须**恒 ×2**（底 ${底.hp}/${底.maxHp} ⇒ 实得 ${一.hp}/${一.maxHp}）`);
+				ok(二.hp === 一.hp && 二.maxHp === 一.maxHp,
+					`★【⑬ ③】重复调用 ✗ 不得越乘（一次 ${一.hp}/${一.maxHp} ⇒ 两次 ${二.hp}/${二.maxHp}）`);
+				if (一.maxHp === 底.maxHp * 2) console.log(`  并轨·玩家：初始 ${一.hp}/${一.maxHp} ＝ 基数 ×2 ✓｜重复调用不越乘 ✓`);
+			} else { ok(true, '（无 `$player` 面 ⇒ 本臂不判）'); }
 		}
-		/* ⑤ **跳过序章 · 直达第 10 层**（⑬ 同域 · 操作者令 2026-10-05）—— 三条：
-		 *   ① 落点＝`L10-camp`（＝步行/卷轴**同一落点** ✓）② 三笔前置账**逐一为真**
-		 *   ③ **✗ 不改难度口径**（本入口＝普通 ✓ ⇒ 即使先设了「简单」也须被复位 ✓）。 */
-		{
-			State.variables.babelRun = {};
-			B.开局('简单');                                   // ★先置「简单」⇒ 验证直达把它复位成普通 ✓
-			B.直达十层();
-			const r = State.variables.babelRun ?? {};
-			const 九层 = Array.from({ length: 9 }, (_, i) => `L${i + 1}`);
-			const 已战全 = 九层.every((l) => r.已战?.[l] === true);
-			const 跳过全 = 九层.every((l) => r.已跳过?.[l] === true);
-			ok(map.current === 'L10-camp', `★【⑬ ⑤】直达落点须＝L10-camp（实得 ${String(map.current)}）`);
-			ok(已战全 && 跳过全, `★【⑬ ⑤】九层「已战＋已跳过」两账须全置（已战 ${JSON.stringify(r.已战 ?? null)}｜跳过 ${JSON.stringify(r.已跳过 ?? null)}）`);
-			ok(B.已过?.('L9') === true, '★【⑬ ⑤】头目进度须走**写口**（`记战果`）⇒ `已过(\'L9\')` 为真');
-			ok(B.设难度() === '普通', `★【⑬ ⑤】直达＝普通档（✗ 不并选）—— 实得 ${B.设难度()}`);
-			console.log(`  跳过序章·直达：落点 ${String(map.current)} ✓｜已战/跳过两账全置 ✓｜已过('L9')=${String(B.已过?.('L9'))} ✓｜档=${B.设难度()} ✓`);
-		}
+		/* ④ 跳过入口：三笔账 ＋ 落点 */
+		State.variables.babelRun = {};
+		B.直达十层();
+		const r = State.variables.babelRun ?? {};
+		const 九层 = Array.from({ length: 9 }, (_, i) => `L${i + 1}`);
+		ok(map.current === 'L10-camp', `★【⑬ ④】跳过教学落点须＝L10-camp（实得 ${String(map.current)}）`);
+		ok(九层.every((l) => r.已战?.[l] === true) && 九层.every((l) => r.已跳过?.[l] === true),
+			`★【⑬ ④】九层「已战＋已跳过」两账须全置（${JSON.stringify(r.已战 ?? null)}／${JSON.stringify(r.已跳过 ?? null)}）`);
+		ok(B.已过?.('L9') === true, '★【⑬ ④】头目进度须走**写口**（`记战果`）⇒ `已过(\'L9\')` 为真');
 	} finally {
-		if (State.variables.player && 原玩家血) { State.variables.player.hp = 原玩家血.hp; State.variables.player.maxHp = 原玩家血.maxHp; }   // ★按**取到的原值**复原（✗ 不写死 18/20 —— 那是构造点的数，写死＝又一处源）
+		if (State.variables.player && 原玩家血) { State.variables.player.hp = 原玩家血.hp; State.variables.player.maxHp = 原玩家血.maxHp; }
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
 		if (层存) { try { map.moveTo(层存); } catch (e) { /* 回不去则略 */ } }
 	}
