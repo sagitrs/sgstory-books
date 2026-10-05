@@ -12,7 +12,7 @@
 
 测试工具根：tools/
 
-明细见 [`tools/README.md`](tools/README.md)，其中十六件工具逐件载明四项内容，分别是清单、固定命令、期望读数与设立理由。
+明细见 [`tools/README.md`](tools/README.md)，其中十七件工具逐件载明四项内容，分别是清单、固定命令、期望读数与设立理由。
 <!-- test-tool-root: tools/ -->
 
 **根外具名例外。** 本仓的测试工具根是 `tools/`，但反向搜索证实存在竞争根，共五处，因此本声明的口径是逐处具名，而不是声称唯一根。这五处分别如下。第一处是 [`tests/scenario/run.mjs`](tests/scenario/run.mjs)，它是场景链 runner，NOT_JUDGED 基线也放在那里。第二处是 [`stories/babel/verify.mjs`](stories/babel/verify.mjs)，它是故事侧装配自检。第三处是 [`stories/babel/scenarios/validate.mjs`](stories/babel/scenarios/validate.mjs)，它是清单自检。第四处是 [`stories/babel/scenarios/knives.sh`](stories/babel/scenarios/knives.sh)，它是清单自检的刀，共十五条，用来断哪一条红。第五处是 [`stories/babel/scenarios/render-table.mjs`](stories/babel/scenarios/render-table.mjs)，它是清单表渲染，票面表就是它的输出。
