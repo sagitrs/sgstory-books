@@ -117,6 +117,19 @@ body.战中 .enemybar { bottom: 0; }
 body.战中 .healbar { bottom: 1.7em; }
 body.战中 .bagbar { bottom: 3.4em; }
 
+/* ★`books#280` ⑮ **二层**（tester-3 量死）：底栏 `fixed` 之后，面板却**从底栏向下长** ——
+ *   实测 `details` 高 24px、`ul` 溢出到 135、条目 y=770 > 720（视口高）⇒ 展开即**出屏** ✗。
+ * 修：把**列表**搬到摘要**之上**（`bottom:0` ＋ `translateY(-100%)` ⇒ 底边落在底栏顶边 ✓）
+ *   ＋ 限高内滚（✗ 不超过视口的一半 ⇒ 长背包也能点 ✓）。✗ 不动 DOM（只改定位 ✓）。
+ */
+body.战中 .bagbar details[open] > .rpg-bag-list {
+	position: absolute; bottom: 0; left: 0; right: 0;
+	transform: translateY(-100%);                  /* ★ 向上开 */
+	max-height: 50vh; overflow-y: auto;
+	background: #10131a; border: 1px solid #2d3440; border-radius: 4px;
+	padding: 0.4em 0.6em; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+}
+
 :: StoryCaption
 /* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
  *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.1·<pin 短sha>` ✓。
