@@ -39,7 +39,7 @@ const browser = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu'
 	'--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1440,1000', '--no-first-run', 'about:blank'],
 	{ env: { ...process.env, LD_LIBRARY_PATH: deps }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = '', ws, seq = 0, session, exitCode = 0, loads = 0;
-const total = 23, rows = [], errors = [], pending = new Map(), start = Date.now();
+const total = 24, rows = [], errors = [], pageChecks = [], pending = new Map(), start = Date.now();
 browser.stdout.on('data', (x) => { log += x; }); browser.stderr.on('data', (x) => { log += x; });
 browser.on('error', (e) => errors.push(e.message));
 const wait = async (fn, name, timeout = 15000) => {
@@ -60,8 +60,21 @@ const evaluate = async (body) => {
 	if (r.exceptionDetails) throw Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
 	return r.result.value;
 };
+// SugarCube 的宏错误可以只渲成 DOM 而不抛 JS 异常；必须查实际错误节点。
+// 只声明本工具访问过的当前段落，不据此推断未访问段落无错。
+const readPageErrors = () => evaluate(`const host=document.querySelector('#passages .passage:last-of-type');
+	if(!host) throw Error('页面错误检查缺当前段落');
+	return {passage:host.dataset.passage,issues:[...new Set([...host.querySelectorAll('.error,.error-view')].map(x=>x.textContent.trim()))]};`);
+const assertPageHealthy = async (where) => {
+	const result = await readPageErrors(); pageChecks.push({ where, ...result });
+	if (result.issues.length) {
+		const error = Error(`页面渲染错误（${where}／${result.passage}）：${result.issues.join('\n')}`);
+		error.code = 'STORY_RENDER_ERROR'; throw error;
+	}
+};
 const check = async (name, body) => {
-	const value = await evaluate(body); rows.push({ name, passed: value === true });
+	const value = await evaluate(body), row = { name, passed: value === true }; rows.push(row);
+	try { await assertPageHealthy(name); } catch (e) { row.passed = false; throw e; }
 	if (value !== true) throw Error(`${name} 失败（${JSON.stringify(value)}）`);
 };
 const click = async (text) => {
@@ -73,15 +86,19 @@ const click = async (text) => {
 	await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...box });
 	await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...box });
 };
-const atPassage = (name) => wait(() => evaluate(`const host=document.querySelector('#passages .passage:last-of-type');
-	return S.State.passage===${JSON.stringify(name)}&&host?.dataset.passage===${JSON.stringify(name)}
-		&&Number(getComputedStyle(host).opacity)===1&&host.getBoundingClientRect().height>0;`), `可见段落 ${name}`);
+const atPassage = async (name) => {
+	await wait(() => evaluate(`const host=document.querySelector('#passages .passage:last-of-type');
+		return S.State.passage===${JSON.stringify(name)}&&host?.dataset.passage===${JSON.stringify(name)}
+			&&Number(getComputedStyle(host).opacity)===1&&host.getBoundingClientRect().height>0;`), `可见段落 ${name}`);
+	await assertPageHealthy(`可见段落 ${name}`);
+};
 const screenshot = async (name) => {
 	// 点击背包可能把视口留在正文下面；DOM 有文字不等于截图看得到。
 	// 先回页首、等字体与两次绘制，再核当前段落实际进入视口。
 	await atPassage(await evaluate('return S.State.passage;'));
 	await evaluate('return (async()=>{ await document.fonts.ready; window.scrollTo(0,0); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); return true; })();');
 	await wait(() => evaluate('const h=document.querySelector("#passages .passage:last-of-type"),b=h?.getBoundingClientRect(); return b?.height>0&&b.bottom>0&&b.top<innerHeight&&Number(getComputedStyle(h).opacity)===1;'), '截图段落进入视口');
+	await assertPageHealthy(`截图 ${name}`);
 	fs.writeFileSync(path.join(evidence, `${name}.json`), JSON.stringify(await evaluate('const h=document.querySelector("#passages .passage:last-of-type"),b=h.getBoundingClientRect(); return {passage:S.State.passage,location:B.map.current,scrollY,top:b.top,bottom:b.bottom,body:h.innerText};'), null, 2));
 	const r = await send('Page.captureScreenshot', { format: 'png' });
 	fs.writeFileSync(path.join(evidence, `${name}.png`), Buffer.from(r.data, 'base64'));
@@ -101,7 +118,20 @@ try {
 	const target = await send('Target.createTarget', { url: 'about:blank' }, null);
 	session = (await send('Target.attachToTarget', { targetId: target.targetId, flatten: true }, null)).sessionId;
 	await send('Runtime.enable'); await send('Page.enable'); await send('Page.navigate', { url: `file://${product}` });
-	await atPassage('开始'); await click('睁开眼（普通）'); await atPassage('L1 苏醒'); await click('站起来'); await atPassage('探索');
+	await atPassage('开始');
+	// 真 wiki 渲染两态，复用同一错误取数器；探针不改 State，finally 移除。
+	let rejected, accepted;
+	try {
+		await evaluate(`if(typeof jQuery.fn.wiki!=='function') throw Error('缺 SugarCube wiki 入口，无法自证渲染判据');
+			const probe=document.createElement('div'); probe.id='l10-render-probe';
+			document.querySelector('#passages .passage:last-of-type').append(probe); jQuery(probe).wiki('<</if>>');`);
+		rejected = await readPageErrors();
+		await evaluate(`const probe=document.getElementById('l10-render-probe'); probe.replaceChildren(); jQuery(probe).wiki('<<if true>>合法分支<</if>>');`);
+		accepted = await readPageErrors();
+	} finally { await evaluate(`document.getElementById('l10-render-probe')?.remove();`); }
+	fs.writeFileSync(path.join(evidence, 'render-sensor-selftest.json'), JSON.stringify({ rejected, accepted }, null, 2));
+	await check('真实孤立宏须检出、合法 if 渲染须放过', `return ${JSON.stringify(!!rejected?.issues.some(x=>x.includes('/if')) && accepted?.issues.length===0)};`);
+	await click('睁开眼（普通）'); await atPassage('L1 苏醒'); await click('站起来'); await atPassage('探索');
 	await check('StoryInit 两项进度及寄存初态', 'return V.babelL10.sold===0&&!V.babelL10.resident&&V.babelL10Storage.length===0&&typeof R.exchange==="function";');
 	// 起始资源／工具夹具在此注入；堆叠原件和旧形存档夹具在各自组内明示。
 	// 后续交易、领证、修理、寄存、终局均按真实按钮。
@@ -166,7 +196,7 @@ try {
 	if (rows.length !== total) throw Error(`浏览器断言组数不符：${rows.length}/${total}`);
 	if (errors.length) throw Error(`浏览器脚本异常：${errors.join('\n')}`);
 } catch (e) {
-	exitCode = rows.length ? 1 : 2; errors.push(e.stack ?? e.message); console.error(e.stack ?? e);
+	exitCode = e.code === 'STORY_RENDER_ERROR' || rows.length ? 1 : 2; errors.push(e.stack ?? e.message); console.error(e.stack ?? e);
 	if (session) {
 		try { fs.writeFileSync(path.join(evidence, 'failure.json'), JSON.stringify(await evaluate('return {passage:S.State.passage,location:B.map.current,body:document.body.innerText,city:V.babelL10,inventory:P.items};'), null, 2)); }
 		catch (detail) { errors.push(`诊断读取失败：${detail.message}`); }
@@ -195,7 +225,7 @@ finally {
 		await fs.promises.rm(profile, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
 	}
 	catch (e) { const message = `本次浏览器 profile 清理失败：${e.message}`; console.error(message); errors.push(message); exitCode ||= 2; }
-	fs.writeFileSync(path.join(evidence, 'result.json'), JSON.stringify({ scope: 'Local Chromium, injected resource/tool fixture; NOT balance acceptance', snapshot, exitCode, total, skipped: Math.max(0, total-rows.length), rows, errors, seconds: (Date.now()-start)/1000 }, null, 2));
+	fs.writeFileSync(path.join(evidence, 'result.json'), JSON.stringify({ scope: 'Local Chromium, injected resource/tool fixture; NOT balance acceptance', snapshot, exitCode, total, skipped: Math.max(0, total-rows.length), rows, errors, pageChecks, seconds: (Date.now()-start)/1000 }, null, 2));
 }
 console.log(`环境: Local Chromium | 通过: ${rows.filter((r)=>r.passed).length}/${rows.length} | 跳过: ${Math.max(0,total-rows.length)}${rows.length<total?'（未到达）':''} | 耗时: ${(Date.now()-start)/1000}s`);
 console.log(`证据: ${evidence}`); process.exit(exitCode);
