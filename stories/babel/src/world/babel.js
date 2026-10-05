@@ -1042,7 +1042,10 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
  *   ⚠ 时序：本档（`world/babel.js`）在所有 `ui/**` 与 `story/**` 之后装载 ⇒ 任何一场战斗都在其后发生。
  *   ⚠ 配套：页脚背包视图（`ui/bag.js`）在战中渲染**可提交件**（`submitBattleAction` ⇒ 同一条回合账），
  *     判据见 `verify.mjs` 的第 54／55 格与 `tools/e2e-280-playtest.mjs` 的同族臂。 */
-R.Battle.itemsInBag = true;
+/* ⚠ **能力门**：引擎侧开关是 `sgstory#2007` 引入的 —— 本作声明它，但**先门后设**：
+ *   引擎那棵树还没有该字段 ⇒ 不设（并在 `verify` 第 56 格明印「待判」）⇒ ✗ 让 pin 树上的 CI 变红；
+ *   抬 pin（含 #2007）后**自动**生效并转为真判。 */
+if ('itemsInBag' in R.Battle) R.Battle.itemsInBag = true;
 
 /* ★`#1902`／`#1903`：把本弧的**本局账**登记进保存域契约（引擎 `RPG.save.declareDomain`）。
  *   动机：`#116` 起就有的缺口 —— story 侧新建的裸键**不进** `envelope().domains`，逐域往返面也看不到它；

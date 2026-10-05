@@ -28,6 +28,7 @@
 | `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
 | `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面六臂：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面） |
 | `tools/e2e-280-heal-feedback.mjs` | `books#280` ⑨ 治疗反馈「HP X → Y」＋页脚 HP 面板随用刷新的**真 DOM 臂**（三路各断【文本】与【页脚真变】）＋ 双刀（文本面／页脚面各咬一次） |
+| `tools/e2e-280-narrow-sticky.mjs` | `books#280` ⑩ 窄屏（390×844）贴顶的真浏览器臂（CDP）：首屏内有 HP 与背包 ＋ 滚动后仍贴顶 ＋ 宽屏正控 ＋ 一刀 |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |

@@ -78,11 +78,15 @@ small { color: #7c8794; }
  *   ⚠ 只改**版式**：内容与 DOM 顺序都不动（✗ 改 DOM 顺序会动读屏器与既有判据的面）。
  *   ⚠ 吸顶只在小屏开：桌面端版面已够宽，吸顶会让长段落显得局促（窄屏才是票面的验收面）。 */
 @media (max-width: 600px) {
-	#passages { margin: 0.6em auto; padding: 0 0.6em; line-height: 1.55; }
+	/* ⚠ 顶部让位：状态条改 `fixed` 后会浮在正文之上 ⇒ 正文要往下挪出它的高度（✗ 否则首行被盖住）。 */
+	#passages { margin: 2.3em auto 0.6em; padding: 0 0.6em; line-height: 1.55; }
 	.statusbar {
-		position: sticky; top: 0; z-index: 5;
+		/* ★**为何是 `fixed` 而不是 `sticky`**（本席实测）：状态条是页脚**最后一块** ⇒ `sticky` 的
+		 *   包含块就是那一小段 ⇒ 页面一滚，它随包含块一起出了视口（实测 `top=-534`，看起来像「没吸顶」）。
+		 *   `fixed` 与包含块无关 ⇒ 窄屏下恒贴顶（票面要的「不落首屏外」）。 */
+		position: fixed; top: 0; left: 0; right: 0; z-index: 5;
 		background: #10131a;                      /* ✗ 透明：正文会从下面透上来 */
-		padding: 0.25em 0; border-bottom: 1px solid #2d3440;
+		padding: 0.25em 0.6em; border-bottom: 1px solid #2d3440;
 		font-size: 0.82em; line-height: 1.45;
 	}
 	.footersave, .noticebar, .bagbar, .enemybar, .healbar { font-size: 0.8em; margin-top: 0.2em; }
