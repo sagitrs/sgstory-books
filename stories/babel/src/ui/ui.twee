@@ -117,12 +117,25 @@ body.战中 .enemybar { bottom: 0; }
 body.战中 .healbar { bottom: 1.7em; }
 body.战中 .bagbar { bottom: 3.4em; }
 
+/* ★`books#280` ⑮ **横向避侧栏**（`tester-3` 量死 + 本席复测）：列表 x **14–1280** 横跨到
+ *   `#ui-bar`（x 0–281、`position: fixed`、**z-index 50**）之下 ⇒ 条目 x 23–39 的**中心命中**
+ *   是 `#ui-bar-body` ✗（列表自身中心命中是 `LI` ✓ —— 只有**左段被压住**）。
+ * 择一：**战期收起侧栏**（同 ⑩ 的窄屏那支口径 ✓）—— 战期要看的东西（体力／位置／背包／敌组／治疗）
+ *   全在页脚三块里 ✓，侧栏那段常驻说明**不是战期必需** ⇒ 收起后**不再有横向争位** ✓（✗ 不靠单纯抬 z-index：
+ *   那会让页脚**盖住**侧栏文字，两样都读不清 ✗）。
+ * ★同时把页脚四块的 `z-index` 抬到侧栏之上（50）作**第二道保险** ✓（✗ 万一别处又冒出一个高层元素）。 */
+body.战中 #ui-bar { display: none; }
+body.战中 #passages { margin-left: 0; }                 /* ★侧栏收起 ⇒ 正文让回左侧（✗ 否则留一条空带） */
+body.战中 .statusbar, body.战中 .bagbar, body.战中 .healbar, body.战中 .enemybar { z-index: 60; }
+
 /* ★`books#280` ⑮ **二层**（tester-3 量死）：底栏 `fixed` 之后，面板却**从底栏向下长** ——
  *   实测 `details` 高 24px、`ul` 溢出到 135、条目 y=770 > 720（视口高）⇒ 展开即**出屏** ✗。
  * 修：把**列表**搬到摘要**之上**（`bottom:0` ＋ `translateY(-100%)` ⇒ 底边落在底栏顶边 ✓）
  *   ＋ 限高内滚（✗ 不超过视口的一半 ⇒ 长背包也能点 ✓）。✗ 不动 DOM（只改定位 ✓）。
  */
-body.战中 .bagbar details[open] > .rpg-bag-list {
+/* ⚠ 选择器**不带 `[open]`**（`tester-3` 变体实验：带去 ⇒ 规则不生效 —— 那一步 `details` 的 `open`
+ *   并非此刻的属性 ⇒ y 仍 770；去掉 ⇒ y 770⇒446 且 absolute＋内滚皆生效 ✓）。 */
+body.战中 .bagbar details > .rpg-bag-list {
 	position: absolute; bottom: 0; left: 0; right: 0;
 	transform: translateY(-100%);                  /* ★ 向上开 */
 	max-height: 50vh; overflow-y: auto;
