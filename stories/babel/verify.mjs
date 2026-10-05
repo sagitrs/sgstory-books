@@ -4006,5 +4006,52 @@ head('㊿ `books#280` ⑪：开箱恰得一件（钥匙路／硬开路各恰 1�
 }
 
 
+/* ── 51 `books#280` ②-1：**进层先停一拍**（到达即停；同层只停一次）──────────────
+ *
+ * 裁（领队 · 甲）：层换好、状态就绪后，**先把「（到达）第 N 层」摆给玩家、等一次明确点击**，
+ *   再露出该层选项面（借既有模态形：`P.choice` 在该刻起模态 ⇒ 模态**即刻替换该刻选项**）。
+ * 断什么：① 进一层 ⇒ **确有一拍**，且该拍选项以「（到达）」起头（✗ 不是恒真：下格看负控）；
+ *   ② **幂等**：出层再回 ⇒ **不再停**（本局账，✗ 重进/回边不重复停）；
+ *   ③ 负控：**未走过的层**仍会停（⇒ ① 那一条不是「凡是 moveTo 都算」的恒真形）。
+ * 刀（记在提交信息）：摘掉 `onEnter` 里那一拍 ⇒ ① 红、② 与余格不动；复原回绿。
+ */
+head('51 `books#280` ②-1：进层先停一拍（到达即停·同层只停一次）');
+{
+	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 位存 = map.current;
+	const 原choice = D.Player.choice;
+	const 拍到 = [];
+	const 回到 = (id) => { try { map.moveTo(id); } catch (e) { /* 位置未动则略 */ } };
+	try {
+		D.Player.choice = (opts) => { 拍到.push(opts); return opts?.[0]?.value; };
+		State.variables.babelRun = {};
+		/* ① 首进 ⇒ 停一拍 */
+		回到('L2');
+		const 首 = 拍到.length;
+		ok(首 >= 1, `★进一层须先停一拍（到达 beat）—— 实得 ${首} 次 choice 调用`);
+		const 首拍 = 拍到[0];
+		ok(Array.isArray(首拍) && 首拍.some((o) => /（到达）/.test(String(o?.text))),
+			`★那一拍的选项须以「（到达）」起头（实得 ${JSON.stringify(首拍)}）`);
+		/* ② 幂等：**同层原地再进** ⇒ ✗ 不再停。
+		 *   ★写法要紧：**先清账再测** —— 若在中间借 `回到('L1')` 绕一圈，
+		 *     那一跳本身是「未走过的层」⇒ 合法加一拍（会把尺子自己弄红 ✗）。 */
+		拍到.length = 0;
+		回到('L2');
+		ok(拍到.length === 0, `★同一层**只停一次** —— 同层再进又多停了 ${拍到.length} 拍`
+			+ '（✗ 回边/重进反复弹 = 玩家被卡在路上）');
+		/* ③ 负控：**没走过的层**仍会停（证 ① 不是「凡是 moveTo 都算」的恒真形） */
+		拍到.length = 0;
+		回到('L3');
+		ok(拍到.length === 1, `★没走过的层也应停一拍（实得 ${拍到.length}）`
+			+ ' —— 否则 ① 只是「moveTo 计数」的恒真形');
+		console.log(`  到达停：首进停一拍 ✓｜同层只停一次 ✓｜未走过的层仍停 ✓（共 ${拍到.length} 拍）`);
+	} finally {
+		D.Player.choice = 原choice;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) 回到(位存);
+	}
+}
+
+
 printSummary();
 
