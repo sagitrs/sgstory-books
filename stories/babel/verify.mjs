@@ -4019,19 +4019,23 @@ head('51 `books#280` ②-1：进层先停一拍（到达即停·同层只停一�
 {
 	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
 	const 位存 = map.current;
-	const 原choice = D.Player.choice;
+	const 原choice = D.Player.choice; let 原play = SugarCube.Engine.play;
 	const 拍到 = [];
 	const 回到 = (id) => { try { map.moveTo(id); } catch (e) { /* 位置未动则略 */ } };
 	try {
-		D.Player.choice = (opts) => { 拍到.push(opts); return opts?.[0]?.value; };
+		/* ★裁**乙**（2026-10-05）后：拍＝**一整屏**（`Engine.play('到达')`），✗ 不再是 `choice` 调用
+		 *   ⇒ 本格的读数随之改为**记 `Engine.play`**（判的还是同一件事：进层有没有停那一屏 ✓）。 */
+		原play = SugarCube.Engine.play;
+		SugarCube.Engine.play = (v) => { 拍到.push([`（到达）play:${String(v)}`]); return undefined; };
 		State.variables.babelRun = {};
 		/* ① 首进 ⇒ 停一拍 */
 		回到('L2');
 		const 首 = 拍到.length;
-		ok(首 >= 1, `★进一层须先停一拍（到达 beat）—— 实得 ${首} 次 choice 调用`);
+		ok(首 >= 1 && /play:到达/.test(String(拍到[0]?.[0] ?? '')),
+			`★进一层须先停一拍（到达段）—— 实得 ${JSON.stringify(拍到.slice(0, 2))}`);
 		const 首拍 = 拍到[0];
-		ok(Array.isArray(首拍) && 首拍.some((o) => /（到达）/.test(String(o?.text))),
-			`★那一拍的选项须以「（到达）」起头（实得 ${JSON.stringify(首拍)}）`);
+		ok(/play:到达/.test(String(首拍?.[0] ?? '')),
+			`★那一屏须是「到达」段（实得 ${JSON.stringify(首拍)}）`);
 		/* ② 幂等：**同层原地再进** ⇒ ✗ 不再停。
 		 *   ★写法要紧：**先清账再测** —— 若在中间借 `回到('L1')` 绕一圈，
 		 *     那一跳本身是「未走过的层」⇒ 合法加一拍（会把尺子自己弄红 ✗）。 */
@@ -4288,6 +4292,48 @@ head('57 `books#280` ②-4：胜利结算屏 ＋「收下」确认门（未确�
 		}
 	} finally {
 		D.Player.choice = 原Choice; SugarCube.Engine.play = 原Play; R.perform = 原Perform;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
+	}
+}
+
+/* ── 60 `books#280` ②-1：**到达拍走段落**（裁乙）—— 拍段在场 ⇒ 地图那屏（选项面）不在；答毕回图 ⇒ 动作在 ──
+ *
+ * 病（`tester-4` 实测 + 本席读码复现）：到达拍用 `choice` 弹框 ⇒ 与引擎 `MapScene` 自己那次
+ *   `choice(availableActions+exits)`（`src/core/60-map.js:307/316`）**并存** ⇒ 玩家可**绕过**拍直点层选项 ✗。
+ * 裁（领队 · **乙**）：拍改走**段落** ⇒ 换层那一刻 `Engine.play('到达')` ⇒ **地图那一屏根本不渲染**
+ *   ⇒ 选项面**自然不在** ✓（★✗ 不碰 `availableActions` 这个**数据**口 ⇒ 既有判据一格不动 ✓）。
+ * 断什么（★都读**真值**：记 `Engine.play` ＋ 读动作表）：
+ *   ① 首进 ⇒ 最后那次 `play` 是 **`到达`**（＝拍段在场 ⇒ 地图那屏与选项面**不在** ✓）；
+ *   ② 「继续」（照 `:: 到达` 段的链：回 `探索` ⇒ `Scene.play('babel-explore')`）⇒ 该层动作表**在** ✓（选项面这才露）；
+ *   ③ **幂等**：同层再进 ⇒ **不再** play「到达」（✗ 回边/重读档不重弹）✓。
+ * 刀（记在提交信息）：把 `onEnter` 里那句 `Engine.play('到达')` 摘掉 ⇒ ① 红（首进不再有拍段）。
+ */
+head('60 `books#280` ②-1：到达拍走段落（拍段在场 ⇒ 选项面不在／答毕回图动作在）');
+{
+	const 原play = SugarCube.Engine.play, 位存 = map.current;
+	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const play录 = [];
+	try {
+		SugarCube.Engine.play = (v) => { play录.push(String(v)); return undefined; };
+		State.variables.babelRun = {};
+		map.moveTo('L2');
+		ok(play录[play录.length - 1] === '到达',
+			`★【②-1 ①】首进须**停在到达段**（地图那屏不渲染 ⇒ 选项面不在）—— 实得 play 录 ${JSON.stringify(play录)}`);
+		/* ② 照 `:: 到达` 的「继续」链回图（段里是 `<<goto "探索">>` ⇒ 探索段 `Scene.play('babel-explore')`）*/
+		play录.length = 0;
+		SugarCube.Engine.play('babel-explore');                  // ＝「继续」那一跳的效果
+		const 动 = (map.locations.get('L2').availableActions ?? []).length;
+		ok(动 > 0, `★【②-1 ②】答毕回图后该层动作面须**在**（实得 ${动} 条）`);
+		/* ③ 幂等：同层再进 ⇒ 不再弹拍 */
+		play录.length = 0;
+		map.moveTo('L2');
+		ok(!play录.includes('到达'), `★【②-1 ③】同一层**只停一次** —— 再进不得重弹（play 录 ${JSON.stringify(play录)}）`);
+		if (动 > 0) {
+			console.log(`  到达拍：首进停段 ✓（play=到达）｜答毕回图动作在 ✓（${动} 条）｜同层不重弹 ✓`);
+		}
+	} finally {
+		SugarCube.Engine.play = 原play;
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
 		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
 	}
