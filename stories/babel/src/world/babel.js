@@ -1037,6 +1037,13 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 
 });
 
+/* ★`books#280` ⑩（操作者亲测 · 0.0.2 阻塞）：**本作把道具收敛到页脚背包一处** —— 战斗菜单只留战斗行动。
+ *   引擎那侧缺省 `false`（＝照旧逐件列道具，零回归）⇒ 本作**显式声明**打开（✗ 让引擎猜故事名）。
+ *   ⚠ 时序：本档（`world/babel.js`）在所有 `ui/**` 与 `story/**` 之后装载 ⇒ 任何一场战斗都在其后发生。
+ *   ⚠ 配套：页脚背包视图（`ui/bag.js`）在战中渲染**可提交件**（`submitBattleAction` ⇒ 同一条回合账），
+ *     判据见 `verify.mjs` 的第 54／55 格与 `tools/e2e-280-playtest.mjs` 的同族臂。 */
+R.Battle.itemsInBag = true;
+
 /* ★`#1902`／`#1903`：把本弧的**本局账**登记进保存域契约（引擎 `RPG.save.declareDomain`）。
  *   动机：`#116` 起就有的缺口 —— story 侧新建的裸键**不进** `envelope().domains`，逐域往返面也看不到它；
  *   后果是**审计缺口**，✗ 不是丢档（进档由序列化宿主完成）。
