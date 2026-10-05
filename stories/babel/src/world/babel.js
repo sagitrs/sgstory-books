@@ -200,7 +200,9 @@ const 预知门 = (from) => {
 	if (!可预知(from)) return false;                        // 同一套条件（持有者 ∧ 本层可预报 ∧ 未选过 ∧ 目标层未抽）
 	const 选项 = [
 		...EVENT_KINDS.map((k) => ({ text: `（预知）下一层会有${类名[k]}`, value: k })),
-		{ text: '你没有多想，直接走入下一层', value: null },
+		{ text: '你没有多想，直接走入下一层', value: '' },   // ★`books#280`②：引擎 `choice` 要求 value 为**字符串**
+		//   （实测：`value: null` ⇒ 抛「choice 的每个选项都应是 { text: string, value: string }」✗ —— 休眠 bug，
+		//    由 ②-1 的靶修把它走到了；空串＝「不预知」，与下面 `if (v)` 的判法一致 ✓）
 	];
 	P.choice(选项).then((v) => { if (v) 记预报(from, v); });
 	return true;
