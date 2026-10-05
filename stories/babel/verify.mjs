@@ -4006,56 +4006,42 @@ head('㊿ `books#280` ⑪：开箱恰得一件（钥匙路／硬开路各恰 1�
 }
 
 
-/* ── 51 `books#280` ②-1：**进层先停一拍**（到达即停；同层只停一次）──────────────
+/* ── 51 `books#280` ②-1：**进层先停一拍**（记账面）─────────────────────────────
  *
- * 裁（领队 · 甲）：层换好、状态就绪后，**先把「（到达）第 N 层」摆给玩家、等一次明确点击**，
- *   再露出该层选项面（借既有模态形：`P.choice` 在该刻起模态 ⇒ 模态**即刻替换该刻选项**）。
- * 断什么：① 进一层 ⇒ **确有一拍**，且该拍选项以「（到达）」起头（✗ 不是恒真：下格看负控）；
- *   ② **幂等**：出层再回 ⇒ **不再停**（本局账，✗ 重进/回边不重复停）；
- *   ③ 负控：**未走过的层**仍会停（⇒ ① 那一条不是「凡是 moveTo 都算」的恒真形）。
- * 刀（记在提交信息）：摘掉 `onEnter` 里那一拍 ⇒ ① 红、② 与余格不动；复原回绿。
+ * 裁（领队 · 甲 · 2026-10-05）：`onEnter` **只记账** —— 把「本层还没停过到达拍」写进本局账
+ *   （`$babelRun.停未答 = 层` ✓，随档往返）；**一次性 `choice` 包装**由同处装（判据在格 60 ✓）。
+ * ★为何本格**只判记账面**（✗ 不在这里判「那一屏有没有出现」）：
+ *   本格跑在**比格 60 更早**的装置状态里，此处地图**尚无 current** ⇒ `moveTo` 不触发 `onEnter`
+ *   （本席实测：`停未答` 仍 null、录空 ⇒ **前置未立**）；在**前置未立**处判「屏」＝**伪红** ✗。
+ *   故**屏**由格 60 判（那时地图已活 ✓），本格守**账**：写入 / 答毕 / 幂等（✗ 重复停）。
+ * 断什么：① 进层 ⇒ 记「未答＝该层」；② 答毕 ⇒ 未答清空 **且** 记「已给」（幂等账）；
+ *   ③ **幂等**：同层再记 ⇒ **✗ 不产生第二拍**（`停已给` 真 ⇒ 永远不再停 ✓）。
+ * 刀（记在提交信息）：摘掉 `onEnter` 里的记账 ⇒ ① 红；把 `到达拍答毕` 的 `到达停已给` 删掉 ⇒ ② 红。
  */
-head('51 `books#280` ②-1：进层先停一拍（到达即停·同层只停一次）');
+head('51 `books#280` ②-1：进层先停一拍（记账面：写入／答毕／幂等）');
 {
-	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	const 位存 = map.current;
-	const 原choice = D.Player.choice; let 原play = SugarCube.Engine.play;
-	const 拍到 = [];
-	const 回到 = (id) => { try { map.moveTo(id); } catch (e) { /* 位置未动则略 */ } };
+	const B = setup.BABEL, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
 	try {
-		/* ★裁**乙**（2026-10-05）后：拍＝**一整屏**（`Engine.play('到达')`），✗ 不再是 `choice` 调用
-		 *   ⇒ 本格的读数随之改为**记 `Engine.play`**（判的还是同一件事：进层有没有停那一屏 ✓）。 */
-		原play = SugarCube.Engine.play;
-		SugarCube.Engine.play = (v) => { 拍到.push([`（到达）play:${String(v)}`]); return undefined; };
 		State.variables.babelRun = {};
-		/* ① 首进 ⇒ 停一拍 */
-		回到('L2');
-		const 首 = 拍到.length;
-		ok(首 >= 1 && /play:到达/.test(String(拍到[0]?.[0] ?? '')),
-			`★进一层须先停一拍（到达段）—— 实得 ${JSON.stringify(拍到.slice(0, 2))}`);
-		const 首拍 = 拍到[0];
-		ok(/play:到达/.test(String(首拍?.[0] ?? '')),
-			`★那一屏须是「到达」段（实得 ${JSON.stringify(首拍)}）`);
-		/* ② 幂等：**同层原地再进** ⇒ ✗ 不再停。
-		 *   ★写法要紧：**先清账再测** —— 若在中间借 `回到('L1')` 绕一圈，
-		 *     那一跳本身是「未走过的层」⇒ 合法加一拍（会把尺子自己弄红 ✗）。 */
-		拍到.length = 0;
-		回到('L2');
-		ok(拍到.length === 0, `★同一层**只停一次** —— 同层再进又多停了 ${拍到.length} 拍`
-			+ '（✗ 回边/重进反复弹 = 玩家被卡在路上）');
-		/* ③ 负控：**没走过的层**仍会停（证 ① 不是「凡是 moveTo 都算」的恒真形） */
-		拍到.length = 0;
-		回到('L3');
-		ok(拍到.length === 1, `★没走过的层也应停一拍（实得 ${拍到.length}）`
-			+ ' —— 否则 ① 只是「moveTo 计数」的恒真形');
-		console.log(`  到达停：首进停一拍 ✓｜同层只停一次 ✓｜未走过的层仍停 ✓（共 ${拍到.length} 拍）`);
+		ok(typeof RPG.到达停未答 === 'function' && typeof RPG.到达拍答毕 === 'function',
+			'★②-1：`到达拍未答`／`到达拍答毕` 两个记账口须在（§裁甲 的落点）');
+		/* ① 记账 */
+		RPG.到达停未答('L2');
+		ok(B.到达拍未答() === true, '★【②-1 ①】进层须记「未答」（该层还没停过 ✓）');
+		/* ② 答毕 ⇒ 清未答 ＋ 记已给 */
+		RPG.到达拍答毕();
+		ok(B.到达拍未答() === false && RPG.到达停已给('L2') === true,
+			'★【②-1 ②】答毕须清「未答」**且**记「已给」（幂等账 ✓）');
+		/* ③ 幂等：同层再进 ⇒ 账上「已给」为真 ⇒ 永不再停 */
+		RPG.到达停未答('L2');
+		RPG.到达拍答毕();
+		ok(RPG.到达停已给('L2') === true && B.到达拍未答() === false,
+			'★【②-1 ③】同层再进 ✗ 不得产生第二拍（幂等 ✓）');
+		console.log('  到达停（记账面）：写入 ✓｜答毕（清未答＋记已给）✓｜幂等 ✓');
 	} finally {
-		D.Player.choice = 原choice;
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
-		if (位存) 回到(位存);
 	}
 }
-
 
 /* ── 53 `books#280` ②-2：**遭遇停**（未选前零结算·抽签只抽一次）──────────────────
  *
@@ -4297,47 +4283,44 @@ head('57 `books#280` ②-4：胜利结算屏 ＋「收下」确认门（未确�
 	}
 }
 
-/* ── 60 `books#280` ②-1：**到达拍走段落**（裁乙）—— 拍段在场 ⇒ 地图那屏（选项面）不在；答毕回图 ⇒ 动作在 ──
+/* ── 60 `books#280` ②-1：**到达拍＝一次性 `choice` 包装**（裁甲＋三护）────────────────────
  *
- * 病（`tester-4` 实测 + 本席读码复现）：到达拍用 `choice` 弹框 ⇒ 与引擎 `MapScene` 自己那次
- *   `choice(availableActions+exits)`（`src/core/60-map.js:307/316`）**并存** ⇒ 玩家可**绕过**拍直点层选项 ✗。
- * 裁（领队 · **乙**）：拍改走**段落** ⇒ 换层那一刻 `Engine.play('到达')` ⇒ **地图那一屏根本不渲染**
- *   ⇒ 选项面**自然不在** ✓（★✗ 不碰 `availableActions` 这个**数据**口 ⇒ 既有判据一格不动 ✓）。
- * 断什么（★都读**真值**：记 `Engine.play` ＋ 读动作表）：
- *   ① 首进 ⇒ 最后那次 `play` 是 **`到达`**（＝拍段在场 ⇒ 地图那屏与选项面**不在** ✓）；
- *   ② 「继续」（照 `:: 到达` 段的链：回 `探索` ⇒ `Scene.play('babel-explore')`）⇒ 该层动作表**在** ✓（选项面这才露）；
- *   ③ **幂等**：同层再进 ⇒ **不再** play「到达」（✗ 回边/重读档不重弹）✓。
- * 刀（记在提交信息）：把 `onEnter` 里那句 `Engine.play('到达')` 摘掉 ⇒ ① 红（首进不再有拍段）。
+ * 形（领队裁甲 · 三护）：`onEnter` 只**记账** ＋ 把**下一次** `D.Player.choice` 换成「到达拍」；
+ *   玩家答完 ⇒ **用原 options 调原 `choice`**（✗ 吞掉地图自己那次问）；仅一次（用后即还）／异常 `finally` 自清。
+ * ★为何✗ 在 `onEnter` 里 `Engine.play('到达')`（**P0 真身**）：那跑在 `MapScene` 的**渲染流程内**
+ *   ⇒ 「渲染中嵌套 play」＝ SugarCube 禁形 ⇒ 那一屏被吞 ⇒ 真机只剩页脚「快存」**卡死** ✗
+ *   （`verify`/jsdom ✗ 走真渲染队列 ⇒ 装置**全绿而真机不可玩** ✗ —— 本笔的教训 ✓）。
+ * ★为何✗ 在 `:: 探索` 段里加 `<<if>>`（本席真机实测）：换层是**场景自己的 `choice` 循环**（✗ 不重渲段落）
+ *   ⇒ 段级闸**永远轮不到** ✗；且「写读不配对」会**永停**（developer 探针：`到达停.L1` 已写 true、Engine idle ✓）。
+ * 断什么（★真值 · 桩化 `D.Player.choice` 记每次选项）：
+ *   ① **拍先来**：包后第一次 `choice` 先给「（到达）…」；② **不吞原问**：答毕 ⇒ **原 options** 被问出去；
+ *   ③ **仅一次**：第二次 `choice` 直接走原口（✗ 再弹）；④ **异常自清**：拍那步抛 ⇒ 仍复原。
+ * 刀（记在提交信息）：去掉包装（只记账）⇒ ① 红；删掉「用原 options 调原 `choice`」⇒ ② 红。
  */
-head('60 `books#280` ②-1：到达拍走段落（拍段在场 ⇒ 选项面不在／答毕回图动作在）');
+head('60 `books#280` ②-1：到达拍＝一次性 choice 包装（先拍／不吞原问／仅一次／异常自清）');
 {
-	const 原play = SugarCube.Engine.play, 位存 = map.current;
+	const B = setup.BABEL, SC = setup.RPG.Scene.prototype, 原Choice = SC.choice, 位存 = map.current;
 	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	const play录 = [];
+	const 收货 = [];
 	try {
-		SugarCube.Engine.play = (v) => { play录.push(String(v)); return undefined; };
 		State.variables.babelRun = {};
-		map.moveTo('L2');
-		ok(play录[play录.length - 1] === '到达',
-			`★【②-1 ①】首进须**停在到达段**（地图那屏不渲染 ⇒ 选项面不在）—— 实得 play 录 ${JSON.stringify(play录)}`);
-		/* ② 照 `:: 到达` 的「继续」链回图（段里是 `<<goto "探索">>` ⇒ 探索段 `Scene.play('babel-explore')`）*/
-		play录.length = 0;
-		SugarCube.Engine.play('babel-explore');                  // ＝「继续」那一跳的效果
-		const 动 = (map.locations.get('L2').availableActions ?? []).length;
-		ok(动 > 0, `★【②-1 ②】答毕回图后该层动作面须**在**（实得 ${动} 条）`);
-		/* ③ 幂等：同层再进 ⇒ 不再弹拍 */
-		play录.length = 0;
-		map.moveTo('L2');
-		ok(!play录.includes('到达'), `★【②-1 ③】同一层**只停一次** —— 再进不得重弹（play 录 ${JSON.stringify(play录)}）`);
-		if (动 > 0) {
-			console.log(`  到达拍：首进停段 ✓（play=到达）｜答毕回图动作在 ✓（${动} 条）｜同层不重弹 ✓`);
-		}
+		B.到达停未答?.(null);
+		/* ★桩须**先装**（✗ 装在 `moveTo` 之后会被 `onEnter` 的包装反向顶掉 —— 那正是「写读不配对」的读法 ✗）。
+		 *   ★口＝**`Scene.prototype.choice`**（真机探针钉死 ✓）—— ✗ 不是 `D.Player.choice`（那只走段落层 ✓）。 */
+		SC.choice = async function (opts) { 收货.push((opts ?? []).map((o) => String(o?.text ?? o))); return 'ok'; };
+		map.moveTo('L2');                                    // ⇒ onEnter：记账 ＋ 装包装
+		await SC.choice.call({}, ['A1', 'A2']);                        // ★第一次 ⇒ 被「拍」接住 ⇒ 再问原 options
+		await SC.choice.call({}, ['B1']);                              // ★第二次 ⇒ 直接走原口
+		const 扁平 = 收货.map((a) => a.join('|'));
+		ok(扁平.some((x) => /（到达）/.test(x)), `★【②-1 ①】包后须先给「到达拍」（实得 ${JSON.stringify(扁平)}）`);
+		ok(扁平.some((x) => /A1\|A2/.test(x)), `★【②-1 ②】答毕须把**原 options** 问出去（✗ 吞掉）—— 实得 ${JSON.stringify(扁平)}`);
+		ok(扁平.filter((x) => /（到达）/.test(x)).length === 1, `★【②-1 ③】拍**只一次**（用后即还）—— 实得 ${JSON.stringify(扁平)}`);
+		if (扁平.some((x) => /（到达）/.test(x))) console.log('  到达拍（包装）：①先拍 ✓｜②原问仍在 ✓｜③仅一次 ✓');
 	} finally {
-		SugarCube.Engine.play = 原play;
+		SC.choice = 原Choice;
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
 		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
 	}
 }
-
 printSummary();
 
