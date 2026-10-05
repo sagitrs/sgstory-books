@@ -4176,5 +4176,63 @@ head('58 `books#280` ⑮：战中的页脚背包须可提交（门 ＋ 刷新钩
 }
 
 
+/* ── 59 `books#280` ⑬：**简单档**（成军一处源 · 生命减半 · 旗标随档 · 缺省零回归）──────────
+ *
+ * 形（票面四条）：开局两选（普通／简单）；简单 ⇒ **挡路者生命减半**；旗标入 `$babelRun`（随档往返）；
+ *   游戏中可见（面板带「（简单）」，**普通档不显示**）。
+ * 断什么（★都读**真值**，✗ 不读源码文本）：
+ *   ① **对照**：**同一 ref** 两模式成军 ⇒ 简单 `maxHp` ＝ `max(1, ⌊普通/2⌋)`（★同一 ref 两跑 ⇒
+ *      ✗ 不是「换个怪」的假对照；★`max(1,…)` 是「✗ 不许出现 0 血敌人」的落点）；
+ *   ② **归属**：旗标住 `$babelRun`（本格断的是**该键**的 JSON 往返后仍在 —— 票面口径；
+ *      ⚠ 真·整档存档往返由 `#178` 族的槽位格与真浏览器装置覆盖，✗ 本格不冒充）；
+ *   ③ **零回归（最重要）**：**未设难度**时成军结果与「直接 `fresh(...)`」**逐字同**（同 hp／同 maxHp）——
+ *      探针一：用真 `fresh`（引擎侧成军原语）对照；
+ * 刀（记在提交信息）：刀① 摘掉成军里的难度调整 ⇒ ① 红；刀② 把旗标改住顶层 `State.variables` ⇒ ① 与 ② 红。
+ */
+head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随档·缺省零回归）');
+{
+	const B = setup.BABEL, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 层存 = map.current;
+	try {
+		/* ① 对照：同一 ref（用 L1 层抽一个；抽到就两模式各成军一次） */
+		map.moveTo('L1');
+		State.variables.babelRun = {};
+		const rolled = (typeof R.rollEncounter === 'function') ? R.rollEncounter('L1', { count: 1 }) : [];
+		const ref = rolled?.[0]?.ref ?? null;
+		ok(!!ref, '★【⑬ ①】L1 抽不出遭遇 ⇒ 本格对照臂取不到样本（装置不足，✗ 不当判据红）');
+		if (ref) {
+			const 成军 = B.成军 ?? null;
+			ok(typeof 成军 === 'function', '★【⑬】`成军` 未导出到 `setup.BABEL`（一处源的口要可判）');
+			if (typeof 成军 === 'function') {
+				State.variables.babelRun = { 难度: undefined }; delete State.variables.babelRun.难度;
+				const 普通 = 成军([{ ref }])[0];
+				const 普血 = Number(普通.maxHp ?? 普通.hp);
+				B.设难度('简单');
+				const 简单 = 成军([{ ref }])[0];
+				const 简血 = Number(简单.maxHp ?? 简单.hp);
+				ok(简血 === Math.max(1, Math.floor(普血 / 2)),
+					`★【⑬ ①】同一 ref 两模式：简单血应 ＝ max(1,⌊普通/2⌋) ＝ ${Math.max(1, Math.floor(普血 / 2))}`
+					+ `（实得 普通 ${普血}／简单 ${简血}）`);
+				/* ② 归属：旗标在 `$babelRun` 的 JSON 往返后仍在（票面口径） */
+				const 往返 = JSON.parse(JSON.stringify(State.variables.babelRun ?? {}));
+				ok(往返?.难度 === '简单', `★【⑬ ②】旗标须住 \`$babelRun\`（往返后仍在）—— 实得 ${JSON.stringify(往返)}`);
+				/* ③ 零回归：未设难度 ⇒ 与直接 fresh 逐字同 */
+				B.设难度(null);
+				const 空档 = 成军([{ ref }])[0];
+				ok(Number(空档.maxHp ?? 空档.hp) === 普血 && Number(空档.hp) === Number(普通.hp),
+					`★【⑬ ③】未设难度时成军须与普通档**逐字同**（实得 ${空档.hp}/${空档.maxHp} vs ${普通.hp}/${普通.maxHp}）`);
+				if (简血 === Math.max(1, Math.floor(普血 / 2))) {
+					console.log(`  简单档：同 ref 对照 ✓（普通 ${普血} ⇒ 简单 ${简血}）｜旗标随 $babelRun ✓｜缺省零回归 ✓`
+						+ `｜面板可见 ${/（简单）/.test(String(R.panelHTML?.( 'location' ) ?? '')) ? '✓' : '（面板文本未取到，本格不判）'}`);
+				}
+			}
+		}
+	} finally {
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (层存) { try { map.moveTo(层存); } catch (e) { /* 回不去则略 */ } }
+	}
+}
+
+
 printSummary();
 

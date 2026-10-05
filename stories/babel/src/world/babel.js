@@ -272,6 +272,16 @@ const 跳过事件动作 = (L) => ({
  *     另有「抽中／择一／跳过」机制）② **无节点账的层**（聚落／准备区等**无遭遇**层）。
  *   ⚠ **只读**（`when` 路径禁副作用 —— 同 `eventsOf` 的说明：看一眼不得改世界）。 */
 const 事件门适用 = (layerId) => !EVENT_LAYERS.includes(layerId) && !!nodeAt(layerId);
+/** ★`books#280` ⑬：**开局选难度**（`:: 开始` 段调它）。★参数**分三态**（✗ 不能「非简单即删」——
+ *   那样当取值器调用 `设难度()` 会**误删**旗标）：`'简单'` ⇒ 置；`null` ⇒ 清；**无参 ⇒ 纯取值器** ✓。
+ *   普通／缺省 ⇒ 逐字零回归 ✓；✗ 不掷骰、✗ 不动其它数值。 */
+setup.BABEL.设难度 = (档) => {
+	const r = State.variables.babelRun ?? (State.variables.babelRun = {});
+	if (档 === '简单') r.难度 = '简单';
+	else if (档 === null) delete r.难度;
+	return r.难度 ?? '普通';
+};
+
 /** ★`books#280` ②-1（领队裁甲）：**到达停**幂等账 —— 同一层只停一次（✗ 重进/回边不再停 ✓）。
  *   ★住 `State.variables.babelRun`（本局账 ⇒ 随档往返 ⇒ 读档不重停 ✓），✗ 不另立新面 ✓。 */
 RPG.到达停已给 = (层) => {
