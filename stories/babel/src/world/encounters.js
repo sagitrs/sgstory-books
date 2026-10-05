@@ -335,6 +335,38 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 	return true;
 };
 
+/** ★`books#280` ②-2（领队裁 ②B「遭遇触发后停」）：先渲染遭遇描述、等玩家选，未选前**零结算**。
+ *
+ *   ## RNG 次序护（本件的**唯一**硬约束）
+ *   `R.rollEncounter` 是**抽签**（消耗随机单元）⇒ 若「停」与「战」各抽一次 ⇒ 一场遭遇吃**两份**随机流，
+ *   与所有既有读数（平衡基线／面 N 手算／回归）**全部错位** ✗。
+ *   ⇒ 本函数把抽签结果留在 `setup.BABEL.停档`，由 `fight()` **消费**（✗ 重抽）；
+ *     且**已在档则不重抽**（段落重渲染／来回点击都只花一次 ✓）。
+ */
+setup.BABEL.遭遇停 = () => {
+	const layer = setup.BABEL.layerOf();
+	if (!layer) { R.perform('这里没有可遭遇的东西。'); return; }
+	if (typeof R.rollEncounter !== 'function' || typeof R.rollLoot !== 'function') {
+		R.perform('这一层静得出奇——按理该有东西挡路的。');
+		return;
+	}
+	if (!setup.BABEL.停档) {
+		const rolled = R.rollEncounter(layer, { count: 1 });
+		if (rolled.length === 0) { R.perform('这一层今天什么都没有挡路。'); return; }
+		setup.BABEL.停档 = { layer, rolled, foes: rolled.map((e) => fresh(e.ref, e.elite)) };
+	}
+	R.perform(`挡在前面的是：${setup.BABEL.停档.foes.map((f) => f.name).join('、')}。`);
+};
+
+/** ★②-2 的「查看」：摊开挡路者明细（✗ 不结算、✗ 不消耗随机 —— 只读已在档的那一份）。 */
+setup.BABEL.查看挡路 = () => {
+	const f = setup.BABEL.停档?.foes ?? [];
+	if (f.length === 0) { R.perform('没什么可看的 —— 这一层的动静已经过去了。'); return; }
+	R.perform(f.map((x) => `${x.name}：生命 ${x.hp}/${x.maxHp ?? x.hp}`
+		+ `${x.elite ? '（精英）' : ''}`).join('；'));
+};
+
+
 setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★**早退出口**（`#1877` P1-6）：本段原靠一条静态链 `[[打完，继续探索|探索]]` 兜底，
 	 *   而静态链在**段落渲染时**即出现（战斗根本还没打）⇒ 玩家以为已打完了。
@@ -355,7 +387,10 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		console.warn('[BABEL] 装配缺口：遭遇面未接线 —— 需要 `#1784`（`src/core/65-encounters.js`）的 `RPG.rollEncounter`／`RPG.rollLoot`。');
 		return bail('这一层静得出奇——按理该有东西挡路的。');
 	}
-	const rolled = R.rollEncounter(layer, { count: 1 });
+	/* ★②-2：若「遭遇停」已抽过 ⇒ **消费它**（✗ 重抽 —— 那会让一场遭遇吃两份随机流 ✗）；
+	 *   直调 `fight()`（无档）⇒ 照旧自抽 ✓ ⇒ 既有读数（平衡基线／无头自检）不受影响 ✓。 */
+	const rolled = setup.BABEL.停档?.rolled ?? R.rollEncounter(layer, { count: 1 });
+	setup.BABEL.停档 = null;
 	if (rolled.length === 0) return bail('这一层今天什么都没有挡路。');
 	const foes = rolled.map((e) => fresh(e.ref, e.elite));
 	R.perform(`挡在前面的是：${foes.map((f) => f.name).join('、')}。`);

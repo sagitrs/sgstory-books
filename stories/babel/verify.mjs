@@ -4053,5 +4053,49 @@ head('51 `books#280` ②-1：进层先停一拍（到达即停·同层只停一�
 }
 
 
+/* ── 53 `books#280` ②-2：**遭遇停**（未选前零结算·抽签只抽一次）──────────────────
+ *
+ * 裁（领队 ②B）：遭遇触发后**停一拍** —— 渲染遭遇描述 ⇒ 玩家选「迎战／查看」，未选前**零结算**。
+ * ★本格断的是**码面**的两条，装置（`tools/e2e-280-encounter-stop.mjs` 真浏览器）断的是**屏面**的四条
+ *   （描述在／两选项在／零结算／点迎战真进战斗）⇒ 两条路各判一面，✗ 不互为重复。
+ *   ① **零结算**：`遭遇停()` 前后 `kills／deaths／gathered／harvests` 逐项不变（✗ 抽签不算结算）；
+ *   ② **抽签只抽一次**（RNG 次序护）：`rollEncounter` 被调用的次数 ——「停」抽 1 次、
+ *      段落重渲染**不重抽**、`fight()` **消费**同一份（✗ 重抽）⇒ 全程**恰 1 次**。
+ *      ★这条是硬约束：一场遭遇若吃两份随机流 ⇒ 平衡基线／面 N 手算／全部既有读数**一起错位**。
+ * 刀（记在提交信息）：把 `fight()` 的消费改回自抽 ⇒ ② 红（次数变 2），① 与余格不动。
+ */
+head('53 `books#280` ②-2：遭遇停 —— 未选前零结算 ＋ 抽签只抽一次（RNG 护）');
+{
+	const 原roll = R.rollEncounter, 原档 = setup.BABEL.停档, 位存 = map.current;
+	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	let 次 = 0;
+	try {
+		R.rollEncounter = (...a) => { 次 += 1; return 原roll(...a); };
+		setup.BABEL.停档 = null;
+		map.moveTo('L1');
+		State.variables.babelRun ??= {};
+		const 键 = ['kills', 'deaths', 'gathered', 'harvests'];
+		const 前 = Object.fromEntries(键.map((k) => [k, State.variables.babelRun?.[k] ?? null]));
+		setup.BABEL.遭遇停();
+		const 后 = Object.fromEntries(键.map((k) => [k, State.variables.babelRun?.[k] ?? null]));
+		const 变 = 键.filter((k) => 前[k] !== 后[k]);
+		ok(变.length === 0, `★【②-2 ①】未选之前**零结算** —— 变了 ${JSON.stringify(变)}`);
+		ok(次 === 1, `★【②-2 ②】「遭遇停」应**只抽一次**（实得 ${次}）`);
+		setup.BABEL.遭遇停();
+		ok(次 === 1, `★【②-2 ②】段落重渲染**不得重抽**（实得共 ${次} 次）`);
+		if (typeof setup.BABEL.fight === 'function') {
+			await setup.BABEL.fight({ interactive: false });     // ★无头：✗ 不挂（interactive=false 门控）
+			ok(次 === 1, `★【②-2 ②】\`fight()\` 须**消费**停档（✗ 重抽）—— 全程实得 ${次} 次`);
+		}
+		if (变.length === 0 && 次 === 1) console.log('  遭遇停：未选前零结算 ✓｜抽签全程恰 1 次（停 1/重渲染 0/战消费 ✓）');
+	} finally {
+		R.rollEncounter = 原roll;
+		setup.BABEL.停档 = 原档;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) { try { map.moveTo(位存); } catch (e) { /* 位置回不去则略 */ } }
+	}
+}
+
+
 printSummary();
 
