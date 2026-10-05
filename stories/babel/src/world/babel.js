@@ -284,11 +284,27 @@ setup.BABEL.设难度 = (档) => {
 
 /** ★`books#280` ②-1（裁**乙**）：`:: 到达` 段渲染时调它 —— 把「（到达）第 N 层」印成**这一屏的正文** ✓
  *   （✗ 不再用 `choice` 弹框：那种形与地图的选项面**并存** ⇒ 玩家可绕过 ✓）。 */
+setup.BABEL.到达拍未答 = () => RPG.到达停未答() != null;      // ★段里的判据口
 setup.BABEL.到达拍 = () => {
 	const 层 = setup.BABEL.map?.current ?? null;
 	const 名 = 层 ? (setup.BABEL.map.locations.get(层)?.name ?? 层) : '这一层';
 	R.perform(`（到达）${名} —— 往下走之前，先看清楚这里有什么。`);
 };
+/** ★`books#280` ②-1（P0 修后）：**哪一层「还没停过到达拍」** —— 只**记账**（✗ 不导航、✗ 不渲染 ✓）。
+ *   `:: 探索` 段读它决定「先渲到达屏」还是「直接进地图」⇒ 导航一律发生在**段落层**（✗ 不在 onEnter 里）✓。 */
+RPG.到达停未答 = (层) => {
+	const r = State.variables.babelRun ?? (State.variables.babelRun = {});
+	if (层 === undefined) return r.停未答 ?? null;                    // 纯读
+	if (层 === null) delete r.停未答; else r.停未答 = 层;
+	return r.停未答 ?? null;
+};
+/** ★答毕：清「未答」＋记「已给」（幂等：同一层只停一次 ✓）。 */
+RPG.到达拍答毕 = () => {
+	const 层 = RPG.到达停未答();
+	if (层 != null) RPG.到达停已给(层);
+	RPG.到达停未答(null);
+};
+
 /** ★`books#280` ②-1（领队裁甲）：**到达停**幂等账 —— 同一层只停一次（✗ 重进/回边不再停 ✓）。
  *   ★住 `State.variables.babelRun`（本局账 ⇒ 随档往返 ⇒ 读档不重停 ✓），✗ 不另立新面 ✓。 */
 RPG.到达停已给 = (层) => {
@@ -550,12 +566,33 @@ const makeLayerLocation = (L) => new R.Location({
 		 *   ★**幂等**：同一层**只停一次**（`RPG.到达停已给` ✓，✗ 重进/回边不再停）。
 		 *   ★✗ **不动随机消耗次序**：抽签（上一行）与危害（下一段）各按原序跑 ✓。 */
 		if (L?.id && !RPG.到达停已给(L.id)) {
-			/* ★`books#280` ②-1（领队裁**乙**·2026-10-05）：**到达拍走段落** —— 与 ②-2「遭遇停」**同族**：
-			 *   换层那一刻 `Engine.play('到达')` ⇒ **地图那一屏根本不渲染** ⇒ 选项面**自然不在** ✓
-			 *   （✗ 不碰 `availableActions` 这个**数据**口 ⇒ 既有判据一格都不动 ✓）；
-			 *   「继续」⇒ 回 `探索` 段（它 `Scene.play('babel-explore')`）⇒ 地图与选项面**这才出来** ✓。
-			 *   ⚠ 幂等账仍在（同一层只停一次 ✓）；⚠ 抽签/危害的次序**不在本处**（上面一行与下面一段各按原序 ✓）。 */
-			SugarCube.Engine.play('到达');
+			/* ★★P0 修（真机实证 2026-10-05）：`onEnter` 跑在 **MapScene 的渲染流程内**
+			 *   （`<<run Scene.play>>` ⇒ 建图 ⇒ onEnter）⇒ **在里面调 `Engine.play` ＝ 渲染中嵌套 play**
+			 *   ＝ SugarCube 的**禁形** ⇒ 那一屏被吞 ⇒ 真机只剩页脚「快存」**卡死** ✗
+			 *   （★`verify`/jsdom ✗ 走真渲染队列 ⇒ 装置**全绿而真机不可玩** ✗ —— 这正是本笔的教训）。
+			 *   ⇒ 本处**只记账**（下一屏该先停一拍）+ 幂等标记（✗ 不导航、✗ 不渲染）✓。 */
+			RPG.到达停未答(L.id);
+			/* ★★真机探针钉死（2026-10-05）：地图那一屏问选项走的是 **`RPG.Scene.prototype.choice`**
+			 *   （场景方法 ✓ 源：`function choice(options) { if (!Array.isArray(options)…`）——
+			 *   ✗ **不是** `DND3.Player.choice`（那只走**段落层**的 `<<link>>`，如 ②-2 的遭遇停屏 ✓）。
+			 *   ⇒ 包**真口**：把**下一次** `Scene.prototype.choice` 换成「到达拍」；玩家答完 ⇒
+			 *     用**原 options** 调原口 ⇒ 地图那一屏这才问出来 ✓（✗ 不嵌套 play、✗ 不动数据口、✗ 不动 DOM）。
+			 *   ⚠ 三护：**仅一次**（用后即还 ✓）／异常 `finally` 自清 ✓／✗ 吞掉原问（把返回值原样传回 ✓）。
+			 *   ⚠ 原型是**全场景共享** ⇒ 只在「本层还没停过」时包，答毕立刻还（✗ 不长期占着 ✓）。 */
+			const SC = RPG.Scene?.prototype, 原Choice = SC?.choice;
+			if (typeof 原Choice === 'function' && !原Choice.到达拍包) {
+				const 包 = async function (options, ...rest) {
+					SC.choice = 原Choice;                                 // ★先复原（✗ 免得内层又走包装）
+					try {
+						await 原Choice.call(this, [{ text: `（到达）${L.name ?? L.id} —— 继续`, value: 'ok' }]);
+					} finally {
+						RPG.到达拍答毕?.();                                // 答毕（含异常取消）⇒ 清未答＋记已给
+					}
+					return 原Choice.call(this, options, ...rest);          // ★再把**原选项**问出来 ✓
+				};
+				包.到达拍包 = true;
+				SC.choice = 包;
+			}
 		}
 
 		/* ★`books#133` 笔 2：**层危害**（进层按档位几率触发，每层每局至多一次；非危害层连随机单元都不读）。
