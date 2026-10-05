@@ -411,6 +411,9 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#178` P0：**战斗中禁存** —— 战前置位、`finally` 清零（异常路径也要清零，
 	 *   否则一次抛错会把「禁存」永久留在盘上，玩家此后哪都存不了）。 */
 	setup.BABEL.战中 = true;
+	/* ★`books#280` ⑧：把「战中」同时映到 **body 的类**上 —— 版式层（`ui.twee`）据此把页脚 `fixed` 常驻
+	 *   视口（✗ `sticky` 在此不работ：见 `ui.twee` 的 ⑧ 块头注）。✗ 不动 DOM 顺序，只加一个类 ✓。 */
+	try { globalThis.document?.body?.classList?.add('战中'); } catch (e) { /* 无 DOM（无头自检）⇒ 略 */ }
 	/* ★`场` 声明在 `try` **之外**：战后段（`finally` 之后）要读它 ⇒ 放里面会 `场 is not defined`
 	 *   （本席首版就是这么写的 ✗ —— 由 `verify.mjs` 的「未捕获异常」当场抓住 ✓）。 */
 	let 场 = null;
@@ -427,6 +430,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		await 场.execute();
 	} finally {
 		setup.BABEL.战中 = false;
+		try { globalThis.document?.body?.classList?.remove('战中'); } catch (e) { /* 同上：无 DOM ⇒ 略 */ }
 	}
 
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
