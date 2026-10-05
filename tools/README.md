@@ -28,6 +28,7 @@
 | `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
 | `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面六臂：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面） |
 | `tools/e2e-280-heal-feedback.mjs` | `books#280` ⑨ 治疗反馈「HP X → Y」＋页脚 HP 面板随用刷新的**真 DOM 臂**（三路各断【文本】与【页脚真变】）＋ 双刀（文本面／页脚面各咬一次） |
+| `tools/e2e-280-narrow-sticky.mjs` | `books#280` ⑩ 窄屏（390×844）贴顶的真浏览器臂（CDP）：首屏内有 HP 与背包 ＋ 滚动后仍贴顶 ＋ 宽屏正控 ＋ 一刀 |
 | `tools/rehearse-workflow.py` | 工作流拆分布局演练 |
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |
@@ -147,6 +148,21 @@
 | **期望读数** | `✓ 首载变体 e2e 通过`，并逐实例印「含「请从存档继续」＝否／含初态句＝是」，正控印「含＝是」；读数与截图落 `--evidence`（缺省 `~/tmp/e2e-280-firstload-<标签>/`）。 |
 | **设立理由** | ⑥ 是先被**真浏览器**发现的问题（静态读源码看不出来：那句原本就是静态文本，谁看都对）。而静态判据证明不了「首载与有档两向」，故把**两 profile ＋ 正控**这套装置留在仓里，供同类「按状态分变体」的文案复跑。 |
 | **前置（★不在 CI）** | 需本机有浏览器与它缺的 so：`CHROME=<chrome 路径>`（缺省取 `~/.cache/ms-playwright/chromium-1243/...`）＋ `CHROME_DEPS=<lib 目录>`（缺省 `~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu`，以 `LD_LIBRARY_PATH` 注入）。Node ≥ 22 自带 `fetch`／`WebSocket` ⇒ **零新依赖**。产物的烘法见本目录末节（★故事目录写**绝对**路径）。 |
+
+## 12. `e2e-280-heal-feedback.mjs` —— 治疗反馈与页脚 HP 刷新的真 DOM 臂
+
+- **清单**：治疗反馈「HP X → Y」＋ 页脚 HP 面板随用刷新。
+- **固定命令**：
+  ```bash
+  python3 <引擎>/build.py "$PWD/stories/babel" --out "$PWD/stories/babel/babel-trial.html"
+  node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>
+  node tools/e2e-280-heal-feedback.mjs --engine <引擎检出> --selftest   # 双刀
+  ```
+- **期望读数**：`三路（文本 ＋ 页脚真变）全过`；引擎没有 `submitBattleAction` 时第三路明印「待判」；
+  自检两刀各红在自己那一面（文本面／页脚面）。退出码 `0` 全过、`1` 有红、`2` 环境错。
+- **设立理由**：⑨ 的病是「用了药却看不出 HP 变了」⇒ 只断「函数被调过」是装置级读数，
+  必须断**页脚 DOM 真的变**；而三路（战斗面板／战外／战中提交）各要证一次 —— 主张是「一处钩子覆盖三路」，
+  主张就得三路各证，任一路将来绕开 `RPG.act`，这一路要红。
 
 ## 附一：本目录的边界
 

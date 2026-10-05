@@ -3831,7 +3831,7 @@ head('第 54 格 `books#280` ⑧：背包视图（常驻入口·全道具·效�
  *   真 DOM 的「页脚真变」在 `tools/e2e-280-heal-feedback.mjs` 里断）。
  * 刀（记在提交信息）：K1 拆掉反馈打印 ⇒ 文本臂红；K2 拆掉就地刷 ⇒ 接线臂红；各自按字节复原。
  */
-head('第 55 格 `books#280` ⑨：治疗反馈 HP X → Y ＋ 页脚就地刷（三路同口径：战斗面板／战外／战中提交）');
+head('第 55 格 `books#280` ⑨：治疗反馈 HP X → Y ＋ 页脚就地刷（⑩ 之后仍存在的两路：战外／战中提交）');
 {
 	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
 	const 血存 = D.Player.hp, 非致存 = D.Player.nonlethal;
@@ -3877,23 +3877,72 @@ head('第 55 格 `books#280` ⑨：治疗反馈 HP X → Y ＋ 页脚就地刷�
 		} else {
 			console.log('  战中提交那一路：**待判**（引擎还没有 `RPG.submitBattleAction`）');
 		}
-		/* ① 战斗面板的选单：由「玩家」按某个选项 ⇒ 引擎自己的交互回合 */
-		await 试一路('战斗面板', async () => {
-			D.Player.choice = (opts) => {
-				const q = (opts ?? []).find((o) => String(o.value).startsWith('quick:'));
-				return Promise.resolve(q ? q.value : String((opts ?? [{}])[0].value));
-			};
-			const 场 = new (R.Battle)(1, [D.Player], [造敌()], true);
-			await Promise.race([场.execute(), new Promise((r) => setTimeout(r, 1500))]);
-		});
-		console.log('  治疗反馈：战外使用 ✓｜' + (typeof R.submitBattleAction === 'function'
+		/* ⚠ **`books#280` ⑩ 起，原先这条「战斗面板」治疗臂的前提消失了**：本作把道具收敛到页脚背包
+		 *   （`R.Battle.itemsInBag = true`）⇒ 战斗菜单里**按设计没有任何道具项** ⇒ 那条路**不再存在**
+		 *   （✗ 不是缺陷；硬保旧臂＝对着一个不可能发生的事断言 ⇒ 必红且红得没意义）。
+		 *   ⇒ 治疗覆盖改为**另两路**（战外／战中提交，正是 ⑩ 之后玩家能用的两条）；菜单面由**第 56 格**断。 */
+		console.log('  （原「战斗面板」那条治疗路：⑩ 起按设计不存在 ⇒ 本格不再断它；菜单面见第 56 格）');
+		console.log('  治疗反馈（⑩ 之后仍存在的两路）：战外使用 ✓｜' + (typeof R.submitBattleAction === 'function'
 			? '战中提交 ✓' : '战中提交（引擎无 `submitBattleAction` ⇒ 待判）')
-			+ '｜战斗面板 ✓ —— 三路都断到「HP X → Y」文本 ＋ `refreshPanels([\'hp\'])` 接线');
+			+ ' —— 两路都断到「HP X → Y」文本 ＋ refreshPanels(hp) 接线');
 	} finally {
 		if (原choice === undefined) delete D.Player.choice; else D.Player.choice = 原choice;
 		R.refreshPanels = 原refresh;
 		State.variables.inventory = 包存;
 		D.Player.hp = 血存; D.Player.nonlethal = 非致存;
+	}
+}
+
+/* ── 第 56 格 `books#280` ⑩：战斗菜单**只留战斗行动**（道具收敛到页脚背包一处）────────────────────
+ *
+ * 断什么：① 故事**确实声明**了（`R.Battle.itemsInBag === true` —— 读真值，✗ 读源码字面）；
+ *   ② **真跑一场交互战**：菜单里**没有任何道具名**、**没有**一键项与槽位下标项，`跳过`（战斗行动）仍在；
+ *   ③ 页脚背包仍是道具入口（战中渲染可提交件；引擎无提交口时明印「待判」）。
+ * 刀（记在提交信息）：把故事里的那行声明拆掉 ⇒ ② 红（菜单又列道具了）；按字节复原 ⇒ 绿。
+ */
+head('第 56 格 `books#280` ⑩：战斗菜单只留战斗行动（道具收敛到页脚背包一处）');
+{
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 原choice = D.Player.choice;
+	try {
+		/* 能力门：引擎那棵树还没有这个开关（`sgstory#2007` 未抬 pin）⇒ 菜单面**待判**，✗ 不许红（✗ 假红）。 */
+		const 有开关 = 'itemsInBag' in R.Battle;
+		if (!有开关) {
+			console.log('  战斗菜单面：**待判**（引擎还没有 `R.Battle.itemsInBag` —— 抬 pin 含 `sgstory#2007` 后自动真判）');
+		} else {
+		/* ① 声明真生效 */
+		ok(R.Battle.itemsInBag === true, '★故事没有声明 `R.Battle.itemsInBag = true`（⑩ 的开关没打开 ⇒ 道具仍会在菜单里）');
+
+		/* ② 菜单面（真跑） */
+		State.variables.inventory = [{ id: 'bandage', charges: 2 }, { id: 'pick', charges: 6, equipped: true }];
+		const 场 = new (R.Battle)(1, [D.Player], [new (R.Character)({ name: '装置靶', hp: 1, maxHp: 1, stats: { dmg: '0', atkBonus: 0 } })], true);
+		D.Player.choice = () => new Promise((res) => { void res; });       // 悬着：只读菜单，✗ 不真打
+		const { itemOptions } = 场.buildPlayerOptions(D.Player);
+		const 文 = itemOptions.map((o) => String(o.text)).join('｜');
+		for (const 件 of ['绷带', '矿镐']) {
+			ok(!文.includes(件), `★战斗菜单里仍列道具「${件}」（实得 ${JSON.stringify(文)}）—— 「收敛到页脚背包一处」没做到`);
+		}
+		ok(!itemOptions.some((o) => String(o.value).startsWith('quick:')), `★一键项也属道具面 ⇒ 不该在菜单里（实得 ${JSON.stringify(itemOptions.map((o) => o.value))}）`);
+		ok(!itemOptions.some((o) => /^\d+$/.test(String(o.value))), '★菜单里仍有逐件项（原槽位下标）');
+		ok(itemOptions.some((o) => o.value === 'skip'), '「跳过本回合」是**战斗行动** ⇒ 必须还在');
+
+		/* ③ 页脚仍是道具入口 */
+		setup.BABEL.战中 = true;
+		const 战html = R.bagHTML();
+		ok(战html.includes('绷带'), '★战中页脚背包不列道具（那玩家就真的没有入口了）');
+		if (typeof R.submitBattleAction === 'function') {
+			ok(/data-bag-submit="bandage"/.test(战html), '★有提交口，但页脚背包没给可提交件');
+		} else {
+			console.log('  页脚背包的可提交件：**待判**（引擎还没有 `RPG.submitBattleAction`）');
+		}
+		setup.BABEL.战中 = false;
+
+		console.log('  战斗菜单：无道具名／无一键项／无逐件项 ✓｜跳过仍在 ✓｜道具入口在页脚背包 ✓');
+		}
+	} finally {
+		if (原choice === undefined) delete D.Player.choice; else D.Player.choice = 原choice;
+		State.variables.inventory = 包存;
+		setup.BABEL.战中 = false;
 	}
 }
 

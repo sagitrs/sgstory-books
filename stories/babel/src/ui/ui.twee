@@ -71,6 +71,26 @@ hr { border: 0; border-top: 1px solid #2d3440; }
 .bagbar .rpg-bag-equipped { color: #d8d4c8; }
 .bagbar .rpg-hint { color: #7c94a8; }
 small { color: #7c8794; }
+/* ★`books#280` ⑩（操作者亲测 · **390×844 验收**）：窄屏下 **HP 与道具余量不落首屏外**。
+ *   病灶：页脚（`.statusbar`／`.bagbar`）排在**段落内容之后** ⇒ 小屏上地图场景一长，状态条就被推到首屏**以外**
+ *   （玩家看不到 HP 与道具余量）。
+ *   做法：窄屏把状态条**吸顶**（`position: sticky` ＋ 不透明底色，✗ 半透明会与正文叠字）＋ 收紧行距字号。
+ *   ⚠ 只改**版式**：内容与 DOM 顺序都不动（✗ 改 DOM 顺序会动读屏器与既有判据的面）。
+ *   ⚠ 吸顶只在小屏开：桌面端版面已够宽，吸顶会让长段落显得局促（窄屏才是票面的验收面）。 */
+@media (max-width: 600px) {
+	/* ⚠ 顶部让位：状态条改 `fixed` 后会浮在正文之上 ⇒ 正文要往下挪出它的高度（✗ 否则首行被盖住）。 */
+	#passages { margin: 2.3em auto 0.6em; padding: 0 0.6em; line-height: 1.55; }
+	.statusbar {
+		/* ★**为何是 `fixed` 而不是 `sticky`**（本席实测）：状态条是页脚**最后一块** ⇒ `sticky` 的
+		 *   包含块就是那一小段 ⇒ 页面一滚，它随包含块一起出了视口（实测 `top=-534`，看起来像「没吸顶」）。
+		 *   `fixed` 与包含块无关 ⇒ 窄屏下恒贴顶（票面要的「不落首屏外」）。 */
+		position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+		background: #10131a;                      /* ✗ 透明：正文会从下面透上来 */
+		padding: 0.25em 0.6em; border-bottom: 1px solid #2d3440;
+		font-size: 0.82em; line-height: 1.45;
+	}
+	.footersave, .noticebar, .bagbar, .enemybar, .healbar { font-size: 0.8em; margin-top: 0.2em; }
+}
 
 :: StoryCaption
 /* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
