@@ -131,7 +131,7 @@ try {
 	} finally { await evaluate(`document.getElementById('l10-render-probe')?.remove();`); }
 	fs.writeFileSync(path.join(evidence, 'render-sensor-selftest.json'), JSON.stringify({ rejected, accepted }, null, 2));
 	await check('真实孤立宏须检出、合法 if 渲染须放过', `return ${JSON.stringify(!!rejected?.issues.some(x=>x.includes('/if')) && accepted?.issues.length===0)};`);
-	await click('睁开眼（普通）'); await atPassage('L1 苏醒'); await click('站起来'); await atPassage('探索');
+	await click('战斗教学'); await atPassage('L1 苏醒'); await click('站起来'); await atPassage('探索');
 	await check('StoryInit 两项进度及寄存初态', 'return V.babelL10.sold===0&&!V.babelL10.resident&&V.babelL10Storage.length===0&&typeof R.exchange==="function";');
 	// 起始资源／工具夹具在此注入；堆叠原件和旧形存档夹具在各自组内明示。
 	// 后续交易、领证、修理、寄存、终局均按真实按钮。

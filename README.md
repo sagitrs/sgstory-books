@@ -27,7 +27,7 @@
 
 以下明细按 `gsvector-process#300` 条款⑤「**落盘判准与准入**」（条文落点 `rules/tester.md`）入册。用法逐件见各档文件头。
 
-- [`run-l10-checks.py`](tools/run-l10-checks.py) 从本仓复现本地 17 步检查并保存逐步日志；固定命令见工具索引 §21，不是 Actions run，也不代浏览器或平衡验收。
+- [`run-l10-checks.py`](tools/run-l10-checks.py) 从本仓复现本地 17 步检查并保存逐步日志；固定命令见工具索引 §22，不是 Actions run，也不代浏览器或平衡验收。
 - [`verify-l10-city.mjs`](tools/verify-l10-city.mjs) 是 L10 无头装配模块，随 `node stories/babel/verify.mjs --engine <精确 pin 检出>` 执行；不是独立 CLI，不把合成 `save:ready` 当宿主往返。
 - [`e2e-314-l10-city.mjs`](tools/e2e-314-l10-city.mjs) 用真实 Chromium 点击，核服务、存档／刷新、付费返程及独立终局。命令为 `node tools/e2e-314-l10-city.mjs --engine <精确 pin 检出> --evidence "$HOME/tmp/l10-evidence"`；资源／工具注入只证明接线，不证明自然远征或平衡。
 
