@@ -109,7 +109,7 @@ python3 "$HOME/tmp/engine/build.py" "$PWD/stories/babel" --out babel-trial.html
 node tools/e2e-314-l10-city.mjs --engine "$HOME/tmp/engine" --evidence "$HOME/tmp/l10-evidence"
 ```
 
-`run-l10-checks.py` 复现本地 17 步，保存逐步日志和两把源刀的结果；不是实际 Actions。`verify.mjs` 保留全图、首战、事件、战果、L10／L20 创伤高低检定等旧断言，并调用 `tools/verify-l10-city.mjs`。此无头装配不是宿主存档往返。
+`run-l10-checks.py` 复现本地 17 步，保存逐步日志和两把源刀的结果；不是实际 Actions。`verify.mjs` 保留全图、首战、事件、战果、L10／L20 创伤高低检定等旧断言，并调用 `tools/verify-l10-city.mjs`。此无头装配不是宿主存档往返，也不执行 Twee 渲染。第 61 格只核探索段落的 `if` 配对，含合法嵌套／分支与孤立结束／分支的正反小样；它不是任意 Twee 语法解析器。浏览器功能断言通过仍可能漏掉页面内的宏错误，须另查实际错误面，不能只看退出码。
 
 `e2e-314-l10-city.mjs` 用真实 Chromium、原生鼠标输入和宿主 `Save.slots.save/load` 加 `Engine.show`，核菜单重建、支付、资格、修理、寄存、返程正文、取消／最终确认、刷新及重开；明确注入资源／工具，不冒充自然远征或平衡验收。Node 22 自带 CDP 所需 `fetch`／`WebSocket`，无需 Playwright 新依赖。`CHROME` 可指定浏览器，`CHROME_DEPS` 指定动态库目录。截图阅读需要浏览器可用的中文字体；也可用私有 `FONTCONFIG_FILE`，不修改故事样式或系统字体。
 

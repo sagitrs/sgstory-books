@@ -4359,6 +4359,30 @@ head('60 `books#280` ②-1：到达拍＝一次性 choice 包装（先拍／不�
 		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
 	}
 }
+/* ── 61 探索段落的 if 配对：同步上游后，浏览器实际出现孤立 <</if>>，而旧功能组仍绿。
+ * 本格只做目标段落的源码结构检查，不冒充 SugarCube 渲染或任意 Twee 语法解析。
+ * 真页面的错误面仍须由浏览器检查；正反小样保证本判据不把合法嵌套／分支挡掉。
+ */
+head('61 探索段落 if 配对（源码结构，不替真实渲染）');
+{
+	const pairedIf = (text) => {
+		let depth = 0;
+		for (const [, tag] of text.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/<<(if|\/if|else|elseif)(?:\s[\s\S]*?)?>>/g)) {
+			if (tag === 'if') depth++;
+			else if (depth === 0) return false;
+			else if (tag === '/if') depth--;
+		}
+		return depth === 0;
+	};
+	const passage = fs.readFileSync(path.join(storySrc, 'story/play.twee'), 'utf8')
+		.split(/^::\s+/m).find((p) => /^探索\r?\n/.test(p));
+	ok(typeof passage === 'string' && pairedIf(passage), '探索段落存在未配对 if／孤立结束或分支标签');
+	for (const text of ['', '<<if $x>>是<</if>>', '<<if $x>><<if $y>>甲<<else>>乙<</if>><<elseif $z>>丙<</if>>', '/* <</if>> 是注释 */'])
+		ok(pairedIf(text), `if 配对判据误拒合法小样：${text}`);
+	for (const text of ['<</if>>', '<<if $x>>', '<<else>>', '<<elseif $x>>'])
+		ok(!pairedIf(text), `if 配对判据放过异常小样：${text}`);
+}
+
 await verifyL10({ R, D, B, map, ok, head });
 printSummary();
 
