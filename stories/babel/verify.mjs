@@ -1917,8 +1917,14 @@ head('㉘ 预知实效（`books#164`）');
 			const 见 = [];
 			D.Player.choice = (选项) => { for (const o of 选项) 见.push(o.value); return Promise.resolve('chest'); };
 			try { 上边.action(); } finally { D.Player.choice = 原选; }
-			ok(见.length === 4 && 见.filter((v) => v != null).length === 3 && 见[见.length - 1] === null,
-				`★门的选项不是「3 类 ＋ 不预知」（实得 ${JSON.stringify(见)}）`);
+			/* ★★★`books#280` ②-1（本笔同批）：**「不预知」那一项的 `value` 已由 `null` 改 `''`** ——
+			 *   ★理由是**真 bug**：引擎 `choice` 要求 `value` 为**字符串**，`value: null` 会抛
+			 *   「choice 的每个选项都应是 { text: string, value: string }」✗ —— ★那是个**休眠 bug**
+			 *   （`world/babel.js` 的 `预知门` 里一直写着 `null`），★**由 ②-1 的靶修把它走到了** ✓。
+			 *   ★故本格同步：★**「不预知」＝ `''`（空串）** ⇒ 判法从 `=== null` 改 `=== ''`，
+			 *   且「3 类」的筛法从 `v != null` 改 `v !== ''`（★否则空串会被算进「3 类」⇒ 数成 4 ✗）。 */
+			ok(见.length === 4 && 见.filter((v) => v !== '').length === 3 && 见[见.length - 1] === '',
+				`★门的选项不是「3 类 ＋ 不预知」（实得 ${JSON.stringify(见)}；★「不预知」的值形是 **空串**）`);
 			await new Promise((r) => setTimeout(r, 0));        // 门内是 `.then` 入账 ⇒ 让微任务跑完再断
 		}
 		ok(B.预报类('L6') === 'chest',
