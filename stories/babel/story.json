@@ -1,3 +1,13 @@
 {
-  "packs": ["dnd3"]
+  "packs": ["dnd3"],
+  "assets": {
+    "babel-player": "assets/player.svg",
+    "babel-enemy-cub": "assets/enemy-cub.svg",
+    "babel-enemy-badger": "assets/enemy-badger.svg",
+    "babel-item-sword": "assets/item-sword.svg",
+    "babel-item-coin": "assets/item-coin.svg",
+    "babel-item-stone": "assets/item-stone.svg",
+    "babel-scene-l1": "assets/scene-l1.svg",
+    "babel-scene-l2": "assets/scene-l2.svg"
+  }
 }

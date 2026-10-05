@@ -12,10 +12,12 @@
 
 测试工具根：tools/
 
-明细见 [`tools/README.md`](tools/README.md)，其中二十一节工具说明逐节载明四项内容，分别是清单、固定命令、期望读数与设立理由。
+明细见 [`tools/README.md`](tools/README.md)，清单与各节说明载明四项内容，分别是清单、固定命令、期望读数与设立理由。
 <!-- test-tool-root: tools/ -->
 
-**根外具名例外。** 本仓的测试工具根是 `tools/`，但反向搜索证实存在竞争根，共五处，因此本声明的口径是逐处具名，而不是声称唯一根。这五处分别如下。第一处是 [`tests/scenario/run.mjs`](tests/scenario/run.mjs)，它是场景链 runner，NOT_JUDGED 基线也放在那里。第二处是 [`stories/babel/verify.mjs`](stories/babel/verify.mjs)，它是故事侧装配自检。第三处是 [`stories/babel/scenarios/validate.mjs`](stories/babel/scenarios/validate.mjs)，它是清单自检。第四处是 [`stories/babel/scenarios/knives.sh`](stories/babel/scenarios/knives.sh)，它是清单自检的刀，共十五条，用来断哪一条红。第五处是 [`stories/babel/scenarios/render-table.mjs`](stories/babel/scenarios/render-table.mjs)，它是清单表渲染，票面表就是它的输出。
+视觉专项的独立入口为 [`e2e-311-visual.mjs`](tools/e2e-311-visual.mjs)（素材字节与 jsdom 装饰 DOM）和 [`e2e-311-layout.mjs`](tools/e2e-311-layout.mjs)（原生 Chromium 两视口几何、具名战期 CSS 夹具与四刀）；前置、命令与限制见索引第24／25节。两者目前不由 CI 自动调用，CI 仍以故事自检第62格检查纯渲染映射。
+
+**根外具名例外。** 本仓以 `tools/` 为主要索引入口，但反向搜索证实存在竞争根，共五处，因此本声明的口径是逐处具名，而不是声称唯一根。这五处分别如下。第一处是 [`tests/scenario/run.mjs`](tests/scenario/run.mjs)，它是场景链 runner，NOT_JUDGED 基线也放在那里。第二处是 [`stories/babel/verify.mjs`](stories/babel/verify.mjs)，它是故事侧装配自检。第三处是 [`stories/babel/scenarios/validate.mjs`](stories/babel/scenarios/validate.mjs)，它是清单自检。第四处是 [`stories/babel/scenarios/knives.sh`](stories/babel/scenarios/knives.sh)，它是清单自检的刀，共十五条，用来断哪一条红。第五处是 [`stories/babel/scenarios/render-table.mjs`](stories/babel/scenarios/render-table.mjs)，它是清单表渲染，票面表就是它的输出。
 
 声明口径是逐处具名，而不是「唯一根」这样的全称。声明由根行与例外行组成。根外工具增删改时，须在同一处具名。
 

@@ -59,7 +59,7 @@ const 敌面板 = () => {
 	const 们 = 当前战斗?.enemies ?? [];
 	return 们.map((c) => {
 		const 见过 = 已见.get(c) ?? [];
-		return `<div class="enemy-line"><span class="enemy-name">${c.name}</span>`
+		return `<div class="enemy-line">${setup.BABEL.visual.enemyHTML(c)}<span class="enemy-name">${c.name}</span>`
 			+ ` ${档位(c)}（${c.hp ?? '?'}/${c.maxHp ?? '?'}）`
 			+ `｜AC ${D.acOf(c)}`
 			+ `｜已见：${见过.length ? 见过.join('、') : '（还没出手）'}</div>`;

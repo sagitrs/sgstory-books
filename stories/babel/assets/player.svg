@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="400" viewBox="0 0 320 400">
+  <title>无名者的中性轮廓样张</title>
+  <desc>遮住面容的布衣轮廓，不表达性别、属性或当前装备。</desc>
+  <rect width="320" height="400" rx="24" fill="#18242e"/>
+  <ellipse cx="160" cy="370" rx="98" ry="18" fill="#0e171f"/>
+  <path d="M67 362L89 169Q103 132 160 129Q216 132 231 169L255 362Z" fill="#344957" stroke="#84929a" stroke-width="3"/>
+  <path d="M89 169L160 221L231 169L210 348H110Z" fill="#253540"/>
+  <path d="M106 167Q91 66 160 49Q229 66 214 167L188 194H132Z" fill="#4a606d" stroke="#a6b1b5" stroke-width="3"/>
+  <path d="M121 141Q116 86 160 82Q204 86 199 141L179 167H141Z" fill="#141f28"/>
+  <path d="M116 182L145 206M204 182L175 206M130 238L112 328M189 238L209 328" fill="none" stroke="#7c909b" stroke-width="4" stroke-linecap="round"/>
+  <path d="M93 350L84 375H136L143 353M178 353L185 375H237L227 350" fill="#111c24"/>
+  <circle cx="160" cy="206" r="5" fill="#d5bc80"/>
+</svg>

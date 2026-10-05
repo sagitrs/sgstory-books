@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <title>旧硬币图标样张</title>
+  <rect width="96" height="96" rx="16" fill="#23333e"/>
+  <circle cx="48" cy="48" r="31" fill="#b99d62" stroke="#e1ce96" stroke-width="4"/>
+  <circle cx="48" cy="48" r="23" fill="#927645" stroke="#d8bb7a" stroke-width="2"/>
+  <path d="M48 29L61 48L48 67L35 48Z" fill="#d8bb7a"/>
+  <path d="M27 32L33 29M64 68L70 64" stroke="#68573e" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <title>长剑图标样张</title>
+  <rect width="96" height="96" rx="16" fill="#23333e"/>
+  <path d="M27 59L66 20L82 14L76 30L37 69Z" fill="#c3d2d7" stroke="#869fa9" stroke-width="2"/>
+  <path d="M33 63L75 21" stroke="#e5edef" stroke-width="3"/>
+  <path d="M20 55L42 77" stroke="#d5bc80" stroke-width="7" stroke-linecap="round"/>
+  <path d="M30 67L15 82" stroke="#96734e" stroke-width="9"/>
+  <circle cx="13" cy="84" r="6" fill="#d5bc80"/>
+</svg>

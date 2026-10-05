@@ -1,4 +1,11 @@
+:: PassageHeader
+<<nobr>>
+<h1 class="babel-reading-title">巴别之井</h1>
+<div class="babel-scene-frame" data-panel="babel-scene-art" aria-hidden="true"></div>
+<</nobr>>
+
 :: PassageFooter
+<<nobr>>
 <hr>
 /* ★`books#259` 裁 4：**快存放页脚**（✗ 藏在选项里）。可用性＝`setup.BABEL.页脚可存()`（与 `快存` **同源** ✓）；
  *   战斗中**可见但禁用＋说明**（✗ 不整条藏掉 —— 裁 4 就是"别藏"）✓；逻辑在 `world/encounters.js`（判据够得着 ✓）。 */
@@ -6,6 +13,7 @@
 <<if setup.BABEL.页脚可存()>><<link "快存">><<run setup.BABEL.页脚快存()>><</link>><<else>><span class="footersave-off" title="战斗中不能存档">快存（战斗中不可用）</span><</if>>
 </div>
 <div class="statusbar">
+	<span class="babel-player-frame" aria-hidden="true"><<print setup.BABEL.visual.playerHTML()>></span>
 	<span class="panel" data-panel="hp"></span>｜<span class="panel" data-panel="location"></span>｜<span class="panel" data-panel="trauma"></span>｜<span class="panel inventory-links" data-panel="inventory"></span>
 </div>
 <div class="noticebar" data-panel="notice"></div>
@@ -16,26 +24,39 @@
  *   内容一律由 `ui/battle.js` 的渲染函数给（同 `notice` 面板的口径：twee 只留骨架）。 */
 <div class="enemybar" data-panel="enemy"></div>
 <div class="healbar" data-panel="heal"></div>
+<</nobr>>
 
 :: StoryStylesheet
 body {
-	background: #10131a;
-	color: #cfd3d8;
-	font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+	background: #111a23;
+	color: #e2e8ec;
+	font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+	font-size: 1.125rem;
 }
 #passages {
-	max-width: 40em;
-	margin: 3em auto;
-	padding: 0 1em;
-	line-height: 1.75;
+	max-width: 46rem;
+	margin: 2rem auto;
+	padding: 0 1rem;
+	line-height: 1.8;
+	overflow-wrap: anywhere;
 }
-a { color: #d8b878; }
+#passages .passage {
+	background: #18242e;
+	border: 1px solid #42545f;
+	border-radius: 0.8rem;
+	padding: 1.5rem;
+}
+.babel-reading-title { color: #e4c779; font-size: 1.6rem; line-height: 1.4; margin: 0 0 1rem; }
+a { color: #e4c779; }
 a:hover { color: #fff0c0; }
-hr { border: 0; border-top: 1px solid #2d3440; }
+hr { border: 0; border-top: 1px solid #42545f; margin: 1.5rem 0 1rem; }
 .statusbar {
-	color: #8fa8bd;
-	font-size: 0.88em;
-	line-height: 1.6;
+	color: #bccbd5;
+	background: #20323e;
+	border-radius: 0.5rem;
+	padding: 0.75rem;
+	font-size: 0.9em;
+	line-height: 1.8;
 }
 .trauma { color: #e08a7a; }
 /* C1（#1798）：道具名可点 —— 用下划虚线标出「这里有交互」，✗ 靠猜 */
@@ -58,7 +79,7 @@ hr { border: 0; border-top: 1px solid #2d3440; }
 .enemybar .enemy-line { line-height: 1.6; }
 .enemybar .enemy-name { color: #e0a888; }
 .healbar { color: #9db8a0; font-size: 0.86em; margin-top: 0.2em; }
-.healbar .heal-item { white-space: nowrap; }
+.healbar .heal-item { white-space: normal; }
 /* `books#280` ⑧：背包视图 —— 常驻一条（摘要一行），展开看全部道具与效果 */
 .bagbar { color: #8fa8bd; font-size: 0.85em; margin-top: 0.3em; }
 .rpg-bag-box, .rpg-bag summary { cursor: pointer; color: #7c94a8; }
@@ -70,7 +91,7 @@ hr { border: 0; border-top: 1px solid #2d3440; }
 .bagbar .rpg-bag-effect { color: #a8c0d8; }
 .bagbar .rpg-bag-equipped { color: #d8d4c8; }
 .bagbar .rpg-hint { color: #7c94a8; }
-small { color: #7c8794; }
+small { color: #b4c0c6; font-size: 0.88em; }
 /* ★`books#280` ⑩（操作者亲测 · **390×844 验收**）：窄屏下 **HP 与道具余量不落首屏外**。
  *   病灶：页脚（`.statusbar`／`.bagbar`）排在**段落内容之后** ⇒ 小屏上地图场景一长，状态条就被推到首屏**以外**
  *   （玩家看不到 HP 与道具余量）。
@@ -90,6 +111,51 @@ small { color: #7c8794; }
 		font-size: 0.82em; line-height: 1.45;
 	}
 	.footersave, .noticebar, .bagbar, .enemybar, .healbar { font-size: 0.8em; margin-top: 0.2em; }
+}
+/* Decorative samples have intrinsic dimensions. Failure hides only the image. */
+.babel-art { max-width: 100%; height: auto; pointer-events: none; }
+.babel-art[hidden] { display: none; }
+.babel-scene-frame { border-radius: 0.6rem; overflow: hidden; margin-bottom: 1.25rem; line-height: 0; }
+.babel-scene-frame:empty { display: none; }
+.babel-scene-art { display: block; width: 100%; aspect-ratio: 32 / 9; object-fit: cover; }
+.babel-player-art { width: 3rem; vertical-align: middle; margin: 0 0.6rem 0.3rem 0; border-radius: 0.5rem; }
+.babel-enemy-art { float: left; width: 4.2rem; margin: 0 0.75rem 0.4rem 0; border-radius: 0.5rem; }
+.enemy-line { display: flow-root; margin: 0.75rem 0; }
+.babel-item-art { float: left; width: 2.5rem; margin: 0 0.75rem 0.5rem 0; }
+.bagbar .rpg-bag-list { margin-left: 0; }
+.bagbar .rpg-bag-list li { display: flow-root; padding: 0.75rem; border: 1px solid #42545f; border-radius: 0.5rem; }
+.bagbar, .noticebar, .enemybar, .healbar { font-size: 0.94em; line-height: 1.8; margin-top: 0.75rem; }
+.bagbar .rpg-bag-desc, .bagbar .rpg-hint, .rpg-notice-list li.rpg-notice-log { color: #b4c0c6; }
+.rpg-bag summary, .rpg-notice-box summary { color: #bccbd5; padding: 0.5rem 0; min-height: 2.75rem; box-sizing: border-box; }
+#passages button { min-height: 2.75rem; max-width: 100%; padding: 0.55em 1em; border: 1px solid #e4c779; border-radius: 0.45rem; background: #e4c779; color: #18242e; font: inherit; line-height: 1.4; white-space: normal; }
+#passages button:hover { background: #fff0c0; border-color: #fff0c0; }
+#passages button:disabled { background: #34454f; color: #bccbd5; border-color: #7e939f; cursor: not-allowed; }
+#passages :is(a, button, summary):focus-visible { outline: 3px solid #8ed9ec; outline-offset: 3px; }
+.choice-box { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.25rem 0; }
+.footersave { font-size: 0.9em; margin-bottom: 0.75rem; }
+.footersave a { display: inline-block; padding: 0.5rem 0; min-height: 2.75rem; box-sizing: border-box; }
+.footersave-off { color: #bccbd5; }
+/* Keep the upstream fixed HUD. A smaller portrait must not enlarge it over the reading title.
+ * Reserve a bounded HUD area; unusually long status text remains scrollable rather than covering actions. */
+@media (max-width: 600px) {
+	#passages { margin-top: 9rem; line-height: 1.8; }
+	/* Leave room for SugarCube's fixed sidebar toggle; it must not cover the portrait. */
+	.statusbar { max-height: 8rem; overflow-y: auto; box-sizing: border-box; padding-left: 2.75rem; }
+	.babel-player-art { width: 1.5rem; }
+}
+/* SugarCube's small-viewport story margin assumes a closed sidebar. Keep an
+ * explicitly open sidebar beside the reading column at desktop browser zoom. */
+@media (min-width: 601px) and (max-width: 860px) {
+	body:not(.战中) #ui-bar:not(.stowed) ~ #story { margin-left: 20em; }
+}
+@media (max-width: 480px) {
+	body { font-size: 1.0625rem; }
+	#passages { margin: 9rem auto 1rem; padding: 0 0.5rem; }
+	#passages .passage { padding: 1rem; }
+	.choice-box > button { flex: 1 1 12rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.passage { transition: none; }
 }
 
 /* ★`books#280` ⑧（⑮ **视口不可达** · 操作者痛）：**战中页脚常驻视口** —— 复用 ⑩ 的形。
@@ -142,6 +208,12 @@ body.战中 .bagbar details > .rpg-bag-list {
 	background: #10131a; border: 1px solid #2d3440; border-radius: 4px;
 	padding: 0.4em 0.6em; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
 }
+/* After inherited combat rules: portrait height must not obscure reading text
+ * beneath the fixed HUD; the hidden sidebar must not retain its story margin. */
+body.战中 #story { margin-left: 3.5em; }
+body.战中 .statusbar { max-height: 8rem; overflow-y: auto; box-sizing: border-box; }
+body.战中 .babel-player-art { width: 1.5rem; }
+body.战中 #passages { margin-top: 9rem; }
 
 :: StoryCaption
 /* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
