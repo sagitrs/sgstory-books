@@ -46,20 +46,41 @@ jobs:
         with:
           path: books
 
-      # ── 引擎：缺省 main（本门**为发现回归**而设 ⇒ 打新树；要复现线上则传 engine_ref=pin）──
-      - name: 读本仓 pin（仅作参照打印，✗ 本门的检出依据）
+      # ── 引擎：缺省＝**本仓声明 pin**（`books#375`）──
+      # ★为何不再「缺省 main」：本门第 1 步就要断「引擎检出 == 声明 pin」（`books#198` 教训机械化）
+      #   ⇒ 缺省打 main 时，**引擎 main 每前进一次、这次 nightly 必红**（实测 `#375`：声明 789762d9
+      #   vs 检出 c3c6366a）⇒ 后面那些真判据（存档门禁／真 DOM 臂／战斗格三臂）**一次都没跑** ⇒
+      #   门存在的理由（`#1856` 那类只有真 DOM 照得出的形）**恰好失效**。
+      #   ⇒ 现形：**检出＝声明 pin**（两单对称：读 pin 单 ⇒ 检出单），本门因此验的是
+      #     「**故事实际交付所依据的那棵树**」✓。
+      #   ★要打新树做**早期回归**探测：显式传 `engine_ref=main`（`workflow_dispatch`）——
+      #     此时第 1 步会**具名红**，那正是「你要验的树 ≠ 声明 pin」的提示 ✓（✗ 不是故障）。
+      - name: 读本仓 pin（**本门的检出依据**）
         id: pin
         working-directory: books
         run: |
           set -euo pipefail
           ref=$(jq -r '.ref // empty' .github/engine-ref.json)
+          # ★缺值即具名红（✗ 让空 ref 回落到检出动作的缺省分支 —— 那正是 `#375` 的病根）
+          test -n "$ref" || { echo "✗ .github/engine-ref.json 缺 .ref ⇒ 本门的检出依据无法确定"; exit 2; }
           echo "本仓 pin = $ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      # ★本步与下一步（`check-engine-pin.mjs`）合起来才是闭环：
+      #   本步判**意图**（检出单须认 pin 单）｜下一步判**结果**（检出的 HEAD 须真的等于那个 pin）。
+      #   ★为何要这一步：本 workflow 原先把「缺省 main」写在检出里、把「须等于 pin」写在下一步 —
+      #     两句互斥 ⇒ 引擎 main 一前进本门必红（`#375`）。本步把该不变式**机械钉住**，
+      #     免得日后有人为了「打新树」把缺省又改回 main 而无人察觉。
+      - name: ★引擎检出须来自声明 pin（`books#375`：两单对称）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/check-workflow-pin-ref.mjs
 
       - uses: actions/checkout@v4
         with:
           repository: sagitrs/sgstory
-          ref: ${{ github.event.inputs.engine_ref || 'main' }}
+          ref: ${{ github.event.inputs.engine_ref || steps.pin.outputs.ref }}  # ★缺省＝声明 pin（`books#375`）
           path: engine
           # ★`fetch-depth: 1` 足够（本门不比对 base —— 那是行尾门的事）
 

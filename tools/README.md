@@ -13,6 +13,7 @@
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
 | `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；`--selftest` 合成例 7 例） |
 | `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
+| `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
 | `tools/check-baseline.mjs` | 基线核（与声明基线比对；不符即报，✗ 不自动刷新） |
 | `tools/check-content-inventory.mjs` | 内容清点（★舱单核对：实存 vs 清单；#347 登记制的同族） |
 | `tools/check-refs.knives.sh` | 引用核的正向刀，每刀须红在对的支 |
@@ -370,3 +371,12 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | **固定命令** | `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-fullrun.mjs --books <books 检出> --engine <引擎检出> [--art <产物>]`；自检 `node tools/e2e-280-fullrun.mjs --selftest`（8 例）。★`--engine` 树的 HEAD **须＝**本仓 `.github/engine-ref.json` 的 `ref`，否则 `rc=2`（**装置错**，✗ 产品缺陷）。 |
 | **期望读数** | 现为全绿（rc=0）：`逐跳（共 N 跳）：L2/k1 → … → L20/k18`｜`终段="试玩终点"`｜`deepest="L20"`｜`kills=18`｜`deaths=0`｜`已战=18 层`｜`pageerror=0｜console.error=0`。★**同版两跑判据面逐字同**（本档**钉随机** ⇒ 见下）。 |
 | **设立理由** | 各臂分段（战斗／采集／结算／存档）早已各绿，但**没有一条跑过整局** ⇒ 「分段都对、串起来走不通」这类缺陷无臂可照。★两处非显然取法（✗ 别重走）：㈠「迎战」是 `<<link>>` ⇒ 段内 **macro-link**（不在 `.choice-box`），不点它战斗**永不起**；㈡★**战斗不要逐轮点 DOM 选项**（段内项会累加、`.first()` 取到**陈旧那份** ⇒ 实测**打不动**）⇒ 改用**引擎自己的交互口**（页内装 `Player.choice` ＋ `await BABEL.fight({interactive:true})`）。★**低血先治疗**（不加则中途被打死 ⇒ 浮动）；★**钉随机** `rng.setSequence(Array(600).fill(1.0))`（骰面最大 ⇒ 我方必中）—— 这是给出「**两跑同读数**」的**前提**（引擎明说序列抽干**不静默回退**）。★出口靶用**通用形**（`^向上\|^前进\|走向\|走进\|^去第\|穿过`，排除 `快存\|通知\|背包\|整备\|查看\|拾起\|采集\|不采了\|看看这一局`）⇒ 段1／段2 一套通吃。 |
+
+## 21. `check-workflow-pin-ref.mjs` —— 引擎检出须**来自本仓声明 pin**（`books#375`）
+
+| 项 | 内容 |
+|---|---|
+| **清单** | 扫 `.github/workflows/e2e-window.yml`，判三件：①引擎检出步的 `ref:` 须引用 pin 步的输出（`steps.pin.outputs.ref`）②✗ 不得残留「缺省 main」那种回落 ③pin 单须空值即具名红。`--file <yml>` 可指向别档（刀用）。 |
+| **固定命令** | `node tools/check-workflow-pin-ref.mjs`；自检 `node tools/check-workflow-pin-ref.mjs --selftest` |
+| **期望读数** | 正向输出是 `✓ 引擎检出＝声明 pin（两单对称…）`，退出码为零。自检输出是 `自检：通过 3｜失败 0`（①回落 main ②撤空值守卫 两刀各须红在对的支 ＋ ③复原绿）。反例：任一刀不红在对的支 ⇒ 退出码为一。装置错（缺 workflow 档）⇒ `2` 且具名。 |
+| **设立理由** | `books#375` 实测：该 workflow 的引擎检出缺省打 `main`，而它**下一步**又要求「检出等于声明 pin」（`books#198` 教训机械化）⇒ 两句互斥 ⇒ **引擎 main 每前进一次那次 nightly 必红**（声明 `789762d9` vs 检出 `c3c6366a`），其后真判据一次未跑、门存在的理由（`#1856`：只有真 DOM 照得出的形）恰好失效。本判据把「检出单认 pin 单」这条不变式机械化 —— ★本步判**意图**，下一步 `check-engine-pin.mjs` 判**结果**，两步合起来才是闭环。 |
