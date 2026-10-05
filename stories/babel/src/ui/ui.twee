@@ -92,6 +92,31 @@ small { color: #7c8794; }
 	.footersave, .noticebar, .bagbar, .enemybar, .healbar { font-size: 0.8em; margin-top: 0.2em; }
 }
 
+/* ★`books#280` ⑧（⑮ **视口不可达** · 操作者痛）：**战中页脚常驻视口** —— 复用 ⑩ 的形。
+ *
+ * 实测（本席 · 1280×720 视口、文档高 1135）：`.statusbar` 787–832、`.bagbar` 975–999
+ *   ⇒ **两块的 top 都在视口外**（720 之下）⇒ 真实鼠标点不到（验收臂 `books#332` 正是这样红的：
+ *   `locator.click: Timeout 4000ms exceeded`）✗。
+ * ★为何用 `fixed` 而 ✗ `sticky`（⑩ 同因 · 本席复测）：页脚是段落的**最后一块** ⇒ `sticky` 的包含块
+ *   就是那一小段 ⇒ 一滚就随包含块出视口；`fixed` 与包含块无关 ✓。
+ * ✗ **不改 DOM 顺序**（那会动读屏与既有判据的面）—— 只改定位与两侧让位 ✓。
+ * ⚠ 只**战期中**生效（`body.战中` 由 `fight()` 在 `try/finally` 里加／摘）⇒ 探索面版面**逐字不变** ✓。
+ */
+body.战中 .statusbar {
+	position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+	background: #10131a;                      /* ✗ 透明：正文会从下面透上来 */
+	padding: 0.25em 0.6em; border-bottom: 1px solid #2d3440;
+}
+body.战中 #passages { margin: 2.5em auto 4.5em; }        /* 上让状态条、下让页脚（✗ 否则首/末行被盖） */
+body.战中 .bagbar, body.战中 .enemybar, body.战中 .healbar {
+	position: fixed; left: 0; right: 0; z-index: 5;
+	background: #10131a; padding: 0.2em 0.6em; border-top: 1px solid #2d3440;
+}
+/* 三块**自下而上**叠（各自高度 ~1.5em；`fixed` ✗ 不会自动堆叠 ⇒ 必须显式给 bottom） */
+body.战中 .enemybar { bottom: 0; }
+body.战中 .healbar { bottom: 1.7em; }
+body.战中 .bagbar { bottom: 3.4em; }
+
 :: StoryCaption
 /* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
  *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.1·<pin 短sha>` ✓。
