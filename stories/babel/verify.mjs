@@ -3919,10 +3919,11 @@ head('第 56 格 `books#280` ⑩：战斗菜单只留战斗行动（道具收敛
 		D.Player.choice = () => new Promise((res) => { void res; });       // 悬着：只读菜单，✗ 不真打
 		const { itemOptions } = 场.buildPlayerOptions(D.Player);
 		const 文 = itemOptions.map((o) => String(o.text)).join('｜');
-		for (const 件 of ['绷带', '矿镐']) {
-			ok(!文.includes(件), `★战斗菜单里仍列道具「${件}」（实得 ${JSON.stringify(文)}）—— 「收敛到页脚背包一处」没做到`);
-		}
-		ok(!itemOptions.some((o) => String(o.value).startsWith('quick:')), `★一键项也属道具面 ⇒ 不该在菜单里（实得 ${JSON.stringify(itemOptions.map((o) => o.value))}）`);
+		/* ★`#280` ⑭ 口径：**手上那件武器的攻击**属「战斗行动」面 ⇒ 必须留（它是「顺手点第一项」时的致命一手；
+		 *   ⑩ 把它一起扫走 ⇒ 脚本臂点第一项只剩空手＝非致命 ⇒ `kills` 恒 0 ⇒ 首战门永闭）。其余道具仍一件不列。 */
+		ok(文.includes('矿镐'), `★⑭：**手上的武器**（矿镐已装备）不在菜单里（实得 ${JSON.stringify(文)}）`);
+		ok(!文.includes('绷带'), `★⑩：非武器道具不该在菜单里（实得 ${JSON.stringify(文)}）`);
+		ok(itemOptions.some((o) => String(o.value).startsWith('quick:')), '⑭：手上的武器应以一键项形给出');
 		ok(!itemOptions.some((o) => /^\d+$/.test(String(o.value))), '★菜单里仍有逐件项（原槽位下标）');
 		ok(itemOptions.some((o) => o.value === 'skip'), '「跳过本回合」是**战斗行动** ⇒ 必须还在');
 
@@ -3937,7 +3938,7 @@ head('第 56 格 `books#280` ⑩：战斗菜单只留战斗行动（道具收敛
 		}
 		setup.BABEL.战中 = false;
 
-		console.log('  战斗菜单：无道具名／无一键项／无逐件项 ✓｜跳过仍在 ✓｜道具入口在页脚背包 ✓');
+		console.log('  战斗菜单：只有手上那件武器（一键项）＋空手／跳过 ✓｜无别的道具／无逐件项 ✓｜道具入口在页脚背包 ✓');
 		}
 	} finally {
 		if (原choice === undefined) delete D.Player.choice; else D.Player.choice = 原choice;
