@@ -5,6 +5,8 @@
  *   ① **基座同尖**：`merge-base(<main>, <票头>)` 必须 **===** `<main>`。
  *      ★落后 ⇒ 该票对**现 main** 的 diff 里会带**回退行** ⇒ 合入会抹掉别的笔刚合的东西。
  *   ② **回退行 0**：对现 main 的 `--numstat` 里，**没有「只删不加」（新增 0 行）的档**。
+ *      ★口径＝**3-dot（对 merge-base）**；★**基座落后时**建议再**干跑合并**核一次，
+ *        ✗ **不可**用 **2-dot** 两树直比（含 main 自己的推进 ⇒ 会误读成「回退行」）。
  *   ③ （给了 `--base` 才算）**patch-id**：纯 rebase ⇒ 同改动集在不同基座上的指纹**逐字同**
  *      ⇒ ★先前核过的读数**沿用不重跑**；不同 ⇒ 内容有变 ⇒ 该核的全核。
  *
@@ -42,12 +44,30 @@ function git(repo, ...args) {
 		err.装置错 = true; throw err; }
 }
 
+/**
+ * ★**基座落后时的提示**（`books#315` 附三加固 · 2026-10-05）。
+ *   本器的 ② 已按 **3-dot**（对 merge-base）判 ⇒ 落后也不会误报 ✓；
+ *   但**合并结果仍建议干跑**（`git merge --no-commit --no-ff <票头>`）核一次回退面 ✓。
+ *   ★**✗ 不可**用 **2-dot** 两树直比 —— 含 main 自己的推进 ⇒ 会误读成「回退行」 ✗。
+ *   返回 '' ⇒ 同尖（无须提示）。
+ */
+function 落后提示(MB, MAIN, 落后档数) {
+	if (!MB || !MAIN || MB === MAIN) return '';
+	const n = Number.isFinite(落后档数) ? `${落后档数} 档` : 'N 档';
+	return `  ⇒ ★基座落后 ${n}（merge-base ${String(MB).slice(0, 8)}）⇒ **回退面建议再干跑一次合并**：`
+		+ '`git merge --no-commit --no-ff <票头>`（附：3-dot `git diff --numstat <main>...<票头>` 即本器 ② 的口径）；'
+		+ '★**✗ 不可**用 `git diff <main> <票头>`（**2-dot** 两树直比 —— 含 main 自己的推进 ⇒ 会误读成「回退行」）';
+}
+
 /** ★判据本体（与 `--selftest` **共用** ⇒ 自测验的就是真判据）。 */
 export function 检查一(repo, main, head) {
 	const MB = git(repo, 'merge-base', main, head);
 	const MAIN = git(repo, 'rev-parse', main);
 	const 同尖 = MB === MAIN;
-	const 行 = git(repo, 'diff', '--numstat', main, head).split('\n').filter(Boolean);
+	/* ★**3-dot（对 merge-base）**：只量**本笔自己的改动**（＝ squash 真正会落的东西 ✓）。
+	 *   ✗ 不用 2-dot（`main head` 两树直比）—— 基座落后时会把 **main 自己那几档的推进**也算成差异
+	 *   ⇒ 会**误报大批『只删不加』**（本席 2026-10-05 在 `books#334` 上实栽过一次 ✗）。 */
+	const 行 = git(repo, 'diff', '--numstat', MB, head).split('\n').filter(Boolean);
 	const 回退 = 行.map((l) => l.split('\t')).filter((c) => c[0] === '0').map((c) => c[2]);
 	return { 同尖, MB, MAIN, 回退, 行数: 行.length };
 }
@@ -81,6 +101,12 @@ function 主流程() {
 	const 红 = [];
 	console.log(`  ① 基座同尖：merge-base=${r1.MB.slice(0, 8)}｜main=${r1.MAIN.slice(0, 8)} ⇒ ${r1.同尖 ? '✓ 同尖' : '✗ 落后'}`);
 	if (!r1.同尖) 红.push(`✗ ① 基座落后现 main（merge-base ${r1.MB.slice(0, 8)} ≠ main ${r1.MAIN.slice(0, 8)}）—— ★先 rebase，再谈内容`);
+	if (!r1.同尖) {
+		let 落后 = NaN;
+		try { 落后 = Number(git(repo, 'rev-list', '--count', `${r1.MB}..${r1.MAIN}`).trim()); } catch (e) { /* ✗ 吞：取不到就不写档数 ✓ */ }
+		const 提示 = 落后提示(r1.MB, r1.MAIN, 落后);
+		if (提示) console.log(提示);
+	}
 	console.log(`  ② 回退行：对现 main 的 diff 共 ${r1.行数} 档｜★只删不加 = ${r1.回退.length} 档`);
 	for (const p of r1.回退.slice(0, 12)) console.log(`      ✗ ${p}`);
 	if (r1.回退.length) 红.push(`✗ ② 有 ${r1.回退.length} 个档「只删不加」⇒ 合入会抹掉别的笔刚合的内容`);
@@ -119,6 +145,12 @@ function 自检() {
 	const r2 = 检查一(B, 'main', 'feat');
 	断言('K2 同尖干净头 ⇒ ① 绿', r2.同尖 === true, JSON.stringify({ 同尖: r2.同尖 }));
 	断言('K3 同尖干净头 ⇒ ② 回退行 0', r2.回退.length === 0, JSON.stringify(r2.回退));
+	/* ★K8/K9（附三加固）：落后提示 —— 纯函数两向 ＋ 械防调用点 ✓ */
+	const 提落 = 落后提示('aaaaaaaa', 'bbbbbbbb', 27);
+	断言('K8a 落后 ⇒ 提示含「干跑」「2-dot ✗」', /merge --no-commit --no-ff/.test(提落) && /2-dot/.test(提落) && /✗ 不可/.test(提落), 提落.slice(0, 56) + '…');
+	断言('K8b 同尖 ⇒ 无提示（✗ 滥报）', 落后提示('same', 'same', 0) === '' && 落后提示('', '', 0) === '', JSON.stringify(落后提示('same', 'same', 0)));
+	const 自文 = fs.readFileSync(new URL(import.meta.url), 'utf8');
+	断言('K9 ★①落后时调用 落后提示（✗ 不许删掉调用点）', /if \(!r1\.同尖\) \{[\s\S]{0,220}落后提示\(/.test(自文), '命中=' + /if \(!r1\.同尖\) \{[\s\S]{0,220}落后提示\(/.test(自文));
 	// ── 例 3：同尖但**只删不加** ⇒ ② 该红（★证 ② 有牙，✗ 不是永绿）──
 	const C = 新仓('c'); 写(C, 'x.txt', '1\n'); 写(C, 'gone.txt', 'g\n'); 提(C, 'base');
 	跑(C, 'branch', '-q', 'feat'); 跑(C, 'checkout', '-q', 'feat'); fs.unlinkSync(path.join(C, 'gone.txt')); 提(C, '删掉一个档');
