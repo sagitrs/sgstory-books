@@ -57,7 +57,7 @@ function walkStrings(node, p = '') {
 }
 const topField = (p) => p.split('.').find((s) => !s.startsWith('[')) ?? p;
 
-/* ── 索引与解析：**与 `check-refs.mjs` 同解析顺序**（本仓优先 ⇒ 同树多命中为歧义） ──
+/* ── 索引与解析：**与 `check-refs.mjs` 同解析顺序**（本仓优先 ⇒ 同树多命中为歧义；★`#127`：**两树都命中而内容异 ⇒ 红**，与主件**同刀** ⇒ 两件解析顺序须逐条一致 ✓） ──
  *   ★本席曾在此栽过：拿**引擎副本**的行号去评 books 的实指 ⇒ 假红一条（已撤回；`#300` 条款②「实际形优先」）。 */
 function index(root) {
 	const out = [];
@@ -76,19 +76,30 @@ function makeResolver(engine) {
 	return (rawFile) => {
 		let file = rawFile, only = null;
 		for (const pre of ['books/', 'engine/']) if (file.startsWith(pre)) { only = pre.slice(0, -1); file = file.slice(pre.length); }
+		const 命中 = [];
 		for (const [root, list] of IDX) {
 			if (only && (root === BOOKS) !== (only === 'books')) continue;
 			const hits = only ? list.filter((r) => r === file) : list.filter((r) => r === file || r.endsWith('/' + file));
-			if (hits.length === 1) return { root, rel: hits[0] };
 			if (hits.length > 1) return { ambiguous: hits };
+			if (hits.length === 1) 命中.push({ root, rel: hits[0] });
 		}
-		return null;
+		if (命中.length === 0) return null;
+		if (命中.length === 1) return 命中[0];
+		/* ★★`#127` 同刀移植（t4 非阻断②「潜伏盲」）：本件与 `check-refs.mjs` **同解析顺序** ⇒
+		 *   那条「**两树都命中而内容异 ⇒ 红**」必须**同刀**落在这里（否则孪生件仍静默取本仓 ✗）。 */
+		const 本 = 命中.find((x) => x.root === BOOKS) ?? 命中[0];
+		const 引 = 命中.find((x) => x !== 本);
+		if (!引) return 本;
+		const 文 = (x) => fs.readFileSync(path.join(x.root, x.rel), 'utf8');
+		if (文(本) === 文(引)) return 本;
+		return { 跨树异: { 本仓: 本, 引擎: 引 } };
 	};
 }
 function judge(resolve, rawFile, from, to) {
 	const r = resolve(rawFile);
 	if (!r) return { ok: false, why: `文件不存在（本仓／引擎皆无此路径或其后缀）：${rawFile}` };
 	if (r.ambiguous) return { ok: false, why: `引用有歧义（同树命中 ${r.ambiguous.length} 处）⇒ 写全路径：${rawFile} ⇒ ${r.ambiguous.slice(0, 3).join('、')}…` };
+	if (r.跨树异) return { ok: false, why: `★**两树都命中且内容不同**（books：${r.跨树异.本仓.rel} ／ engine：${r.跨树异.引擎.rel}）⇒ 须写**树限定**：「books/${rawFile}」或「engine/${rawFile}」` };
 	const all = fs.readFileSync(path.join(r.root, r.rel), 'utf8').split(/\r?\n/);
 	if (from < 1 || from > all.length) return { ok: false, why: `行号越界：${r.rel}:${from}（共 ${all.length} 行）` };
 	const seg = all.slice(from - 1, to).join('\n');
