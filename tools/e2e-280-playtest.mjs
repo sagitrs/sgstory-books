@@ -110,10 +110,30 @@ const 段内链接 = async (p) => 取段内(await 读链接项(p));
 export function 要点(段内文, 形) { return (段内文 || []).some((x) => (形.前缀 ? String(x).startsWith(形.前缀) : String(x).includes(形.含))); }
 const 正文 = (p) => p.evaluate(()=>document.body.innerText);
 const run  = (p) => p.evaluate(()=>{try{return JSON.parse(JSON.stringify(SugarCube.State.variables.babelRun))}catch(e){return null}});
+/* ★★`点段内`：★**在 `#passages` 段内点**（✗ 不用全文档 `点`）。
+ *   ★理由（本席实测）：★`点(p,t)` 是 `p.locator('a,button').filter({hasText:t}).first()` ——
+ *   ★**全文档取第一个** ⇒ 光把"看"改成 `段内链接` 只修了一半 ✗：★**点到的仍可能是 SugarCube UI 壳里的那一项**
+ *   （★壳里有「快存/查看存档/重开」等；★本席在 `books#323` 认过的正是这一族假绿）。
+ *   ★故：★**判"点哪一项"的场合一律用 `点段内`**；★只有确实要看全文档的（如臂④ 页脚）才用 `点`。 */
+const 点段内 = async (p,t) => { const l=p.locator('#passages a,#passages button').filter({hasText:t}).first();
+  if (await l.count()===0) return false; await l.click({timeout:5000}).catch(()=>{}); await p.waitForTimeout(900); return true; };
 const 点 = async (p,t) => { const l=p.locator('a,button').filter({hasText:t}).first();
   if (await l.count()===0) return false; await l.click({timeout:5000}).catch(()=>{}); await p.waitForTimeout(900); return true; };
 const 上行在 = async p => (await 链接(p)).some(x=>x.startsWith('向上，去第'));
 const 采集在 = async p => (await 链接(p)).some(x=>x.startsWith('采集'));
+/* ★★`prepL1`：**一处源**的 L1 起手 —— 睁开眼 ⇒ 站起来 ⇒ **拾起** ⇒ 遭遇 ⇒ 等战斗 UI 起来。
+ * ★★★`books#280` ⑭ 实测（A/B 隔离 · 变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
+ *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。⑩（`itemsInBag`）上线后菜单**只留在手上的武器**
+ *   ⇒ 卸掉之后菜单只剩「空手打击」⇒ 打不死 ⇒ `kills` 恒 0。★本席为此把**两处** prep 各踩过一次
+ *   （`#328` 修了一处；`:149` 那处是领队查出的潜伏）⇒ ★故抽成**一处源**，口径只写一次。
+ * ★并把**前件**钉在这里：拾起后**武器须在手上** —— ✗ 成立不了就明印"后续读数不可用"。 */
+const prepL1 = async (p) => {
+  await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 点(p,'拾起'); await p.waitForTimeout(400);
+  const 在手上 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
+  if (在手上 !== true) 档.push('  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped='+JSON.stringify(在手上)+'）');
+  await 点(p,'遭遇'); await p.waitForTimeout(1500);
+};
 const 到L1事件屏 = async p => {
   await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
   /* ★★★`#280` ⑭ 实测（A/B 隔离，♪变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
@@ -126,7 +146,7 @@ const 到L1事件屏 = async p => {
     const 装备 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
     if (装备 !== true) 档.push(`  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped=${JSON.stringify(装备)}）`);
   }
-  await 点(p,'遭遇'); await p.waitForTimeout(1500);
+  await prepL1(p);
   for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
     else if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); }
@@ -146,7 +166,7 @@ try {
   ok('臂① 胜后「遭遇」已消耗', !(await 段内链接(p)).some(x=>x.includes('遭遇')), `kills=${r.kills}`);
   await p.close();
   p = await 新页(); await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
-  await 点(p,'拾起'); await p.waitForTimeout(300); await 点(p,'长剑'); await 点(p,'遭遇'); await p.waitForTimeout(1400);
+  await prepL1(p);   // ★一处源（✗ 不再各写一份 prep）
   for (let i=0;i<40;i++){ const rr=await run(p); if(rr?.deaths>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); else await p.waitForTimeout(400); }
   for (let k=0;k<25;k++){ const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
@@ -177,6 +197,45 @@ try {
   const 页脚 = await p.evaluate(()=>[...document.querySelectorAll('.footersave,[data-footer]')].map(e=>e.innerText.trim()));
   ok('臂④ 低层页脚只有只读「快存」标签（无道具面）', 页脚.length===1 && /快存/.test(页脚[0]), JSON.stringify(页脚));
   await p.close();
+
+  // ── 臂⑦ 奖励结算停确认（`books#280` ②-4）★缺席闸形 ──
+  /* ★三处踩过的坑：①★prep 走 `prepL1`（★只拾起，✗ 再点武器名＝卸装）②★战斗要点**两次**（动作 ＋ 目标）
+   * ③★遇「继续探索」**即停**（✗ 再点它 —— 那正是本臂要测的那一屏）。★点一律用 `点段内`（✗ 全文档）。 */
+  {
+    const p7 = await 新页();
+    await prepL1(p7);
+    for (let i=0;i<60;i++){
+      if ((await run(p7))?.终局) break;
+      const ls = await 段内链接(p7);
+      if (ls.some(x=>x.includes('继续探索'))) break;
+      const 攻 = ls.find(x=>/用.*攻击/.test(x)) || ls.find(x=>x.includes('空手打击'));
+      if (攻) {
+        await 点段内(p7, 攻);
+        const 目标 = (await 段内链接(p7)).find(x=>/幼獾|獾/.test(x) && !/攻击|打击/.test(x));
+        if (目标) await 点段内(p7, 目标);
+      } else if (ls.some(x=>x.includes('（跳过本回合）'))) { await 点段内(p7,'（跳过本回合）'); }
+      else break;
+    }
+    const r7 = await run(p7), 链7 = await 段内链接(p7), 正7 = await 正文(p7);
+    const 有收下 = 链7.some(x=>x==='收下'), 有继续 = 链7.some(x=>x.includes('继续探索'));
+    if ((r7?.kills ?? 0) <= 0) {
+      档.push('  · 臂⑦ 奖励结算停确认 —— ★**本跑未覆盖**（未取得胜利 ⇒ 走不到结算屏；记声明 ✗ 判红）');
+      档.push('     诊断：kills='+r7?.kills+' deaths='+r7?.deaths+' 终局='+r7?.终局+'｜段内='+JSON.stringify(链7.slice(0,8)));
+    } else if (!有收下 && !有继续) {
+      档.push('  · 臂⑦ 奖励结算停确认 —— ★**缺席闸：功能未在**（结算屏既无「收下」也无「继续探索」）⇒ 记声明、✗ 判红');
+    } else if (!有收下 && 有继续) {
+      /* ★★「功能未在」那一类（领队裁：**记声明、✗ 判红** —— 体例同臂③ 宝箱的缺席闸）：
+       *   结算屏**在**（结算读数在位），但**没有「收下」这道门**，直接给了「继续探索」⇒ ★②-4 的确认门**尚未落地**。 */
+      档.push('  · 臂⑦ 奖励结算停确认 —— ★**缺席闸：确认门未在**（结算屏无「收下」，直接给「继续探索」）⇒ 记声明、✗ 判红');
+      档.push('     读数：结算读数在位='+/战利品|翻出了/.test(正7)+'｜链接='+JSON.stringify(链7.slice(0,6)));
+    } else {
+      ok('臂⑦① 结算读数在位（正文含战果/掉落）', /战利品|翻出了/.test(正7), 正7.replace(/\n+/g,' ').slice(0,90));
+      ok('臂⑦② 未确认不进下一步（「继续探索」不在）', !有继续, '链接='+JSON.stringify(链7.slice(0,6)));
+      await 点段内(p7,'收下'); await p7.waitForTimeout(1300);
+      const 后 = await 段内链接(p7);
+      ok('臂⑦③ 确认后入口换（「继续探索」在）', 后.some(x=>x.includes('继续探索')), '链接='+JSON.stringify(后.slice(0,6)));
+    }
+  }
 
   console.log([...档, ...红].join('\n'));
   console.log(`\n  ⇒ 通过 ${档.length}｜失败 ${红.length}`);
