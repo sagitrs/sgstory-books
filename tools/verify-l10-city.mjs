@@ -11,6 +11,7 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		State.variables.inventory = [];
 		State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 终局: false, 时间: 0 };
 		State.variables.babelL10 = { sold: 0, resident: false }; State.variables.babelL10Storage = [];
+		State.variables.span1Farms = 0; State.variables.span1Harvests = 0;
 		B.战中 = false; map.moveTo(loc); menus.length = 0; jumps.length = 0;
 	};
 	const economy = () => JSON.stringify({ inventory: D.Player.items, city: C.state(), storage: State.variables.babelL10Storage, time: B.时间账() });
@@ -21,13 +22,40 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		reset();
 		ok(C.cfg.status === 'candidate', 'L10 参数未标候选');
 		ok(Object.keys(C.state()).sort().join() === 'resident,sold', '新增城市主进度超过两项');
+		const template = C.build();
 		for (const id of Object.values(C.locations)) {
-			ok(map.locations.has(id), `五处建筑缺 ${id}`);
+			const actual = map.locations.get(id), expected = template.locations.get(id);
+			ok(actual != null, `五处建筑缺 ${id}`);
+			ok(actual?.name === expected?.name && actual?.desc === expected?.desc,
+				`城市 ${id} 的名称／描述未来自故事 L10 模板`);
 			if (id !== C.locations.hearth) ok(map.exitsFrom(C.locations.hearth).some((e) => e.to === id), `证前不可进 ${id}`);
 		}
 		for (const id of new Set([...Object.keys(C.cfg.buy), ...Object.keys(C.cfg.sell)]))
 			ok(R.items.has(id), `候选目录缺注册定义 ${id}`);
 		ok(Object.keys(C.cfg.sell).every((id) => !Object.hasOwn(C.cfg.buy, id)), '卖同类原料可循环刷贡献');
+
+		reset(C.locations.ration);
+		const farmLabel = '收获旧档已有农田（兼容收尾，不计资格）';
+		const farmLocation = map.locations.get(C.locations.ration);
+		const farmVisible = () => farmLocation.availableActions.some((a) => a.text === farmLabel);
+		const farmAction = farmLocation.actions.find((a) => a.text === farmLabel);
+		ok(!farmVisible(), '没有旧田仍显示兼容收尾');
+		State.variables.span1Farms = 2;
+		R.deposit(D.Player.items, 'wood'); R.deposit(D.Player.items, 'coin', 7);
+		const farmUnrelated = () => JSON.stringify({ city: C.state(), storage: State.variables.babelL10Storage,
+			otherItems: D.Player.items.filter((s) => s.id !== 'ration'), time: B.时间账() });
+		const unrelatedBefore = farmUnrelated();
+		ok(farmVisible(), '旧档有田，证前兼容收尾菜单不可见');
+		// 可见性另判；直接调用原动作也要判，以免死守卫遮住错误 actor 的丢田路径。
+		ok(farmAction?.action() === true, '旧田收尾未成功投递口粮');
+		ok(State.variables.span1Farms === 0 && State.variables.span1Harvests === 2 && amount('ration') === 2,
+			'旧田未一次收空／记收成／向玩家投递对应口粮');
+		ok(farmUnrelated() === unrelatedBefore, '旧田收尾改贡献／资格／寄存／其他原件或时间');
+		ok(!farmVisible(), '旧田收完仍显示兼容收尾');
+		const harvested = () => JSON.stringify({ economy: economy(), farms: State.variables.span1Farms,
+			harvests: State.variables.span1Harvests });
+		const harvestedBefore = harvested();
+		ok(farmAction?.action() === false && harvested() === harvestedBefore, '旧田收尾重复发粮／记收成或改变经济');
 
 		reset(C.locations.ration); R.deposit(D.Player.items, 'wood', 10);
 		let before = economy(); ok(C.sell('bandage', 1) === false && economy() === before, '药品错误计入贡献');
@@ -99,7 +127,7 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		const domains = R.save.envelope().domains;
 		ok(domains.includes('babelL10') && domains.includes('babelL10Storage'), '新域未进信封');
 
-		reset(); R.deposit(D.Player.items, 'bandage'); const hpBefore = D.Player.hp;
+		reset(); State.variables.span1Farms = 1; R.deposit(D.Player.items, 'bandage'); const hpBefore = D.Player.hp;
 		C.chooseEnding('enslaved'); await C.menu('enslaved');
 		ok(!State.variables.babelRun.终局 && !jumps.includes('失去自由'), '第一次取消就终局');
 		selection = '0'; C.chooseEnding('enslaved'); await C.menu('enslaved');
@@ -123,7 +151,7 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		ok(!map.exits.some((e) => e.from === C.locations.hearth && e.to === 'L9'), '恢复塔向下步行边');
 		map.moveTo('L19'); B.记战果('L19', 'victory');
 		ok(map.exitsFrom('L19').some((e) => e.to === 'L20-forge'), 'L19 新增居民证门或旧头目门漂移');
-		console.log('  候选目录、五入口、原子交易、两项进度、保底休整、单件修理／寄存、旧档与两终局分别已断言；不是收益／平衡验收。');
+		console.log('  候选目录、五入口及模板来源、原子交易、两项进度、保底休整、单件修理／寄存、旧田收尾、旧档与两终局分别已断言；不是收益／平衡验收。');
 	} finally {
 		R.choice = original.choice; SugarCube.Engine.play = original.play; R.deposit = original.deposit;
 		for (const key of Object.keys(State.variables)) delete State.variables[key]; Object.assign(State.variables, saved);

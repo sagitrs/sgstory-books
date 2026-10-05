@@ -39,7 +39,7 @@ const browser = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu'
 	'--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1440,1000', '--no-first-run', 'about:blank'],
 	{ env: { ...process.env, LD_LIBRARY_PATH: deps }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = '', ws, seq = 0, session, exitCode = 0, loads = 0;
-const total = 24, rows = [], errors = [], pageChecks = [], pending = new Map(), start = Date.now();
+const total = 27, rows = [], errors = [], pageChecks = [], pending = new Map(), start = Date.now();
 browser.stdout.on('data', (x) => { log += x; }); browser.stderr.on('data', (x) => { log += x; });
 browser.on('error', (e) => errors.push(e.message));
 const wait = async (fn, name, timeout = 15000) => {
@@ -62,6 +62,7 @@ const evaluate = async (body) => {
 };
 // SugarCube 的宏错误可以只渲成 DOM 而不抛 JS 异常；必须查实际错误节点。
 // 只声明本工具访问过的当前段落，不据此推断未访问段落无错。
+// 检查次数取 result.json.pageChecks.length，不硬编码；截图 JSON 只存正文／几何，issues 在 pageChecks。
 const readPageErrors = () => evaluate(`const host=document.querySelector('#passages .passage:last-of-type');
 	if(!host) throw Error('页面错误检查缺当前段落');
 	return {passage:host.dataset.passage,issues:[...new Set([...host.querySelectorAll('.error,.error-view')].map(x=>x.textContent.trim()))]};`);
@@ -187,6 +188,13 @@ try {
 	await check('真实槽写入缺新域的旧形夹具', 'delete V.babelL10; delete V.babelL10Storage; V.span1Farms=1; S.Save.slots.save(6,"L10 缺域旧形夹具"); return S.Save.slots.has(6);');
 	await evaluate('return (async()=>{ await S.Save.slots.load(6); S.Engine.show(); })();'); await atPassage('探索');
 	await check('真实旧形往返只补缺，不追贡献／清农田／改原背包', `return V.babelL10.sold===0&&V.babelL10.resident===false&&Array.isArray(V.babelL10Storage)&&V.babelL10Storage.length===0&&V.span1Farms===1&&JSON.stringify(P.items)===${JSON.stringify(legacyInventory)};`);
+	const legacyFarm = await evaluate('return {farms:V.span1Farms,harvests:V.span1Harvests??0,rations:R.heldTotal(P,"ration")??0,otherItems:JSON.stringify(P.items.filter(s=>s.id!=="ration")),city:JSON.stringify(V.babelL10),storage:JSON.stringify(V.babelL10Storage),time:B.时间账()};');
+	await click('前往第 10 层 · Ration House'); await atPassage('探索');
+	await check('真实旧档有田，证前兼容收尾菜单可见', 'const host=document.querySelector("#passages .passage:last-of-type"); return V.span1Farms===1&&!V.babelL10.resident&&[...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获旧档已有农田"));');
+	await click('收获旧档已有农田');
+	await wait(() => evaluate('return V.span1Farms===0;'), '旧田收空');
+	await check('真实点击收尾向玩家投粮，不改资格／其他原件', `const x=${JSON.stringify(legacyFarm)}; return V.span1Farms===0&&V.span1Harvests===x.harvests+x.farms&&(R.heldTotal(P,"ration")??0)===x.rations+x.farms&&JSON.stringify(P.items.filter(s=>s.id!=="ration"))===x.otherItems&&JSON.stringify(V.babelL10)===x.city&&JSON.stringify(V.babelL10Storage)===x.storage&&B.时间账()===x.time;`);
+	await check('旧田收完菜单隐藏，重复收获拒绝且不增粮', 'const host=document.querySelector("#passages .passage:last-of-type"),before=JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()}); return ![...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获旧档已有农田"))&&R.harvest(P)===false&&JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()})===before;');
 	await evaluate('return (async()=>{ await S.Save.slots.load(5); S.Engine.show(); })();'); await atPassage('探索');
 	await click('谈论正式留居'); await atPassage('L10 留居'); await click('考虑正式留居'); await atPassage('L10 留居确认');
 	await click('最终确认：留在共炉'); await atPassage('留在共炉');
