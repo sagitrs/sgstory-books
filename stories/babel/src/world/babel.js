@@ -864,7 +864,9 @@ const 硬开器械 = () => {
 /** 工具名（`world/tools.js` 后装载 ⇒ 能力探测；缺席时回落到 id，✗ 静默空串）。 */
 const TOOLS_名 = (id) => setup.BABEL?.工具?.TOOLS?.[id]?.name ?? id;
 const L4中甲入包 = (s) => {
-	R.give('mail');
+		/* ★`books#280` ⑪：**入包由箱自己结算** —— 引擎 `41-chest.js` 的 `openBy()` 里是 `RPG.loot(this)`
+		 *   ⇒ 箱的 `items:[{id:'mail',n:1}]` 已由**箱**给一次 ⇒ 本处**只留叙述**，✗ 再给一次
+		 *   （＝操作者实测「开箱得两件铁环甲」的真身 ✓）。 */
 	R.perform('箱盖翻过去，里头垫着干草 —— 一件铁环甲，还带着别人的味道。');
 };
 /* ★`books#280` ⑦（操作者亲测 · 0.0.2 阻塞）：宝箱**只在战后**出现 —— 与**采集**同一条门（`本层已战`）。
@@ -905,6 +907,9 @@ map.locations.get('L4').actions.unshift(
 				/* ★耐久**只在成功**扣 1（对齐 D 件「采成才扣」的语义）—— ✗ 在锁死支里也扣。 */
 				const slot = 器 ? (State.variables.inventory ?? []).find((x) => x.id === 器.id) : null;
 				if (slot) setup.BABEL.工具?.扣耐久?.(slot);
+				/* ★⑪：硬开路**也走箱自己的结算**（✗ 别只靠故事侧给 ⇒ 否则又成双源 ✓）。 */
+				c.opened = true;
+				R.loot(c);
 				L4中甲入包(s);
 			} else {
 				/* ★**不可逆**（设计要的「有代价的二择」）：没砸开 ⇒ 箱盖变形，钥匙也拧不动了（引擎的 `lockNow()` 形）。 */

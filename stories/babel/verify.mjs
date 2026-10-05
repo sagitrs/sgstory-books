@@ -3949,5 +3949,56 @@ head('第 56 格 `books#280` ⑩：战斗菜单只留战斗行动（道具收敛
 
 /* ★正常出口：**必须**在这里调用（`#1815` 的 BLOCKER：这一行被搬走 ⇒ 门恒绿）——
  *   连同上面的 `process.on('exit')` 自证，两层守「断言不是装饰」。 */
+/* ── ㊿ `books#280` ⑪：开箱**恰得一件**（入包统一由「箱自己的 loot」一处源）─────────────
+ *
+ * 病（操作者亲测 00:2x）：铁钥匙开 L4 铁皮箱 ⇒ 包内铁环甲 **×2**。
+ * 根因：引擎 `41-chest.js` 的 `openBy()` 里是 `RPG.loot(this)` ⇒ **箱自己**把
+ *   `items:[{id:'mail',n:1}]` 给一次；故事侧 `L4中甲入包()` 又 `R.give('mail')` ⇒ 第二次。
+ * 修（一处源＝箱的 loot）：①`L4中甲入包()` 去 `R.give`；②**硬开成功支补 `R.loot(c)`**
+ *   （该路本不走 `openBy`，只删 give 则**硬开不给物** ✗）。
+ * 断什么：**两条路各恰 1**（钥匙路 ≡ 硬开路 ⇒ 守「两路不得各给」）。
+ * 刀（记在提交信息）：把 `R.loot(c)`／`openBy` 任一侧改回「故事侧 `R.give` 补一次」⇒ 该路红。
+ */
+head('㊿ `books#280` ⑪：开箱恰得一件（钥匙路／硬开路各恰 1）');
+{
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	const 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 位存 = map.current;
+	const L4 = map.locations.get('L4');
+	const 取动作 = (re) => (L4.actions ?? []).find(
+		(a) => re.test(String(typeof a.text === 'function' ? a.text() : a.text)));
+	const 数mail = () => (State.variables.inventory ?? []).filter((x) => x.id === 'mail').length;
+	const 清包 = () => { State.variables.inventory = []; };
+	try {
+		/* ① 钥匙路 */
+		清包(); 置已战('L4'); R.give('iron-key');
+		const 钥 = 取动作(/用铁钥匙开箱/);
+		ok(!!钥, '★L4 动作表里找不到「用铁钥匙开箱」（动作表变了？）');
+		if (钥) {
+			钥.action();
+			const n = 数mail();
+			ok(n === 1, `★【⑪ 钥匙路】开箱后包内 \`mail\` 应**恰 1**（实得 ${n}）—— 两路各给一次即本 bug ✓`);
+		}
+		/* ② 硬开路（同一条守：也须恰 1） */
+		清包(); 置已战('L4'); R.give('axe');        // 硬开器械（1d6+6 ≥ 箱 hp ⇒ 必破）
+		try { R.rng?.setSequence?.(new Array(24).fill(0.0)); } catch (e) { /* 无注入面则用真随机 */ }
+		const 硬 = 取动作(/硬开/);
+		ok(!!硬, '★L4 动作表里找不到「硬开」（动作表变了？）');
+		if (硬) {
+			硬.action();
+			const n2 = 数mail();
+			ok(n2 === 1, `★【⑪ 硬开路】硬开后包内 \`mail\` 应**恰 1**（实得 ${n2}）`
+				+ ' —— ★守：**两路不得各有各的给法**（否则删了一处又漏另一处 ✗）');
+			if (n2 === 1) console.log('  开箱入包：钥匙路恰 1 ✓｜硬开路恰 1 ✓（一处源＝箱的 loot）');
+		}
+	} finally {
+		try { R.rng?.reset?.(); } catch (e) { /* ✗ 吞 */ }
+		State.variables.inventory = 包存;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) map.moveTo(位存);
+	}
+}
+
+
 printSummary();
 
