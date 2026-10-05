@@ -51,6 +51,30 @@ const ok = (名, 条件, 读='') => { (条件?档:红).push(条件?`  ✓ ${名}
 let chromium;
 try { chromium = createRequire(path.join(PW,'noop.js'))('playwright').chromium; }
 catch (e) { console.error(`✗ 环境错（取不到 playwright：${PW}）：${e.message}`); process.exit(2); }
+/* ============ `--selftest`（★判据的牙齿；✗ 不碰真产物 ✓）============ */
+if (process.argv.includes('--selftest')) {
+  const 红S = [];
+  const 检查 = (n, c, 读) => { if (!c) 红S.push(`  ✗ ${n}  ｜${读}`); else console.log(`  ✓ ${n}  ｜${读}`); };
+  const 段内样本 = ['拾起', '用已装备长剑攻击', '空手打击', '（跳过本回合）', '采集'];
+  const 壳样本 = ['SAVES', 'RESTART', '查看存档', '通知：全部（3）'];
+  检查('K1 段内含「攻击」⇒ 要点为真', 要点(段内样本, { 含: '攻击' }) === true, JSON.stringify(要点(段内样本, { 含: '攻击' })));
+  // K2 ★★测**主流程实际走的那一步**（`取段内`）：混合给「段内项 ＋ 壳项」⇒ 壳项须被排除 ✓
+  const 混合 = [{ 文: '攻击', 在段内: true }, { 文: '查看存档', 在段内: false }, { 文: 'SAVES', 在段内: false }, { 文: '（跳过本回合）', 在段内: true }];
+  const 取后 = 取段内(混合);
+  检查('K2 混合项 ⇒ `取段内` 排除壳（查看存档／SAVES 不得入集）', !取后.includes('查看存档') && !取后.includes('SAVES') && 取后.includes('攻击'),
+       JSON.stringify(取后));
+  const 全壳 = 壳样本.map((t) => ({ 文: t, 在段内: false }));
+  检查('K2b 全壳项 ⇒ `取段内` 得空集（⇒ 壳里的「查看」进不了可点集 ✓）', 取段内(全壳).length === 0, JSON.stringify(取段内(全壳)));
+  检查('K3 前缀形：《采集》真、《不采了，继续向上》假（✗ 子串混淆）', 要点(段内样本, { 前缀: '采集' }) === true && 要点(['不采了，继续向上'], { 前缀: '采集' }) === false,
+       `采集=${要点(段内样本, { 前缀: '采集' })}｜不采了=${要点(['不采了，继续向上'], { 前缀: '采集' })}`);
+  const 自文 = fs.readFileSync(new URL(import.meta.url), 'utf8');
+  const 段内取法数 = (自文.match(/段内链接\(p\)/g) || []).length;
+  const 活代码回退 = /const ls=await 链接\(p\)/.test(自文);
+  检查('K4 ★四处取法皆为**段内链接**（✗ 不许回退成全文档）', 段内取法数 >= 4 && !活代码回退, `段内取法 ${段内取法数} 处｜活代码回退=${活代码回退}`);
+  console.log(红S.length ? `\n  ⇒ 自检失败 ${红S.length} 条\n${红S.join('\n')}` : '\n  ⇒ 自检：5/5 如期（K1／K3 判 `要点()`；★K2／K2b 判 `取段内` 的**排除壳**；K4 机械防"取法回退" ✓）');
+  process.exit(红S.length ? 1 : 0);
+}
+
 if (!fs.existsSync(产物)) { console.error(
   `✗ 环境错（产物不在）\n    解析出的**绝对路径**：${产物}\n    （--books 解析为：${B}）\n` +
   `  ⇒ 先 python3 <引擎检出>/build.py ${B}/stories/babel --out babel-trial.html`); process.exit(2); }
@@ -73,6 +97,17 @@ const b = await chromium.launch({executablePath:CHROME, args:['--no-sandbox','--
 const 新页 = async () => { const c = await b.newContext(); const p = await c.newPage();
   await p.goto('file://'+产物); await p.waitForTimeout(2600); return p; };
 const 链接 = (p) => p.evaluate(()=>[...document.querySelectorAll('a,button')].map(e=>e.innerText.trim()).filter(Boolean));
+/* ★**段内可点集**（`books#323` 族体例：本席在 `e2e-280-encounter-stop.mjs` 上先证过 ✓）：
+ *   全文档会把 SugarCube 的 **UI 壳**（`SAVES`／`RESTART`／通知条／对话框按钮）也算进"可点项"
+ *   ⇒ 「点哪一项」可能点到壳上（壳文案日后含「查看」／「攻击」一类词 ⇒ 子串判**假绿** ✗；或脚本顺手点第一项却点到壳 ⇒ 行为不可解释 ✗）。
+ *   ⇒ 判"该点哪一项"一律只取 **`#passages` 段内**；段外的壳另有 `链接()` 供"页脚/壳"面单独判 ✓。 */
+const 读链接项 = (p) => p.evaluate(() => [...document.querySelectorAll('a,button')].map((e) => ({ 文: e.innerText.trim(), 在段内: !!e.closest('#passages') })).filter((x) => x.文));
+/** ★纯判据：**排除壳**（段外项）⇒ 只留段内文案。★这一步就是"壳标签✗再入可点集"的实现点（可纯测 ✓）。 */
+export function 取段内(项) { return (项 || []).filter((x) => x.在段内 === true).map((x) => x.文); }
+/** ★段内可点集（＝读＋筛两步；✗ 不再直接用 `#passages` 选择器 —— 否则"排除壳"不可纯测 ✓）。 */
+const 段内链接 = async (p) => 取段内(await 读链接项(p));
+/** ★纯判据：段内项里"要不要点某一项"（主流程与 `--selftest` 共用 ✓ ⇒ 判据的期望不与被测物同源）。 */
+export function 要点(段内文, 形) { return (段内文 || []).some((x) => (形.前缀 ? String(x).startsWith(形.前缀) : String(x).includes(形.含))); }
 const 正文 = (p) => p.evaluate(()=>document.body.innerText);
 const run  = (p) => p.evaluate(()=>{try{return JSON.parse(JSON.stringify(SugarCube.State.variables.babelRun))}catch(e){return null}});
 const 点 = async (p,t) => { const l=p.locator('a,button').filter({hasText:t}).first();
@@ -92,31 +127,34 @@ const 到L1事件屏 = async p => {
     if (装备 !== true) 档.push(`  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped=${JSON.stringify(装备)}）`);
   }
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
-  for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 链接(p);
+  for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
     else if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); }
-  for (let k=0;k<30;k++){ const ls=await 链接(p);
+  for (let k=0;k<30;k++){ const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.startsWith('采集'))||ls.some(x=>x.includes('不采了'))) break;
     if (ls.some(x=>x.includes('继续探索'))){ await 点(p,'继续探索'); continue; }
     if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); } else await p.waitForTimeout(500); } };
+
+
+
 
 console.log(`◆ 候选钉死：books HEAD=${HEAD} ｜ pin=${PIN} ｜ 产物 sha1=${SHA.slice(0,40)}`);
 
 try {
   // ── 臂① 遭遇＝每层一次（两向）──
   let p = await 新页(); await 到L1事件屏(p); let r = await run(p);
-  ok('臂① 胜后「遭遇」已消耗', !(await 链接(p)).some(x=>x.includes('遭遇')), `kills=${r.kills}`);
+  ok('臂① 胜后「遭遇」已消耗', !(await 段内链接(p)).some(x=>x.includes('遭遇')), `kills=${r.kills}`);
   await p.close();
   p = await 新页(); await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
   await 点(p,'拾起'); await p.waitForTimeout(300); await 点(p,'长剑'); await 点(p,'遭遇'); await p.waitForTimeout(1400);
-  for (let i=0;i<40;i++){ const rr=await run(p); if(rr?.deaths>0) break; const ls=await 链接(p);
+  for (let i=0;i<40;i++){ const rr=await run(p); if(rr?.deaths>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); else await p.waitForTimeout(400); }
-  for (let k=0;k<25;k++){ const ls=await 链接(p);
+  for (let k=0;k<25;k++){ const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.startsWith('采集'))||ls.some(x=>x.includes('不采了'))) break;
     if (ls.some(x=>x.includes('继续探索'))){ await 点(p,'继续探索'); continue; }
     if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); else await p.waitForTimeout(500); }
   r = await run(p);
-  ok('臂① 未胜/僵持后回屏「遭遇」可重试', (await 链接(p)).some(x=>x.includes('遭遇')), `deaths=${r?.deaths} kills=${r?.kills}`);
+  ok('臂① 未胜/僵持后回屏「遭遇」可重试', (await 段内链接(p)).some(x=>x.includes('遭遇')), `deaths=${r?.deaths} kills=${r?.kills}`);
   await p.close();
 
   // ── 臂② 采净一行 ──
