@@ -105,8 +105,13 @@ try {
     HP文: /体力：\s*(\d+)\s*\/\s*(\d+)/.exec(document.body.textContent)?.[1] ?? null,
   }));
 
+  /* ★②-1 **到达拍**（`books#351` 起由 `onEnter` 的一次性 `choice` 承担 ⇒ **每次进层先停一拍**）：
+   *   ✗ 先点过它，后面的「拾起」取不到 ⇒ 本档自那笔起**静默停在拍上**（★CI ✗ 跑本族 ⇒ 无人照见）。 */
+  const 清到达拍 = async () => { const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
+    if (await l.count() === 0) return false; await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true; };
   /* ── 起手（★只拾起，✗ 不点武器名 —— 那是卸装；见 `books#280` ⑭）── */
-  await 点真('睁开眼'); await 点真('站起来'); await p.waitForTimeout(700);
+  await 点真('睁开眼（普通）'); await 点真('站起来'); await p.waitForTimeout(700);
+  await 清到达拍();   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
   await 点真('拾起'); await p.waitForTimeout(400);
   /* ★装置：造一件绷带（★边界见档头） */
   const 造 = await p.evaluate(() => { try {

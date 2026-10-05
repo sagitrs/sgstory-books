@@ -98,8 +98,12 @@ const 链接 = (p) => p.evaluate(() => [...document.querySelectorAll('a,button')
 const 正文 = (p) => p.evaluate(() => document.body.innerText);
 const run = (p) => p.evaluate(() => { try { return JSON.parse(JSON.stringify(SugarCube.State.variables.babelRun)); } catch (e) { return null; } });
 const 点 = async (p, t) => { const l = p.locator('a,button').filter({ hasText: t }).first(); if (await l.count() === 0) return false; await l.click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(900); return true; };
+/** ★②-1 **到达拍**：`books#351` 起由 `onEnter` 一次性 `choice` 承担 ⇒ **每次进层先停一拍**。
+ *   ✗ 先点过它，后面的「拾起」取不到 ⇒ 本档会**静默停在拍上**（★CI ✗ 跑本族 ⇒ 无人照见）。 */
+const 清到达拍 = async (p) => { const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
+  if (await l.count() === 0) return false; await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true; };
 /** 到 L1 事件屏且**刚点完「遭遇」前的最后一屏**（照 playtest 族的形 ✓）。 */
-const 到L1 = async (p) => { await 点(p, '睁开眼'); await 点(p, '站起来'); await p.waitForTimeout(700); await 点(p, '拾起'); await p.waitForTimeout(300); await 点(p, '长剑'); await p.waitForTimeout(300); };
+const 到L1 = async (p) => { await 点(p, '睁开眼（普通）'); await 点(p, '站起来'); await p.waitForTimeout(700); await 清到达拍(p); await 点(p, '拾起'); await p.waitForTimeout(300); await 点(p, '长剑'); await p.waitForTimeout(300); };
 
 try {
   const p = await 新页(); await 到L1(p);

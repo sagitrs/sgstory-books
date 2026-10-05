@@ -119,6 +119,12 @@ const 点段内 = async (p,t) => { const l=p.locator('#passages a,#passages butt
   if (await l.count()===0) return false; await l.click({timeout:5000}).catch(()=>{}); await p.waitForTimeout(900); return true; };
 const 点 = async (p,t) => { const l=p.locator('a,button').filter({hasText:t}).first();
   if (await l.count()===0) return false; await l.click({timeout:5000}).catch(()=>{}); await p.waitForTimeout(900); return true; };
+/* ★②-1 **到达拍**：`books#351` 起由 `onEnter` 的一次性 `choice` 承担 ⇒ **每次进层先停一拍**。
+ *   ✗ 先点过它，后面的「拾起／遭遇」一个都取不到 ⇒ 本档会**静默停在拍上**
+ *   （★实测：本档因此在当前 main 上「deaths=0 kills=0、gathered=0、已跳过=undefined」全零）。
+ *   ★CI ✗ 跑本族 ⇒ 无人照见。取法照 `tools/e2e-drive.mjs` 的 `清到达拍`（同一语义）。 */
+const 清到达拍 = async p => { const l=p.locator('.choice-box button').filter({hasText:/^（到达）/});
+  if (await l.count()===0) return false; await l.first().click({timeout:4000}).catch(()=>{}); await p.waitForTimeout(700); return true; };
 const 上行在 = async p => (await 链接(p)).some(x=>x.startsWith('向上，去第'));
 const 采集在 = async p => (await 链接(p)).some(x=>x.startsWith('采集'));
 /* ★★`prepL1`：**一处源**的 L1 起手 —— 睁开眼 ⇒ 站起来 ⇒ **拾起** ⇒ 遭遇 ⇒ 等战斗 UI 起来。
@@ -128,14 +134,16 @@ const 采集在 = async p => (await 链接(p)).some(x=>x.startsWith('采集'));
  *   （`#328` 修了一处；★`:149` 那处是 ★**`tester-3`** 在 `#328` 合后核出的潜伏）⇒ ★故抽成**一处源**，口径只写一次。
  * ★并把**前件**钉在这里：拾起后**武器须在手上** —— ✗ 成立不了就明印"后续读数不可用"。 */
 const prepL1 = async (p) => {
-  await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面的「拾起／遭遇」全落空
   await 点(p,'拾起'); await p.waitForTimeout(400);
   const 在手上 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
   if (在手上 !== true) 档.push('  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped='+JSON.stringify(在手上)+'）');
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
 };
 const 到L1事件屏 = async p => {
-  await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
   /* ★★★`#280` ⑭ 实测（A/B 隔离，♪变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
    *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。
    *   ⑩（`itemsInBag`）上线后菜单**只留在手上的武器** ⇒ 卸掉之后菜单只剩「空手打击」
@@ -165,7 +173,8 @@ try {
   let p = await 新页(); await 到L1事件屏(p); let r = await run(p);
   ok('臂① 胜后「遭遇」已消耗', !(await 段内链接(p)).some(x=>x.includes('遭遇')), `kills=${r.kills}`);
   await p.close();
-  p = await 新页(); await 点(p,'睁开眼'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  p = await 新页(); await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面的 prepL1 全落空
   await prepL1(p);   // ★一处源（✗ 不再各写一份 prep）
   for (let i=0;i<40;i++){ const rr=await run(p); if(rr?.deaths>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); else await p.waitForTimeout(400); }
