@@ -390,12 +390,14 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 
 ## 24. `e2e-311-visual.mjs` —— 低层装饰呈现的真 DOM 臂
 
+检视前先读取 `.github/engine-ref.json` 的完整 `ref`，在**本席独立引擎 worktree** 检出该提交；不要切换共享或他席树。两支工具均先核完整 HEAD，不提供跳过 pin 的开关。随后按引擎的依赖说明准备该树可解析的 `node_modules/jsdom`（books 仍零依赖）。
+
 先用声明的引擎重建 `stories/babel/babel-trial.html`（绝对故事路径）。固定入口：
-`timeout 60 node tools/e2e-311-visual.mjs --engine <引擎检出>`。
+`timeout 60 node tools/e2e-311-visual.mjs --engine <完整 pin 引擎检出>`；追加 `--selftest` 注入正文与段落放置两刀。
 
 期望：非零 `total`、`failed: 0`、rc 0；断言或产品异常 rc 1；缺参数、产物、jsdom 或引擎 HEAD 与完整 pin 错配等装置问题 rc 2。
 消费完整产物与声明源字节，断只读表、正文标题／页脚画像、页头与系统控件源码换行不生成空白 `<br>`、具名合成 `error/load`、
-20 次刷新不写领域／回合／存档与缺素材文字回退；另以具名 `Engine.play('探索')` 铺初载，
+20 次刷新不写领域／回合／存档与缺素材文字回退。输出把 `imageFailure` 和 `fullPanelRedraw` 分格，分别比较非空正文文本节点序列与所测源／存档。还检查装饰图未进入 `p` 段落；本产物可能没有 `p`，因此不能只比较空段落列表冒称正文一致。自检必须命中 `TEXT_SEQUENCE_CHANGED`／`DECORATION_IN_PARAGRAPH`，删除临时节点后精确恢复；不调用玩法。另以具名 `Engine.play('探索')` 铺初载，
 判页头早于异步地图入场时环境图仍由已有面板刷新接线到 L1。这不是正常玩家输入。
 原因：无头装配夹具不执行真实 DOM 错误委托，也不足以判断地图入场与页头的先后。
 **jsdom 不解码图片、不判字体／布局；图片失败是显式注入的夹具，不是玩家遇到的加载失败。**
@@ -404,7 +406,8 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 ## 25. `e2e-311-layout.mjs` —— 两种视口的原生几何与四刀
 
 - **清单**：完整产物、两个独立 Chromium context。720×500／DPR2 的侧栏必须展开，正文左缘须不小于侧栏右缘；390×844／DPR1／模拟触控下，人物不与切换按钮相交，fixed HUD 在首屏且标题在其下；两臂均无横向溢出。再以具名 DOM-only `body.战中` CSS 夹具检查隐藏侧栏不留下占位、标题在 fixed HUD 下；不设置游戏的「战中」标志、不模拟战斗或门禁。
+- **战中正文独立复算**：在同一完整 pin／产物前置下，执行 `PW_DIR=<playwright 目录> CHROME_BIN=<Chrome> timeout 90 node tools/e2e-311-layout.mjs --books "$PWD" --engine <完整 pin 检出> --combat-redraw`。这与 `--selftest` 分开：一个 fresh context，真实链接从 L1 取剑、首胜、确认、采净至 L2，停在空手目标选择后，分别记录图片故障和首次全量重绘。首战最多四次用剑；未胜则具名 rc2、该场景未覆盖，不重开／重抽。全量正文若变则 rc1 并保留前后序列及面板文本，不能拿初入 L1 绿或 repeat 绿代它。
 - **固定命令**：先按声明 pin 重建产物，再执行 `PW_DIR=<含 node_modules/playwright 的目录> CHROME_BIN=<Chrome 可执行文件> timeout 60 node tools/e2e-311-layout.mjs --books "$PWD" --engine <完整 pin 检出>`；追加 `--selftest` 跑四刀。若浏览器缺系统库，以本席私有 `LD_LIBRARY_PATH` 补齐；临时目录用本席 `~/tmp`，不全局安装。
-- **期望读数**：JSON `cases` 恰两臂、`initialFailures: []`、`rc: 0`。自检须分别具名 `ZOOM_SIDEBAR_OVERLAP`／`NARROW_PORTRAIT_OVERLAP`；两个视口的战期 CSS 刀各须具名 `COMBAT_HIDDEN_SIDEBAR_SPACE`／`COMBAT_HUD_TITLE`。每刀恢复后 `restoredFailures: []`，退出战期 CSS 夹具后所测源／存档不变。产品／断言 rc1；缺参数、精确 pin 错配、缺产物／Playwright／浏览器等装置错 rc2；不以缺席计绿。
+- **期望读数**：JSON `cases` 恰两臂、`initialFailures: []`、`decoration.failures: []`、`rc: 0`；图片故障与全量重绘各自输出正文／所测源不变读数，不能以一格通过代另一格。自检须分别具名 `ZOOM_SIDEBAR_OVERLAP`／`NARROW_PORTRAIT_OVERLAP`；两个视口的战期 CSS 刀各须具名 `COMBAT_HIDDEN_SIDEBAR_SPACE`／`COMBAT_HUD_TITLE`。每刀恢复后 `restoredFailures: []`，退出战期 CSS 夹具后所测源／存档不变。产品／断言 rc1；缺参数、精确 pin 错配、缺产物／Playwright／浏览器等装置错 rc2；不以缺席计绿。
 - **设立理由**：只查 CSS 文本或 jsdom 看不见真正遮挡。四刀只临时覆写 CSS，以同一几何判词核前件、故障与恢复；不改文件、不给装备、不跳段落、不抽随机、不存档。
-- **边界与 CI 引用面**：720×500 是实际桌面 200% 缩放观察所对应的 **CSS 视口模型**，本工具不操作浏览器工具栏缩放；390×844 不是物理手机。只通过真实链接进入 L1 后量几何，不判长 HUD、字体、八图解码、完整 WCAG 或首次全量重绘的文字变化。这是本地独立入口，未修改 `.github/workflows/**`；既有 `babel-tests.yml` 仍调用 `verify.mjs` 第62格，不声称 CI 已调用本工具。
+- **边界与 CI 引用面**：720×500 是实际桌面 200% 缩放观察所对应的 **CSS 视口模型**，本工具不操作浏览器工具栏缩放；390×844 不是物理手机。通过真实「战斗教学」链接进入 L1 后量几何；另分别记录八份源的 `Image.decode()`／尺寸、具名坏图的原生失败隐藏与正文／所测源不变、初入 L1 全量刷新前后的非空文本节点序列。八份源解码不等于八张 live 图。初入 L1 通过也**不消解历史战中首次正文红**，不判长 HUD、字体、完整 WCAG 或历史首红的成因。这是本地独立入口，未修改 `.github/workflows/**`；既有 `babel-tests.yml` 仍调用 `verify.mjs` 第62格，不声称 CI 已调用本工具。

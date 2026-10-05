@@ -12,11 +12,11 @@ import { resolveEnv, boot, playPassage, unhandledErrors } from './e2e-harness.mj
 let env;
 try {
 	const args = process.argv.slice(2);
-	if (args.length !== 2 || args[0] !== '--engine') throw new Error('usage: node tools/e2e-311-visual.mjs --engine <engine-tree>');
-	env = resolveEnv(args[1]);
+	if ((args.length !== 2 && !(args.length === 3 && args[2] === '--selftest')) || args[0] !== '--engine') throw new Error('usage: node tools/e2e-311-visual.mjs --engine <engine-tree> [--selftest]');
 	const pin = JSON.parse(fs.readFileSync(new URL('../.github/engine-ref.json', import.meta.url), 'utf8')).ref;
-	const actual = execFileSync('git', ['-C', env.root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+	const actual = execFileSync('git', ['-C', path.resolve(args[1]), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 	if (actual !== pin) throw new Error(`engine HEAD ${actual} differs from declared full pin ${pin}`);
+	env = resolveEnv(args[1]);
 } catch (error) {
 	console.error(error.message);
 	process.exit(2);
@@ -24,7 +24,9 @@ try {
 let session;
 let total = 0;
 const failures = [];
+const surfaces = {};
 const ok = (condition, message) => { total++; if (!condition) failures.push(message); };
+const selftest = process.argv.includes('--selftest');
 try {
 	session = await boot(env);
 	const { SC, doc, window } = session;
@@ -49,16 +51,39 @@ try {
 	ok(!!doc.querySelector('#passages .footersave') && !doc.querySelector('#passages .footersave br'), 'footer source formatting became blank lines inside system controls');
 	const storage = () => Object.fromEntries(Object.keys(window.localStorage).sort().map((key) => [key, window.localStorage.getItem(key)]));
 	const snapshot = () => JSON.stringify({ variables: SC.State.variables, turns: SC.State.turns, passage: SC.State.passage, storage: storage() });
-	const before = snapshot();
-	const text = doc.querySelector('#passages').textContent;
+	const sequence = () => {
+		const passage = doc.querySelector('#passages .passage:not(.passage-out)');
+		const walk = doc.createTreeWalker(passage, window.NodeFilter.SHOW_TEXT), nodes = [];
+		for (let node = walk.nextNode(); node; node = walk.nextNode()) if (node.nodeValue.trim()) nodes.push(node.nodeValue);
+		return { text: passage.textContent, nodes, paragraphs: Array.from(passage.querySelectorAll('p'), p => p.textContent) };
+	};
+	const decorationInParagraph = () => !!doc.querySelector('#passages .passage:not(.passage-out) p img[data-babel-asset]');
+	const before = snapshot(), textBefore = sequence();
+	ok(textBefore.nodes.length > 0, 'text-sequence prerequisite: no meaningful rendered text nodes');
+	ok(!decorationInParagraph(), 'decorative image entered the paragraph sequence');
+	if (selftest) {
+		const title = doc.querySelector('.babel-reading-title'), probe = doc.createTextNode('具名正文刀');
+		try { title.append(probe); ok(JSON.stringify(sequence()) !== JSON.stringify(textBefore), 'TEXT_SEQUENCE_CHANGED knife missed'); }
+		finally { probe.remove(); }
+		ok(JSON.stringify(sequence()) === JSON.stringify(textBefore), 'text knife did not restore the exact sequence');
+		const paragraph = doc.createElement('p'); paragraph.append(player.cloneNode());
+		try { doc.querySelector('#passages .passage:not(.passage-out)').append(paragraph); ok(decorationInParagraph(), 'DECORATION_IN_PARAGRAPH knife missed'); }
+		finally { paragraph.remove(); }
+		ok(!decorationInParagraph() && JSON.stringify(sequence()) === JSON.stringify(textBefore), 'paragraph knife did not restore decoration placement/text');
+		surfaces.textKnives = ['TEXT_SEQUENCE_CHANGED', 'DECORATION_IN_PARAGRAPH'];
+	}
 	if (player) {
 		// Named fault fixture: jsdom does not decode images, so inject DOM error explicitly.
 		player.dispatchEvent(new window.Event('error'));
 		ok(player.hidden === true, 'synthetic image error did not hide its decoration');
-		ok(doc.querySelector('#passages').textContent === text, 'image failure removed story text/controls');
+		const sameText = JSON.stringify(sequence()) === JSON.stringify(textBefore);
+		ok(sameText, 'image failure changed the exact rendered text sequence');
 		player.dispatchEvent(new window.Event('load'));
+		surfaces.imageFailure = { synthetic: true, hidden: player.hidden, textSequenceUnchanged: sameText };
 	}
-	ok(snapshot() === before, 'synthetic image error/load changed domain, passage, turn count or saves');
+	const faultSourcesSame = snapshot() === before;
+	ok(faultSourcesSame, 'synthetic image error/load changed domain, passage, turn count or saves');
+	if (surfaces.imageFailure) surfaces.imageFailure.domainAndSavesUnchanged = faultSourcesSame;
 	const random = window.Math.random;
 	const rng = new Map(Object.entries(R.rng).filter(([, value]) => typeof value === 'function'));
 	const trap = () => { throw new Error('visual redraw consumed randomness'); };
@@ -69,7 +94,12 @@ try {
 			visual.playerHTML(); visual.itemHTML('sword'); visual.enemyHTML({ name: '幼獾' }); visual.sceneHTML();
 			R.refreshPanels();
 		}
-		ok(snapshot() === before, '20 panel/decorative redraws changed domain or saves');
+		const textAfter = sequence(), sameText = JSON.stringify(textAfter) === JSON.stringify(textBefore), sameSources = snapshot() === before;
+		ok(sameSources, '20 panel/decorative redraws changed domain or saves');
+		ok(sameText, 'full-panel redraw changed the exact rendered text sequence');
+		surfaces.fullPanelRedraw = { redraws: 20, textSequenceUnchanged: sameText, domainAndSavesUnchanged: sameSources,
+			textNodeCount: textBefore.nodes.length, paragraphCount: textBefore.paragraphs.length, before: textBefore, after: textAfter,
+			scope: 'initial passage only; does not clear the historical in-combat first red' };
 	} finally {
 		window.Math.random = random;
 		for (const [name, value] of rng) R.rng[name] = value;
@@ -91,12 +121,15 @@ try {
 	ok(SC.setup.BABEL.map?.current === 'L1', 'initial map-entry fixture did not establish L1');
 	const scene = doc.querySelector('#passages .babel-scene-frame img');
 	ok(scene?.dataset.babelAsset === 'babel-scene-l1' && scene.width === 1280 && scene.height === 360, 'initial L1 backdrop missing/stale after asynchronous entry');
-	const afterEntry = snapshot();
+	const afterEntry = snapshot(), entryText = sequence();
 	R.refreshPanels();
 	ok(snapshot() === afterEntry, 'map-entry decoration redraw changed state or saves');
+	const entryTextSame = JSON.stringify(sequence()) === JSON.stringify(entryText);
+	ok(entryTextSame, 'initial-map full-panel redraw changed the exact rendered text sequence');
+	surfaces.initialMapRedraw = { textSequenceUnchanged: entryTextSame, textNodeCount: entryText.nodes.length, paragraphCount: entryText.paragraphs.length };
 	const errors = unhandledErrors(session);
 	ok(errors.bad.length === 0, `unhandled artifact errors: ${errors.bad.join(' | ')}`);
-	console.log(JSON.stringify({ apparatus: 'jsdom; synthetic image events and named Engine.play initial-map fixture; no layout/font/decode verdict', total, passed: total - failures.length, failed: failures.length, redraws: 20, ignoredConsoleNoise: errors.ignored, warnings: session.consoleMsgs.filter((entry) => entry.kind === 'warn').map((entry) => entry.msg) }, null, 2));
+	console.log(JSON.stringify({ apparatus: 'jsdom; synthetic image events and named Engine.play initial-map fixture; no layout/font/decode verdict', total, passed: total - failures.length, failed: failures.length, redraws: 20, surfaces, ignoredConsoleNoise: errors.ignored, warnings: session.consoleMsgs.filter((entry) => entry.kind === 'warn').map((entry) => entry.msg) }, null, 2));
 } catch (error) {
 	failures.push(error.stack ?? String(error));
 } finally {
