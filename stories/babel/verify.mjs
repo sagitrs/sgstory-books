@@ -4241,6 +4241,23 @@ head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随�
 				ok(true, '（无 `$player` 面 ⇒ 本臂不判）');
 			}
 		}
+		/* ⑤ **跳过序章 · 直达第 10 层**（⑬ 同域 · 操作者令 2026-10-05）—— 三条：
+		 *   ① 落点＝`L10-camp`（＝步行/卷轴**同一落点** ✓）② 三笔前置账**逐一为真**
+		 *   ③ **✗ 不改难度口径**（本入口＝普通 ✓ ⇒ 即使先设了「简单」也须被复位 ✓）。 */
+		{
+			State.variables.babelRun = {};
+			B.开局('简单');                                   // ★先置「简单」⇒ 验证直达把它复位成普通 ✓
+			B.直达十层();
+			const r = State.variables.babelRun ?? {};
+			const 九层 = Array.from({ length: 9 }, (_, i) => `L${i + 1}`);
+			const 已战全 = 九层.every((l) => r.已战?.[l] === true);
+			const 跳过全 = 九层.every((l) => r.已跳过?.[l] === true);
+			ok(map.current === 'L10-camp', `★【⑬ ⑤】直达落点须＝L10-camp（实得 ${String(map.current)}）`);
+			ok(已战全 && 跳过全, `★【⑬ ⑤】九层「已战＋已跳过」两账须全置（已战 ${JSON.stringify(r.已战 ?? null)}｜跳过 ${JSON.stringify(r.已跳过 ?? null)}）`);
+			ok(B.已过?.('L9') === true, '★【⑬ ⑤】头目进度须走**写口**（`记战果`）⇒ `已过(\'L9\')` 为真');
+			ok(B.设难度() === '普通', `★【⑬ ⑤】直达＝普通档（✗ 不并选）—— 实得 ${B.设难度()}`);
+			console.log(`  跳过序章·直达：落点 ${String(map.current)} ✓｜已战/跳过两账全置 ✓｜已过('L9')=${String(B.已过?.('L9'))} ✓｜档=${B.设难度()} ✓`);
+		}
 	} finally {
 		if (State.variables.player && 原玩家血) { State.variables.player.hp = 原玩家血.hp; State.variables.player.maxHp = 原玩家血.maxHp; }   // ★按**取到的原值**复原（✗ 不写死 18/20 —— 那是构造点的数，写死＝又一处源）
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
