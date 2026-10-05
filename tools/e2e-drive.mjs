@@ -540,6 +540,39 @@ if (has('--selftest')) {
 		F('★面 Q 两向 · 正例臂：发了战斗事件并刷新 ⇒ 面板**有内容**（✗ 无则本面读的是空面）', 写得上 === true);
 		F('★面 Q 唯一变量：只把 `refreshPanels` 换成 no-op ⇒ 同一「结束」操作**清不掉**屏上读数（读数确由写入而来）', noop后 === true);
 		F('★面 Q 反例臂：换回真 `refreshPanels` ⇒ 同一操作**清得掉**（✗ 则上一条是「本来就空」造的假刀）', 清得掉 === true);
+
+		/* ★`books#280` ② 第③节拍（**回合切换核齐** · `sgstory`-side 引擎开关无关）：
+		 *   「每回合结算后等玩家出招」⇒ ★在**切回合那一刻**必须**核齐**：该有的读数**全在且是新的** ✓（✗ 半屏／✗ 停在旧场 ✓）。
+		 *   ★判据形（三向 —— ✗ 只断"非空"：**停在旧场**那种也非空 ⇒ 会全绿 ✗）：
+		 *     ①**新鲜**：先让屏上是「旧场」（敌名 A ✓）⇒ 发**新** `turnEnd`（敌名 B）＋刷新 ⇒ 屏上须**含 B 且不含 A** ✓
+		 *     ②**结算中不许冒充"已在等我"**：发新事件**之前**取一次读数 ⇒ 须**不含 B** ✓
+		 *     ③**玩家面同刻非空**（HP 面板 ✓）⇒ "半屏"（只画了敌人面）当场可辨 ✓
+		 *   ★本笔**不改行为** ✓ —— 核齐＝现状成立，本笔落的是**证据**（票面句 ✓）。 */
+		{
+			const R2 = s.SC.setup.RPG, D2 = s.SC.setup.DND3;
+			const 面文 = (sel) => (s.doc.querySelector(sel)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+			const 旧 = new (R2.Character)({ name: '旧场狼', hp: 4, maxHp: 6 });
+			const 新 = new (R2.Character)({ name: '新场獾', hp: 5, maxHp: 6 });
+			R2.events.emit('battle:turnEnd', { actor: D2.Player, battle: { enemies: [旧], players: [D2.Player] } });
+			R2.refreshPanels();
+			const 屏上旧 = 面文('[data-panel="enemy"]');
+			const 结算中 = 面文('[data-panel="enemy"]');      // ★②这一刻还是"旧场"
+			R2.events.emit('battle:turnEnd', { actor: D2.Player, battle: { enemies: [新], players: [D2.Player] } });
+			R2.refreshPanels();
+			const 屏上新 = 面文('[data-panel="enemy"]');
+			const 玩家面 = 面文('[data-panel="hp"]');
+			F(`★面 ②-3① **回合切换核齐·新鲜**：新回合 payload 的敌名「新场獾」须上屏且**旧名「旧场狼」须已被替掉**（✗ 停在旧场＝全绿的假核齐）｜实得：前「${屏上旧.slice(0, 40)}」→ 后「${屏上新.slice(0, 40)}」`,
+				屏上新.includes('新场獾') && !屏上新.includes('旧场狼'));
+			F('★面 ②-3② **结算中 ✗ 冒充"已在等我"**：发新事件**之前**的读数**不含**新回合敌名', !屏上旧.includes('新场獾') && 结算中.includes('旧场狼'));
+			F(`★面 ②-3③ **半屏可辨·玩家面同刻非空**（只画了敌人面 ⇒ 本行红）｜实得 hp 面「${玩家面.slice(0, 40)}」`, 玩家面.length > 0);
+			/* ★**收干净**（本臂的纪律）：我往会话里塞了"新一轮战斗" ⇒ ★若不清掉，**后面的臂**会看到不同的可点集
+			 *   （实测：下一臂就崩在"找不到『向上，去第 2 层』按钮"✗ —— 那是我**污染了共享会话状态** ✗，✗ 不是产品缺陷 ✓）。
+			 *   ⇒ 照本文件既有 Q 臂的收尾法：发 `battle:end` ＋ 刷新 ⇒ 把那两块面板清回原样 ✓。 */
+			R2.events.emit('battle:end', { players: [D2.Player], enemies: [新] });
+			R2.refreshPanels();
+			F('★面 ②-3④ **本臂不留痕**：收尾后敌人面**不含**本臂塞进去的两个敌名（✗ 否则后面的臂会被本臂污染）',
+				!面文('[data-panel="enemy"]').includes('新场獾') && !面文('[data-panel="enemy"]').includes('旧场狼'));
+		}
 	}
 
 	/* ★面 T 的**刀**（`books#200` P0）：唯一变量＝把引擎的 `applyHeal` 换回**P0 原形**
