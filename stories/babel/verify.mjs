@@ -4097,5 +4097,84 @@ head('53 `books#280` ②-2：遭遇停 —— 未选前零结算 ＋ 抽签只�
 }
 
 
+/* ── 58 `books#280` ⑮：**战中的页脚背包须可提交**（门 ＋ 刷新钩子）────────────────────
+ *
+ * 病（`#332` 臂①「找不到目标」的真身）：页脚背包在战期**只渲染不可点的 `<span>`** ⇒ 真实鼠标点不到。
+ * 真因（本席三点实测 + 读码）：面板是**段落渲染那一刻**生成的 —— 彼时战还没起 ⇒ 走「不可提交」那支；
+ *   `fight()` 之后才把 `setup.BABEL.战中` 置真 ⇒ ★**只置真而✗ 刷面板**，页脚就一直是老形 ✗。
+ *   （✗ 不是 `RB.submitBattleAction` 缺绑定：`ui/bag.js:18` 就是 `const RB = setup.RPG;`，
+ *     而引擎 `src/core/40-battle.js:948` 早有该口 —— 实测战中两支都为真 ✓。）
+ * 两条臂：
+ *   ① **真值**：`战中` 为真 ＋ 引擎有该口时，`R.bagHTML()` 对一件可提交道具须给出 `data-bag-submit`；
+ *      同一件在**战外**不得给（战外走 `rpg-item-link` 那条路）—— 两向都断 ⇒ ✗ 不是恒真形。
+ *   ② **接线**：`fight()` 必须在**`战中` 置真之后**刷过面板（✗ 只判「调用过 refreshPanels」——
+ *      战前/战终也会刷，那种写法会被别的刷新骗过）。
+ * 刀（记在提交信息）：摘掉 `战中 = true;` 后面那次 `R.refreshPanels?.()` ⇒ ② 红（① 不动，因为它按需渲染）。
+ */
+head('58 `books#280` ⑮：战中的页脚背包须可提交（门 ＋ 刷新钩子）');
+{
+	const 原Choice = D.Player.choice, 原Perform = R.perform;
+	const 原Refresh = R.refreshPanels;
+	const 刷新录 = [];
+	const 位存 = map.current, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 包存 = JSON.parse(JSON.stringify(State.variables.inventory ?? []));
+	try {
+		R.perform = (s) => 原Perform.call(R, s);
+		D.Player.choice = async (opts) => {
+			const o = Array.isArray(opts) ? opts : [];
+			序 += 1;
+			if (首次问序 === null) 首次问序 = 序;      // ★第一次「问玩家」在序里的位置
+			const 文 = (x) => String(x?.text ?? '');
+			const 收 = o.find((x) => /收下/.test(文(x)));
+			if (收) return 收.value;
+			const 攻 = o.find((x) => /攻击|挥|砍|劈|打击/.test(文(x)) && !/盾|防具|甲|铠/.test(文(x)));
+			if (攻) return 攻.value;
+			return (o[0] ?? {})?.value;
+		};
+		/* ② 的探针：记下**每次刷新那一刻** `战中` 的值（⇒ 判「置真之后刷过」而不是「刷过」） */
+		/* ★记**事件序**（✗ 只记「刷过没」）：战斗循环**自己也会刷面板**（那时 `战中` 已真）
+		 * ⇒ 只判「录里有 true」会被它骗过（本席实测：摘掉本笔那次刷新，`rc` 照样 0 ✗）。
+		 * 判的是**先后**：置真之后的**第一次**刷新，必须早于**第一次** `choice`（＝还没问玩家就已刷好）✓ */
+		let 序 = 0, 首次刷新序 = null, 首次问序 = null;
+		R.refreshPanels = () => {
+			序 += 1;
+			if (setup.BABEL?.战中 === true && 首次刷新序 === null) 首次刷新序 = 序;
+			刷新录.push(setup.BABEL?.战中 === true);
+			return 原Refresh?.();
+		};
+		map.moveTo('L1');
+		State.variables.babelRun ??= {};
+		D.Player.hp = D.Player.maxHp ?? 20;
+		State.variables.inventory = [{ id: 'bandage', charges: 2 }, { id: 'sword', equipped: true, charges: 99 }];
+		if (!(D.Player.items ?? []).some((x) => x.id === 'sword')) D.Player.items.push({ id: 'sword', equipped: true, charges: 99 });
+		/* ①-a 战外：同一件**不得**给可提交链 */
+		setup.BABEL.战中 = false;
+		const 战外 = String(R.bagHTML?.() ?? '');
+		ok(!/data-bag-submit="bandage"/.test(战外), '★【⑮ ①】战外 ✗ 不得给 `data-bag-submit`（那时走 `rpg-item-link`）');
+		await setup.BABEL.fight({ interactive: true });
+		/* ①-b 战中：同一件**须**给 */
+		setup.BABEL.战中 = true;
+		const 战中 = String(R.bagHTML?.() ?? '');
+		ok(/data-bag-submit="bandage"/.test(战中), '★【⑮ ①】战中须给 `data-bag-submit`（门＝`战中` ∧ 引擎有该口）'
+			+ `｜实得片段 ${战中.slice(0, 120)}` );
+		/* ② 接线：置真之后刷过面板 */
+		ok(首次刷新序 !== null && 首次问序 !== null && 首次刷新序 < 首次问序,
+			`★【⑮ ②】\`fight()\` 必须在**战中置真之后、且早于第一次问玩家**刷过面板`
+			+ `（首次「战中刷新」在序 ${首次刷新序}／首次「问玩家」在序 ${首次问序}）`
+			+ ' —— ✗ 只判「刷过」会被**战斗循环自己**那几次刷新骗过（本席实测：摘掉本笔那次刷新，那种写法照样绿）');
+		if (/data-bag-submit="bandage"/.test(战中) && 首次刷新序 !== null && 首次刷新序 < 首次问序) {
+			console.log('  战中页脚：门开（`data-bag-submit` 在 ✓）｜置真后刷过面板 ✓｜战外不给 ✓');
+		}
+	} finally {
+		D.Player.choice = 原Choice; R.perform = 原Perform;
+		if (原Refresh) R.refreshPanels = 原Refresh;
+		State.variables.inventory = 包存;
+		setup.BABEL.战中 = false;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
+	}
+}
+
+
 printSummary();
 
