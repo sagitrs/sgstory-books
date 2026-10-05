@@ -182,6 +182,12 @@ jobs:
       - name: 内容边界登记表 · 自检
         working-directory: books
         run: node tools/check-content-inventory.mjs --selftest
+      - name: twee 标签配平（逐段：闭合标签数 ≤ 开标签数 · `#354` 那类静默孤儿标签）
+        working-directory: books
+        run: node tools/check-twee-tags.mjs
+      - name: ★twee 标签配平门自检（孤儿标签须红在对的段 · 合法形/注释/装置错三向不得误报）
+        working-directory: books
+        run: node tools/check-twee-tags.mjs --selftest
 
       # ★门必须**红得了**（同「恒绿门自证」的体例）：往**临时**清单里塞一处无符引用，
       #   断言本门确实 rc≠0 且具名到那一处 ⇒ 证明上面的开关**没被写成装饰**；随后按字节复原。
