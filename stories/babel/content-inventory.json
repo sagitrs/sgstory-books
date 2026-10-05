@@ -13,6 +13,16 @@
       "依据": "领队 21:13 裁①：照实况固化（`meta/**` 是作品元信息 ✓）"
     },
     {
+      "path": "stories/babel/src/story/city.twee",
+      "类别": "段落骨架",
+      "依据": "References #314：十个独立服务／确认段落；执行 L10.menu 重建选择，不是纯文案抽取件。"
+    },
+    {
+      "path": "stories/babel/src/story/endings.twee",
+      "类别": "段落骨架",
+      "依据": "References #314：自由与留居终局正文，含读档／重开出口；不是规则数学或纯常量抽取件。"
+    },
+    {
       "path": "stories/babel/src/story/hooks.js",
       "类别": "段落骨架",
       "依据": "领队 21:13 裁①：照实况固化（`story/**` 是段落与出口骨架 ✓）"
@@ -41,6 +51,11 @@
       "path": "stories/babel/src/ui/ui.twee",
       "类别": "呈现/版式",
       "依据": "领队 21:13 裁①：照实况固化（`ui/**` 是面板/渲染/样式 ✓）"
+    },
+    {
+      "path": "stories/babel/src/world/00-l10-city.js",
+      "类别": "混装待拆",
+      "依据": "References #314：候选价格、进度、库存服务和地点接线，同时含五建筑叙事、对白与服务提示；如实登记混装，不冒充纯内容或无叙事规则档。类别仍须独立评审。"
     },
     {
       "path": "stories/babel/src/world/babel.js",

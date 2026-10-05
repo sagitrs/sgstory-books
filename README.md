@@ -12,7 +12,7 @@
 
 测试工具根：tools/
 
-明细见 [`tools/README.md`](tools/README.md)，其中十七件工具逐件载明四项内容，分别是清单、固定命令、期望读数与设立理由。
+明细见 [`tools/README.md`](tools/README.md)，其中二十一节工具说明逐节载明四项内容，分别是清单、固定命令、期望读数与设立理由。
 <!-- test-tool-root: tools/ -->
 
 **根外具名例外。** 本仓的测试工具根是 `tools/`，但反向搜索证实存在竞争根，共五处，因此本声明的口径是逐处具名，而不是声称唯一根。这五处分别如下。第一处是 [`tests/scenario/run.mjs`](tests/scenario/run.mjs)，它是场景链 runner，NOT_JUDGED 基线也放在那里。第二处是 [`stories/babel/verify.mjs`](stories/babel/verify.mjs)，它是故事侧装配自检。第三处是 [`stories/babel/scenarios/validate.mjs`](stories/babel/scenarios/validate.mjs)，它是清单自检。第四处是 [`stories/babel/scenarios/knives.sh`](stories/babel/scenarios/knives.sh)，它是清单自检的刀，共十五条，用来断哪一条红。第五处是 [`stories/babel/scenarios/render-table.mjs`](stories/babel/scenarios/render-table.mjs)，它是清单表渲染，票面表就是它的输出。
@@ -26,6 +26,10 @@
 ### 明细
 
 以下明细按 `gsvector-process#300` 条款⑤「**落盘判准与准入**」（条文落点 `rules/tester.md`）入册。用法逐件见各档文件头。
+
+- [`run-l10-checks.py`](tools/run-l10-checks.py) 从本仓复现本地 17 步检查并保存逐步日志；固定命令见工具索引 §21，不是 Actions run，也不代浏览器或平衡验收。
+- [`verify-l10-city.mjs`](tools/verify-l10-city.mjs) 是 L10 无头装配模块，随 `node stories/babel/verify.mjs --engine <精确 pin 检出>` 执行；不是独立 CLI，不把合成 `save:ready` 当宿主往返。
+- [`e2e-314-l10-city.mjs`](tools/e2e-314-l10-city.mjs) 用真实 Chromium 点击，核服务、存档／刷新、付费返程及独立终局。命令为 `node tools/e2e-314-l10-city.mjs --engine <精确 pin 检出> --evidence "$HOME/tmp/l10-evidence"`；资源／工具注入只证明接线，不证明自然远征或平衡。
 
 - [`check-refs-recheck.mjs`](tools/check-refs-recheck.mjs) 是引用核的独立复算器，既是同名判据的第二实现，也做独立清点。它枚举整份清单，而不使用被核对象的字段白名单，因此对账差集就是覆盖缺口。命令是 `node tools/check-refs-recheck.mjs --engine <引擎检出@pin> --compare`。
 - [`e2e-drive.mjs`](tools/e2e-drive.mjs) 是真产物驾驶层，通过 `import` 上一件的 `boot()` 工作。它读档往返，涉及 `Save.slots` 与 `Engine.show`，也做自环就地重绘与正文行读数。命令是 `node tools/e2e-drive.mjs --engine <引擎检出@pin>`。加上 `--require <面>` 可以把明账面升为硬判。

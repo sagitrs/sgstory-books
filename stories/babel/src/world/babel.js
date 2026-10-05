@@ -2,12 +2,11 @@
  *
  * 面（层表与遭遇表同键配对，`#1748`）：`src/dnd/dnd3/core/climb.js` 的 `LAYER_META_SPAN1`（L1–L9 climb、
  *   L10 hub）与 `ENCOUNTER_SPAN1`（1–9 层遭遇/掉落表；第 10 层无条目 ⇒ 整备区不抽遭遇）。
- * 单向门法则（`docs/plans/babel/outline.md`）：**段内自由、段间封闭** ⇒
- *   L1↔L2↔…↔L9↔L10 双向（段内自由）；`L10-gate → L11` **单向**（无回边，见 `DND3.span1GateExit`）。
+ * 通行以 `books#259` 的上行裁定及付费卷轴例外为准：塔步行边只上行，城／层内往返保留。
+ *   `L10-gate → L11` 无步行回边；卷轴可付费返城，不刷新资源、事件、战果或旧农田。
  *
- * ★ 第 10 层的三个地点**直接取包里的实例**（`DND3.buildSpan1Hub()`）——本文件**不重写**它们的文本
- *   （单一权威源：L10 的说法只在 `scenes/span1-hub.js` 一处）。取的是同一个 `Location` 对象，
- *   故包里对这两个入口的接线（`#1776` 的资源/聚落 API）在此**一并生效**。
+ * L10 的五建筑及上行门由 `world/00-l10-city.js` 给故事侧模板。
+ * adoptHub 新建 Location／Exit 并接活人门、deepest 与 onEnter，不改规则包里的旧 hub 实例。
  *
  * 车道：本文件是**故事面**（`stories/**`），只做装配 —— 判定数学、层表、道具全在 `src/` 里。
  */
@@ -105,9 +104,10 @@ const commitNode = (layerId, holder) => {
  *   （引擎 `60-map.js:363-364`，那条路没有 `#leftPassage` 守卫）⇒ 死亡后那一屏会被画进失败页。
  *   ⇒ 两处闸门把「死人的地图」关掉：**层动作**（`when`）与**出口边**（`when`）都要求「活着」。
  *   ✗ 不指望引擎侧改（pin 已定）；这也是玩家侧真正的漏洞面：0 血还能点着走。 */
-const 活着 = () => DND3.Player?.isDown !== true;
+const 活着 = () => DND3.Player?.isDown !== true && State.variables.babelRun?.终局 !== true;
 /** 动作的 `when` 合成：把「活着」与动作自己的条件**与**起来（✗ 两处各挂 —— `when` 只有一个位）。 */
-const 只给活人 = (a) => ({ ...a, when: () => 活着() && (typeof a.when === 'function' ? a.when() : true) });
+const 只给活人 = (a) => ({ ...a, when: () => (活着() || (a.recovery === true && setup.BABEL.L10?.alive()))
+	&& (typeof a.when === 'function' ? a.when() : true) });
 /** 边的 `when` 合成：同上（非头目层原本不挂守卫 ⇒ 现形一律挂，第一条就是「活着」）。 */
 const 边可否通行 = (from, to) => {
 	const w = 边守卫(from, to);
@@ -597,11 +597,11 @@ const makeLayerLocation = (L) => new R.Location({
 	id: L.id,
 	name: L.name,
 	desc: () => L.desc,
-	/* 读数：本局到过的**最深**层（进层即记；✗ 用「当前层」代替，因为死亡会把人送回 L1）。 */
+	/* 本局最深层取最大值；付费返城只改当前位置，真死不回层。 */
 	onEnter: () => {
 		const r = State.variables.babelRun;
-		/* ★`#135` ②a：**max** 语义（✗ 无条件赋值 —— 从 L20 退回 L19 会把「最深」写小；
-		 *   `babel2.js:147` 确有该回边）。层号由 id 取（`L19`／`L20-forge` 皆可）⇒ ✗ 字符串直比。 */
+		/* 保留 max 语义：卷轴从高层返城不能把最深层写小；旧塔下行注释不恢复回边。
+		 * 层号仍由稳定 id 取，不按显示名或字符串大小比较。 */
 		if (r && Number(String(L.id).match(/L(\d+)/)?.[1] ?? 0) > Number(String((r.deepest ?? '')).match(/L(\d+)/)?.[1] ?? 0)) r.deepest = L.id;
 		/* ★`books#133` 笔 1：**首次进入该层 ⇒ 抽一次**（幂等：已有则原样返回，✗ 重抽）。
 		 *   位置就在「进层即记 deepest」同一钩子里（设计稿 §3.2：同处扩展）。
@@ -937,7 +937,7 @@ const 边守卫 = (from, to) => {
  * 判据随迁（那格已随 `#129` 关闭退场，本笔重建，含「拾起后动作消失」与「已握在手上」两项）。 */
 map.locations.get('L1').actions.unshift({
 	text: '拾起地上的长剑',
-	when: () => !R.has('sword'),
+	when: () => 活着() && !R.has('sword'),
 	action: () => {
 		R.give('sword');
 		R.equip('sword');
@@ -951,7 +951,7 @@ map.locations.get('L1').actions.unshift({
  *   本事件每局只触发一次 ⇒ 实际不会出现第二把（`world/tools.js` 头注同旨）。 */
 map.locations.get('L3').actions.unshift({
 	text: '拾起插在石缝里的矿镐',
-	when: () => !R.has('pick'),
+	when: () => 活着() && !R.has('pick'),
 	action: () => {
 		R.give('pick');
 		R.perform('镐头没锈 —— 是有人留在这儿的，手柄上还缠着布条。');
@@ -1091,11 +1091,11 @@ const adoptHub = (target, hub, patch = {}) => {
 	}
 };
 
-/* ---------- 第 10 层：整备区（取包里的实例 —— 单一权威源）---------- */
-adoptHub(map, DND3.buildSpan1Hub());   // 包里已自带 `validate()`：不合法会抛
+/* ---------- 第 10 层：故事侧最简城市；不改包里的旧 hub 实例 ---------- */
+adoptHub(map, setup.BABEL.L10.build());
 
 /* ---------- 边 ----------
- * 段内自由（双向）＋ 段间封闭（10→11 单向、无回边）。 */
+ * 塔步行边只上行；层内／城内往返及付费卷轴另走各自入口。 */
 for (let i = 0; i < LAYERS.length - 1; i++) {
 	const a = LAYERS[i].id;
 	const b = 入层口(LAYERS[i + 1].id);   // ★`books#180`：L9 的入口是**准备区**
@@ -1202,7 +1202,7 @@ if ('itemsInBag' in R.Battle) R.Battle.itemsInBag = true;
  *   ⇒ `envelope().domains` 与 `audit()` **看不到它**（审计缺口 ✓，✗ 不是丢档——进档由序列化宿主完成 ✓）。
  *   它本就是**本局的故事状态** ⇒ 归域与 `span1Farms`／`span1Harvests`／`rpgProgress` **同一个** `byPack` ✓（`80-save.js:69-73` ✓）。
  *   ★新键仍**加在这张表里**（一处定义 ✓）—— ✗ 再写一段登记代码 ✓。 */
-const 保存域键 = ['span1Arc', 'span1Events', 'span1Foresee', 'babelRun'];
+const 保存域键 = ['span1Arc', 'span1Events', 'span1Foresee', 'babelRun', 'babelL10', 'babelL10Storage'];
 const 登记域 = () => {
 	const keys = 保存域键;
 	if (typeof R.save?.declareDomain !== 'function') {

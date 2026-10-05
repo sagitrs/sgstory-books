@@ -124,7 +124,7 @@ map.addLocation(new R.Location({
 		 *   读 `equippedIn('shield')`（返回**对象** ⇒ 比 `.id`）⇒ 印「换成了」或「收进背包（槽被占）」✓ */
 		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); if (RPG.equippedIn('shield')?.id === 'buckler') R.perform('你把小圆盾扣在左臂上。'); } },
 		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); if (RPG.equippedIn('shield')?.id === 'heavy-wooden-shield') R.perform('你换下旧的，扛起一面重木盾。'); } },
-	],
+	].map(setup.BABEL.只给活人),
 }));
 map.addLocation(new R.Location({
 	id: 'L20-stable',
@@ -133,17 +133,19 @@ map.addLocation(new R.Location({
 	actions: [
 		{ text: '牵一匹骡子（便宜、耐走）', when: () => !R.has('mule'), action: () => { R.give('mule'); R.perform('你牵走一匹骡子。它不情愿，但跟着你走。'); } },
 		{ text: '牵一匹轻型马', when: () => !R.has('light-horse'), action: () => { R.give('light-horse'); R.equip('light-horse'); R.perform('你翻身上马 —— 缰绳一紧，它先走了一步。'); } },
-	],
+	].map(setup.BABEL.只给活人),
 }));
 
 /* ---------- 边 ---------- */
 /* ★ 10→11 单向门**本笔才挂**（一段当年挂不上：L11 尚不存在）。挂上后 L11 就有了入边 ⇒ 段间连通。 */
-map.addExit(DND3.span1GateExit());
+const span1Exit = DND3.span1GateExit();
+map.addExit(new R.Exit({ ...span1Exit, when: () => setup.BABEL.边可否通行(span1Exit.from, span1Exit.to)()
+	&& (typeof span1Exit.when !== 'function' || span1Exit.when()) }));
 /* ★`books#176`：本文件**复用** `babel.js` 导出的终局位闸门（✗ 自建一份 —— `babel.js` 先装载）。 */
 const 边可否通行 = setup.BABEL.边可否通行;
 if (typeof 边可否通行 !== 'function') throw new Error('[babel2] 缺 `setup.BABEL.边可否通行`（`world/babel.js` 未先装载？）');
 
-/* 段内自由（双向）：L11↔…↔L19↔L20-forge */
+/* 塔段步行只上行：L11→…→L19→L20-forge；城内往返另列。 */
 for (let i = 0; i < SPAN2_LAYERS.length - 1; i++) {
 	const a = SPAN2_LAYERS[i].id;
 	const b = SPAN2_LAYERS[i + 1].id;
@@ -167,7 +169,7 @@ map.addPath({ from: 'L20-settlement', to: 'L20-forge', text: '回炉边', when: 
 
 /* ---------- 收尾：终点评语（试玩版到 L20-gate 为止）---------- */
 map.locations.get('L20-gate').actions.push(
-	{ text: '看看这一局爬了些什么', action: () => SugarCube.Engine.play('试玩终点') },
+	setup.BABEL.只给活人({ text: '看看这一局爬了些什么', action: () => SugarCube.Engine.play('试玩终点') }),
 );
 
 /* ---------- 全图校验（build-and-check）---------- */
