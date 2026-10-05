@@ -54,9 +54,19 @@ const send = (method, params = {}, target = session) => new Promise((resolve, re
 	const id = ++seq, timer = setTimeout(() => { pending.delete(id); reject(Error(`CDP ${method} 超时`)); }, 15000);
 	pending.set(id, { resolve, reject, timer }); ws.send(JSON.stringify({ id, method, params, ...(target ? { sessionId: target } : {}) }));
 });
+// 换行的 inline 链接有多个矩形；总包围框中心可能是空白，不能当成点击目标。
+// 只选可见且命中原元素的矩形中心；被遮挡／折叠时返回 null，等待而不调用 DOM.click。
+const clickPoint = (el) => {
+	for (const b of el.getClientRects()) {
+		const x = b.left + b.width / 2, y = b.top + b.height / 2;
+		if (b.width > 0 && b.height > 0 && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight
+			&& el.contains(document.elementFromPoint(x, y))) return { x, y };
+	}
+	return null;
+};
 const evaluate = async (body) => {
 	const r = await send('Runtime.evaluate', { expression: `(() => { const S=SugarCube, V=S.State.variables,
-		B=S.setup.BABEL, R=S.setup.RPG, P=S.setup.DND3.Player; ${body} })()`, returnByValue: true, awaitPromise: true });
+		B=S.setup.BABEL, R=S.setup.RPG, P=S.setup.DND3.Player, clickPoint=${clickPoint.toString()}; ${body} })()`, returnByValue: true, awaitPromise: true });
 	if (r.exceptionDetails) throw Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
 	return r.result.value;
 };
@@ -82,8 +92,8 @@ const click = async (text) => {
 	const box = await wait(async () => evaluate(`const host=document.querySelector('#passages .passage:last-of-type');
 		const el=[...(host?.querySelectorAll('a,button')??[])].find((x)=>x.textContent.trim().startsWith(${JSON.stringify(text)}));
 		if(!el || Number(getComputedStyle(host).opacity)<1 || Number(getComputedStyle(el).opacity)<1) return null;
-		el.scrollIntoView({block:'center'}); const b=el.getBoundingClientRect();
-		return b.width&&b.height ? {x:b.left+b.width/2,y:b.top+b.height/2}:null;`), `按钮「${text}」`);
+		el.scrollIntoView({block:'center'});
+		return clickPoint(el);`), `按钮「${text}」`);
 	await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...box });
 	await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...box });
 };
@@ -131,7 +141,21 @@ try {
 		accepted = await readPageErrors();
 	} finally { await evaluate(`document.getElementById('l10-render-probe')?.remove();`); }
 	fs.writeFileSync(path.join(evidence, 'render-sensor-selftest.json'), JSON.stringify({ rejected, accepted }, null, 2));
-	await check('真实孤立宏须检出、合法 if 渲染须放过', `return ${JSON.stringify(!!rejected?.issues.some(x=>x.includes('/if')) && accepted?.issues.length===0)};`);
+	await check('真实孤立宏／合法 if 与换行链接点击取点正反例', `
+		if(!${JSON.stringify(!!rejected?.issues.some(x=>x.includes('/if')) && accepted?.issues.length===0)}) return false;
+		const probe=document.createElement('div');
+		probe.style.cssText='position:fixed;left:2px;top:2px;z-index:2147483647;width:60px;font:16px/24px monospace;background:white';
+		const link=document.createElement('a'); link.textContent='ABCDEFGHIJ';
+		link.style.cssText='display:inline;font:inherit;word-break:break-all;padding:0'; probe.append(link);
+		document.body.append(probe);
+		try {
+			const point=clickPoint(link);
+			if(link.getClientRects().length<2||!point||!link.contains(document.elementFromPoint(point.x,point.y))) return false;
+			const cover=document.createElement('div'); cover.style.cssText='position:absolute;inset:0;background:white'; probe.append(cover);
+			if(clickPoint(link)!==null) return false;
+			cover.remove(); return clickPoint(link)!==null;
+		} finally { probe.remove(); }
+	`);
 	await click('战斗教学'); await atPassage('L1 苏醒'); await click('站起来'); await atPassage('探索');
 	await check('StoryInit 两项进度及寄存初态', 'return V.babelL10.sold===0&&!V.babelL10.resident&&V.babelL10Storage.length===0&&typeof R.exchange==="function";');
 	// 起始资源／工具夹具在此注入；堆叠原件和旧形存档夹具在各自组内明示。
