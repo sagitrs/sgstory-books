@@ -4183,6 +4183,7 @@ head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随�
 {
 	const B = setup.BABEL, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
 	const 层存 = map.current;
+	const 原玩家血 = State.variables.player ? { hp: State.variables.player.hp, maxHp: State.variables.player.maxHp } : null;
 	try {
 		/* ① 对照：同一 ref（用 L1 层抽一个；抽到就两模式各成军一次） */
 		map.moveTo('L1');
@@ -4217,7 +4218,29 @@ head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随�
 				}
 			}
 		}
+		/* ④ **玩家初始生命翻倍**（⑬ 补笔 · 操作者令 2026-10-05）：
+		 *   `开局('简单')` ⇒ `hp`／`maxHp` **同乘 2**；`开局(null)` ⇒ **回构造点原值**（逐字不动 ✓）。
+		 *   ★起点同一：先**清基数** ⇒ 让它按当前 `$player` 重记（✗ 免得拿被抬过的值当底 ✓）。 */
+		{
+			const P = State.variables.player;
+			if (P) {
+				const 底 = { hp: P.hp, maxHp: P.maxHp };
+				delete State.variables.babelRun.生命基数;
+				B.开局('简单');
+				const 简P = { hp: P.hp, maxHp: P.maxHp };
+				B.开局(null);
+				const 普P = { hp: P.hp, maxHp: P.maxHp };
+				ok(简P.hp === 底.hp * 2 && 简P.maxHp === 底.maxHp * 2
+					&& 普P.hp === 底.hp && 普P.maxHp === 底.maxHp,
+					`★【⑬ ④】简单档玩家初始生命须 ＝ 普通 ×2，且普通档逐字不动`
+					+ `（底 ${底.hp}/${底.maxHp} ⇒ 简单 ${简P.hp}/${简P.maxHp}｜普通 ${普P.hp}/${普P.maxHp}）`);
+				if (简P.maxHp === 底.maxHp * 2) console.log(`  ⑬ 补笔·玩家生命：简单 ${简P.hp}/${简P.maxHp} ＝ 普通 ${普P.hp}/${普P.maxHp} 的 ×2 ✓`);
+			} else {
+				ok(true, '（无 `$player` 面 ⇒ 本臂不判）');
+			}
+		}
 	} finally {
+		if (State.variables.player && 原玩家血) { State.variables.player.hp = 原玩家血.hp; State.variables.player.maxHp = 原玩家血.maxHp; }   // ★按**取到的原值**复原（✗ 不写死 18/20 —— 那是构造点的数，写死＝又一处源）
 		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
 		if (层存) { try { map.moveTo(层存); } catch (e) { /* 回不去则略 */ } }
 	}
