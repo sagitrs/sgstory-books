@@ -323,7 +323,7 @@
       "层": "both",
       "守的面": "段内定标 CR 带逐层递增且不越段（✗ 「未成文的隐藏判据」）",
       "构造": "逐层扫描（1–9 全层）",
-      "备注": "`SPAN1_SCALING` 显式 `kind:'house-rule'`（`core/climb.js:19-34`（`setup.DND3.SPAN1_SCALING`），crBand 九层：0.5/0.5/1/1/2/2/2/2/2）；锚 `#1729` 裁定②。★**真实入口实指**（本节 §③ 回问的答复）：`world/babel.js:103-105`（`books`）（地图动作 ⇒ `Engine.play('遭遇战')`）→ `story/play.twee:57`（`BABEL.fight()`）→ `world/encounters.js:367`（`BABEL.layerOf()`）；该动作带 `R.inGradient(L.id)` 守卫 ⇒ **两段层皆可用**"    },
+      "备注": "`SPAN1_SCALING` 显式 `kind:'house-rule'`（`core/climb.js:19-34`（`setup.DND3.SPAN1_SCALING`），crBand 九层：0.5/0.5/1/1/2/2/2/2/2）；锚 `#1729` 裁定②。★**真实入口实指**（本节 §③ 回问的答复）：`world/babel.js:103-105`（`books`）（地图动作 ⇒ `Engine.play('遭遇战')`）→ `story/play.twee:61`（`BABEL.fight()`）→ `world/encounters.js:367`（`BABEL.layerOf()`）；该动作带 `R.inGradient(L.id)` 守卫 ⇒ **两段层皆可用**"    },
     {
       "id": "span1-farm-harvest-bare-key-roundtrip",
       "段": "span1",
@@ -342,7 +342,7 @@
       ],
       "断言": {
         "逻辑": "收获**清空** `span1Farms` 并把本次收成**累计**进 `span1Harvests`；**双向**：无田时收获**被拒**（✗ 静默给 0/负数）；往返后两值均不变",
-        "渲染": "「试玩终点」行的 `开垦过的田：<N>` 与 `$span1Farms` 同值；★**双向**：`$span1Harvests`=0 时**无**「（已收获 …）」子句、>0 时**出现**且次数同值（`story/play.twee:100`（`$span1Farms`） 的条件子句 `<<if $span1Harvests>>…<</if>>`）"      },
+        "渲染": "「试玩终点」行的 `开垦过的田：<N>` 与 `$span1Farms` 同值；★**双向**：`$span1Harvests`=0 时**无**「（已收获 …）」子句、>0 时**出现**且次数同值（`story/play.twee:104`（`$span1Farms`） 的条件子句 `<<if $span1Harvests>>…<</if>>`）"      },
       "锚": [
         "#1806",
         "#1829"
@@ -491,7 +491,7 @@
             }
           }
         },
-        "渲染": "终态**可导航**：出现「游戏失败」段落文案 ＋ **可见可点**的两钮（`story/play.twee:80`（`读档`）／`重开`））；✗ 卡在无出口段落"      },
+        "渲染": "终态**可导航**：出现「游戏失败」段落文案 ＋ **可见可点**的两钮（`story/play.twee:84`（`读档`）／`重开`））；✗ 卡在无出口段落"      },
       "锚": [
         "#1856",
         "#1760"
@@ -504,7 +504,7 @@
       "层": "both",
       "守的面": "**战斗三终点·败** —— **游戏失败**有落点且可返回（读档／重开；✗ 卡死）",
       "构造": "败即看回溯段落出口",
-      "备注": "实指 `story/play.twee:75`（`:: 游戏失败`） 段）—— 旧「死亡回溯」段与其复活教学已随 `books#176` 删（与 `#170` 的 P0 同批）"    },
+      "备注": "实指 `story/play.twee:79`（`:: 游戏失败`） 段）—— 旧「死亡回溯」段与其复活教学已随 `books#176` 删（与 `#170` 的 P0 同批）"    },
     {
       "id": "cross-battle-end-stalemate",
       "段": "cross",
