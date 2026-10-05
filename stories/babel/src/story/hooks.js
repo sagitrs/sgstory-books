@@ -18,6 +18,19 @@
  *      「订阅方抛错一律吞并」吞掉 ⇒ **静默 no-op**（tester-3 实测两处 count 增 0，本笔首版即踩此坑 ⇒ RC）。
  */
 
+const 重建探索 = () => {
+	const make = setup.BABEL?.makeExploreScene;
+	if (typeof make !== 'function' || !RPG.scenes.has('babel-explore')) return;
+	RPG.scenes.delete('babel-explore');
+	RPG.registerScene(make());
+};
+
+/* 宿主 onLoad 先于实际 State 历史还原；save:ready 中补的旧档缺域会被其后 unmarshal 覆盖。
+ * 段落开始时已换成真实存档状态，才再调用同一个幂等补缺／寄存身份预留入口。
+ * 这里不做奖励、位置、农田或资格追算，也不把回调存入 State。
+ */
+$(document).on(':passagestart.babelL10', () => { setup.BABEL.L10?.ensure(); });
+
 /* 回合结束 ⇒ 刷面板（战斗内每次选择前都对齐；✗ 等段落重渲）。 */
 RPG.events.on('battle:turnEnd', () => {
 	setup.BABEL.记血?.();          // ★⑨：逐回合对齐「最后看到的 HP」（战斗中的伤害在这里被吸收）
@@ -58,6 +71,11 @@ RPG.events.on('item:used', (e) => {
 	if (前 != null && 后 > 前) RPG.perform(`${e.name ?? e.id}：HP ${前} → ${后}`);
 	血知.值 = 后;
 	if (typeof RPG.refreshPanels === 'function' && RPG.panels?.has?.('hp')) RPG.refreshPanels(['hp']);
+	// 卷轴的次数已由 act 提交，才可新建段落；在 used() 内导航会提前复制未扣的库存。
+	if (e.id === setup.BABEL.回城卷轴 && setup.BABEL.map?.current === setup.BABEL.聚落) {
+		重建探索();
+		SugarCube.Engine.play('探索');
+	}
 });
 
 /* ★⑨：进战斗时把「最后看到的 HP」对齐（战斗中伤害由 `battle:turnEnd` 逐回合对齐）。 */
@@ -93,10 +111,7 @@ RPG.events.on('battle:start', () => { setup.BABEL.记血?.(); });
 		 *   ⚠ 能力探测：`ui/battle.js` 未落地那么本面缺席 ⇒ 静默跳过
 		 *     （与 `refreshPanels?.`／下面 `makeExploreScene` 的探测同形）。 */
 		setup.BABEL?.敌情栏重置?.();
-		const make = setup.BABEL?.makeExploreScene;
-		if (typeof make !== 'function' || !RPG.scenes.has('babel-explore')) return;
-		RPG.scenes.delete('babel-explore');
-		RPG.registerScene(make());
+		重建探索();
 	});
 }
 

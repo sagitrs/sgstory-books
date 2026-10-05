@@ -54,6 +54,7 @@ const 战中可提交 = () => setup.BABEL?.战中 === true && typeof RB.submitBa
 
 /** 战斗中提交「使用这一件」＝**本回合的行动**（引擎侧接口；回合账归战斗循环）。 */
 RB.bagSubmit = (id) => {
+	if (State.variables.babelRun?.终局 === true) return { ok: false, reason: 'run-ended' };
 	if (typeof RB.submitBattleAction !== 'function') {
 		/* 引擎还没有这个口（旧 pin）⇒ 具名说明，✗ 静默（玩家点了没反应＝另一种假读数）。 */
 		RB.perform('这个版本还不能在战斗中从背包使用道具 —— 请在战斗菜单里用。');
@@ -82,7 +83,9 @@ if (typeof jQuery === 'function') {
 RB.bagItemHTML = (e) => {
 	/* 名字与 `RPG.inventoryLinks()` 逐字同形：同一个 `itemCountSuffix`（`#1862` ②的口径）。 */
 	const 名 = (e.name ?? e.item?.name ?? e.id) + RB.itemCountSuffix(e.item);
-	const 左 = 战中可提交()
+	const 左 = State.variables.babelRun?.终局 === true
+		? `<span class="rpg-bag-name">${转义(名)}</span>`
+		: 战中可提交()
 		? `<a href="#" class="rpg-bag-submit" data-bag-submit="${转义(e.id)}" title="点击使用（占本回合）">${转义(名)}</a>`
 		: setup.BABEL?.战中 === true
 			? `<span class="rpg-bag-name">${转义(名)}</span>`

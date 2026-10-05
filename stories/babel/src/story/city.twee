@@ -1,0 +1,30 @@
+/* books#314：菜单本身可由当前位置、资格和库存重建；不保存函数或临时菜单闭包。 */
+:: L10 出售
+<<run setup.BABEL.L10.menu("sale")>>
+
+:: L10 补给
+<<run setup.BABEL.L10.menu("supply")>>
+
+:: L10 工坊
+<<run setup.BABEL.L10.menu("forge")>>
+
+:: L10 寄存
+<<run setup.BABEL.L10.menu("storage")>>
+
+:: L10 修理
+<<run setup.BABEL.L10.menu("repair")>>
+
+:: L10 诊疗
+<<run setup.BABEL.L10.menu("trauma")>>
+
+:: L10 契约
+<<run setup.BABEL.L10.menu("enslaved")>>
+
+:: L10 契约确认
+<<run setup.BABEL.L10.menu("enslaved", true)>>
+
+:: L10 留居
+<<run setup.BABEL.L10.menu("settled")>>
+
+:: L10 留居确认
+<<run setup.BABEL.L10.menu("settled", true)>>

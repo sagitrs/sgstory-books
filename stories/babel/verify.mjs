@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { verifyL10 } from '../../tools/verify-l10-city.mjs';
 
 const here = import.meta.dirname;
 
@@ -163,6 +164,8 @@ State.variables.player = {
 State.variables.inventory = [];
 State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 终局: false };  // ★`books#176` 终局键
 State.variables.babelGiven = {};
+State.variables.babelL10 = { sold: 0, resident: false };
+State.variables.babelL10Storage = [];
 State.variables.span1Arc = {};   // ★`books#132` L1–L9 弧的本局账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Events = {}; // ★`books#133` 笔 1：选择制事件账（与 `meta/init.twee` 逐项同形）
 State.variables.span1Foresee = {}; // ★`books#164`：预知账（`{目标层: 类}`，与 `meta/init.twee` 逐项同形）
@@ -191,7 +194,7 @@ ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
 if (map) {
 	ok(map.validate().length === 0, `地图结构不合法：${map.validate().join('；')}`);
 	ok(map.validateConnectivity('L1').length === 0, `L1 出发不可达：${map.validateConnectivity('L1').join('；')}`);
-	ok(map.locations.size === 27, `地点数应为 27（一段 13 ＋ 二段 L11–19 九层 ＋ L20 三地点 ＋ 故事侧军械堆/马厩 ＋ \`#180\` 的 L9 准备区），实为 ${map.locations.size}`);
+	ok(map.locations.size === 30, `地点数应为 30（原 27 处，加 L10 登记处、工坊、医所；共炉／配给屋沿用旧 ID），实为 ${map.locations.size}`);
 }
 console.log(`  地点 ${map.locations.size} 个｜边 ${map.exits.length} 条`);
 
@@ -446,36 +449,43 @@ head('⑧ 整备闭环（不变式：遍历全部 hub 层）');
 	const hubLayers = typeof R.layersOfType === 'function'
 		? R.layersOfType('hub').map((x) => x.id)
 		: [...new Set([...map.locations.values()].map((l) => R.layerOfLocation(l.id)?.id).filter(Boolean))];
-	const isRest = (a) => String(a.text).includes('歇一歇');
+	// L10 的保底休整不再治疗创伤；遍历各 hub 的真实创伤服务，不删二段双向覆盖。
+	const isCare = (a) => a.traumaCare === true || (String(a.text).includes('歇一歇') && a.recovery !== true);
+	const original = { loc: map.current, city: JSON.parse(JSON.stringify(State.variables.babelL10)),
+		inventory: JSON.parse(JSON.stringify(D.Player.items)), bonus: D.Player.stats.heal_bonus, choice: R.choice };
 	let checked = 0;
-	for (const layer of hubLayers) {
-		const locs = [...map.locations.values()].filter((l) => (R.layerOfLocation(l.id)?.id ?? l.id) === layer);
-		if (locs.length === 0) continue;
-		const rests = locs.flatMap((l) => l.availableActions.filter(isRest).map((a) => ({ loc: l, act: a })));
-		if (rests.length === 0) continue;          // 无整备入口的 hub（未来形态）不算错，跳过即可
-		for (const { loc, act } of rests) {
-			const id = 'bleeding';                  // 每次迭代自清理 ⇒ 各 hub 之间零干扰
-			D.Player.stats.heal_bonus = 20;
-			D.Player.gain(id);
-			ok(D.Player.contains(id), `前置：${loc.id} 的检查需要一条可治创伤`);
-			R.rng.set(() => 0.99);                  // d20 = 20 ⇒ 必成
-			act.action();
-			R.rng.reset();
-			ok(!D.Player.contains(id), `★${loc.id} 整备**没治好**创伤 ⇒ 该 hub 接线未生效（换成常量也能过 = 本节点要堵的洞）`);
-
-			D.Player.gain(id);
-			D.Player.stats.heal_bonus = -100;
-			R.rng.set(() => 0.01);                  // d20 = 1 ⇒ 必败
-			act.action();
-			R.rng.reset();
-			ok(D.Player.contains(id), `★${loc.id} 低掷点却治好了 ⇒ DC 比对失效（判据恒真的恒等替换）`);
-			D.Player.stats.heal_bonus = 0;
-			D.Player.lose(id);
-			checked += 1;
+	try {
+		State.variables.babelL10.resident = true;
+		R.deposit(D.Player.items, 'coin', 100);
+		for (const layer of hubLayers) {
+			const locs = [...map.locations.values()].filter((l) => (R.layerOfLocation(l.id)?.id ?? l.id) === layer);
+			const cares = locs.flatMap((l) => l.availableActions.filter(isCare).map((a) => ({ loc: l, act: a })));
+			for (const { loc, act } of cares) {
+				map.moveTo(loc.id);
+				const id = 'bleeding';
+				R.choice = act.traumaCare ? (opts) => {
+					const option = opts.find((o) => String(o.text).includes(D.Traumas[id].name));
+					ok(!!option, `${loc.id} 真实创伤菜单缺 ${id}`);
+					return Promise.resolve(option?.value ?? 'cancel');
+				} : original.choice;
+				D.Player.stats.heal_bonus = 20; D.Player.gain(id);
+				R.rng.set(() => 0.99); act.action();
+				if (act.traumaCare) await B.L10.menu('trauma'); R.rng.reset();
+				ok(!D.Player.contains(id), `${loc.id} 高掷未治好创伤（真实服务未接线）`);
+				D.Player.gain(id); D.Player.stats.heal_bonus = -100;
+				R.rng.set(() => 0.01); act.action();
+				if (act.traumaCare) await B.L10.menu('trauma'); R.rng.reset();
+				ok(D.Player.contains(id), `${loc.id} 低掷竟治好了创伤（DC 比对失效）`);
+				D.Player.lose(id); checked += 1;
+			}
 		}
+	} finally {
+		R.choice = original.choice; R.rng.reset(); D.Player.stats.heal_bonus = original.bonus;
+		State.variables.babelL10 = original.city; State.variables.inventory = original.inventory;
+		map.moveTo(original.loc);
 	}
-	ok(checked >= 2, `整备入口应至少覆盖 2 处（一段 L10 ＋ 二段 L20），实为 ${checked} ⇒ 不变式没生效`);
-	console.log(`  hub 层 ${hubLayers.join('、')}｜整备入口 ${checked} 处，逐处 高掷治愈／低掷保留 ✓`);
+	ok(checked >= 2, `创伤服务须覆盖 L10／L20 两处，实为 ${checked}`);
+	console.log(`  hub 层 ${hubLayers.join('、')}｜真实创伤入口 ${checked} 处，高掷治愈／低掷保留`);
 }
 
 /* ---------- ⑨ 二段遭遇（`span2` 真表；`#1791` 票面验收第 1 项）----------
@@ -1751,13 +1761,13 @@ head('㉗ L9 头目弧（`books#133` 笔 3）');
 		ok((B.LAYER_META ?? []).filter((l) => l?.boss === true).map((l) => l.id).join() === 'L9',
 			`★带 boss 标记的层不是恰好 L9（${JSON.stringify((B.LAYER_META ?? []).filter((l) => l?.boss === true).map((l) => l.id))}）`);
 		/* ⑤ 接管面不动 */
-		const 己 = (B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub' && map.exitsFrom('L10-camp').some((e) => e.to === 'L9');
+		const 己 = (B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub' && !map.exitsFrom('L10-camp').some((e) => e.to === 'L9');
 		ok((B.LAYER_META ?? []).find((l) => l?.id === 'L10')?.type === 'hub', '★L10 不再是 `hub`（接管面被改了）');
 		/* ★`books#259` 裁 2：`L10-camp → L9` 的回边**按裁摘除**（原断言「少了这条边」＝旧双向语义）⇒ 现断**不在**。 */
 		ok(!map.exitsFrom('L10-camp').some((e) => e.to === 'L9'), '★L10-camp 仍有回 L9 的边（裁 2 要求塔单向向上）');
 		console.log(`  头目弧：实体＋攻击件 ${m(甲)}｜L9 固定（抽得 ${抽ref}）${m(抽ref === 'sleepless-one')}`
 			+ `｜硬门（未胜 ${L9出口_未胜.length} 条 ⇒ 已胜 ${L9出口_已胜.length} 条「${L9出口_已胜[0]?.text ?? ''}」）${m(乙)}（边仍在 ${L9边.length} 条；非头目层 L8 对照 ${L8出口.length} 条 ${m(丁)}）`
-			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 接管面不动 ${m(己)}`
+			+ `｜两表同键（层 ${本地层.length}／遭遇 ${遭遇键.length} 键，\`boss\` 只在 L9）${m(戊)}｜L10 hub 保留、下行步行边关闭 ${m(己)}`
 			+ `｜重开复位（接线 ${m(接线)}＋行为 ${m(复位ok)}）`);
 	} finally {
 		if (map.locations.has(存位)) map.moveTo(存位);
@@ -2511,7 +2521,8 @@ head('㊱ `books#178` 件 2 传送道具（传送 · 步行并存 · 价目表�
 	}
 	/* ⑤ **钱不够 ⇒ 零副作用**（✗ 半买）。 */
 	{
-		R.take('coin', 9999);                       // 清空到零（take 不抛）
+		const 有钱 = B.手上有('coin');
+		if (有钱 > 0) R.take('coin', 有钱);           // take 不足不会扣；按实存清空，不能假设 9999 会清零
 		const 钱前 = B.手上有('coin'), 卷前 = B.手上有(卷);
 		const okBuy = B.买(卷);
 		ok(okBuy === false, '★钱不够却买成了');
@@ -4348,5 +4359,6 @@ head('60 `books#280` ②-1：到达拍＝一次性 choice 包装（先拍／不�
 		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
 	}
 }
+await verifyL10({ R, D, B, map, ok, head });
 printSummary();
 

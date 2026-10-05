@@ -131,6 +131,7 @@ setup.BABEL.gather = () => {
 setup.BABEL.结算战败 = ({ 源 = '未知', 层 = null } = {}) => {
 	const P = DND3.Player;
 	if (!P || P.isDown !== true) return { settled: false, reason: '未倒下' };
+	if (P.hp > 0 && !P.contains('death')) return { settled: false, reason: '非致命倒下' };
 	if (run().终局 === true) return { settled: false, reason: '本局已终局' };   // 幂等门（不复活 ⇒ 尸体恒在）
 	const 死前层 = 层 ?? setup.BABEL.layerOf?.() ?? null;
 	if (typeof DND3.grantDeathIfDown === 'function') DND3.grantDeathIfDown(P);

@@ -78,6 +78,7 @@ R.registerPanel('inventory', {
 	 *     「点了会怎样」的逻辑（✗ 第二份实现 —— 它会随战斗循环演化而漂）。
 	 *   ⚠ 判据在 `verify.mjs` 的「第 51 格」（两向 ＋ 同形 ＋ 缺省正控）。 */
 	render: () => {
+		if (State.variables.babelRun?.终局 === true) return `${R.inventoryLabel()}（本局已结束，仅供查看）`;
 		if (setup.BABEL?.战中 === true) {
 			return `${R.inventoryLabel()} <span class="rpg-hint">`
 				+ `（战斗中：请在战斗面板里使用道具——那会占用本回合）</span>`;
