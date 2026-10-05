@@ -250,6 +250,24 @@ jobs:
         working-directory: books
         run: node tests/gates/pack-manifest.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest
 
+      # ── `books#295` 池 B 首笔批：两份**登记面**对账（都是纯 Node、无浏览器 ⇒ 属本门）──
+      - name: ★README 表格结构核（每行单元数须＝本表表头）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/check-readme-tables.mjs tools/README.md
+          node tools/check-readme-tables.mjs --selftest
+
+      # ★本件即「**工具清单 ⇄ CI 步骤**互为具名子集」的对账面：任一侧多出的项，要么补另一侧、
+      #   要么进它内里的**具名豁免表**（附一句理由）—— ✗ 不许静默留外。
+      #   ★它也是本笔「四支 smoke 已接线／其余各有具名理由」这条声明的**机械依据** ✓
+      - name: ★工具清单 ⇄ CI 步骤（互为具名子集；豁免须具名）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/check-tool-registry.mjs --books "$PWD"
+          node tools/check-tool-registry.mjs --selftest
+
       - name: 步骤键形门（每步须有 run/uses · 块内 run 不重复 · workflow 须有 name）
         working-directory: books
         run: node tests/gates/workflow-steps.mjs
