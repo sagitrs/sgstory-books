@@ -4234,5 +4234,64 @@ head('59 `books#280` ⑬：简单档（成军一处源·生命减半·旗标随�
 }
 
 
+/* ── 57 `books#280` ②-4：**胜利结算屏 ＋「收下」确认门**（未确认不进探索）────────────────
+ *
+ * 裁（领队原文 · 节拍④）：奖励结算停 —— 单屏印战果〔击败数／战利品〕⇒ 玩家答「收下」，
+ *   ★**确认之后**才走主出口（`继续探索`）⇒ 未确认时**不进**探索。
+ * 三条臂（★读**真值**：桩化 `choice` 记下每一次的选项 ＋ 桩化 `Engine.play` 记跳段，✗ 不读源码文本）：
+ *   ① **结算在位**：那一屏的文本含「【战斗结算】」＋击败数，且**那一次的选项里有「收下」**；
+ *   ② **未确认不进**：**在「收下」那一次之前**，选项里 ✗ 不得出现「继续探索」，且 `Engine.play` **未被调用**；
+ *   ③ **确认后入口换**：答「收下」之后才出现「继续探索」⇒ 走过它 ⇒ `Engine.play('探索')` 被调用。
+ * 刀（记在提交信息）：摘掉确认门（`interactive` 那段 `await choice([{收下}])`）⇒ ② 红（未确认就已经能进）。
+ * ⚠ 装置口径照票面：`fight({ interactive: true })` ＋ 桩化 `choice`（有答 ⇒ ✗ 不会挂）。
+ */
+head('57 `books#280` ②-4：胜利结算屏 ＋「收下」确认门（未确认不进探索）');
+{
+	const 原Choice = D.Player.choice, 原Play = SugarCube.Engine.play, 原Perform = R.perform;
+	const 选项录 = [], play录 = [], said = [];
+	let 收下时play = null;        // ★「答收下那一刻」的跳段快照 —— ② 判的是**那一刻**，✗ 不是整场跑完后的总账
+	const 位存 = map.current, 账存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	try {
+		R.perform = (s) => { said.push(String(s)); return 原Perform.call(R, s); };
+		D.Player.choice = async (opts) => {
+			const o = Array.isArray(opts) ? opts : [];
+			选项录.push(o.map((x) => String(x?.text ?? x)));
+			const 文 = (x) => String(x?.text ?? '');
+			const 收 = o.find((x) => /收下/.test(文(x)));
+			if (收) { 收下时play = play录.slice(); return 收.value; }     // ① 结算屏这一次（★取「那一刻」的跳段快照）
+			const 攻 = o.find((x) => /攻击|挥|砍|劈|打击/.test(文(x)) && !/盾|防具|甲|铠/.test(文(x)));
+			if (攻) return 攻.value;                                     // 打
+			return (o[0] ?? {})?.value;                                  // 靶／其余
+		};
+		SugarCube.Engine.play = (v) => { play录.push(String(v)); };
+		map.moveTo('L1');
+		State.variables.babelRun ??= {};
+		D.Player.hp = D.Player.maxHp ?? 20;
+		if (!(D.Player.items ?? []).some((x) => x.id === 'sword')) {
+			D.Player.items.push({ id: 'sword', equipped: true, charges: 99 });
+		}
+		await setup.BABEL.fight({ interactive: true });
+		const 收次 = 选项录.findIndex((a) => a.some((t) => /收下/.test(t)));
+		ok(收次 >= 0, `★【②-4 ①】结算屏须在且那一次选项里有「收下」（选项录 ${JSON.stringify(选项录)}）`);
+		ok(said.some((s) => /【战斗结算】/.test(s)), '★【②-4 ①】结算屏文本须含「【战斗结算】」'
+			+ `（实得 said 尾部 ${JSON.stringify(said.slice(-3))}）`);
+		const 收前 = 选项录.slice(0, 收次 < 0 ? 选项录.length : 收次);
+		ok(!收前.some((a) => a.some((t) => /继续探索/.test(t))),
+			`★【②-4 ②】未答「收下」之前**不得**出现「继续探索」（实得 ${JSON.stringify(收前)}）`);
+		ok(收下时play !== null && !收下时play.includes('探索'),
+			`★【②-4 ②】未答「收下」之前**不得**已经进探索（那一刻的 Engine.play 录 ${JSON.stringify(收下时play)}）`);
+		ok(收次 >= 0 && 选项录.slice(收次 + 1).some((a) => a.some((t) => /继续探索/.test(t))),
+			`★【②-4 ③】答「收下」**之后**须出现「继续探索」（实得 ${JSON.stringify(选项录.slice(收次 + 1))}）`);
+		ok(play录.includes('探索'), `★【②-4 ③】走过出口须真跳探索（Engine.play 录 ${JSON.stringify(play录)}）`);
+		if (收次 >= 0 && play录.includes('探索')) {
+			console.log('  结算屏：①在位（【战斗结算】＋收下）✓｜②未确认不进 ✓｜③确认后换入口且真跳探索 ✓');
+		}
+	} finally {
+		D.Player.choice = 原Choice; SugarCube.Engine.play = 原Play; R.perform = 原Perform;
+		if (State.variables.babelRun != null && 账存 != null) State.variables.babelRun = 账存;
+		if (位存) { try { map.moveTo(位存); } catch (e) { /* 回不去则略 */ } }
+	}
+}
+
 printSummary();
 
