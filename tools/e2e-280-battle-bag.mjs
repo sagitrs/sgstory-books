@@ -90,7 +90,9 @@ try {
 
   /* ★一律段内取（`#323` 族）＋ ★一律真 click（`#330` 族的教训） */
   const 段内 = () => p.evaluate(() => [...document.querySelectorAll('#passages a,#passages button')].map((e) => e.textContent.trim()));
-  const 正文 = () => p.evaluate(() => document.body.textContent);
+  /** ★只取**段落正文**（`#passages`）—— ✗ 不用 `document.body.textContent`：
+   *   那会把 `<script>` 的源码也读进来（本席实测：③b 曾把一段引擎源码文本当成了「治疗读数」 ✗）。 */
+  const 正文 = () => p.evaluate(() => document.getElementById('passages')?.innerText || '');
   const 点真 = async (t, sel) => {
     const l = sel ? p.locator(sel).first() : p.locator('#passages a,#passages button').filter({ hasText: t }).first();
     if (await l.count() === 0) return { 成: false, 因: '找不到目标' };
@@ -128,6 +130,21 @@ try {
     说明(`  · 战斗屏确认：${在战 ? '已在战斗 ✓' : '★未在战斗 ✗（后续若「找不到目标」，须按此归因，✗ 不记作 ⑧ 的病）'}｜停屏段内=${JSON.stringify(停屏.slice(0, 6))}`);
   }
 
+  /* ★⑮ 二层后补（★本席自纠）：**先把背包面板真点开** —— 页脚那枚件住在 `<details>` 里，
+   *   须玩家展开才可见/可点。✗ 少了这一步会读成 `Timeout`，看着像版式病、其实是**没展开**（本席实测栽过一次 ✗）。
+   *   ★口径不变：仍然**只用真 click**（✗ 不退回 dispatchEvent）—— 这里点的是 `summary`，与那枚件同一条真鼠标要求 ✓ */
+  {
+    const 开 = (p) => p.evaluate(() => { const d = document.querySelector('.bagbar details'); return d ? d.hasAttribute('open') : null; });
+    const 前开 = await 开(p);
+    if (前开 === false) {
+      const r = await 点真(null, '.bagbar summary');
+      说明(`  · 面板：点开摘要 = ${r.成 ? '已点开 ✓' : '点不上 ✗（' + r.因 + '）'}`);
+      await p.waitForTimeout(500);
+    }
+    const 后开 = await 开(p);
+    说明(`  · 面板状态：open=${前开} ⇒ ${后开}（★须为 true 才谈「点得着」；✗ null = 无该面）`);
+  }
+
   const 前 = await 状态();
   const 正文前 = await 正文();
 
@@ -139,10 +156,18 @@ try {
   if (!点件.成) {
     说明('  · 臂②③ **未做到**：①点不上 ⇒ 后续读数不可得（★✗ 不写"应该会治疗"这类推断）');
   } else {
+    /* ★①b 口径更正（`books#280` ⑮ 二层落地后**实测**）：本产品这一路是**对自己**使用
+     *   （页脚件走 `submitBattleAction` 的口径）⇒ ★**✗ 不出现「目标选择」面**。
+     *   ★原断言是为**另一条路**写的 ⇒ 在本路上会**误红**（本席实测即此形 ✗，见 PR 说明）。
+     *   改为断**本路该有的结果**：页脚那枚件点后**战斗菜单仍在**（✗ 未被点成空屏）。 */
     const 段中 = await 段内();
-    ok('臂①b 点后出现**目标选择**面（不是静默无反应）', 段中.some((x) => /对谁|无名者|自己/.test(x)), `段内=${JSON.stringify(段中.slice(0, 6))}`);
-    const 目标 = 段中.find((x) => /无名者|自己/.test(x)) ?? 段中[0];
-    await 点真(目标);
+    ok('臂①b 点后**战斗菜单仍在**（✗ 未被点成空屏）—— ★本路为「对自己使用」⇒ ✗ 无目标选择面',
+       段中.length > 0, `段内=${JSON.stringify(段中.slice(0, 6))}`);
+    /* ★本路（对自己使用）**没有**目标面 ⇒ ✗ 不许退化成「点段内第一项」（那会误点一个菜单项 ✗）。
+     *   有目标面才点它 ✓；没有 ⇒ 直接进下一步（治疗已在点件那一下发生 ✓）。 */
+    const 目标 = 段中.find((x) => /对谁|无名者|自己/.test(x));
+    if (目标) await 点真(目标);
+    else 说明('  · 本路无目标选择面（对自己使用）⇒ 不点目标 ✓');
     await p.waitForTimeout(1500);
     const 后 = await 状态();
     const 正文后 = await 正文();
