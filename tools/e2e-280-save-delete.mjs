@@ -126,7 +126,7 @@ const 造 = (p, 码) => 求(p, `(function(){try{SugarCube.Save.slots.save(${码}
 const 清 = (p, 码) => 求(p, `(function(){try{SugarCube.Save.slots.delete(${码});return 'ok'}catch(e){return 'ERR'}})()`);
 
 try {
-  const p = await 新页(); await 点(p, '睁开眼（普通）'); await p.waitForTimeout(600);
+  const p = await 新页(); await 点(p, '战斗教学（普通）'); await p.waitForTimeout(600);
   await 开弹(p);
   /* ── 缺席闸：该面在不在 ── */
   const 面在 = await 行形(p);

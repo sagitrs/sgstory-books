@@ -335,17 +335,6 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 	return true;
 };
 
-/** ★`books#280` ②-2（领队裁 ②B「遭遇触发后停」）：先渲染遭遇描述、等玩家选，未选前**零结算**。
- *
- *   ## RNG 次序护（本件的**唯一**硬约束）
- *   `R.rollEncounter` 是**抽签**（消耗随机单元）⇒ 若「停」与「战」各抽一次 ⇒ 一场遭遇吃**两份**随机流，
- *   与所有既有读数（平衡基线／面 N 手算／回归）**全部错位** ✗。
- *   ⇒ 本函数把抽签结果留在 `setup.BABEL.停档`，由 `fight()` **消费**（✗ 重抽）；
- *     且**已在档则不重抽**（段落重渲染／来回点击都只花一次 ✓）。
- */
-/** ★`books#280` ⑬（简单档）：本局是否「简单」—— 旗标住 `$babelRun`（**随档往返** ⇒ 读档后仍是简单 ✓；
- *   ✗ 不另立顶层 `$` 变量：那会多一份「同一件事的第二个名字」）。★缺省 ⇒ `false` ⇒ **零回归** ✓。 */
-const 简单档 = () => State.variables.babelRun?.难度 === '简单';
 
 /** ★`books#280` ⑬：**成军 = 唯一一处**（✗ 别处再 `fresh` 一遍：那是「同一件事的第二处」）。
  *   · 简单档 ⇒ 生命 **减半**：★`⌊hp/2⌋` 且 **至少 1**（✗ 否则出现 0 血敌人 ⇒ 战斗面奇怪且判据会撞 0）；
@@ -353,10 +342,8 @@ const 简单档 = () => State.variables.babelRun?.难度 === '简单';
  *   · 缺省（普通）⇒ 逐字返回 `fresh(...)` 的结果 ⇒ 零回归 ✓。 */
 const 成军 = (rolled) => rolled.map((e) => {
 	const f = fresh(e.ref, e.elite);
-	if (简单档()) {
-		const 满 = Number(f.maxHp ?? f.hp ?? 0) || 0;
-		if (满 > 0) f.hp = f.maxHp = Math.max(1, Math.floor(满 / 2));
-	}
+	const 满 = Number(f.maxHp ?? f.hp ?? 0) || 0;
+	if (满 > 0) f.hp = f.maxHp = Math.max(1, Math.floor(满 / 2));
 	return f;
 });
 

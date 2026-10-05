@@ -56,9 +56,8 @@ R.registerPanel('location', {
 	render: () => {
 		const cur = setup.BABEL?.map?.current;
 		const name = cur ? setup.BABEL.map.locations.get(cur)?.name : null;
-		/* ★`books#280` ⑬：**简单档在游戏中可见**（✗ 只写在开局那一刻）—— 普通档**不显示** ⇒ 与现行为逐字同 ✓。 */
-		const 档 = setup.BABEL?.设难度?.() ?? '普通';
-		return `位置：${name ?? '（未进入）'}${档 === '简单' ? '（简单）' : ''}`;
+		/* ★`books#280` ⑬ **终形**：难度旗标已撤（并轨常驻）⇒ 位置面回朴素形（✗ 不再带「（简单）」标 ✓）。 */
+		return `位置：${name ?? '（未进入）'}`;
 	},
 });
 R.registerPanel('trauma', {

@@ -257,7 +257,7 @@ function 未覆盖三栏() {
 		['②-4 奖励结算停确认', '本档战斗收场走既有路，✗ 不判「未确认不进探索」', 'tools/e2e-280-playtest.mjs 臂⑦'],
 		['⑧ 战中页脚可点件／⑮ 页脚·侧栏横向', '需**真实布局与视口**（本档无头 jsdom，**没有布局**）', 'tools/e2e-280-battle-bag.mjs｜e2e-280-narrow-sticky.mjs'],
 		['⑫ 存档栏位可用性', '需真浏览器**事件相位**（克隆／捕获），✗ 在 jsdom 上证不了', 'tools/e2e-280-save-delete.mjs'],
-		['⑬ 开局难度（挡路者减半／玩家血×2）', '属**开局面**；本档从 `睁开眼` **之后**起手', 'stories/babel/verify.mjs 格 59 ＋ 真机探针'],
+		['⑬ 开局难度（挡路者减半／玩家血×2）', '属**开局面**；本档从「战斗教学」进 L1 **之后**起手', 'stories/babel/verify.mjs 格 59 ＋ 真机探针'],
 		['⑭ kills／首战门（「主线可通关」）', '本档战斗格只看**菜单与动作**，✗ 不读 `kills`', 'tools/e2e-280-kills-easy.mjs'],
 		['素材／包面（SVG、pack 声明）', '**构建期**面，✗ 驾驶层的对象', 'tests/build/story_assets_test.py（引擎）｜tools/check-content-inventory.mjs'],
 	]) console.log(`    · ${面}｜${为何}｜**${谁}**`);

@@ -103,7 +103,7 @@ const 点 = async (p, t) => { const l = p.locator('a,button').filter({ hasText: 
 const 清到达拍 = async (p) => { const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
   if (await l.count() === 0) return false; await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true; };
 /** 到 L1 事件屏且**刚点完「遭遇」前的最后一屏**（照 playtest 族的形 ✓）。 */
-const 到L1 = async (p) => { await 点(p, '睁开眼（普通）'); await 点(p, '站起来'); await p.waitForTimeout(700); await 清到达拍(p); await 点(p, '拾起'); await p.waitForTimeout(300); await 点(p, '长剑'); await p.waitForTimeout(300); };
+const 到L1 = async (p) => { await 点(p, '战斗教学（普通）'); await 点(p, '站起来'); await p.waitForTimeout(700); await 清到达拍(p); await 点(p, '拾起'); await p.waitForTimeout(300); await 点(p, '长剑'); await p.waitForTimeout(300); };
 
 try {
   const p = await 新页(); await 到L1(p);

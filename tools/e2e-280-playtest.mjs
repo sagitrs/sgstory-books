@@ -127,14 +127,14 @@ const 清到达拍 = async p => { const l=p.locator('.choice-box button').filter
   if (await l.count()===0) return false; await l.first().click({timeout:4000}).catch(()=>{}); await p.waitForTimeout(700); return true; };
 const 上行在 = async p => (await 链接(p)).some(x=>x.startsWith('向上，去第'));
 const 采集在 = async p => (await 链接(p)).some(x=>x.startsWith('采集'));
-/* ★★`prepL1`：**一处源**的 L1 起手 —— 睁开眼 ⇒ 站起来 ⇒ **拾起** ⇒ 遭遇 ⇒ 等战斗 UI 起来。
+/* ★★`prepL1`：**一处源**的 L1 起手 —— 战斗教学 ⇒ 站起来 ⇒ **拾起** ⇒ 遭遇 ⇒ 等战斗 UI 起来。
  * ★★★`books#280` ⑭ 实测（A/B 隔离 · 变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
  *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。⑩（`itemsInBag`）上线后菜单**只留在手上的武器**
  *   ⇒ 卸掉之后菜单只剩「空手打击」⇒ 打不死 ⇒ `kills` 恒 0。★本席为此把**两处** prep 各踩过一次
  *   （`#328` 修了一处；★`:149` 那处是 ★**`tester-3`** 在 `#328` 合后核出的潜伏）⇒ ★故抽成**一处源**，口径只写一次。
  * ★并把**前件**钉在这里：拾起后**武器须在手上** —— ✗ 成立不了就明印"后续读数不可用"。 */
 const prepL1 = async (p) => {
-  await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 点(p,'战斗教学（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
   await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面的「拾起／遭遇」全落空
   await 点(p,'拾起'); await p.waitForTimeout(400);
   const 在手上 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
@@ -142,7 +142,7 @@ const prepL1 = async (p) => {
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
 };
 const 到L1事件屏 = async p => {
-  await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  await 点(p,'战斗教学（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
   await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
   /* ★★★`#280` ⑭ 实测（A/B 隔离，♪变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
    *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。
@@ -173,7 +173,7 @@ try {
   let p = await 新页(); await 到L1事件屏(p); let r = await run(p);
   ok('臂① 胜后「遭遇」已消耗', !(await 段内链接(p)).some(x=>x.includes('遭遇')), `kills=${r.kills}`);
   await p.close();
-  p = await 新页(); await 点(p,'睁开眼（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
+  p = await 新页(); await 点(p,'战斗教学（普通）'); await 点(p,'站起来'); await p.waitForTimeout(700);
   await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面的 prepL1 全落空
   await prepL1(p);   // ★一处源（✗ 不再各写一份 prep）
   for (let i=0;i<40;i++){ const rr=await run(p); if(rr?.deaths>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;

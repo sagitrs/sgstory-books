@@ -110,7 +110,7 @@ try {
   const 清到达拍 = async () => { const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
     if (await l.count() === 0) return false; await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(700); return true; };
   /* ── 起手（★只拾起，✗ 不点武器名 —— 那是卸装；见 `books#280` ⑭）── */
-  await 点真('睁开眼（普通）'); await 点真('站起来'); await p.waitForTimeout(700);
+  await 点真('战斗教学（普通）'); await 点真('站起来'); await p.waitForTimeout(700);
   await 清到达拍();   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
   await 点真('拾起'); await p.waitForTimeout(400);
   /* ★装置：造一件绷带（★边界见档头） */
