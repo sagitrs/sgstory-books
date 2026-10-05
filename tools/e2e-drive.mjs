@@ -400,6 +400,26 @@ const 稳打一场 = async (s, opts = {}) => {
 		for (let 轮 = 1; 轮 <= 5; 轮 += 1) {
 			try { await saveAt(s, 位); } catch (e) { /* ✗ 吞 */ }
 			await 真打一场(s, opts);   // ★这里必须调「真打一场」（✗ 自调＝无限递归）
+			/* ★★②-4（`#343`，2026-10-05 实测崩点）：战斗胜利支的**尾**有「收下」确认门
+			 *   （`encounters.js`：`if (interactive) await DND3.Player.choice([{ text: '收下', … }])`）
+			 *   ⇒ 旧形在此直接返回 ⇒ 调用方（`清阶段再向上`）接着找「向上」时**被门挡死**
+			 *     （实测：`当前可点 = ["收下"]` ⇒ 抛「找不到匹配 /向上，去第 2 层/ 的按钮」✗）。
+			 *   ⇒ **一处修**：凡门在，先点掉它（全体调用者受益 ✓）。 */
+			/* ★★②-4／②-2（`#343`／`#340`，2026-10-05 实测崩点）：战斗收尾有**两道门** ——
+			 *   ①「**收下**」＝胜利结算屏的确认门（`encounters.js`：`if (interactive) await DND3.Player.choice([{ text: '收下', … }])`）；
+			 *   ②「**继续探索**」＝`exit()` 的出口门（`choice([{ text: '继续探索', value: '探索' }]).then(v => Engine.play(v))`）。
+			 *   ⇒ 旧形在此直接返回 ⇒ 调用方（`清阶段再向上`）接着找「向上」时**被门挡死** ✗
+			 *     （实测两次：先 `当前可点 = ["收下"]`，补点后又 `= ["继续探索"]`）。
+			 *   ⇒ **一处修**：把「单钮门」按序点掉（★只点这两条具名文案，✗ 不泛化点掉任意单钮
+			 *     —— 要防误点「（到达）…」这类**由调用方负责**的门 ✓）。 */
+			for (let 门 = 0; 门 < 4; 门 += 1) {
+				const 可 = choiceButtons(s);
+				const 收下 = 可.find((t) => /^收下$/.test(t));
+				const 继续 = 可.find((t) => /^继续探索$/.test(t));
+				if (收下) { await driveButton(s, /^收下$/, { read: () => choiceButtons(s).join('|') }); continue; }
+				if (继续) { await driveButton(s, /^继续探索$/, { read: choiceButtons, expectNavigate: '探索' }); continue; }
+				break;
+			}
 			if (currentPassage(s) !== '游戏失败') { 还夹具(); return true; }
 			try { await loadAt(s, 位); } catch (e) { /* ✗ 吞 */ }
 			await tick(200);
