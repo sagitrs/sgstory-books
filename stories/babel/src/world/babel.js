@@ -272,6 +272,17 @@ const 跳过事件动作 = (L) => ({
  *     另有「抽中／择一／跳过」机制）② **无节点账的层**（聚落／准备区等**无遭遇**层）。
  *   ⚠ **只读**（`when` 路径禁副作用 —— 同 `eventsOf` 的说明：看一眼不得改世界）。 */
 const 事件门适用 = (layerId) => !EVENT_LAYERS.includes(layerId) && !!nodeAt(layerId);
+/** ★`books#280` ②-1（领队裁甲）：**到达停**幂等账 —— 同一层只停一次（✗ 重进/回边不再停 ✓）。
+ *   ★住 `State.variables.babelRun`（本局账 ⇒ 随档往返 ⇒ 读档不重停 ✓），✗ 不另立新面 ✓。 */
+RPG.到达停已给 = (层) => {
+	const r = State.variables.babelRun ?? (State.variables.babelRun = {});
+	const m = r.到达停 ?? (r.到达停 = {});
+	if (m[层] === true) return true;
+	m[层] = true;
+	return false;
+};
+
+
 const 事件阶段已了 = (layerId) => {
 	if (!事件门适用(layerId)) return true;                     // 例外两类 ⇒ 本门不适用（既有机制/无事件）
 	if (已跳过(layerId)) return true;                          // 明确跳过（记一次）
@@ -516,6 +527,15 @@ const makeLayerLocation = (L) => new R.Location({
 		 *     （`RPG.rng` 是全仓唯一随机源：战斗选靶也走它 ⇒ 这是**全局**副作用，✗ 只在本层）。
 		 *     本席自己那个「只用了白名单」的声明因此**不实**，已由㉔格的两条新臂钉住。 */
 		if (EVENT_LAYERS.includes(L.id)) ensureDraw(L.id);
+		/* ★`books#280` ②-1（领队裁**甲**·2026-10-04 19:18）：**到达即停一拍** ——
+		 *   层换好、状态已就绪后，**先把「（到达）第 N 层：…」摆给玩家、等一次明确点击**，再露出该层选项面。
+		 *   ★实现面**借既有模态形**（同 `预知门`：`P.choice` 在该刻起模态 ⇒ 模态**即刻替换该刻选项** ✓）。
+		 *   ★**幂等**：同一层**只停一次**（`RPG.到达停已给` ✓，✗ 重进/回边不再停）。
+		 *   ★✗ **不动随机消耗次序**：抽签（上一行）与危害（下一段）各按原序跑 ✓。 */
+		if (L?.id && !RPG.到达停已给(L.id)) {
+			DND3.Player?.choice?.([{ text: `（到达）${L.name ?? L.id} —— 继续`, value: 'ok' }]);
+		}
+
 		/* ★`books#133` 笔 2：**层危害**（进层按档位几率触发，每层每局至多一次；非危害层连随机单元都不读）。
 		 *   表与结算在 `world/hazards.js`（只 L5–L8；甲案首形，见该件头注）。
 		 *   ⚠⚠ **次序是承重的**：抽签**必须在前** —— 本局账是**一个对象**（`$span1Events[层]`），
