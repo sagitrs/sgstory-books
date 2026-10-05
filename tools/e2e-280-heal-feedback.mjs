@@ -116,7 +116,38 @@ async function 判(env) {
 	return { fails };
 }
 
+/* ── 起手：**产物与本引擎树的关系**（★`books#280` ⑩ 顺手项 ②）────────────────────────────
+ *   动因：一个真撞过的坑 —— **pin 产物跑新树** ⇒ 读出来的是「假待判」（引擎明明有这个口，产物里没有）。
+ *   本档一律先印三行（引擎树 ＋ HEAD 短 sha ＋ 产物 sha256），并**当产物带版本戳且与树不符 ⇒ rc=2 装置错**：
+ *     · 版本戳＝产物里 `$buildVersion` 的值（`build.py --version` 注入；缺省 `—` ⇒ **未标** ⇒ 不判、只提示）；
+ *     · 树 HEAD 取不到（不是 git 树、或没装 git）⇒ 也**不判**（✗ 别把「读不到」报成「不一致」）。
+ */
 const env = resolveEnv(process.argv[process.argv.indexOf('--engine') + 1]);
+{
+	const fs0 = await import('node:fs');
+	const { createHash } = await import('node:crypto');
+	const { execFileSync } = await import('node:child_process');
+	const html0 = env.htmlPath ?? (await import('node:path')).join(env.repo ?? '.', 'stories/babel/babel-trial.html');
+	let 产物sha = null, 戳 = null, 树sha = null;
+	try {
+		const buf = fs0.readFileSync(html0);
+		产物sha = createHash('sha256').update(buf).digest('hex').slice(0, 16);
+		const m = buf.toString('utf8').match(/\$buildVersion to "([^"]*)"/);
+		戳 = m ? m[1] : null;
+	} catch { /* 产物缺 ⇒ 后面的 boot 会具名报出（rc=2） */ }
+	try { 树sha = execFileSync('git', ['-C', env.root, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { 树sha = null; }
+	console.log(`产物：${html0}`);
+	console.log(`  构建引擎树：${env.root}${树sha ? `（HEAD ${树sha}）` : '（HEAD 读不到 —— 非 git 树？）'}`);
+	console.log(`  产物 sha256[前16]：${产物sha ?? '（读不到）'}｜产物里的版本戳：${戳 ?? '（读不到）'}`);
+	const 是sha = typeof 戳 === 'string' && /^[0-9a-f]{7,40}$/.test(戳);
+	if (是sha && 树sha && !(树sha.startsWith(戳) || 戳.startsWith(树sha))) {
+		console.error(`✗ **装置错（rc=2）**：产物是 **${戳}** 那棵树建的，而本轮给的是 **${树sha}** ——`
+			+ '「pin 产物跑新树」会读出**假待判**（引擎有没有那个口，得量本轮这棵树）。'
+			+ ' ⇒ 先按本树重烘产物再跑。');
+		process.exit(2);
+	}
+	if (!是sha) console.log('  （产物未标版本 ⇒ 引擎一致性**未核**；CI 的构建步会带 `--version`，本地重烘也建议带上。）');
+}
 const { fails } = await 判(env);
 for (const f of fails) console.error(`✗ ${f}`);
 console.log(fails.length === 0 ? '✓ 三路（文本 ＋ 页脚真变）全过'

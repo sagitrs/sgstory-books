@@ -148,6 +148,21 @@
 | **设立理由** | ⑥ 是先被**真浏览器**发现的问题（静态读源码看不出来：那句原本就是静态文本，谁看都对）。而静态判据证明不了「首载与有档两向」，故把**两 profile ＋ 正控**这套装置留在仓里，供同类「按状态分变体」的文案复跑。 |
 | **前置（★不在 CI）** | 需本机有浏览器与它缺的 so：`CHROME=<chrome 路径>`（缺省取 `~/.cache/ms-playwright/chromium-1243/...`）＋ `CHROME_DEPS=<lib 目录>`（缺省 `~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu`，以 `LD_LIBRARY_PATH` 注入）。Node ≥ 22 自带 `fetch`／`WebSocket` ⇒ **零新依赖**。产物的烘法见本目录末节（★故事目录写**绝对**路径）。 |
 
+## 12. `e2e-280-heal-feedback.mjs` —— 治疗反馈与页脚 HP 刷新的真 DOM 臂
+
+- **清单**：治疗反馈「HP X → Y」＋ 页脚 HP 面板随用刷新。
+- **固定命令**：
+  ```bash
+  python3 <引擎>/build.py "$PWD/stories/babel" --out "$PWD/stories/babel/babel-trial.html"
+  node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>
+  node tools/e2e-280-heal-feedback.mjs --engine <引擎检出> --selftest   # 双刀
+  ```
+- **期望读数**：`三路（文本 ＋ 页脚真变）全过`；引擎没有 `submitBattleAction` 时第三路明印「待判」；
+  自检两刀各红在自己那一面（文本面／页脚面）。退出码 `0` 全过、`1` 有红、`2` 环境错。
+- **设立理由**：⑨ 的病是「用了药却看不出 HP 变了」⇒ 只断「函数被调过」是装置级读数，
+  必须断**页脚 DOM 真的变**；而三路（战斗面板／战外／战中提交）各要证一次 —— 主张是「一处钩子覆盖三路」，
+  主张就得三路各证，任一路将来绕开 `RPG.act`，这一路要红。
+
 ## 附一：本目录的边界
 
 本目录之外还有工具，各三处或五处，顶层 README 的例外段已逐处具名。它们是 `tests/scenario/run.mjs`、`stories/babel/verify.mjs`，以及 `stories/babel/scenarios/` 下的 `validate.mjs`、`knives.sh` 与 `render-table.mjs`。这些工具随其被守卫物同处，被守卫物分别是故事链、故事自检与清单自检，因此不搬进本目录。
