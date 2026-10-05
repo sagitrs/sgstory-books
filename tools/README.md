@@ -38,6 +38,7 @@
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |
 | `tools/balance-babel.mjs` | 战斗跑分器（LegacyBattleRunner），七夹具 × 样本 ⇒ 五战果与胜率区间 |
 | `tools/e2e-280-firstload.mjs` | **首载变体** e2e（真浏览器 CDP · 两个独立 profile ＋ 有档正控）|
+| `tools/e2e-161-restart.mjs` | `:enginerestart` 处理器族的真浏览器臂（真 jQuery 下真触发 · 两向＋缺席闸＋`--knife`）|
 
 ## 退出码三分：`0`／`1`／`2` 各指什么（★读任何读数前先看这一节）
 
@@ -339,6 +340,18 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 
 
 ## 19. `check-readme-tables.mjs` —— Markdown **表格结构**核（每行单元数须＝本表表头）
+
+
+## 20. `e2e-161-restart.mjs` —— **重开事件处理器族**的真浏览器臂
+
+| | |
+|---|---|
+| **清单** | 在真 DOM ＋ 真 jQuery 下**真触发** `:enginerestart`，看故事侧 `world/boss.js` 注册的处理器（重开 ⇒ 头目复位）**是否真跑**。 |
+| **固定命令** | `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-161-restart.mjs --books <books 检出> [--art <产物>] [--knife]`；退出码 `0`＝通过（或待判）｜`1`＝有红｜`2`＝装置错。 |
+| **期望读数** | 印「① 前置（打成「已打过」）：hp 0/26｜effects [...]」与「③ 真触发后：hp 26/26｜effects []」⇒ **通过 1｜失败 0**。 |
+| **设立理由** | 该处理器族此前**只被静态核过「绑的是哪个函数」**（`#156` 登记面），**没有一面**证明事件真到时它会跑（`#161`）。★本臂顺带钉住两条实况：`Engine.restart()` **整页重载** ⇒ 用它造这个事件会**恒真**（假绿）；已绑的监听取不下来 ⇒ **刀＝换事件名**。 |
+| **前置（★不在 CI）** | 需本机浏览器与它缺的 so（同 §10 的 `CHROME*` 约定）。 |
+
 
 | 项 | 内容 |
 |---|---|
