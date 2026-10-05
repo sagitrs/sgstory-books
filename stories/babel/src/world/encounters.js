@@ -414,6 +414,11 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#280` ⑧：把「战中」同时映到 **body 的类**上 —— 版式层（`ui.twee`）据此把页脚 `fixed` 常驻
 	 *   视口（✗ `sticky` 在此不работ：见 `ui.twee` 的 ⑧ 块头注）。✗ 不动 DOM 顺序，只加一个类 ✓。 */
 	try { globalThis.document?.body?.classList?.add('战中'); } catch (e) { /* 无 DOM（无头自检）⇒ 略 */ }
+	/* ★`books#280` ⑮（**真因**）：页脚背包的**可点件**由 `ui/bag.js` 的「战中可提交」门把着，而那门读
+	 *   `setup.BABEL.战中` —— 面板却是**段落渲染那一刻**生成的（彼时战还没起 ⇒ 渲染成**不可点的** `<span>`）。
+	 *   ⇒ 只置 `战中` 而**不刷面板**，页脚就一直是老的不可点形（验收臂报「找不到目标」的真身 ✓）。
+	 *   ⇒ 置真之后**立刻刷面板**（`#137` 的 `refreshPanels` 收口 —— 与战后刷新**同一处** ✓）。 */
+	R.refreshPanels?.();
 	/* ★`场` 声明在 `try` **之外**：战后段（`finally` 之后）要读它 ⇒ 放里面会 `场 is not defined`
 	 *   （本席首版就是这么写的 ✗ —— 由 `verify.mjs` 的「未捕获异常」当场抓住 ✓）。 */
 	let 场 = null;
@@ -431,6 +436,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	} finally {
 		setup.BABEL.战中 = false;
 		try { globalThis.document?.body?.classList?.remove('战中'); } catch (e) { /* 同上：无 DOM ⇒ 略 */ }
+		R.refreshPanels?.();        /* ★⑮：战终同样刷一次 ⇒ 页脚从「可提交」退回战外那形 ✓ */
 	}
 
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
