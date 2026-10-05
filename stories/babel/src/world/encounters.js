@@ -343,6 +343,26 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
  *   ⇒ 本函数把抽签结果留在 `setup.BABEL.停档`，由 `fight()` **消费**（✗ 重抽）；
  *     且**已在档则不重抽**（段落重渲染／来回点击都只花一次 ✓）。
  */
+/** ★`books#280` ⑬（简单档）：本局是否「简单」—— 旗标住 `$babelRun`（**随档往返** ⇒ 读档后仍是简单 ✓；
+ *   ✗ 不另立顶层 `$` 变量：那会多一份「同一件事的第二个名字」）。★缺省 ⇒ `false` ⇒ **零回归** ✓。 */
+const 简单档 = () => State.variables.babelRun?.难度 === '简单';
+
+/** ★`books#280` ⑬：**成军 = 唯一一处**（✗ 别处再 `fresh` 一遍：那是「同一件事的第二处」）。
+ *   · 简单档 ⇒ 生命 **减半**：★`⌊hp/2⌋` 且 **至少 1**（✗ 否则出现 0 血敌人 ⇒ 战斗面奇怪且判据会撞 0）；
+ *   · ★**不掷骰**（✗ 不消耗随机单元）⇒ 抽签次序与既有读数**逐字不变** ✓；
+ *   · 缺省（普通）⇒ 逐字返回 `fresh(...)` 的结果 ⇒ 零回归 ✓。 */
+const 成军 = (rolled) => rolled.map((e) => {
+	const f = fresh(e.ref, e.elite);
+	if (简单档()) {
+		const 满 = Number(f.maxHp ?? f.hp ?? 0) || 0;
+		if (满 > 0) f.hp = f.maxHp = Math.max(1, Math.floor(满 / 2));
+	}
+	return f;
+});
+
+/** ★⑬：把「成军」挂到导出面 —— 判据要能**直接判这一处**（✗ 只能从战斗行为反推难度是否生效）。 */
+setup.BABEL.成军 = 成军;
+
 setup.BABEL.遭遇停 = () => {
 	const layer = setup.BABEL.layerOf();
 	if (!layer) { R.perform('这里没有可遭遇的东西。'); return; }
@@ -353,7 +373,7 @@ setup.BABEL.遭遇停 = () => {
 	if (!setup.BABEL.停档) {
 		const rolled = R.rollEncounter(layer, { count: 1 });
 		if (rolled.length === 0) { R.perform('这一层今天什么都没有挡路。'); return; }
-		setup.BABEL.停档 = { layer, rolled, foes: rolled.map((e) => fresh(e.ref, e.elite)) };
+		setup.BABEL.停档 = { layer, rolled, foes: 成军(rolled) };
 	}
 	R.perform(`挡在前面的是：${setup.BABEL.停档.foes.map((f) => f.name).join('、')}。`);
 };
@@ -392,7 +412,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	const rolled = setup.BABEL.停档?.rolled ?? R.rollEncounter(layer, { count: 1 });
 	setup.BABEL.停档 = null;
 	if (rolled.length === 0) return bail('这一层今天什么都没有挡路。');
-	const foes = rolled.map((e) => fresh(e.ref, e.elite));
+	const foes = 成军(rolled);
 	R.perform(`挡在前面的是：${foes.map((f) => f.name).join('、')}。`);
 
 	/* ★`books#201` 乙：**保证装备在真路上也发一次**。
