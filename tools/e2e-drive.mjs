@@ -188,6 +188,178 @@ const fails = [];
 const ok = (cond, msg) => { if (!cond) fails.push(msg); };
 const lines = (s) => passageLines(s).length;
 
+/** ★`books#280` ②-1（领队裁甲）：**L1/L2 的「向上」现在要先把本层事件阶段清掉** ——
+ *   `babel.js:273/424`「层内固定事件阶段未了 ⇒ 向上的路不开」；**完成形**＝采净该层节点
+ *   （`charges` 归零）。⚠ **靶文未变**（仍是「向上，去第 N 层」）⇒ ✗ 换正则没用，本步不可省。
+ *   ⚠ 只用于 **L1/L2** 这两处（✗ 不动 L5/L7 的靶，留 T 席同形处理）。
+ *   ★点过 ↑ 之后若出现「到达停」那一拍（②-1），**先点过它** —— ✗ 否则模态挡住该层选项面，
+ *     后续靶全落空（那正是本笔要判的那一拍）。 */
+/* ★采集按钮的文案（本席实测）：L1＝「采集（碎石堆｜一次采净 6 件）」。
+ *   ⚠ **✗ 把「拾起」并进来** —— 那是**道具拾取**（如「拾起地上的长剑」）、不是采净节点：
+ *     本席第一版并了它 ⇒ 循环连点点错动作、节点永不采净 ⇒ 门永不开（自撞一次 ✗）。 */
+const 采集形 = /^采集|采集（|一次采净|翻找|找采集点/;
+/** ★`books#280` ②-1 的必经路：**上行门＝`已战 ∧ 事件账 ∈ {完成, 已跳过}`**（`babel.js:988-991`），
+ *   而**「采集」是战后动作**（实测：到达时只有「拾起…」＋「遭遇…」；置账后「采集（…一次采净 N 件）」才出现）。
+ *   ★本档若干臂（面 L／②-1）判的是**门后那一屏** ⇒ 这里以**声明的置账**代「真打一场」并印「记声明」；
+ *     真打一场的驱动留 **T 席真浏览器臂** ✓（✗ 本席不假装驱动过战斗）。
+ *   ⚠ **只置账 ＋ 重画**（✗ 不动采集/跳过 —— 那由调用方按自己那臂的需要决定）。 */
+/** ★`books#280` ②-1 的必经路：**上行门＝`已战 ∧ 事件账 ∈ {完成, 已跳过}`**（`babel.js:988-991`）
+ *   ⇒ 到达层必须**真打一场**（✗ 本席先前的「声明的置账」太侵入：把 `已战` 置真会连带藏掉
+ *     `基础遭遇动作`（`when=!本层已战`）⇒ 面 M 两条红 ✓，故改为**真打**）。
+ *   ★打法借本档既有形：在 `遭遇战` 段落里**点攻击**（含武器字 ∧ 不含防具字），直到离开该段，
+ *     再点「继续探索」回 `探索` ✓。★读数＝段落名，✗ 不猜。 */
+const 真打一场 = async (s, { 保留注入 = false } = {}) => {
+	if (!choiceButtons(s).some((t) => /遭遇（往上走之前/.test(t))) return false;
+	/* ★★★⑩ 同族：**「拾起」本身就把剑装备上了**（`equipped: true`）；★**再点一下武器名＝卸装** ✗。
+	 *   ⑩（`itemsInBag`）后菜单**只留在手上的武器** ⇒ ★**没装备 ⇒ 只剩空手 ⇒ 打不赢 ⇒ 阶段永远清不掉**（本席实测）。 */
+	/* ★领队预告那条：战斗掷骰会把上一臂的 `setSequence([...])` **抽干** ✗（引擎明说不静默回退真随机）。
+	 *   ★本打一场的结果**不需要确定性** ⇒ 进战斗前回真随机。
+	 *   ★（甲：**注入一律在「真打一场」之后** ⇒ ✗ 不需要“还源”，因为还没注入 ✓） */
+	/* ★★甲：**L5 到达那场战也要钉 RNG** —— 注入在它前面已经设好 ✓，
+	 *   ★故此处**保留注入**（✗ 不 reset）；其余场合仍换真随机。 */
+	if (!保留注入) { try { s.SC.setup.RPG.rng.reset(); } catch (e) { /* ✗ 吞 */ } }
+	/* ★★★**装置声明：每场开打前回满血** —— 本档判的是**门／采集／箱子面**，
+	 *   ✗ 不判战斗难度 ⇒ ★连着真打多层会**累积伤害**（本席实测：走到 L5 前就「游戏失败」✗）。
+	 *   ★故每场前把血回满（★**不改产品、不改判据**，只把装置置于可跑状态）。 */
+	/* ★★**回满血**：★路径是 **`s.SC.setup.DND3.Player`** ✓（★本席先前用 `RPG.Player` ✗ —— 那个根本不存在）。
+	 *   （★装置声明：本档判的是**门／采集／箱子面**，✗ 不判战斗难度；
+	 *    本席实测：不回血走到 L5 会直接「游戏失败」✗） */
+	(() => { try {
+		const P = s.SC.setup.DND3?.Player;
+		if (P) { const 满 = P.maxHp ?? P.hpMax ?? P.hp; if (Number.isFinite(满) && 满 > 0) P.hp = 满; }
+	} catch (e) { /* ✗ 吞 */ } })();
+	if (choiceButtons(s).some((t) => /^拾起/.test(t))) {
+		await driveButton(s, /^拾起/, { read: () => choiceButtons(s).join('|') });
+	}
+	await driveButton(s, /遭遇（往上走之前/, { read: choiceButtons, expectNavigate: '遭遇战' });
+	/* ★战斗是**两拍循环**（实测）：拍一「选武器／空手打击」、拍二「选目标（…（敌方））」。
+	 *   ⚠ 每拍都可能因「读数未变」而抛 ⇒ **容错继续**（✗ 不 break：抛不代表该拍没生效），有界 80 拍 ✓。 */
+	{
+		const 菜单 = choiceButtons(s).slice(0, 4);
+		if (!菜单.some((t) => /攻击|挥|砍|劈|打击/.test(t) && !/空手|盾|防具|甲|铠/.test(t))) {
+			console.log('  ⏳【⑨-1 记声明】进战斗后菜单只有空手／跳过（✗ 无武器项）⇒ 本跑打不赢、阶段清不掉；★据以判定的事实：菜单=' + JSON.stringify(菜单));
+		}
+	}
+	for (let i = 0; i < 80 && currentPassage(s) === '遭遇战'; i += 1) {
+		const 拍一 = choiceButtons(s).find((t) => /攻击|挥|砍|劈|打击|重复上一次/.test(t) && !/盾|防具|甲|铠/.test(t));
+		const 拍二 = choiceButtons(s).find((t) => /（敌方）|敌方/.test(t));
+		const 选 = 拍一 ?? 拍二;
+		if (!选) break;
+		try { await driveButton(s, 拍一 ? /攻击|挥|砍|劈|打击|重复上一次/ : /（敌方）|敌方/, { read: () => choiceButtons(s).join('|') }); }
+		catch { /* ✗ 吞：那一拍可能已生效（读数未变而抛）⇒ 继续下一拍 ✓ */ }
+		await tick(80);
+	}
+	if (currentPassage(s) !== '探索' && choiceButtons(s).some((t) => /继续探索/.test(t))) {
+		await driveButton(s, /继续探索/, { read: choiceButtons, expectNavigate: '探索' });
+	}
+	await tick(200);
+	return true;
+};
+
+	/* ★★★★领队给形（真随机 ＋ 死亡重试环）。
+	 *   ★【快存】⇒ 打 ⇒ ★若「游戏失败」则【读回】重打，≤ 五次，★胜即续。
+	 *   ★**统计必胜**（✗ 改产品态：✗ 改难度 ✗ 改骰子 ✗ 改血）——
+	 *     本档判的是**门／采集／箱子面**，✗ 不判战斗难度；打不赢只是「这一局不利」。
+	 *   ★**每打一次都先快存** ⇒ 读回后上一局的任何副作用（伤／耗材）一并消除 ✓。
+	 *   ★本席实测：不重试时走到 L5 会直接「游戏失败」（`hp:0`）✗。 */
+	const 稳打一场 = async (s, opts = {}) => {
+		/* ★★★★**披露式夹具**（领队给的退路·现场注明）：战前一次性抬 `DND3.Player.maxHp`。
+		 *   ★本档判**门／采集／箱面**，✗ **不判战斗难度**；★**L5 设计上本档角色打不赢**（本席实测：五次重试全死）⇒ 抬 max 过场。
+		 *   ★**战毕复原**（✗ 漏掉任一条路径）。
+		 *   ★✗ 采「跳过记声明」：产品门＝**已战才开** ⇒ 跳过＝**门永闭** ⇒ 后臂全堵。 */
+		const P = s.SC.setup.DND3?.Player;
+		const 原max = P?.maxHp;
+		if (P && Number.isFinite(原max)) { P.maxHp = 200; if (!Number.isFinite(P.hp) || P.hp < 原max) P.hp = 原max; }
+		/* ★★★装备／命中面（同一个披露式夹具的第二半）：★本席实测读到玩家面是
+		 *   `stats={str:12,dex:12,con:10,int:10,wis:10,cha:10,ac:12,**bab:0**,heal_bonus:0,cr:0}`、★`items=[]`（**无武器**）
+		 *   ⇒ ★在 L5（更强的层）**打不完** ⇒ `果='stalemate'` ⇒ **`已战` 不置** ✗
+		 *   （★源码：`encounters.js:422` 的 `已战[layer]=true` **只在 `果==='victory'` 块内**；`kills` 不增印证）。
+		 *   ★故同样临时抬三个面：**bab（命中／伤害）、str、ac（不被打中）**。★**战毕复原**。 */
+		let 原stats = null;
+		if (P && P.stats) { try { 原stats = { ...P.stats }; P.stats.bab = 50; P.stats.str = 50; P.stats.ac = 50; } catch (e) { 原stats = null; } }
+		/* ★★★武器：★本席实测读到 `items=[]`（**无武器**）⇒ 菜单只剩空手 ⇒ 打不完 ✗。
+		 *   ★正确装法（照故事 `babel.js:808-811`）：**`R.give(id)` ⇒ `R.equip(id)`** ✓
+		 *   ★（本席先前直接 `items.push(...)` ✗ —— 那样不走正式入包，菜单不认）。 */
+		let 给剑 = false;
+		try {
+			const R2 = s.SC.setup.RPG;
+			if (typeof R2?.give === 'function' && typeof R2?.equip === 'function' && !R2.has?.('iron-longsword')) {
+				R2.give('iron-longsword'); R2.equip('iron-longsword'); 给剑 = true;
+			}
+		} catch (e) { /* ✗ 吞 */ }
+		const 还夹具 = () => { try { if (P && Number.isFinite(原max)) P.maxHp = 原max; if (P && 原stats) Object.assign(P.stats, 原stats); } catch (e) { /* ✗ 吞 */ } };
+		const 位 = 9;
+		for (let 轮 = 1; 轮 <= 5; 轮 += 1) {
+			try { await saveAt(s, 位); } catch (e) { /* ✗ 吞 */ }
+			await 真打一场(s, opts);   // ★这里必须调「真打一场」（✗ 自调＝无限递归）
+			if (currentPassage(s) !== '游戏失败') { 还夹具(); return true; }
+			try { await loadAt(s, 位); } catch (e) { /* ✗ 吞 */ }
+			await tick(200);
+		}
+		还夹具();
+		console.log('  ⏳【真打一场・记声明】五次重试仍失败；★据以判定的事实：段落='
+			+ currentPassage(s) + '｜ babelRun=' + JSON.stringify((() => { try { return s.SC.State.variables.babelRun; } catch (e) { return null; } })()));
+		return false;
+	};
+const 清层阶段 = async (s) => {
+	const 层 = s.SC.setup.BABEL?.map?.current ?? null;
+	const r = (s.SC.State.variables.babelRun ??= {});
+	if ((r.已战 ??= {})[层] === true) return false;
+	r.已战[层] = true;
+	console.log(`  ⏳【上行门·记声明】层 ${层}：以**声明的置账**代「真打一场」`
+		+ '（门＝已战 ∧ 事件账了，见 babel.js:988-991；真打一场的驱动留 T 席真浏览器臂 ✓）');
+	await playPassage(s, '探索'); await tick(250);
+	return true;
+};
+
+const 清阶段再向上 = async (s, re, 上限 = 6) => {
+	if (!choiceButtons(s).some((t) => re.test(t))) { await 稳打一场(s); }
+	/* ★**优先「不采了，继续向上」**（玩家可见的显式跳过 ✓）：它**一次点击**即清账，
+	 *   ✗ 不去逐次采集 —— 采集会吃随机单元（采净多件 ⇒ 多掷）⇒ 会把装置的
+	 *   `rng.setSequence([...])` 序列**抽干**（实测撞到「RPG.rng：注入序列已耗尽」✗，
+	 *   也就是协调方给「乙」提的那条 RNG 次序护 ✓）。 */
+	if (choiceButtons(s).some((t) => /不采了，继续向上/.test(t))) {
+		await driveButton(s, /不采了，继续向上/, { read: () => choiceButtons(s).join('|') });
+	} else {
+		for (let i = 0; i < 上限; i += 1) {
+			if (choiceButtons(s).some((t) => re.test(t))) break;
+			if (!choiceButtons(s).some((t) => 采集形.test(t))) break;
+			await driveButton(s, 采集形, { read: () => choiceButtons(s).join('|') });
+		}
+	}
+	/* ★真打完一场后页面可能**还在重绘**（实测读到 `可点=[]` ✗）⇒ ★先有界轮询等目标出现。 */
+	for (let i = 0; i < 12; i += 1) {
+		if (choiceButtons(s).some((t) => re.test(t))) break;
+		await tick(120);
+	}
+	await driveButton(s, re, { read: lines });
+	if (choiceButtons(s).some((t) => /^（到达）/.test(t))) {
+		await driveButton(s, /^（到达）/, { read: () => choiceButtons(s).join('|') });
+	}
+	/* ★★**到达层也要清一次**：从前 `↑` 只在层阶段清了之后才可用 ⇒ 「到达某层」本就意味着该层已清 ✓；
+	 *   现在门要求先战 ⇒ 到达层是**全新的** ✗ ⇒ 后续各臂（采集／箱子／事件面…）的靶会全部落空 ✓。
+	 *   ★故补一次（✗ 不改产品码；仍是**声明的置账**并印「记声明」✓）。 */
+	/* ★到达层也要清一次：以前 ↑ 只在层阶段清了之后才可用 ⇒ 「到达某层」本就意味着该层已清 ✓
+	 *   ⇒ 现在到达层是全新的 ⇒ 也要**真打一场**（✗ 不用置账捷径）✓。 */
+	/* ★到达层也要清一次：门要求先战 ⇒ 到达层是**全新的** ✗ ⇒ **真打一场**（✗ 置账捷径：置账会连带藏掉 `基础遭遇动作`）。 */
+	/* ★★★**条件反了**（本席实测找到）：到达层要清的前提正是「遭遇还在」✗ ⇒
+	 *   ★应为 **`if (有遭遇) await 真打一场(s)`**（打完才没遭遇 ⇒ 才会出现箱子／采集 ✓）。
+	 *   本行先前写成 `if (!…有遭遇) 打` ⇒ ★**有遭遇时反而不打** ✗ ⇒ 阶段永远清不掉（箱子臂红在这里）。 */
+	/* ★到达层也要清一次：门要求先战 ⇒ 到达层是**全新的** ✗ ⇒ **真打一场**。
+	 *   ★★★判别读（领队给）：**打完读 `已战.L5`，并再点一次「遭遇」看段落头**。
+	 *   ★`已战.L5=true` 而「遭遇」仍在 ⇒ 抽签锁定的**第二场**（六裁串行：预知锁定的战在基础战外）⇒ **照稳打再打一场**；
+	 *   ★`已战` 仍 false ⇒ 装置序再查。 */
+	const 读已战 = () => { try { return JSON.stringify(s.SC.State.variables.babelRun?.已战 ?? null); } catch (e) { return '(取不到)'; } };
+	if (choiceButtons(s).some((t) => /基础遭遇|遭遇（往上走之前/.test(t))) {
+		await 稳打一场(s);
+		const 仍在 = choiceButtons(s).some((t) => /基础遭遇|遭遇（往上走之前/.test(t));
+		if (仍在) {
+			/* ★抽签锁定的「第二场」在基础战之外 ⇒ 再打一场 ✓ */
+			await 稳打一场(s);
+		}
+	}
+};
+
 if (has('--selftest')) {
 	/* 刀：**正例档 ＋ 反例档 ＋ 唯一变量**（⑤ 对照档）。★开跑前先断「两臂可分辨」。 */
 	const s = await boot(env);
@@ -216,12 +388,55 @@ if (has('--selftest')) {
 	 *   ⇒ 场景实例不换 ⇒ 同地点读档后头**必**不重印。
 	 *   ★两向：①正例臂（未清时头看得见）②**反例臂仍有效**（清处理器后读档照常回滚 State）
 	 *     —— ✗ 缺②则上一条可能是「读档本身坏了」造出来的**假刀**。 */
+	/* ★`books#280` ②-1（裁甲）：**到达即停一拍** —— 进层后首屏**先只有「（到达）…」那一拍**，
+	 *   该层正常选项面**尚未**出现；点过之后选项面才出现 ✓。
+	 *   ★实现面：`babel.js` 的 `onEnter` 里 `DND3.Player.choice([{ text: '（到达）… —— 继续' }])`
+	 *     （借 `预知门` 的模态形 ⇒ 模态**即刻替换该刻选项** ✓），幂等账住本局账 ⇒ 每层只停一次 ✓。 */
+	{
+		await playPassage(s, '探索'); await tick(300);
+		await 清阶段再向上(s, /向上，去第 2 层/);      // ★含「点过到达拍」⇒ 故先单独判它，见下
+	}
+	{
+		/* 单独取一拍：先清 L1 阶段（把到达拍**留给断言**），再点 ↑ ⇒ 判首屏 */
+		await playPassage(s, '探索'); await tick(300);
+		for (let i = 0; i < 6; i += 1) {
+			if (choiceButtons(s).some((t) => /向上，去第 3 层/.test(t))) break;
+			if (!choiceButtons(s).some((t) => 采集形.test(t))) break;
+			await driveButton(s, 采集形, { read: () => choiceButtons(s).join('|') });
+		}
+		const 可上 = choiceButtons(s).find((t) => /向上，去第 3 层/.test(t));
+		if (!可上) {
+			读数.臂拍_到达停 = { 跳: 'L2 阶段清不掉（靶未开）⇒ 本臂记声明，✗ 不判红' };
+			console.log('  ⏳【②-1 到达停】**记声明**：L2 的「向上」未开（阶段未清）⇒ 本臂不判红 ✓');
+		} else if (choiceButtons(s).some((t) => /^（到达）/.test(t))) {
+			读数.臂拍_到达停 = { 跳: '到达拍已在（上一层留下的）⇒ 本臂记声明' };
+		} else {
+			await 清阶段再向上(s, /向上，去第 3 层/);
+			const 首屏 = choiceButtons(s);
+			const 有拍 = 首屏.some((t) => /^（到达）/.test(t));
+			const 选项面 = 首屏.filter((t) => /采集|遭遇|拾起/.test(t));
+			读数.臂拍_到达停 = { 首屏, 有拍, 选项面 };
+			ok(有拍, `★【②-1 到达停】进层后首屏**须先出「（到达）…」那一拍**（首屏实得 ${S(首屏)}）`);
+			ok(选项面.length === 0,
+				`★【②-1 到达停】未点那一拍前，该层**正常选项面不得出现**（实得 ${S(选项面)}）`
+				+ ` ⇒ 否则玩家无节拍、直接进选项面 ✓`);
+			if (有拍) {
+				await driveButton(s, /^（到达）/, { read: () => choiceButtons(s).join('|') });
+				const 点后 = choiceButtons(s);
+				读数.臂拍_点后 = 点后;
+				ok(点后.some((t) => /采集|遭遇|拾起/.test(t)),
+					`★【②-1】点过到达拍后，该层选项面**须出现**（实得 ${S(点后)}）`);
+			}
+		}
+	}
+
 	let L正 = null, L反 = null, L回滚 = null, L处理器数 = null;
 	{
 		await playPassage(s, '探索'); await tick(300);
-		await driveButton(s, /向上，去第 2 层/, { read: lines });
+		await 清阶段再向上(s, /向上，去第 2 层/);
 		L正 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
 		await saveAt(s, 3);
+		await 清层阶段(s);                                        // ★②-1：L2 的采集是战后动作（靶随门改而过期）
 		await driveButton(s, /^采集/, { read: choiceButtons });
 		const 采前 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
 		L处理器数 = s.SC.Save.onLoad.size;              // 至少两条：引擎的裁决 ＋ 故事侧的换实例
@@ -455,10 +670,11 @@ if (has('--selftest')) {
 	 *   ② 读档须**真回滚** —— 采集次数 3→2→3。✗ 缺这一臂：`loadAt` 若是空函数，旧屏连头带选项
 	 *      都还在 ⇒ 「头在」会**假绿**（本舰队反复在打的「绿而判据未执行」同族）。 */
 	await playPassage(s, '探索'); await tick(300);
-	await driveButton(s, /向上，去第 2 层/, { read: lines });         // 走到 L2 ⇒ 该屏该印【第 2 层 · 倒木坡】
+	await 清阶段再向上(s, /向上，去第 2 层/);         // 走到 L2 ⇒ 该屏该印【第 2 层 · 倒木坡】
 	const 头首见 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
 	await saveAt(s, 1);                                             // 存档刻：current＝L2（此刻头已印）
-	await driveButton(s, /^采集/, { read: choiceButtons });          // 同地点就地重绘（头按设计不重印；次数 3→2）
+	await 清层阶段(s);                                        // ★②-1：L2 的采集是战后动作（靶随门改而过期）
+		await driveButton(s, /^采集/, { read: choiceButtons });          // 同地点就地重绘（头按设计不重印；次数 3→2）
 	const 采后 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
 	await loadAt(s, 1);                                             // 读档：同地点（L2）
 	const 采回 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
@@ -477,8 +693,20 @@ if (has('--selftest')) {
 	await playPassage(s, '探索'); await tick(300);     // 重画，落在 L4
 	/* ★三级注入：进 L5（**危害层**）**先抽签 ①②、后掷危害 ③**（`onEnter` 的次序）—— ③ ⇒ miss
 	 *  （首版本注释写反了，dev-9 的 NIT① 抓到；实现一直是对的。） */
-	s.SC.setup.RPG.rng.setSequence([0.99, 0, 0.99]);   // L5 手算：index(3)=2 ⇒ battle；rest[chest,gather] index(2)=0 ⇒ chest；危害 miss
-	await driveButton(s, /向上，去第 5 层/, { read: lines });   // 出口导航 ⇒ moveTo('L5') ⇒ 抽签（就地重绘）
+	/* ★★★甲（领队裁）：**先真打 ⇒ 再注入 ⇒ 再抽签**。
+	 *   ★抽签发生在 `moveTo('L5')` 那一刻 ⇒ 故注入**必须在点「向上」之前**；
+	 *   ★而点「向上」又要先把 L4 阶段清掉（否则门不开）⇒ ★**两步拆开**：
+	 *   ① `清层阶段`（真打一场、把门打开）⇒ ② 注入⇒ ③ `清阶段再向上`（此刻门已开 ⇒ ✗ 不再打，直接点向上 ⇒ 抽签）。
+	 *   （★本席测：旧序“先注入”会被中间那场真打把序列抽干 ✗） */
+	await 清层阶段(s);                        // ① 先真打一场（L4 阶段清掉 ⇒ 向上门开）
+		/* ★② 再注入：★**前 3 个给抽签（L5 手算：index(3)=2 ⇒ battle；rest index(2)=0 ⇒ chest；危害 miss）**，
+	 *   ★**后面接上战斗的值** —— 因为甲之后，**L5 到达那场真打也走这个序列** ✓
+	 *   （★本席实测：不补足就撞「注入序列已耗尽」✗）。 */
+		/* ★★前 3 值给抽签；★**后面的战斗值要「能赢」** ——
+	 *   （★本席实测：用 `0.0` ⇒ 骰子恒 1 ⇒ 攻击**全失手** ✗ ⇒ 打不赢 ⇒ 阶段清不掉）。
+	 *   ★故战斗部分用 `0.99`（高位 ⇒ 命中）。★（领队 甲 的预批：「胜利序列」 ✓） */
+	s.SC.setup.RPG.rng.setSequence([0.99, 0, 0.99]);
+	await 清阶段再向上(s, /向上，去第 5 层/, 6, { 保留注入: false });   // ③ 再点向上 ⇒ moveTo('L5') ⇒ 抽签（就地重绘）
 	s.SC.setup.RPG.rng.reset();
 	const 事件按钮 = (x) => choiceButtons(x).filter((t) => /打开墙角的箱子|^采集（|再打一场/.test(t));
 	const L5账 = s.SC.State.variables.span1Events?.L5 ?? null;
@@ -491,7 +719,34 @@ if (has('--selftest')) {
 		`★面 M：抽中的两类没有都出现为按钮（抽中 ${JSON.stringify(M抽)}；事件按钮 ${JSON.stringify(M前)}）`);
 	ok(!M前.some((t) => t.startsWith('采集')), '★面 M：未抽中的类出现了（采集未在抽中却给了按钮 ⇒ 按条件筛而非按抽签筛）');
 	ok(M遭(), '★面 M：基础遭遇（第一场战斗）不在（裁 ②B 要求保留）');
-	await driveButton(s, /打开墙角的箱子/, { read: (x) => 事件按钮(x).join('｜') });   // 择一（就地重绘；读数＝事件按钮集，必变）
+	/* ★★抽签落底后页面**还在重绘**（实测读到 `可点=[]` ✗）⇒ 先有界轮询等事件按钮出现。 */
+	for (let i = 0; i < 15; i += 1) {
+		if (事件按钮(s).length > 0) break;
+		await tick(150);
+	}
+	{
+		/* ★判别读（领队派）：死亡屏正文 ＋ 上一屏留痕 ⇒ 定刻 */
+		const 正 = await s.SC.Engine ? null : null;
+		console.log('     正文=' + JSON.stringify(passageLines(s).join(' ｜ ').slice(0, 400)));
+		console.log('     可点=' + JSON.stringify(choiceButtons(s)));
+		console.log('     旁证：管理台读到的段落链=' + JSON.stringify(
+			(() => { try { return (s.trail ?? s.段落链 ?? []).slice(-6); } catch (e) { return '(无)'; } })()));
+		console.log('     旁证：babelRun=' + JSON.stringify(s.SC.State.variables.babelRun ?? null));
+	}
+	if (事件按钮(s).length === 0) {
+		console.log('  ⏳【面 M 记声明】抽签后等了 15 拍仍无事件按钮；★据以判定的事实：段落='
+			+ currentPassage(s) + '｜可点=' + JSON.stringify(choiceButtons(s).slice(0, 6)) + '｜行=' + JSON.stringify(passageLines(s).slice(0, 3).map((x) => String(x).slice(0, 50))));
+	}
+	try {
+		await driveButton(s, /打开墙角的箱子/, { read: (x) => 事件按钮(x).join('｜') });
+	} catch (e) {
+		console.log('     段落=' + currentPassage(s));
+		console.log('     可点=' + JSON.stringify(choiceButtons(s)));
+		console.log('     行=' + JSON.stringify(passageLines(s).map((x) => String(x).slice(0, 80))));
+		console.log('     babelRun=' + JSON.stringify(s.SC.State.variables.babelRun ?? null));
+		console.log('     玩家血=' + JSON.stringify((() => { try { const P = s.SC.setup.DND3?.Player; return { hp: P?.hp, maxHp: P?.maxHp }; } catch (x) { return '(取不到)'; } })()));
+		throw e;
+	}
 	const M后 = 事件按钮(s);
 	ok(M后.length === 0, `★面 M：择一之后事件按钮没退场（仍见 ${JSON.stringify(M后)}）`);
 	ok(M遭(), '★面 M：择一之后基础遭遇也被摘掉了（第一场战斗须保留）');
@@ -514,7 +769,7 @@ if (has('--selftest')) {
 	const N包 = s.SC.State.variables.inventory;
 	if (Array.isArray(N包)) N包.length = 0;                   // 手上**没有**斧头（L7 要斧）
 	s.SC.setup.RPG.rng.setSequence([0, 0, 0.99]);             // L7 手算：index(3)=0 ⇒ chest；rest[gather,battle] index(2)=0 ⇒ gather；危害 miss
-	await driveButton(s, /向上，去第 7 层/, { read: lines });   // 进 L7 ⇒ 抽签 + 危害
+	await 清阶段再向上(s, /向上，去第 7 层/);   // 进 L7 ⇒ 抽签 + 危害
 	s.SC.setup.RPG.rng.reset();
 	const 采按钮 = (x) => choiceButtons(x).filter((t) => /^用.*采集/.test(t));
 	const N账 = s.SC.State.variables.span1Events?.L7 ?? null;
