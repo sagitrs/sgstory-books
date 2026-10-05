@@ -152,7 +152,8 @@ const terminal = (kind) => {
 	if (!alive()) return false;
 	const r = (State.variables.babelRun ??= {});
 	r.终局 = true; r.终局类型 = kind;
-	// 自由终局和留居不置零 HP、不加 death、不调用复活、不计死亡。
+	// 类型随 babelRun 保存并供回归核对；本版由独立终局段落区分叙事，不另加面板读取面。
+	// 背包统一显示中性的只读提示；自由终局和留居不置零 HP、不加 death、不调用复活、不计死亡。
 	SugarCube.Engine.play(kind === 'enslaved' ? '失去自由' : '留在共炉');
 	return true;
 };
@@ -223,8 +224,8 @@ const build = () => {
 		'证前可出售常见资源、买回城卷轴；证后开放稳定补给。装备、药品、口粮转卖不计贡献，店里不卖本店计贡献的原料。', [
 		{ text: '出售资源（目录与价格均为候选）', action: () => visit('sale') },
 		{ text: '购买补给／回城卷轴', action: () => visit('supply') },
-		{ text: '收获旧档已有农田（兼容收尾，不计资格）', when: () => R.farmCount?.('span1') > 0,
-			action: () => R.harvest('span1', { product: 'ration' }) },
+		{ text: '收获旧档已有农田（兼容收尾，不计资格）', when: () => D.farmCount() > 0,
+			action: () => R.harvest(D.Player) },
 	]);
 	add(locations.workshop, '第 10 层 · Ember Workshop（余烬工坊）',
 		'工匠展示武器、护甲和工具。证前可询价；证后可购买或修理所选单件工具，不需要升级整座工坊。', [

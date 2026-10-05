@@ -1055,20 +1055,20 @@ map.locations.get('L4').actions.unshift(
 );
 
 /**
- * **接管**一个整备区（把包里的 `WorldMap` 并进本图）：地点字段与 `actions` **按引用共享**
- * （⇒ 包里对入口的接线在此一并生效，单一权威源），边**同一批实例**一并取入
- * （只取地点会得孤岛 —— 实测 `validate()` 报「孤立点 L10-settlement」）。
- * 唯一的故事侧补丁是 `onEnter` 读数钩子（记录 `deepest`）；**✗ 直接改包里的实例**
- * （那会连带污染包自己那张图）。
+ * 接管调用者提供的整备区 WorldMap 模板，模板可能来自故事或规则包。
+ * L10 取故事 L10.build()；其他调用仍可传包内模板，不表示自动跟包更新 L10。
+ * 名称／描述来自传入模板，新建 Location 与 Exit，不修改模板的地点／边实例。
+ * 动作经可选 patch 选取再包活人门，出口也包活人门；不按实例直接共用。
+ * onEnter 另加 deepest 最大值记录，不复制模板的进入副作用。
  */
 const adoptHub = (target, hub, patch = {}) => {
 	for (const loc of hub.locations.values()) {
 		target.addLocation(new R.Location({
 			id: loc.id, name: loc.name, desc: loc.desc,
-			/* ★`#116`：`patch[locId]` 可**替换**该地点的动作表（`(原表) => 新表`）——
-			 *   为何要这个口（✗ 直接改 `loc.actions`）：包里那张图与故事侧**共享同一批实例**
-			 *   （本函数上方注：「✗ 直接改包里的实例 —— 那会连带污染包自己那张图」）。
-			 *   ⇒ 经本参**只改故事侧这一份**（原表按引用传入 ⇒ patch 可读它、✗ 必须用它）。 */
+			/* patch[locId] 可替换传入模板的动作表，参数是原表。
+			 * 原表只供读取；调用者不得就地修改，以免污染模板。
+			 * 无 patch 则选原表，再用下方 map(只给活人) 新建动作包装。
+			 * 最终 Location 属于故事地图，模板的地点实例不被修改。 */
 			actions: (patch[loc.id] ? patch[loc.id](loc.actions) : loc.actions).map(只给活人),   // ★`books#176`：hub 动作同挂闸门
 			onEnter: () => {
 				const r = State.variables.babelRun;
@@ -1078,10 +1078,10 @@ const adoptHub = (target, hub, patch = {}) => {
 			},
 		}));
 	}
-	/* ★`books#176`：hub 的**出边**来自包（不经 `边可否通行`）⇒ 在此按同一个「活着」语义包一层。
-	 *   ⚠ `addExit` 要的是 **`Exit` 实例**（✗ 裸对象 —— 本席首版即栽在此：`addExit 需要 Exit 实例`）
-	 *     ⇒ 按 `addPath` 的同形**新建**实例（✗ 改包里的那个：那会连带污染包自己那张图）。
-	 *   （hub 的**动作**已在上面 `actions:` 处走 `只给活人`；两样都是「接管面」自带的，故都在本函数内收口。） */
+	/* 模板出边也按活人语义包一层，不经普通层边的边可否通行。
+	 * addExit 要求 Exit 实例，因此新建包装，不修改模板的原边。
+	 * 不改变模板边的 action、when 条件及 text。
+	 * 地点动作已在上方 actions 处走只给活人；两类入口都在接管面收口。 */
 	for (const exit of hub.exits) {
 		const w = exit.when;
 		target.addExit(new R.Exit({
