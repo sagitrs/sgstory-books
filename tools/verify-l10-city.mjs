@@ -147,7 +147,7 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		ok(jumps.at(-1) === '留在共炉' && State.variables.babelRun.终局类型 === 'settled'
 			&& D.Player.hp === 20 && !D.Player.contains('death'), '正常留居被当成死亡／奴役');
 		reset('L10-gate');
-		ok(map.exitsFrom('L10-gate').some((e) => e.to === 'L11'), '证前不能再次出发');
+		ok(map.exitsFrom('L10-gate').some((e) => e.to === 'L11' || e.to === 'W09')  /* ★books#397 裁 (b)：首次出城分流到 W09 ⇒ 两者皆算「能出发」✓ */, '证前不能再次出发');
 		ok(!map.exits.some((e) => e.from === C.locations.hearth && e.to === 'L9'), '恢复塔向下步行边');
 		map.moveTo('L19'); B.记战果('L19', 'victory');
 		ok(map.exitsFrom('L19').some((e) => e.to === 'L20-forge'), 'L19 新增居民证门或旧头目门漂移');
