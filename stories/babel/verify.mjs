@@ -5085,12 +5085,38 @@ head('67. `books#415`（A4）：开发测试模式 —— 按用途指定原始�
 			骰.装({ purpose: 'check.save', actor: 名, faces: [11] });
 			ok(Cc.clearAll('并不存在的会话') === 0, '★`clearAll(未知 id)` 须返 **0**');
 			ok(D.save(甲, 'fortitude', 1).roll === 11, '★未知 id 清场**不得动本会话**（臂仍生效 ⇒ 吃到 11）');
+
+			/* ⑪ ★**读档双清**（`dev-10` 复核 B3 · 领队转本笔）：这道面**此前无格** —— 摘掉订阅仍全绿 ✗。
+			 *   ★为何要做**重放**：无头装具里 `SugarCube.Save` **默认缺席**（本档 `:2441` 成文）⇒ 本档装载时
+			 *     订阅**根本没发生** ⇒ ✗ 装个桩再断言「有订阅」是假绿。故：先装带 `onLoad` 的桩 ⇒ **重放本档 IIFE**
+			 *     （⇒ 订阅落进桩）⇒ **真触发**回调 ⇒ 看**行为**（✗ 只看内部字段）。 */
+			const 旧SC = globalThis.SugarCube;
+			try {
+				const 订阅 = [];
+				globalThis.SugarCube = Object.assign({}, 旧SC, { Save: { onLoad: { add: (fn) => 订阅.push(fn) } } });
+				骰.清(); Cc.清账();
+				eval(fs.readFileSync(path.join(storySrc, 'story', 'zz-dice-test.js'), 'utf8'));
+				ok(订阅.length === 1, `★本档须**订阅**宿主 onLoad（重放后应恰 1 条，实得 ${订阅.length}）`);
+				骰.装({ purpose: 'check.save', actor: 名, faces: [19] });
+				ok(骰.读().额度账.length === 1, '前置：读档前应恰有 1 条臂');
+				订阅.forEach((fn) => fn());
+				ok(骰.读().额度账.length === 0, '★读档后额度账须**空**（✗ 让上一局的臂跨存档继续生效）');
+				ok(D.save(甲, 'fortitude', 1).roll !== 19, '★读档**后再掷 ✗ 等于指定面**（行为证据：控制确已撤下）');
+			} finally {
+				globalThis.SugarCube = 旧SC;
+			}
+
+			/* ⑫ ★**静态**：`play.twee` 的「读档」链须**逐字**带 `测试骰?.清()`（另一道读档清场；✗ 只靠模块订阅） */
+			const 试玩 = fs.readFileSync(path.join(storySrc, 'story', 'play.twee'), 'utf8');
+			const 读档行 = 试玩.split('\n').find((l) => l.includes('<<link "读档"'));
+			ok(typeof 读档行 === 'string' && 读档行.includes('测试骰?.清()'),
+				`★play.twee 的读档链须含 \`测试骰?.清()\`（实得：${读档行 ?? '（无该行）'}）`);
 		} finally {
 			骰.清(); Cc.清账(); R.rng.reset?.();
 		}
 	}
 	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 67 组：${本组失败 === 0 ? '十格全绿（真消费·行为证据／20 仍走正式数学／无关用途零消费／越界零部分消费／过宽拒／耗尽恢复／清除恢复／未接入明报未生效／不泄漏正式局·两账互不干扰／会话隔离）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 67 组：${本组失败 === 0 ? '十二格全绿（真消费·行为证据／20 仍走正式数学／无关用途零消费／越界零部分消费／过宽拒／耗尽恢复／清除恢复／未接入明报未生效／不泄漏正式局·两账互不干扰／会话隔离／**读档双清（动态·重放触发 onLoad）**／读档链静态逐字）' : `★本组 ${本组失败} 处失败`}`);
 }
 
 printSummary();
