@@ -366,11 +366,11 @@ RPG.到达停已给 = (层) => {
 };
 
 
-const 事件阶段已了 = (layerId) => {
-	if (!事件门适用(layerId)) return true;                     // 例外两类 ⇒ 本门不适用（既有机制/无事件）
-	if (已跳过(layerId)) return true;                          // 明确跳过（记一次）
-	return (nodeAt(layerId)?.charges ?? 0) <= 0;               // 完成形＝采净
-};
+const 事件阶段已了 = (layerId) => 读进度(layerId).事件已了;
+/*  ↑ ★`books#207`（轨 C）：门的**唯一实现**改读进度面 ⇒ **门消费与只读面同一个表达式** ✓
+ *    （✗ 两处各写一份 —— 那正是本档 `:1110` 注释里点名的「哪层开哪层关不可判」的根源）✓
+ *    语义逐字不变：① 例外两类（抽签层／无节点层）⇒ true ② 明确跳过 ⇒ true ③ 采净 ⇒ true ✓ */
+
 /** 记一次「明确跳过」（幂等；✗ 补账 —— 跳过是**玩家的一次动作**，采空与否不再影响它）。
  *  ⚠ 记在 `$babelRun.已跳过`（同 `已战` 的位置：**本局**账 ⇒ 随存档往返），✗ 不开 `$span1Events`：
  *    那本账是**抽签层**的，给非抽签层开账会撞 ㉔ 的白名单臂（见 `makeLayerLocation` 头注里那条阻断 RC）。 */
@@ -1145,6 +1145,46 @@ if (problems.length > 0) throw new Error(`[babel] 一段图不合法：${problem
  *    换图 ⇒ 位置/地点全丢（判据见 `verify.mjs` 的 ㉑）。 */
 const makeExploreScene = () => new R.MapScene({ id: 'babel-explore', title: '巴别之井', map, start: 'L1' });
 
+/** ★`books#207`（轨 C · 批 2）：**进度面的唯一读口**（只读 · 零新存储键）。
+ *
+ * ## 为什么是「读口」而不是「新账」
+ *   进度的事实**各有其主**，本票 ✗ 不搬它们、✗ 也不复制一份（新增第二个存储键＝**第二真值** ⇒ 必漂移；
+ *   前科两处：本档 `:9`「adoptHub 接管后旧 hub 实例仍在」、`books#350` D 面实测的 `span1-hub`
+ *   `desc`／`actions` 静默失效）：
+ *     · 逐层战果 `babelRun.已战[层]`（`encounters.js` 战后写）
+ *     · 固定事件层的**明确跳过** `babelRun.已跳过[层]`（`记跳过` 写）
+ *     · 抽签层（`EVENT_LAYERS`）的事件账 `span1Events[层]`（`markUsed`／`跳过事件动作` 写）
+ *     · 到达面 `map.deepest`｜头目进度走**引擎权威账**（`boss.js` 的 `记战果`，本档 ✗ 不碰）
+ *   ★ 两族**不是同一个量**：抽签层的事件账是**它自己的**，固定事件层的跳过旗是**另一件事** ⇒ ✗ 不合一
+ *     （合一要么给非抽签层开 `span1Events` ⇒ 撞 ㉔ 白名单臂 ✗，要么夺掉抽签层账里的状态 ✗）。
+ *
+ * ## 只读纪律
+ *   照本档 `预报类` 的同款注记（「`when` 路径只许读，建键是写路径的事」）：
+ *   **本面 ✗ 不 `??=`、✗ 不写任何键** —— 读事件账时**✗ 经 `eventsOf()`**（那个会 `??=` 建键），
+ *   改走「只读探法」✓（判据会断言：读一次 ⇒ `State` 快照不变 ✓）。
+ *
+ * ## 世代语义（裁：旧档**同代、不清**）
+ *   进度住 `State.variables` ⇒ **重开＝键没了＝清** ✓、**读档＝键回来＝不清** ✓ ⇒ **无需**移植 `#1908`
+ *   的 S1–S4 世代锚（那是给「住 State 外面」的量用的，如地图实例字段）✓。
+ *
+ * @returns {{已战:boolean, 跳过:boolean, 账态:'未结'|'已结清'|'不适用', 采净:boolean,
+ *            门适用:boolean, 事件已了:boolean, 到达:boolean, 可上行:boolean}}
+ */
+const 读进度 = (layerId) => {
+	const 已战 = 本层已战(layerId);
+	const 跳过 = 已跳过(layerId);                       // ★固定事件层的旗（只读访问器）
+	const 门适用 = 事件门适用(layerId);
+	// ★只读探法：✗ 经 `eventsOf()`（它会 `??=` 建键 ⇒ 守卫路径不得有副作用）
+	const 账 = State.variables.span1Events?.[layerId] ?? null;
+	const 账态 = !门适用 ? '不适用' : (!账 || 账.已用 === null || 账.已用 === undefined ? '未结' : '已结清');
+	const 采净 = (nodeAt(layerId)?.charges ?? 0) <= 0;
+	// ★「事件阶段已了」——与门的既有实现**同一个表达式**（✗ 不在此再写一份层名单）
+	const 事件已了 = !门适用 ? true : (跳过 ? true : 采净);
+	const L = (x) => Number(String(x ?? '').match(/L(\d+)/)?.[1] ?? 0);
+	return { 已战, 跳过, 账态, 采净, 门适用, 事件已了, 到达: L(layerId) <= L(State.variables.babelRun?.deepest), 可上行: 已战 && 事件已了 };
+};
+
+
 setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	map,
 	/* ★`#132` 战后**必掉**表（设计：L2 100% 绷带 ／ L4 固定掉钥匙）—— 由 `world/encounters.js` 的战后段消费。
@@ -1161,6 +1201,7 @@ setup.BABEL = Object.assign(setup.BABEL ?? {}, {
 	makeLayerLocation,             // 「层地点」构造形（一段/二段共用；二段文件复用）
 	/* ★`books#133` 笔 1：选择制的机器件导出（同 `登记域` 的理由：判据/刀要能**真调用**，✗ 只能静态核）。 */
 	EVENT_KINDS, EVENT_LAYERS, drawTwo, eventsOf, ensureDraw, markUsed, eventPending,
+	读进度,   // ★`books#207`：进度面的**唯一读口**（只读 · 零新键）
 	/* ★`books#259` 裁（12:0x）：固定事件层上行门的机器件（判据/刀要能**真调用**，✗ 只能静态核）——
 	 *   `事件门适用`／`事件阶段已了`（门本身）＋ `记跳过`／`跳过固定事件动作`（跳过那一形）。 */
 	事件门适用, 事件阶段已了, 记跳过, 跳过固定事件动作, 已跳过,   // ★`已跳过`＝P1-3 新导出（判据/刀要能**真调用**）
