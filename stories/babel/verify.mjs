@@ -4810,4 +4810,142 @@ head('64. `books#208`：三域域属账（物品／节点／建筑）＋ 冲突�
 }
 
 await verifyL10({ R, D, B, map, ok, head });
+
+/* ============================================================
+ * 第 65 组：`books#397`（S3 片 1）W09「七名河」—— 最小运行契约 ＋ 节点状态机 ＋ 唯一交付 ＋ 三态保存
+ *   ★计数一律拿**独立字面量**当尺（✗ 不用被测物自身的表 —— `books#206` 实测：拿被测物当尺 ⇒ 刀不咬）。
+ *   ★本组末了**存-复原**（同 62／63／64 格口径 ✓），跑毕 `State.variables[域键]` 与背包回到组前 ✓。
+ * ============================================================ */
+head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一交付／存档往返／导航静态／机会与完成／死亡零写');
+{
+	const 域 = 'sevenNames';
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 组前失败 = fails.length;
+	try {
+		const S7 = B?.七名河;
+		ok(!!S7, '故事脚本没挂上 `setup.BABEL.七名河`（`00-seven-names.js` 没被装载？）');
+		if (S7) {
+			/* ① 静态拓扑：**独立字面量**当尺（设计 events.json@56829d8c） */
+			const 边数 = Object.values(S7.边表).reduce((a, b) => a + b.length, 0);
+			ok(边数 === 13, `★有向边应为 **13**（独立字面量）——实得 ${边数}`);
+			ok(Object.keys(S7.节点表).length === 10, `★节点应为 **10**（E0–E9）——实得 ${Object.keys(S7.节点表).length}`);
+			ok(Object.values(S7.节点表).filter((n) => n.type === 'portal').length === 2, '★门应为 **2** 枚（E0／E9）');
+			ok(Object.values(S7.节点表).filter((n) => n.type !== 'portal').length === 8, '★事件应为 **8** 则（E1–E8）');
+			ok(Object.keys(S7.定点表).length === 10, '★定点应为 **10** 个');
+			const 路线集 = [];
+			const 走线 = (cur, acc) => {
+				if (cur === S7.出口) { 路线集.push([...acc, cur]); return; }
+				for (const nx of (S7.边表[cur] ?? [])) 走线(nx, [...acc, cur]);
+			};
+			走线(S7.入口, []);
+			ok(路线集.length === 6, `★完整路线应为 **6** 条——实得 ${路线集.length}`);
+			ok(路线集.every((r) => r.filter((x) => S7.节点表[x].type !== 'portal').length === 4), '★每条路线应**恰 4 个事件**（设计 §2）');
+			ok(路线集.every((r) => r.includes('E8')), '★每条路线都应经过 **E8**');
+			ok(路线集.some((r) => r.join('→') === 'E0→E1→E4→E6→E8→E9'), '★推荐主干 `E0→E1→E4→E6→E8→E9` 应在路线集里');
+
+			/* ② 读路径**零写**（本仓成文判据：读 ⇒ 存档面零变化） */
+			delete State.variables[域];
+			const 读前 = JSON.stringify(State.variables);
+			S7.读(); S7.已处理(); S7.可走(S7.入口);
+			ok(JSON.stringify(State.variables) === 读前 && State.variables[域] === undefined,
+				'★读面（读／已处理／可走）**不得建键**（读路径零写）');
+
+			/* ③ 三态 ＋ 开始（E0 入场**不消费**机会 ✓ 裁②） */
+			const s0 = S7.读();
+			ok(s0.态 === '未开始' && s0.当前 === S7.入口, `★无档时读面应报「未开始」且在入口（实得 ${s0.态}/${s0.当前}）`);
+			const a0 = S7.开始();
+			ok(a0.ok === true && a0.态 === '进行中' && a0.当前 === 'E0', `★开始 ⇒ 进行中·在 E0（实得 ${JSON.stringify(a0).slice(0, 80)}）`);
+			ok(S7.读档().机会.用 === false, '★E0 入场**不消费**传送机会（裁②）');
+
+			/* ④ 唯一交付：走到 E1（★E0 是**门**，✗ 无行动 —— 先走 ✓）⇒ 一次成功恰发一次；重复提交 ⇒ 拒且背包不再变 */
+			const 计 = (id) => (D.Player.items ?? []).filter((x) => x.id === id).length;
+			const 走E1 = S7.走('left');
+			ok(走E1.ok === true && 走E1.当前 === 'E1', `★E0 走「左」应到 E1（实得 ${JSON.stringify(走E1).slice(0, 70)}）`);
+			const 前粮 = 计('ration');
+			const r1 = S7.选行动(0);   // E1 选项 0：DEX/DC8 成功 ⇒ ration×2；失败 ⇒ 0
+			ok(r1.ok === true, `★E1 选项 0 应可提交（实得 ${JSON.stringify(r1).slice(0, 110)}）`);
+			const 应得 = r1.成败 === '成功' ? 2 : 0;
+			ok(计('ration') - 前粮 === 应得, `★交付须与成败一致：${r1.成败} ⇒ 应得 ${应得} 件（实得 ${计('ration') - 前粮}）`);
+			const 背前 = JSON.stringify(D.Player.items ?? []);
+			const r2 = S7.选行动(0);
+			ok(r2.ok === false && r2.code === 'SEVEN_NODE_DONE', `★同一节点重复提交应**具名拒**（实得 ${JSON.stringify(r2).slice(0, 90)}）`);
+			ok(JSON.stringify(D.Player.items ?? []) === 背前, '★重复提交被拒 ⇒ **背包零变化**（双击不重复发奖）');
+			ok(S7.已处理().includes('E1'), '★E1 应进「已处理」（★派生面 ✓）');
+			ok(S7.读档().结果.E1.选项 === 0 && typeof S7.读档().结果.E1.文本 === 'string', '★结果应记「选项＋文本」（逐节点结果可恢复 ✓ 裁③）');
+
+			/* ⑤ 存档往返：**不重掷、不重发**（真 JSON 往返） */
+			const 复 = JSON.parse(JSON.stringify(State.variables[域]));
+			const 复前 = JSON.stringify(D.Player.items ?? []);
+			ok(复.态 === '进行中' && 复.当前 === 'E1' && 复.结果.E1.选项 === 0, '★域往返后三态／位置／逐节点结果皆在（裁③）');
+			ok(JSON.stringify(D.Player.items ?? []) === 复前, '★往返本身 ✗ 不得改背包（读档不重发）');
+			const r3 = S7.选行动(0);
+			ok(r3.ok === false, '★读档后同一节点仍应被「已处理」拦住（✗ 不得刷新重掷／重发）');
+
+			/* ⑥ 导航：静态边表是**唯一权威**（裁④：行动与导航分开、✗ 渲染期抽签） */
+			const bad = S7.走('down');
+			ok(bad.ok === false && bad.code === 'SEVEN_BAD_DIRECTION', `★不存在的方向应具名拒（实得 ${JSON.stringify(bad).slice(0, 80)}）`);
+			const jmp = S7.走('E9');
+			ok(jmp.ok === false, '★✗ 不得越权跳点（E1 无通往 E9 的路 —— 静态边表里没有）');
+			const good = S7.走('right');
+			ok(good.ok === true && good.当前 === 'E4', `★按 navigation 走 right ⇒ E4（实得 ${JSON.stringify(good).slice(0, 80)}）`);
+			ok((S7.可走('E1') ?? []).includes('E4'), '★`可走` 应与静态边表一致（✗ 两处各写一份）');
+			/* ★本格新增（正是抓「门无向」这一类）：**每个节点的导航都须落在静态边表内** ＋ **入口必须有向** */
+			const 越边 = [];
+			for (const [id, n] of Object.entries(S7.节点表)) {
+				for (const nav of (S7.节点导航(id) ?? [])) if (!(S7.边表[id] ?? []).includes(nav.to)) 越边.push(`${id}→${nav.to}`);
+			}
+			ok(越边.length === 0, `★导航 ✗ 不得越出静态边表（越边：${越边.join('、')}）`);
+			ok((S7.节点导航('E0') ?? []).length === 2 && S7.节点导航('E0').every((n) => ['E1', 'E2'].includes(n.to)),
+				'★入口 E0 必须有方向（设计 §2：左 E1／右 E2）——✗ 不得无路可走');
+			const 无向节点 = Object.entries(S7.节点表)
+				.filter(([id, n]) => n.type !== 'portal' && (S7.节点导航(id) ?? []).length !== (S7.边表[id] ?? []).length)
+				.map(([id]) => id);
+			ok(无向节点.length === 0, `★每个事件节点的导航条数须等于其出边数（不符：${无向节点.join('、')}）`);
+
+			/* ⑦ 机会：按**探索实例**一次（裁②）＋ 完成**只在 E9 且用过机会**（裁⑤） */
+			ok(S7.完成().ok === false, '★不在 E9 ✗ 不得完成（提前回城不算完成 ✓）');
+			ok(S7.用机会().ok === true, '★首次用机会应成功');
+			const again = S7.用机会();
+			ok(again.ok === false && again.code === 'SEVEN_TELEPORT_USED', `★第二次用机会应具名拒（实得 ${JSON.stringify(again).slice(0, 80)}）`);
+			S7.走('left');      // E4 → E6（nav[0]）
+			S7.选行动(0);       // E6 是 battle 节点：本片只走状态机（片 2 才接真战斗 ✓）
+			S7.走('forward');   // E6 → E8
+			S7.选行动(0);       // E8（reward：收下并戴上 ⇒ rain-diadem ✓）
+			S7.走('forward');   // E8 → E9
+			ok(S7.读().当前 === 'E9', `★沿路应可抵达 E9（实得 ${S7.读().当前}）`);
+			const 成 = S7.完成();
+			ok(成.ok === true && S7.读().态 === '完成', `★在 E9 且用过机会 ⇒ 可完成（实得 ${JSON.stringify(成).slice(0, 90)}）`);
+
+			/* ⑧ 死亡：**零写**、保留「进行中（未完成）」（裁⑤） */
+			delete State.variables[域];
+			S7.开始();
+			const 死前 = JSON.stringify(State.variables[域]);
+			const 死 = S7.死();
+			ok(死.ok === true && 死.未完成 === true, '★死() 应报「未完成」');
+			ok(JSON.stringify(State.variables[域]) === 死前, '★死**零写**：✗ 不得写完成、✗ 不得写成没来过');
+			ok(S7.读().态 === '进行中', '★死后态仍是「进行中」（裁⑤）');
+
+			/* ⑨ 真 id 映射：内容里用到的每个候选 id 都映射到**在册**真 id（✗ 不静默丢奖） */
+			const 用到 = new Set();
+			for (const n of Object.values(S7.节点表)) {
+				for (const o of (n.options ?? [])) {
+					for (const br of [o.success, o.failure]) for (const k of Object.keys(br?.loot ?? {})) 用到.add(k);
+				}
+				for (const k of Object.keys(n.victory_loot ?? {})) 用到.add(k);
+			}
+			const 内容 = setup.BABEL_CONTENT.七名河内容;
+			const 缺映射 = [...用到].filter((k) => !内容.物品映射[k]);
+			ok(缺映射.length === 0, `★内容里每个候选 id 都要有真 id 映射（未映射：${缺映射.join('、')}）`);
+			const 非在册 = [...用到].map((k) => 内容.物品映射[k]).filter((id) => !R.items.has(id));
+			ok(非在册.length === 0, `★映射后的真 id 须在册（不在册：${非在册.join('、')}）`);
+		}
+	} finally {
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+		D.Player.items = (背存 ?? []).map((s) => R.reviveItem(s));
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 65 组：${本组失败 === 0 ? '九格全绿（拓扑独立字面量／读面零写／三态与开始／唯一交付／存档往返／导航静态权威／机会与完成／死亡零写／真id映射）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 printSummary();
