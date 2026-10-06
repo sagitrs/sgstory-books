@@ -5358,18 +5358,30 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				`★存档往返后同实例仍须拒（实得 ${rw2.code ?? '（无）'}）`);
 			ok((D.Player.items ?? []).filter((x) => x.id === 'club').length === 0, '★同上：✗ 未二次损毁 ✓');
 
-			/* ②d ★**RC-1 的防线格**（`#444`）：物品面失败 ⇒ **拒** ＋ **域面未提交** ＋ 物品**复原**
-			 *   —— 这正是「把物品面放进 `publish`」会得到的**静默半途**的反面 ✓（引擎 `publish` 吞异常且 `status` 仍 applied ✓）。 */
-			清背(); const 双9 = R.createItem('club'); 双9.charges = 2; 双9.state = { 脆弱: true }; D.Player.items.push(双9);
-			起档('i-x');
-			const 原切 = R.splitStack; R.splitStack = undefined;      // ★逼物品面失败（charges>1 且切不动 ⇒ 拒 ✓）
-			let rx; try { rx = 结.返程事务({ 实例: 'i-x' }); } finally { R.splitStack = 原切; }
-			ok(rx?.code === 'RETURN_SPLIT_UNAVAILABLE',
-				`★须**恰**以该具名码拒（★#444 RC-3 的教训：先前只断 ok===false ⇒ **外层 catch 一兜就过，任何拒都算 ✓** ✗；实得 ${JSON.stringify(rx).slice(0, 90)}）`);
-			ok((D.Player.items ?? []).some((x) => x.entityId === 双9.entityId),
-				`★同上：**该摞不得被整摞删除**（✗ 旧退化的病灶 ✓；实得 ${JSON.stringify((D.Player.items ?? []).map((x) => [x.id, x.charges]))}）`);
-			ok(State.variables[域]?.返程已结 !== 'i-x', '★同上：**域面未提交**（✗ 半途已落 ✓）');
-			ok((D.Player.items ?? []).some((x) => x.id === 'club' && Number(x.charges) === 2), '★同上：物品**已复原**（✗ 已被删 ✓）');
+			/* ②d ★**多份整摞**（`#444`：原「切不动须拒」一格的**后继** ✓ —— 切分路径已去掉 ✓）：
+			 *   `charges=3` 的脆弱件须**整体消失**（✗ 只减份数 ✓），且✗ 不得牵连同款其它件 ✓。 */
+			清背(); const 摞3 = 造('club'); 摞3.charges = 3; 摞3.state = { 脆弱: true };
+			const 陪1 = 造('club'); 起档('i-d2');
+			const rd2 = 结.返程事务({ 实例: 'i-d2' });
+			ok(rd2.ok === true, `★②d 多份整摞不得让事务失败（✗ 旧病灶 STACK_SPLIT_WHOLE ✓；实得 ${JSON.stringify(rd2).slice(0, 80)}）`);
+			const 剩D = D.Player.items ?? [];
+			ok(!剩D.some((x) => x.entityId === 摞3.entityId), '★②d：**该实例（3 份）整体消失** ✓');
+			ok(剩D.some((x) => x.entityId === 陪1.entityId), '★②d：同款**其它件一件不动** ✓');
+
+			/* ②e ★**同族第四条**（dev 的 NIT，我从自证侧接受 ✓）：`splitStack` **在场** ＋ `charges>1`
+			 *   ⇒ 真断「**只该实体那摞消失**：同款其它件一件不动 ＋ 件数恰为 1」✓
+			 *   —— ★②d 那条「整摞不得删」在**它自己的场景**（`splitStack` 缺席 ⇒ 早退）里**走不到** ✗（dev 的刀2 证 ✓），此处补上可达路径 ✓。 */
+			清背();
+			const 大3 = 造('club'); 大3.charges = 3; 大3.state = { 脆弱: true };     // 目标实体：3 份、脆弱
+			const 同普 = 造('club'); const 同脆 = 造('club', { 脆弱: true });        // 同款其它：一普一脆
+			起档('i-e');
+			const re = 结.返程事务({ 实例: 'i-e' });
+			ok(re.ok === true, `（前置）②e 事务应成功（实得 ${JSON.stringify(re).slice(0, 60)}）`);
+			const 剩E = D.Player.items ?? [];
+			ok(!剩E.some((x) => x.entityId === 大3.entityId), '★②e：**该实体（3 份）须消失**');
+			ok(剩E.some((x) => x.entityId === 同普.entityId), '★②e：同款**普通**件**一件不动**（✗ 被整摞删 ✓）');
+			ok(!剩E.some((x) => x.entityId === 同脆.entityId), '★②e：同款**另一件脆弱的**照②规则消失（✗ 与该摞无关 ✓）');
+			ok(剩E.filter((x) => x.id === 'club').length === 1, `★②e：同款剩**恰 1 件**（实得 ${剩E.filter((x) => x.id === 'club').length}）`);
 
 			/* ③ ★**按实体**（裁 §三）：同 id 两件、只有一件脆弱 ⇒ **只消失那一件**（✗ 不误删另一件 ✓） */
 			清背(); const 脆 = 造('club', { 脆弱: true }); const 普 = 造('club');
