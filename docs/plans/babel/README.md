@@ -18,7 +18,7 @@
 | [core/03-cities-and-adventure.md](core/03-cities-and-adventure.md) | C6 两好两坏的四城对照；C7 探索供给与普通返程 |
 | [core/sources-and-status.md](core/sources-and-status.md) | 所用 v1.3 裁定摘录、后续作者原文、继承／替代关系和未决边界 |
 
-具体地图原理、日期参数、人物和服务数值仍须按各自状态处理。下方只收录 L10 的一种表现方案，不预建四城完整细案，也不因未迁入就删除其中已经确定的规范。
+具体地图原理、日期参数、人物和服务数值仍须按各自状态处理。下方收录 L10 城内与首次出城的表现方案，不预建四城完整细案，也不因未迁入就删除其中已经确定的规范。
 
 ## L10 最简玩法候选
 
@@ -31,6 +31,10 @@
 | [L10 来源与状态](optional/cities/L10-sources-and-status.md) | 作者原文、助手建议、未决数值及与现行付费回城裁定的衔接 |
 
 L10 服务表、贡献口径、门槛和具体奴役事件未逐项确认。本文档入口不代表已开发、已平衡或已冻结；回城口径的分歧单列在来源记录，不静默修改核心正文。
+
+## 首次出城教程候选
+
+按[需求 #393](https://github.com/sagitrs/sgstory-books/issues/393)收录[七名河固定教程](optional/tutorial-seven-names/README.md)：E0–E9固定事件、真实检定、正常死亡、一次返城及脆弱结算、地图和验收计划。附内容目录与原创插图供评审，不接游戏、引擎pin或存档；20世界、普通地图生成和进阶系统不属于此文档交付。通用引擎能力另见[sgstory #2021](https://github.com/sagitrs/sgstory/issues/2021)。
 
 ## 系统附录与早期文档
 
