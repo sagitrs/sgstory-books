@@ -4533,5 +4533,146 @@ head('61 探索段落 if 配对（源码结构，不替真实渲染）');
 		ok(!pairedIf(text), `if 配对判据放过异常小样：${text}`);
 }
 
+
+/* ── 63. `books#206`（轨 C · 批 2 第二笔）：游戏内时钟 ＋ 城镇生产 ＋ 远征批量 ────────────────
+ *
+ * 病（`#172` 批 2 要拆的面）：游戏内时间**没有日历面**（`babelRun.时间` 只是个分钟数），
+ *   城镇生产／远征**尚无实现**；而「分钟 → 日」若在两处各换一次 ⇒ 同一个量两套算法
+ *   （本仓已记的坑：`ui/battle.js:45`「同一个量两份实现」）。
+ * 裁（操作者 · 经领队 2026-10-06 03:34Z；落档评论 `6008797337`／接口草案 `6008441941`）：
+ *   ① 备战下限＝**至少 90 日**（`>=`，✗ 不是「最多 90」）② 温泉「分钟→日」零头＝**累积**
+ *   ③ 批量单次 **≤30 日** ④ 日历＝**每月 30 日** ⑤ 时间单位＝**分钟**（既有账 ⇒ ✗ 不迁移旧档，
+ *   日／月是**纯派生**）
+ * 断什么（五格）：
+ *   ① **时钟走格**：推进 1 日 ⇒ 分钟账 +`分钟每日`／第几日 +1；★月末（第 30 日）+1 ⇒ 第 2 月第 1 日；
+ *      ★零头**累积**（+60 分钟 ⇒ 仍第 2 日、账留 60）；备战下限是 `>=90`
+ *   ② **生产产出**：到期**只结算一次**、次日**不得补发**；单次推进跨多周期 ⇒ **逐期**结算
+ *   ③ **远征／批量上限**：推进 31 ⇒ 拒绝且★**存档面零变化**；推进 30 ⇒ 逐日走满；远征到期判归；
+ *      ★未死才走（死在当日 ⇒ 零步 ⇒ 删掉每日检查会红）
+ *   ④ **防漂移·唯一写家**：`babelRun.时间` 的**写**只应出现在 `00-clock-town.js`（✗ 别处各写一遍）
+ *   ⑤ **防漂移·唯一换算常量**：除 `分钟每日` 外**任何地方**出现 `1440` ⇒ 红；且 `babelRun` 里
+ *      **只应有 `时间`** 这一个时间存量（✗ 另存日／月／分钟 —— 那是第二真值）
+ *   ★④⑤ 皆**先剥注释**再判（否则命中注释＝假红；实作见下 `剥注释`）
+ * 刀（D／T 席照此各断一次，结果须**具名**）：
+ *   ① `分钟每日 1440⇒720` ⇒ ①红｜② `结算日` 里去掉 `次 += 周期` ⇒ ②红｜③ 去掉 `推进` 的上限判断
+ *   ⇒ ③红｜③b 去掉 `未死()` 的每日检查 ＋ 让玩家带 0 HP ⇒ ③「死在当日 ⇒ 零步」红｜④ 把
+ *   `00-l10-city.js` 的 `time()` 改回自写 `r.时间 = …` ⇒ ④红｜⑤ 在别处写 `时间 / 1440` 或在
+ *   `推进` 里加 `r.日 = 第几日()` ⇒ ⑤红
+ * ⚠ 装置：本格改 `babelRun.时间`／`babelTown`／`远征`／`Player.hp` ⇒ 末了**存-复原**（同 62 格口径）。
+ */
+head('63. `books#206`：时钟走格 ＋ 生产一次性结算 ＋ 远征批量上限（唯一账·唯一换算常量）');
+{
+	const 存 = {
+		run: JSON.parse(JSON.stringify(State.variables.babelRun ?? null)),
+		town: JSON.parse(JSON.stringify(State.variables.babelTown ?? null)),
+		位: map.current, hp: D.Player.hp,
+	};
+	const 组前失败 = fails.length;
+	try {
+		const 时 = B.时钟, 城 = B.城镇;
+		ok(!!时 && !!城, '★机器件没导出（`B.时钟`／`B.城镇`）—— 判据取不到时钟与城镇面');
+
+		/* ① 时钟走格 ＋ 月末 ＋ 零头累积 ＋ 备战下限 */
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		/* ★先钉**四个常量**（用**独立字面量**，✗ 不拿被测物自身当尺 —— 否则改常数时判据两边一起变 ⇒ 恒真）：
+		 *   游戏日＝1440 分钟｜每月 30 日｜批量 ≤30 日｜备战 ≥90 日（裁㈠／票面）。 */
+		ok(时.分钟每日 === 1440 && 时.每月日数 === 30 && 时.批量上限日 === 30 && 时.备战下限日 === 90,
+			`★四个常量须钉在既定值（1440／30／30／90）—— 实得 ${JSON.stringify({ 分钟每日: 时.分钟每日, 每月日数: 时.每月日数, 批量上限日: 时.批量上限日, 备战下限日: 时.备战下限日 })}`);
+		const a = 时.历面();
+		ok(a.第几日 === 1 && a.月 === 1 && a.日内 === 1 && a.已过日数 === 0, `★分钟账 0 ⇒ 应为第 1 日 / 第 1 月 / 已过 0 日，实得 ${JSON.stringify(a)}`);
+		const r1 = 时.推进(1);
+		ok(r1.applied === true && r1.走了 === 1, `★推进 1 日应走满 1 日（实得 ${JSON.stringify({ applied: r1.applied, 走了: r1.走了 })}）`);
+		ok(时.第几日() === 2 && 时.已过日数() === 1 && 时.分钟账() === 1440, `★推进 1 日 ⇒ 第 2 日／已过 1 日／分钟账恰 +1440（实得 ${JSON.stringify(时.历面())}）`);
+		State.variables.babelRun.时间 = 1440 * 29;                              // ＝第 30 日（字面量，✗ 不用常数自证）
+		ok(时.第几日() === 30 && 时.月() === 1 && 时.日内() === 30, `★第 30 日应仍属第 1 月（实得 ${JSON.stringify(时.历面())}）`);
+		时.推进(1);
+		ok(时.第几日() === 31 && 时.月() === 2 && 时.日内() === 1, `★月末 +1 ⇒ 第 2 月第 1 日（实得 ${JSON.stringify(时.历面())}）`);
+		State.variables.babelRun.时间 = 1440 + 60;                              // 裁㈡：零头累积
+		ok(时.第几日() === 2 && 时.分钟账() === 1500, `★零头 60 分钟应**累积**（仍第 2 日、账留 1500；✗ 不得向上取整成第 3 日）`);
+		State.variables.babelRun.时间 = 1440 * 89;
+		ok(时.备战已足() === false, '★第 90 日前不算备战已足（裁㈠＝**至少** 90 日 ⇒ 判据须 `>=`）');
+		State.variables.babelRun.时间 = 1440 * 90 - 1;
+		ok(时.备战已足() === false, '★还差 1 分钟到第 90 日 ⇒ 仍不算已足（✗ 不得提前进位）');
+		State.variables.babelRun.时间 = 1440 * 90;
+		ok(时.备战已足() === true && 时.已过日数() === 90, '★过满 90 整日 ⇒ 备战已足（按**已过整日**判，✗ 不含头计数的第几日）');
+
+		/* ② 生产：到期只结一次、次日不补发、跨多周期逐期结 */
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		State.variables.babelTown = { 设施: {} };
+		const f = 城.建设施('farm', { 周期: 30, 产出: 'grain' });
+		ok(f.下次产出日 === 31, `★周期 30 ⇒ ` + '`下次产出日` 应为**绝对日号** 31（实得 ' + `${f.下次产出日}）`);
+		const r30 = 时.推进(30);
+		ok(r30.产出.length === 1, `★推进 30 日应恰好结算 1 次（实得 ${r30.产出.length}）`);
+		ok(城.设施表().farm.库存 === 1, `★库存应为 1（实得 ${城.设施表().farm.库存}）`);
+		时.推进(1);
+		ok(城.设施表().farm.库存 === 1, `★到期后次日**不得重复发放**（实得库存 ${城.设施表().farm.库存}）`);
+		State.variables.babelRun.时间 = 0;
+		State.variables.babelTown = { 设施: {} };
+		城.建设施('mill', { 周期: 10 });
+		时.推进(25);
+		ok(城.设施表().mill.库存 === 2, `★25 日内两个周期到期 ⇒ 应结 2 次（实得 ${城.设施表().mill.库存}）`);
+
+		/* ③ 批量上限 ＋ 拒绝零变化 ＋ 远征 ＋ 死在当日 */
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		State.variables.babelTown = { 设施: {} };
+		城.建设施('farm', { 周期: 5 });
+		const 前 = JSON.stringify(State.variables);
+		const r31 = 时.推进(31);
+		ok(r31.applied === false, `★推进 31 日应被拒绝（上限 ${时.批量上限日}；实得 ${JSON.stringify(r31)}）`);
+		ok(JSON.stringify(State.variables) === 前, '★被拒 ⇒ **存档面零变化**（点了推进却动了档）');
+		const r0 = 时.推进(0);
+		ok(r0.applied === false, '★推进 0 日应被拒绝（✗ 不得当作「什么都不做地成功」）');
+		ok(JSON.stringify(State.variables) === 前, '★推进 0 日被拒后仍应零变化');
+		const r30b = 时.推进(30);
+		ok(r30b.applied === true && r30b.走了 === 30, `★推进 30 日应逐日走满（实得 ${JSON.stringify({ applied: r30b.applied, 走了: r30b.走了 })}）`);
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		const 出 = 城.出发(10);
+		ok(出.applied === true && 出.预计归日 === 11, `★出发 10 日 ⇒ ` + '`预计归日` 应为 11（实得 ' + `${JSON.stringify(出)}）`);
+		const rr = 时.推进(10);
+		ok(!!rr.归, '★推进到期应判归（在途账未在归期结算）');
+		ok(城.远征读() === null, '★判归后**在途账应清空**（「在途与否」只由有无这个键表示 ⇒ 一个量一个名字）');
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		State.variables.babelTown = { 设施: {} };
+		城.建设施('farm', { 周期: 5 });
+		D.Player.hp = 0;                                  // ★死在当日：一个整日都不该走
+		const 死 = 时.推进(30);
+		ok(死.applied === false && 死.走了 === 0, `★未死才走：带 0 HP 推进应零步（实得 ${JSON.stringify({ applied: 死.applied, 走了: 死.走了 })}——每日检查 ` + '`未死()`' + ` 没了？）`);
+		ok(时.分钟账() === 0, '★零步时**时间账也不得前进**（死亡当天不结算）');
+		D.Player.hp = 存.hp;
+
+		/* ④⑤ 防漂移（静态，★先剥注释再判） */
+		const 剥注释 = (s) => s
+			.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+			.replace(/^[ \t]*\/\/[^\n]*$/gm, (m) => ' '.repeat(m.length))
+			.replace(/([^:]|^)\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+		const 源 = (() => {
+			const out = [];
+			(function walk(d) {
+				for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+					const q = path.join(d, e.name);
+					if (e.isDirectory()) walk(q);
+					else if (e.name.endsWith('.js')) out.push([q, 剥注释(fs.readFileSync(q, 'utf8'))]);
+				}
+			})(storySrc);
+			return out;
+		})();
+		const 写家 = 源.filter(([q, s]) => /\.时间\s*[-+]?=[^=]/.test(s) && !/00-clock-town\.js$/.test(q));
+		ok(写家.length === 0, `★\`babelRun.时间\` 的**写**只应有一处（\`00-clock-town.js\`）—— 另有：${写家.map(([q]) => path.relative(storySrc, q)).join('、')}`);
+		const 常量 = 源.filter(([q, s]) => /1440/.test(s) && !/00-clock-town\.js$/.test(q));
+		ok(常量.length === 0, `★除 \`分钟每日\` 外不得出现 1440（分钟 → 日 换算只此一处）—— 另有：${常量.map(([q]) => path.relative(storySrc, q)).join('、')}`);
+		State.variables.babelRun = { ...(State.variables.babelRun ?? {}), 时间: 0 };
+		时.推进(1);
+		const 键 = Object.keys(State.variables.babelRun);
+		ok(!['日', '月', '日内', '分钟', '天', '历面'].some((k) => 键.includes(k)),
+			`★时间**只应有一个存量**（\`时间\`，分钟）—— 派生量（日／月）不得另存；实得键：${键.join('、')}`);
+	} finally {
+		if (存.run === null) delete State.variables.babelRun; else State.variables.babelRun = 存.run;
+		if (存.town === null) delete State.variables.babelTown; else State.variables.babelTown = 存.town;
+		map.moveTo(存.位); D.Player.hp = 存.hp;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 63 组：${本组失败 === 0 ? '五格全绿（走格／生产／上限／唯一写家／唯一常量）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 await verifyL10({ R, D, B, map, ok, head });
 printSummary();
