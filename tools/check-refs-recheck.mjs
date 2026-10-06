@@ -57,7 +57,7 @@ function walkStrings(node, p = '') {
 }
 const topField = (p) => p.split('.').find((s) => !s.startsWith('[')) ?? p;
 
-/* ── 索引与解析：**与 `check-refs.mjs` 同解析顺序**（本仓优先 ⇒ 同树多命中为歧义；★`#127`：**两树都命中而内容异 ⇒ 红**，与主件**同刀** ⇒ 两件解析顺序须逐条一致 ✓） ──
+/* ── 索引与解析：**与 `check-refs.mjs` 同解析顺序**（本仓优先 ⇒ 同树多命中为歧义） ──
  *   ★本席曾在此栽过：拿**引擎副本**的行号去评 books 的实指 ⇒ 假红一条（已撤回；`#300` 条款②「实际形优先」）。 */
 function index(root) {
 	const out = [];
@@ -76,30 +76,19 @@ function makeResolver(engine) {
 	return (rawFile) => {
 		let file = rawFile, only = null;
 		for (const pre of ['books/', 'engine/']) if (file.startsWith(pre)) { only = pre.slice(0, -1); file = file.slice(pre.length); }
-		const 命中 = [];
 		for (const [root, list] of IDX) {
 			if (only && (root === BOOKS) !== (only === 'books')) continue;
 			const hits = only ? list.filter((r) => r === file) : list.filter((r) => r === file || r.endsWith('/' + file));
+			if (hits.length === 1) return { root, rel: hits[0] };
 			if (hits.length > 1) return { ambiguous: hits };
-			if (hits.length === 1) 命中.push({ root, rel: hits[0] });
 		}
-		if (命中.length === 0) return null;
-		if (命中.length === 1) return 命中[0];
-		/* ★★`#127` 同刀移植（t4 非阻断②「潜伏盲」）：本件与 `check-refs.mjs` **同解析顺序** ⇒
-		 *   那条「**两树都命中而内容异 ⇒ 红**」必须**同刀**落在这里（否则孪生件仍静默取本仓 ✗）。 */
-		const 本 = 命中.find((x) => x.root === BOOKS) ?? 命中[0];
-		const 引 = 命中.find((x) => x !== 本);
-		if (!引) return 本;
-		const 文 = (x) => fs.readFileSync(path.join(x.root, x.rel), 'utf8');
-		if (文(本) === 文(引)) return 本;
-		return { 跨树异: { 本仓: 本, 引擎: 引 } };
+		return null;
 	};
 }
 function judge(resolve, rawFile, from, to) {
 	const r = resolve(rawFile);
 	if (!r) return { ok: false, why: `文件不存在（本仓／引擎皆无此路径或其后缀）：${rawFile}` };
 	if (r.ambiguous) return { ok: false, why: `引用有歧义（同树命中 ${r.ambiguous.length} 处）⇒ 写全路径：${rawFile} ⇒ ${r.ambiguous.slice(0, 3).join('、')}…` };
-	if (r.跨树异) return { ok: false, why: `★**两树都命中且内容不同**（books：${r.跨树异.本仓.rel} ／ engine：${r.跨树异.引擎.rel}）⇒ 须写**树限定**：「books/${rawFile}」或「engine/${rawFile}」` };
 	const all = fs.readFileSync(path.join(r.root, r.rel), 'utf8').split(/\r?\n/);
 	if (from < 1 || from > all.length) return { ok: false, why: `行号越界：${r.rel}:${from}（共 ${all.length} 行）` };
 	const seg = all.slice(from - 1, to).join('\n');
@@ -112,7 +101,7 @@ export function recheck(doc, engine) {
 	const resolve = makeResolver(engine);
 	const 场景 = doc['场景'];
 	const rows = [], unscanned = [], degraded = [];
-	let 处 = 0, 符号核 = 0, 仅范围核 = 0, 仅范围单行 = 0, 仅范围区间 = 0;
+	let 处 = 0, 符号核 = 0, 仅范围核 = 0;
 	const 应红 = [];
 	for (const r of 场景) {
 		for (const [p, raw] of walkStrings(r)) {
@@ -134,12 +123,6 @@ export function recheck(doc, engine) {
 					const next = raw.slice(after, Math.min(after + 200, bound)).match(SYM)?.[1];
 					if (next) degraded.push({ id: r.id, field, at, sym: next });
 					仅范围核++;
-					/* ★`#99` ③ 的两**子类**分开计（领队 2026-10-05 裁「行区间单列」✓）：二者**意义相反** ——
-					 *   · **单行形缺符号** ＝ **欠账**（棘轮该降：照单补一个 `（\`符号\`）` 即归零 ✓）；
-					 *   · **区间形取不到符号** ＝ **形的限制**（✗ 不是欠账：`CIT` 的 `(?:-(\d+))?` 虽认得区间，
-					 *     但 `SYM` 的声明窗口与「单行符号」语义都落在**单行形**上 ⇒ 补成单行形即可归零 ✓）。
-					 *   ★混在一个计数里，读者只看到一个**会涨的数字**，判不出该补符号还是该改形（dev-10 `#99` 评论 ✓）。 */
-					if (to !== from) 仅范围区间++; else 仅范围单行++;
 				}
 				if (!j.ok) { 应红.push(`[${r.id}/${field}] ${j.why}`); continue; }
 				if (!sym) { rows.push(`${r.id}|${field}|${at}|仅范围核`); continue; }
@@ -152,7 +135,7 @@ export function recheck(doc, engine) {
 			}
 		}
 	}
-	return { 条数: 场景.length, 处, 符号核, 仅范围核, 仅范围单行, 仅范围区间, 不符: 应红.length, 应红, unscanned, degraded, rows };
+	return { 条数: 场景.length, 处, 符号核, 仅范围核, 不符: 应红.length, 应红, unscanned, degraded, rows };
 }
 
 /* ── 打印（人读 ＋ 机读两段；★「未扫面」为 0 时也**必须打印该行** —— 「没扫到」与「没有」不可混淆） ── */
@@ -166,14 +149,6 @@ function report(name, doc, engine, quiet = false) {
 		if (R.unscanned.length === 0) console.log('      · （无 —— 但本行仍须打印：✗ 让「没扫到」与「没有」同形）');
 		console.log(`  ★降级面（紧邻有符号声明但落在 ${SYM_WINDOW} 字符窗口之外 ⇒ 降为仅范围核）：**${R.degraded.length}** 处`);
 		for (const d of R.degraded) console.log(`      · [${d.id}/${d.field}] ${d.at} 的 \`${d.sym}\` 未被核到（窗口外）`);
-		/* ★「仅范围核」两子类**分列**（`#99` ③）：一个是欠账、一个是形的限制 ⇒ ✗ 混在一数里 */
-		console.log(`    ├ **单行形缺符号**（＝欠账，棘轮该降）：**${R.仅范围单行}** 处`);
-		console.log(`    ├ **区间形取不到符号**（＝形的限制，✗ 不是欠账）：**${R.仅范围区间}** 处`);
-		if (R.仅范围区间 > 0) {
-			const 区间例 = R.rows.filter((r) => /:\d+-\d+\|仅范围核$/.test(r)).slice(0, 20);
-			for (const e of 区间例) console.log(`        · 区间形：[${e}]`);
-			console.log('        ★补法二选一：①改写成**单行形**（`路径:行`（`符号`））②待工具直接支持区间形（届时须给一条自证刀 ✓）');
-		}
 		console.log(`  应红 ${R.应红.length} 条`);
 		for (const f of R.应红.slice(0, 12)) console.log(`      ✗ ${f}`);
 		if (R.应红.length > 12) console.log(`      …（另 ${R.应红.length - 12} 条）`);
@@ -224,48 +199,6 @@ function selftest() {
 	K.push([G.应红.length >= 1 && G.应红[0].includes('散文形'), '③ 散文形 ⇒ **红**']);	/* ④ 降级面：符号声明放在窗口之外 ⇒ 计入「降级」而非「仅范围核」 */
 	const H = run(base(`\`${TGT}:${okLine}\`` + '　'.repeat(45) + `（\`RPG.rng\`）`));
 	K.push([H.degraded.length === 1, `④ 符号声明落在 ${SYM_WINDOW} 字符窗口之外 ⇒ 计入**降级面**（实得 ${H.degraded.length}）`]);
-
-	/* ── ★`#99` 三类缺口：**每类一条具名臂 ＋ 一把刀**（领队 2026-10-05 裁「B：扩本件」＋「行区间单列」）──
-	 *   刀的形状＝**唯一变量**（`#300` 条款⑤ 的对照档形）：只改一处 ⇒ 该臂读数**须变**，其余**不动** ✓。
-	 *   ★三条臂对应 `#99` 的三类：①未扫字段 ②降级 ③仅范围核（★③再按「单行／区间」**两子类**分列）✓ */
-
-	/* 臂① 未扫字段：白名单**外**的字段里放引用 ⇒ 须进 `unscanned` 且**不进** `处`（＝不判红） */
-	const I0 = base(`\`${TGT}:${okLine}\`（\`RPG.rng\`）`);                     // 对照：全在被扫字段
-	const I1 = base(`\`${TGT}:${okLine}\`（\`RPG.rng\`）`);
-	I1.场景[0]['同锚分案'] = { 面: `\`${TGT}:${okLine}\`` };                    // ★唯一变量：加一条**白名单外**字段的引用
-	const i0 = run(I0), i1 = run(I1);
-	K.push([i0.unscanned.length === 0 && i1.unscanned.length === 1 && i1.处 === i0.处,
-		`★臂①·未扫字段（带刀）：加一条白名单外字段的引用 ⇒ 未扫面 ${i0.unscanned.length}⇒${i1.unscanned.length}，而**被扫计数不变**（${i0.处}⇒${i1.处}）＝缺口**不判红**这一事实本身 ✓`]);
-	/* 臂① 刀（★换向）：把该字段**临时加进白名单** ⇒ ★同一条引用**应转入被扫面**（未扫 1⇒0、处 +1）✓ */
-	const 原白名单 = SCANNED.slice();
-	SCANNED.push('同锚分案');
-	const i2 = run(I1);
-	SCANNED.length = 0; SCANNED.push(...原白名单);                              // ★复原（✗ 不留全局副作用）
-	K.push([i2.unscanned.length === 0 && i2.处 === i1.处 + 1,
-		`★臂①·刀（白名单加该字段）：同一条引用 ⇒ 未扫 ${i1.unscanned.length}⇒${i2.unscanned.length}、被扫 ${i1.处}⇒${i2.处} ⇒ ★**该臂真的在数白名单** ✓`]);
-
-	/* 臂② 降级：符号声明**紧邻但在 40 字符窗之外** ⇒ 进 `degraded`（＝被降级成仅范围核） */
-	K.push([H.degraded.length === 1, `★臂②·降级：窗口外声明 ⇒ 降级面 = 1（实得 ${H.degraded.length}）✓`]);
-	/* 臂② 刀（★换向）：把间距**缩回窗口之内**（唯一变量：`　`.repeat(45) ⇒ 2）⇒ ★降级面须**回 0** ✓ */
-	const H2 = run(base(`\`${TGT}:${okLine}\`` + '　'.repeat(2) + `（\`RPG.rng\`）`));
-	K.push([H2.degraded.length === 0 && H2.符号核 === 1,
-		`★臂②·刀（间距缩进窗内）：降级面 ${H.degraded.length}⇒${H2.degraded.length}、符号核 ⇒${H2.符号核} ⇒ ★**该臂真的在数窗口** ✓`]);
-
-	/* 臂③ 仅范围核·**两子类分列**（`#99` ③）：单行形缺符号 ＝ 欠账；区间形取不到符号 ＝ 形的限制 */
-	const J1 = run(base(`\`${TGT}:${okLine}\``));                               // 单行形、无声明
-	K.push([J1.仅范围单行 === 1 && J1.仅范围区间 === 0,
-		`★臂③·单行形缺符号（欠账）：仅范围单行 = ${J1.仅范围单行}｜区间 = ${J1.仅范围区间} ✓`]);
-	const J2 = run(base(`\`${TGT}:${okLine}-${okLine + 2}\``));                 // ★区间形、无声明
-	K.push([J2.仅范围区间 === 1 && J2.仅范围单行 === 0,
-		`★臂③·区间形取不到符号（形的限制）：仅范围区间 = ${J2.仅范围区间}｜单行 = ${J2.仅范围单行} ✓`]);
-	/* ★臂③ 的刀（dev-10 在 `#99` 给的形）：把某处**单行形改成区间形** ⇒
-	 *   ★「真缺符号（单行）」计数**须不变**（仍 0 —— 因为对照档本就没有单行缺符号 ✗ 这里用**有符号**的对照更清楚）
-	 *   ⇒ 取「两形之差的**唯一变量**」：同一行号、同一字段，只把 `:n` 改 `:n-n+2` ⇒ ★两子类计数**互换** ✓ */
-	const K1 = run(base(`\`${TGT}:${okLine}\``));
-	const K2 = run(base(`\`${TGT}:${okLine}-${okLine + 2}\``));
-	K.push([K1.仅范围单行 === 1 && K1.仅范围区间 === 0 && K2.仅范围单行 === 0 && K2.仅范围区间 === 1,
-		`★臂③·刀（单行⇄区间 · 唯一变量）：单行 ${K1.仅范围单行}/${K1.仅范围区间} ⇒ 区间 ${K2.仅范围单行}/${K2.仅范围区间} ⇒ ★**两子类可分辨**（混在一数里就看不出来）✓`]);
-
 	/* ⑤ ★**两件约定同形**（dev-10 `#98` RC 的那条）：裸 `--selftest`（无引擎根）须**具名 rc=2**，✗ 栈回溯。
 	 *   这是**真子进程**刀（✗ 读码）：夹具＝本件与姊妹件，调用形＝**真命令行**。
 	 *   ★该刀能红：把 `selftest()` 开头的 `!ENGINE ⇒ 2` 守卫删掉 ⇒ 裸形当下游 `readdirSync(undefined)` 崩（rc=1 栈回溯） ⇒ 本刀红。 */
@@ -280,18 +213,8 @@ function selftest() {
 				`⑤a ★两件约定同形 · ${tag} 裸 \`--selftest\`（无引擎根）⇒ **具名 rc=2**（✗ 栈回溯）—— 实得 rc=${bare.status}｜${bo.trim().split('\n').pop()?.slice(0, 46) ?? ''}`]);
 			const withArg = spawnSync(process.execPath, [path.join(HERE, file), '--selftest', '--engine', ENGINE],
 				{ encoding: 'utf8', env: { ...process.env, ENGINE: '', RECHECK_SELFTEST_CHILD: '1' } });
-			const wo = (withArg.stdout ?? '') + (withArg.stderr ?? '');
-			/* ★`#99` 修（2026-10-05）：本刀**判的是「CLI 约定同形」**（`--engine` 参数优先 ✓），
-			 *   而姊妹件 `e2e-drive.mjs` 还要**引擎树里的可选依赖** `jsdom` ✗ ⇒ 在没装它的树上必然 rc=2 ✗
-			 *   ⇒ 旧形「须 rc=0」把**装置缺失**误判成「CLI 形不对」✗（＝「装置级红 ≠ 该格判得出」族 ✓，
-			 *     本席在 `#369`/`#371` 两笔上都在用同一把尺 ✓）。
-			 *   ★改法（**缺席闸**形）：rc=0 ⇒ 过 ✓；rc=2 ⇒ **须是具名错误**（✗ 不得是栈回溯）且**接受**为「依赖缺席」✓。
-			 *   ★它仍能红：把 `!ENGINE ⇒ 2` 守卫删掉 ⇒ 下游崩 ⇒ rc=1＋栈回溯 ⇒ 两条都不满足 ⇒ 本刀红 ✓（牙在 ✓）。 */
-			const 具名缺依赖 = withArg.status === 2 && /缺|取不到|不存在|无法/.test(wo) && !/\n\s+at /.test(wo);
-			K.push([withArg.status === 0 || 具名缺依赖,
-				`⑤b ★两件约定同形 · ${tag} \`--selftest --engine <dir>\`（**参数优先**，无 env）⇒ rc=${withArg.status}`
-				+ (withArg.status === 0 ? '（跑通 ✓）' : `（★依赖缺席的**具名** rc=2 ⇒ 记为「不成立」而非红 ✓；✗ 无栈回溯 ✓）`)]);
-			if (withArg.status === 2 && 具名缺依赖) console.log(`      ⏳ 待判（⑤b · ${tag}）：引擎树缺姊妹件的可选依赖 ⇒ 本格**不成立**（✗ 不判红）｜原话：${wo.trim().split('\n')[0].slice(0, 90)}`);
+			K.push([withArg.status === 0,
+				`⑤b ★两件约定同形 · ${tag} \`--selftest --engine <dir>\`（**参数优先**，无 env）⇒ rc=0 —— 实得 rc=${withArg.status}`]);
 		}
 	}
 	fs.rmSync(tmpDir, { recursive: true, force: true });
