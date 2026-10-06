@@ -89,6 +89,101 @@ const printSummary = (extra) => {
 	if (summaryPrinted) return;                 // 幂等：崩溃兜底与正常出口只打印一次
 	summaryPrinted = true;
 	if (extra) fails.push(extra);
+/* ── 62. `books#207`（轨 C · 批 2）：**进度面的唯一读口**（只读 · 零新键 · 门只经它）─────────
+ *
+ * 病（`#172` 六模块 §5 要拆的面）：进度的事实**散在多处** —— 逐层战果 `babelRun.已战`、
+ *   固定事件层的跳过旗 `babelRun.已跳过`、抽签层的事件账 `span1Events`、到达面 `map.deepest`、
+ *   头目进度（引擎权威账）；且门 `事件阶段已了` 与各动作的 `when` **各写一份判据** ⇒
+ *   「哪层开哪层关」不可判（本档 `:1110` 的注释自己点过这条）。
+ * 裁（操作者 · 经领队 2026-10-06 03:34Z）：**进度／位置／叙事三 owner**；旧档**同代、不清**。
+ *
+ * 断什么：① **只读面**（`B.读进度`）如实反映四类真源，且★**读一次不改世界**（✗ 不 `??=` 建键）；
+ *   ② **门消费**：上行门/守卫的判据与只读面**同一个表达式**（✗ 两处各写一份）；
+ *   ③ 读档往返 ⇒ 各项**不变**（＝「旧档同代不清」）；清掉本局账 ⇒ 读面归零（＝「重开清」）；
+ *   ④ **防漂移**：读面答出来的每一项，都能被**具名真源**复算出来（✗ 无第二真值）；
+ *   ⑤ **边界**：无账且未采净 ⇒ 门为假（✗ 缺账当已了）；**例外层**（抽签层／无节点层）⇒ 门为真。
+ * 刀（记在提交信息）：① 让 `读进度` 内部改走 `eventsOf()`（会建键）⇒ ① 的「零副作用」格红；
+ *   ② 把门改回「自带一份判据」（✗ 经读面）⇒ ② 的同一表达式格红。
+ */
+head('62. `books#207`：进度面唯一读口（只读·零新键）＋ 门只经它（防两处各写一份）');
+{
+	const 层 = 'L1';
+	const 抽签层 = 'L5';                      // ★例外族之一（`EVENT_LAYERS`）
+	const 无节点层 = 'L10-camp';              // ★例外族之二（无节点账 ⇒ 门不适用）
+	const 节点 = B.nodeAt?.(层);
+	const 位存 = map.current;
+	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 事件存 = JSON.parse(JSON.stringify(State.variables.span1Events ?? null));
+	const 次数存 = 节点?.charges;
+	const 上行门 = () => (map.paths ?? []).find((p) => p.from === 层)?.when?.();
+	const 组前失败 = fails.length;
+	try {
+		ok(typeof B.读进度 === 'function', '★机器件没导出（`B.读进度`）—— 判据取不到进度面');
+		ok(!!节点, '★L1 无采集节点（本格前提不成立 ⇒ 后面的断言会恒真）');
+
+		/* ① 只读面如实反映真源；★读一次不改世界 */
+		State.variables.babelRun ??= {};
+		delete (State.variables.babelRun.已跳过 ??= {})[层];
+		State.variables.babelRun.已战 ??= {};
+		delete State.variables.babelRun.已战[层];
+		delete State.variables.span1Events;                      // ★先拿掉，好断言「读不建键」
+		节点.charges = 6;
+		const 快照前 = JSON.stringify(State.variables.span1Events ?? null);
+		const a = B.读进度(层);
+		ok(a.已战 === false && a.跳过 === false && a.采净 === false && a.事件已了 === false,
+			`★未战未跳未采净 ⇒ 读面应全假（实得 ${JSON.stringify(a)}）`);
+		ok(JSON.stringify(State.variables.span1Events ?? null) === 快照前,
+			'★读面**建了键**（`span1Events` 凭空出现）—— 守卫路径禁副作用（本仓 `预报类` 的同款口径）');
+
+		B.记跳过(层);                                            // 走**真写口**
+		const b = B.读进度(层);
+		ok(b.跳过 === true && b.事件已了 === true, `★走真写口后读面未跟上（实得 ${JSON.stringify(b)}）`);
+
+		/* ② 门消费：门与读面**同一个表达式** */
+		置已战(层);
+		ok(B.事件阶段已了?.(层) === B.读进度(层).事件已了,
+			'★门（`事件阶段已了`）与读面（`读进度().事件已了`）答得不一致 ⇒ 两处各写了一份判据（本格要防的漂移）');
+		if (typeof 上行门() === 'boolean') {
+			ok(上行门() === B.读进度(层).可上行, '★上行门 `when()` 与读面 `可上行` 不一致');
+		}
+
+		/* ③ 读档往返 ⇒ 不变；清账 ⇒ 归零 */
+		const 档 = Save.roundtrip(State.variables.babelRun);
+		const 前 = JSON.stringify(B.读进度(层));
+		State.variables.babelRun = 档;
+		ok(JSON.stringify(B.读进度(层)) === 前, '★读档往返后进度面**变了** —— 「旧档同代不清」没落住');
+		delete State.variables.babelRun.已跳过[层];
+		delete State.variables.babelRun.已战[层];
+		ok(B.读进度(层).已战 === false && B.读进度(层).跳过 === false,
+			'★清掉本局账后读面未归零 —— 「重开清」没落住（那会让上一局的进度漏进新局）');
+
+		/* ④ 防漂移：读面每一项都能被**具名真源**复算 */
+		置已战(层);
+		const c = B.读进度(层);
+		const 复算 = {
+			已战: State.variables.babelRun?.已战?.[层] === true,
+			跳过: State.variables.babelRun?.已跳过?.[层] === true,
+			采净: (B.nodeAt?.(层)?.charges ?? 0) <= 0,
+		};
+		ok(c.已战 === 复算.已战 && c.跳过 === 复算.跳过 && c.采净 === 复算.采净,
+			`★读面与具名真源复算不符（读面 ${JSON.stringify(c)}／复算 ${JSON.stringify(复算)}）⇒ 疑似第二真值`);
+
+		/* ⑤ 边界：无账且未采净 ⇒ 假；例外层 ⇒ 真 */
+		节点.charges = 6;
+		delete State.variables.babelRun.已跳过[层];
+		ok(B.读进度(层).事件已了 === false, '★无账且未采净 ⇒ 门须为假（✗ 缺账当已了 —— 那正是 writer 实证过的那条）');
+		ok(B.读进度(抽签层).事件已了 === true, '★抽签层（例外）⇒ 门须为真（✗ 对本门不适用）');
+		ok(B.读进度(无节点层).事件已了 === true, '★无节点层（例外）⇒ 门须为真');
+		console.log(组前失败 === fails.length
+			? '  进度面：只读零副作用 ✓｜门与读面同表达式 ✓｜读档不变 ✓｜清账归零 ✓｜例外两族 ✓'
+			: `  进度面：本组新增失败 ${fails.length - 组前失败} 条（见上）`);
+	} finally {
+		if (节点) 节点.charges = 次数存;
+		map.current = 位存;
+		State.variables.babelRun = 跑存 === null ? undefined : JSON.parse(JSON.stringify(跑存));
+		if (事件存 === null) delete State.variables.span1Events; else State.variables.span1Events = JSON.parse(JSON.stringify(事件存));
+	}
+}
 	console.log(`\n${fails.length === 0 ? '✓ 装配自检通过' : `✗ 装配自检失败 ${fails.length} 条`}`);
 	for (const f of fails) console.log(`  ✗ ${f}`);
 	process.exit(fails.length === 0 ? 0 : 1);
@@ -4440,4 +4535,3 @@ head('61 探索段落 if 配对（源码结构，不替真实渲染）');
 
 await verifyL10({ R, D, B, map, ok, head });
 printSummary();
-
