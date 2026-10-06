@@ -18,8 +18,11 @@
  *     （本档已存 `enemy`／`reference_cr_per_creature` 等**注释性数据**，✗ 不据它召唤 ✓）
  *   · **片 3**：**统一返程结算**（脆弱三栏 ✓ —— 设计 §9 明写该 pin 的 `Item` **无通用脆弱字段** ⇒ 须引擎前置 ✓）
  *     与正式单图地图（§8 的 SVG 资产链 ✓）
- *   · **铜冠的「佩戴」**：★实查引擎 slot 取值只有 `belt/body/feet/mount/shield/shoulders/vest/weapon`
- *     ⇒ **无头槽** ✗ ⇒ 本片只把铜冠**领取**并**记录选择** ✓ ✗ **不假装戴上** ✓（换装落点另笔 ✓）
+ *   · **铜冠的「佩戴」**：片 1 曾判「实查引擎 slot 取值只有 `belt/body/feet/mount/shield/shoulders/vest/weapon`
+ *     ⇒ **无头槽** ⇒ 换装落点另笔」——★**S4（`books#398`）已纠正**：那是**已用值**、✗ 不是**封闭枚举**
+ *     （`slot` 是**自由字符串**：引擎 `10-item.js:127-129` 注释逐字「规则包可扩展」，赋值 `def.slot ?? null`；
+ *     `slotEquip` 逐字符串比较、**无白名单**；既有先例 `src/dnd/dnd3/items/slot-extension.js` 明写「零引擎改」）
+ *     ⇒ S4 按**既有扩展点**接**真**头槽（`slot:'head'`、中文显示「头部」）✓（换装见 `装槽` ✓）。
  *   · **铜冠的情境 Listen＋2**（领队已准「另笔」✓）、**撤 `return-scroll`／旧档兼容**（同 ✓）
  *
  * ⚠ 读路径**不写档**（本仓成文判据：被拒 ⇒ 存档面零变化，见 `src/core/10-item.js:45-58`）：
@@ -41,26 +44,33 @@ const 态 = Object.freeze({ 未开始: '未开始', 进行中: '进行中', 完�
  *  （设计 §4：−6 只作用**逃脱**检定、＋3 只作用**应战侦察** ⇒ ✗ 不落到属性本身、✗ 不加攻击/AC/豁免 ✓）。 */
 const 高歌猛进 = Object.freeze({ 逃脱: -6, 侦察: 3 });
 
-/* ── 本片唯一新物品：听雨之冠（★无槽 —— 引擎无头槽，见头注 ✓）────────── */
+/* ── 本片唯一新物品：听雨之冠（★`slot:'head'` —— 走**既有扩展点**，零引擎改 ✓）────
+ *   （片 1 的过窄判断已纠正，理由与引文见档头「铜冠的『佩戴』」一栏 ✓。） */
 R.defItem({
 	id: 'rain-diadem',
 	name: '听雨之冠',
 	desc: '七名河渡工给的铜冠；戴上它，能听见水流的节拍。',
 	/* ★`noBattleUse: true`：本件在**战斗中没有任何动作** ⇒ 战斗交互选单据此不亮「使用」
 	 *   （同 `src/dnd/dnd3/items/resources.js` 的先例 ✓）✗ 让玩家点进去才被拒 ✓。 */
-	stats: { slotName: '头', cost: 0, weight: 1, noBattleUse: true },
+	/* ★S4 裁 P：`cost` ＝ **参考价 100 枚旧硬币**，说明**不可出售**；★**禁售与价格分开** ——
+	 *   「不可售」由**售卖政策排除该 id** 落（`00-l10-city.js` 的收购目录 ＋ 真售口在
+	 *   扣物/付币/记贡献**之前**的复验 ✓）；✗ 不用一个无人消费的 `noSell` 字段冒充实现 ✓、✗ 不动币制 ✓。 */
+	slot: 'head',
+	stats: { slotName: '头', cost: 100, weight: 1, noBattleUse: true },
 	charges: null,
 	stackable: false,
 	/* ★`defItem` **强制**要求 `used()`（引擎 `src/core/10-item.js:342`）⇒ 明确**抛具名拒**（✗ 静默），
-	 *   同 `resources.js` 的备料形 ✓。⚠ 本件**现在还不能佩戴**：★实查引擎 slot 取值只有
-	 *   `belt/body/feet/mount/shield/shoulders/vest/weapon` ⇒ **无头槽** ✗ ⇒ 换装口是**引擎前置** ✓
-	 *   ⇒ 本片只**领取＋记录选择** ✓ ✗ 不假装戴上（见档头具名不做一栏 ✓）。 */
+	 *   同 `resources.js` 的备料形 ✓。★S4：佩戴已走**真**装备路（`slotEquip`／`slotUnequip`）⇒
+	 *   这里只剩「战斗中使用」这一条拒路 ✓（片 1 那条「无头槽」拒路随本笔改正 ✗ 不再存在 ✓）。 */
 	used() {
-		throw R.refuse('DIADEM_NO_HEAD_SLOT',
-			`「${this.name}」是要戴在头上的——可这地方还没有头槽可挂。`,
-			{ needAction: 'head-slot', itemId: this.id });
+		throw R.refuse('DIADEM_NO_BATTLE_USE',
+			`「${this.name}」不能在战斗中使用。`,
+			{ needAction: 'equip', itemId: this.id });
 	},
 });
+/* ★头槽显示名：引擎 `slotLabels` 是**可选显示名表**（`30-inventory.js:368` `RPG.slotLabels = {}`
+ *   ＋ 同档 `?? this.slot` 回退）⇒ 故事侧注册中文「头部」 ✓（✗ 改 core ✓）。 */
+R.slotLabels.head = '头部';
 
 /* ── 域访问（读路径零写 ✓）────────────────────────────────────── */
 /** 原始域（缺席即 `undefined` ⇒ ✗ **不建键**）。 */
@@ -124,7 +134,32 @@ const 开始 = () => {
 	}
 	return { ok: true, 态: s.态, 当前: s.当前, 可走: 可走(s.当前), 路径: [...s.路径] };
 };
-/** 选行动（每节点**只一次** ✓）：查「已处理」⇒ 掷检定 ⇒ **交付** ⇒ **一次提交**结果＋路径。 */
+/* ── 真装槽（★S4 裁 H：`slotEquip`／`slotUnequip` ＝ 引擎**既有**合法动作路径 ✓）──────
+ *   `slot` 是自由字符串 ⇒ **头槽自动互斥、自动并存**（引擎 `30-inventory.js:301-330`）✓。
+ *   **占槽须告知并确认更换**：本笔的选项 `label` 与正文已明写「已有头部装备**转入背包**…不吞物品」
+ *   ⇒ **玩家选该选项即确认** ✓；换下者**留在背包**、`entityId／charges／state` 逐字不动 ✓。
+ *   ★失败安全：换装失败 ⇒ **旧件复位装备**（✗ 不暗卸）⇒ 由调用方**收回新件**、**不写结果** ✓。 */
+const 装槽 = (id, entityId = null) => {
+	const 背包 = () => (D.Player?.items ?? []);
+	const 冠 = 背包().find((x) => x?.id === id && (entityId == null || x.entityId === entityId)) ?? null;
+	if (!冠) return { ok: false, code: 'DIADEM_NO_ITEM', why: '交付后找不到该实体（✗ 用定义 id 造替身 ✓）' };
+	/* ★槽名取自**定义** —— 背包里存的是**快照**（`toJSON` 只写 `id/entityId/charges/equipped/state` ✗ 不写 `slot`
+	 *   ⇒ 快照上的 `slot` 恒为 `undefined`）；引擎读口 `equippedIn` 同样走 `reviveItem(x).slot` ✓。 */
+	const 位 = R.reviveItem(冠).slot ?? null;
+	if (!位) return { ok: false, code: 'DIADEM_NOT_EQUIPPABLE', why: '本件没有装备槽' };
+	const 旧实例 = R.equippedIn(位);
+	if (旧实例 && 旧实例.entityId === 冠.entityId) return { ok: true, 装: true, 槽: 位, 换下: null };   // 同件 ⇒ 幂等 ✓
+	/* ★把装备标记写在**背包条目**上 —— 那正是引擎自己的存储面（`equippedIn` 读的就是它 ✓，
+	 *   代价是引擎的 `equip(id)`／`slotEquip` 都是**按定义 id**寻件（✗ 分不出同款不同实体）⇒
+	 *   本档**按实体**自己写那个标记（D 面裁文也点到这条缺口 ✓），✗ 不另建故事侧替身表 ✓。
+	 *   ★旧件**留背包**、`charges／state／entityId` 一律不动 ✓；同槽恰一件由“先清旧再置新”维持 ✓。 */
+	const 旧条 = 旧实例 ? (背包().find((x) => x.entityId === 旧实例.entityId) ?? null) : null;
+	if (旧条) 旧条.equipped = false;
+	冠.equipped = true;
+	return { ok: true, 装: true, 槽: 位, 换下: 旧条?.id ?? null };
+};
+
+/** 选行动（每节点**只一次** ✓）：查「已处理」⇒ 掷检定 ⇒ **交付** ⇒（★S4：按声明**真装槽**）⇒ **一次提交**结果＋路径。 */
 const 选行动 = (i) => {
 	const s = 读档();
 	if (!s || s.态 !== 态.进行中) return 拒('SEVEN_NOT_STARTED', '七名河教程未在进行中');
@@ -141,10 +176,26 @@ const 选行动 = (i) => {
 	const 支 = opt.check ? (掷.success ? opt.success : opt.failure) : opt.success;
 	let 件 = [];
 	try { 件 = 交付(支?.loot); } catch (e) { 收回(件); return 拒('SEVEN_CAPACITY', `交付失败，已撤回（${e?.message ?? e}）`); }
+	/* ★S4 裁 H：选项声明 `equip_if_possible` ⇒ **真**装槽（✗ 不写故事侧「已戴」替身表 ✓）。
+	 *   ★只有**合法交付 ＋ 所选佩戴事务成功后**才提交 E8 结果 ✓；失败 ⇒ 收回新件 ＋ 旧件复位 ✓。 */
+	let 装 = null;
+	if (支?.equip_if_possible) {
+		for (const [a] of 件) {
+			const 条 = (D.Player?.items ?? []).filter((x) => x.id === a).pop() ?? null;   // ★本次交付的那件（取末位 ✓）
+			let r;
+			try { r = 装槽(a, 条?.entityId ?? null); }
+			catch (e) { 收回(件); return 拒('DIADEM_EQUIP_FAILED', `换装失败，已撤回（${e?.message ?? e}）`); }
+			if (r.ok) { 装 = r; break; }
+			收回(件);
+			return 拒(r.code ?? 'DIADEM_EQUIP_REFUSED', `${r.why ?? '换装被拒'}（奖励已撤回 —— ✗ 不先标已领取 ✓）`);
+		}
+	}
 	s.结果[id] = {
 		选项: i, 标签: opt.label,
 		成败: opt.check ? (掷.success ? '成功' : '失败') : '无检定',
 		文本: 支?.text ?? '', 掷, 交付: 件.map(([a, b]) => `${a}×${b}`),
+		...(装?.装 ? { 装: 装.槽 } : {}),
+		...(件.length === 0 ? { 放弃: true } : {}),
 	};
 	s.路径.push(id);
 	return { ok: true, 节点: id, 成败: s.结果[id].成败, 文本: s.结果[id].文本, 掷, 交付: 件, 可走: 可走(id), 导航: 节点导航(id) };
