@@ -5360,11 +5360,14 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 
 			/* ②d ★**RC-1 的防线格**（`#444`）：物品面失败 ⇒ **拒** ＋ **域面未提交** ＋ 物品**复原**
 			 *   —— 这正是「把物品面放进 `publish`」会得到的**静默半途**的反面 ✓（引擎 `publish` 吞异常且 `status` 仍 applied ✓）。 */
-			清背(); { const 双 = R.createItem('club'); 双.charges = 2; 双.state = { 脆弱: true }; D.Player.items.push(双); }
+			清背(); const 双9 = R.createItem('club'); 双9.charges = 2; 双9.state = { 脆弱: true }; D.Player.items.push(双9);
 			起档('i-x');
 			const 原切 = R.splitStack; R.splitStack = undefined;      // ★逼物品面失败（charges>1 且切不动 ⇒ 拒 ✓）
 			let rx; try { rx = 结.返程事务({ 实例: 'i-x' }); } finally { R.splitStack = 原切; }
-			ok(rx?.ok === false, `★物品面失败须**拒**（✗ 返回 ok:true ＝静默半途 ✓；实得 ${JSON.stringify(rx).slice(0, 70)}）`);
+			ok(rx?.code === 'RETURN_SPLIT_UNAVAILABLE',
+				`★须**恰**以该具名码拒（★#444 RC-3 的教训：先前只断 ok===false ⇒ **外层 catch 一兜就过，任何拒都算 ✓** ✗；实得 ${JSON.stringify(rx).slice(0, 90)}）`);
+			ok((D.Player.items ?? []).some((x) => x.entityId === 双9.entityId),
+				`★同上：**该摞不得被整摞删除**（✗ 旧退化的病灶 ✓；实得 ${JSON.stringify((D.Player.items ?? []).map((x) => [x.id, x.charges]))}）`);
 			ok(State.variables[域]?.返程已结 !== 'i-x', '★同上：**域面未提交**（✗ 半途已落 ✓）');
 			ok((D.Player.items ?? []).some((x) => x.id === 'club' && Number(x.charges) === 2), '★同上：物品**已复原**（✗ 已被删 ✓）');
 
