@@ -4977,6 +4977,318 @@ head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 65 组：${本组失败 === 0 ? '十格全绿（拓扑独立字面量／读面零写／三态与开始／唯一交付／存档往返／导航静态权威／机会与完成／死亡零写／真id映射／接线面（W09·首分流互斥·E9 只回 L10））' : `★本组 ${本组失败} 处失败`}`);
 }
 
+/* ============================================================
+ * 第 66 组：`books#397`（S3 **片 2**）七名河 —— 四组真怪 ＋ 侦察／脱离两路
+ *   ★口径（`guest-1` 2026-10-06T12:29Z）：判据＝**结构式断言 ＋ 真随机**（✗ 受控骰；受控骰归 S5 e2e 臂）——
+ *     故本组断的是**不随骰面变**的结构（敌组恒等／失败不增怪／脱离成功无散货／死亡零写／选择上锁），
+ *     并把**战果分布**只作**读数**打印（✗ 不作判据）。
+ *   ★计数一律拿**独立字面量**当尺（✗ 用内容表自身当尺 —— `books#206` 的教训）。
+ *   ★本组末了**存-复原**（同 62–65 组口径 ✓）。
+ * ============================================================ */
+head('66. `books#397` 片 2：四组真怪 ＋ 侦察／脱离 —— 映射／成军／两路结构／上锁／死亡零写／固定交付');
+{
+	const 域 = 'sevenNames';
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 组前失败 = fails.length;
+	try {
+		const S7 = B?.七名河, S7B = B?.七名河战斗;
+		ok(!!S7B, '故事脚本没挂上 `setup.BABEL.七名河战斗`（`01-seven-names-battle.js` 没被装载？）');
+		if (S7B && S7) {
+			/* ① 静态结构（**独立字面量**当尺：设计 README 事件表 ＋ events.json@56829d8c） */
+			const 期望 = [
+				['E3', 'Crocodile', 1, 2], ['E5', 'Crocodile', 2, 2],
+				['E6', 'Small Water Elemental', 1, 1], ['E7', 'Medium Water Elemental', 1, 3],
+			];
+			for (const [id, base, 数, cr] of 期望) {
+				const n = S7.节点表[id];
+				ok(n?.type === 'battle', `${id} 应为战斗节点（实得 ${n?.type}）`);
+				ok(n?.enemy?.srd_base === base, `★${id} 的敌应为「${base}」（实得 ${n?.enemy?.srd_base}）`);
+				ok(n?.enemy?.count === 数, `★${id} 的敌数应为 **${数}**（独立字面量；实得 ${n?.enemy?.count}）`);
+				ok(n?.enemy?.reference_cr_per_creature === cr, `★${id} 的每只参考 CR 应为 **${cr}**`);
+				ok(S7B.接入(n.enemy.srd_base) === ['E3', 'E5'].includes(id) ? 'crocodile'
+					: (id === 'E6' ? 'small-water-elemental' : 'medium-water-elemental'),
+					`★${id} 的 srd_base 须映到引擎已注册 id`);
+				const 战 = (n.options ?? [])[0]?.check, 脱 = (n.options ?? [])[1]?.check;
+				ok(战?.ability === 'WIS' && 战?.dc === 10 && 战?.modifier === 3 && 战?.tag === 'engage-scout',
+					`★${id} 的应战侦察须是 WIS／DC**10**／**+3**（实得 ${JSON.stringify(战)}）`);
+				const 脱能 = ['E3', 'E6'].includes(id) ? 'DEX' : 'STR';
+				ok(脱?.ability === 脱能 && 脱?.dc === 15 && 脱?.modifier === -6 && 脱?.tag === 'escape',
+					`★${id} 的脱离须是 ${脱能}／DC**15**／**−6**（实得 ${JSON.stringify(脱)}）`);
+				ok(JSON.stringify(n.victory_loot) === JSON.stringify({ 'copper-ore': {'E3': 1, 'E5': 2, 'E6': 1, 'E7': 2}[id] }),
+					`★${id} 的胜利散货须是铜矿 **${ {'E3': 1, 'E5': 2, 'E6': 1, 'E7': 2}[id] }**（实得 ${JSON.stringify(n.victory_loot)}）`);
+			}
+			/* ② 成军：满血／独立实例／逐值计数（✗ 共享原型 —— 改一只不得动另一只） */
+			for (const [id, , 数] of 期望) {
+				const 军 = S7B.成军(S7.节点表[id]);
+				ok(军.length === 数, `★${id} 成军数须为 ${数}（实得 ${军.length}）`);
+				ok(军.every((f) => f.hp === f.maxHp && f.hp > 0), `★${id} 的每只须满血入场`);
+				if (军.length >= 2) {
+					军[0].hp = 1;
+					ok(军[1].hp === 军[1].maxHp, '★同组两只须是**独立实例**（改一只 ✗ 动另一只）');
+				}
+			}
+			/* ③ 战斗节点 ✗ 走奖励路（片 2 承接的守卫） */
+			S7.开始();
+			S7.走('E1'); S7.走('E3');
+			const 奖励路 = S7.选行动(0);
+			ok(奖励路?.ok === false && 奖励路.code === 'SEVEN_IS_BATTLE',
+				`★战斗节点须拒走奖励路（实得 ${JSON.stringify(奖励路)}）`);
+			/* ④ 真随机：两路检定只取真假、骰面在 d20 内、修正恰为设计值（✗ 自动成败／✗ 改修正） */
+			const 骰面 = [];
+			for (let k = 0; k < 12; k++) {
+				const 掷 = S7.掷检定(S7.节点表.E3.options[0].check);
+				骰面.push(掷.roll);
+				ok(typeof 掷.success === 'boolean' && Number.isInteger(掷.roll) && 掷.roll >= 1 && 掷.roll <= 20,
+					`★真随机检定须取真假且骰面 ∈ [1,20]（实得 ${JSON.stringify(掷)}）`);
+				ok(掷.mod === S7.属性修正('WIS') && 掷.bonus === 3, '★应战侦察的本次修正须恰为 +3');
+				ok(掷.success === (掷.roll + 掷.mod + 掷.bonus >= 10), '★成功判据须走正式路径（✗ 自然 1／20 自动成败）');
+			}
+			console.log(`  真随机读数（12 次 d20）：${骰面.join('、')}（★读数，✗ 判据）`);
+			/* ⑤ 结构不随骰面变：敌组恒等（失败 ✗ 增怪／✗ 换敌） */
+			const 军A = S7B.成军(S7.节点表.E3).map((f) => [f.name, f.hp, f.maxHp]);
+			const 军B = S7B.成军(S7.节点表.E3).map((f) => [f.name, f.hp, f.maxHp]);
+			ok(JSON.stringify(军A) === JSON.stringify(军B), '★同一节点两次成军须逐字同（✗ 随骰面变）');
+			/* ⑥ 一次**真战斗**（真随机）＋ **随战果的**结构断言（✗ 固定战果） */
+			R.give('sword'); R.equip('sword'); D.Player.hp = D.Player.maxHp;
+			const 包前 = JSON.stringify(State.variables.inventory ?? []);
+			const 战果集 = [];
+			for (const id of ['E3', 'E5', 'E6', 'E7']) {
+				S7.读档().当前 = id; S7.读档().结果 = {}; S7.读档().战斗 = {};
+				State.variables.inventory = JSON.parse(包前);
+				const 结 = await S7B.战斗行动(0, { interactive: false });
+				战果集.push(`${id}:${结.战果 ?? '脱'}`);
+				/* ★刀（K3）抓出的**判据面窄**：原先只在「有战果」的分支里断言 ⇒ **被拒路径完全没断**
+				 *   （交付抛错 ⇒ 行动返 `{ok:false}` ⇒ 落到所有分支之外 ⇒ **静默绿**）。⇒ 先断「行动本身成立」。 */
+				if (结?.ok === false) { ok(false, `★${id} 战斗行动意外被拒：${结.code}（${结.why ?? ''}）`); continue; }
+				const 包后 = JSON.stringify(State.variables.inventory ?? []);
+				if (结.战果 === 'victory') {
+					const 应增 = S7.节点表[id].victory_loot['copper-ore'];
+					const 实增 = (State.variables.inventory ?? []).filter((x) => x.id === 'copper-ore')
+						.reduce((a, x) => a + (x.charges ?? 1), 0);
+					ok(实增 === 应增, `★${id} 胜利须恰发铜矿 ${应增}（✗ 旧随机掉落并发；实得 ${实增}）`);
+				} else if (结.战果 === 'down') {
+					ok(包后 === 包前, `★${id} 死亡须零写（背包逐字不变）`);
+					ok(!!!S7.读档().结果?.[id], `★${id} 死亡 ✗ 得标「已处理」`);
+				} else if (结.战果 === 'stunned' || 结.战果 === 'stalemate') {
+					ok(包后 === 包前, `★${id} 非胜（${结.战果}）⇒ ✗ 交付`);
+					ok(!!!S7.读档().结果?.[id], `★${id} 非胜 ⇒ ✗ 标「已处理」`);
+				}
+			}
+			console.log(`  四组真战斗战果：${战果集.join('｜')}（★读数，✗ 判据）`);
+			/* ⑥b **固定散货**（确定性判据，✗ 依赖战果抽到 victory —— 上面那轮是**真随机** ⇒ 若本轮没抽到
+			 *   胜，则「胜利须恰发铜矿」那一支**根本没被激励** ⇒ 刀会假绿。⇒ 这一块**直接驱胜后交付**，
+			 *   把「恰为 victory_loot、✗ 旧随机掉落并发」断成**确定**格 ✓）。 */
+			for (const [id, , , ] of 期望) {
+				S7.读档().当前 = id; S7.读档().结果 = {}; State.variables.inventory = JSON.parse(包前);
+				const 发 = S7B.胜后交付(S7.节点表[id]);
+				ok(发.ok === true, `★${id} 胜后交付须成立（实得 ${JSON.stringify(发)}）`);
+				const 应 = { 'E3': 1, 'E5': 2, 'E6': 1, 'E7': 2 }[id];
+				const 增 = (State.variables.inventory ?? []).filter((x) => x.id === 'copper-ore')
+					.reduce((a, x) => a + (x.charges ?? 1), 0);
+				ok(增 === 应, `★${id} 交付须**恰为**铜矿 ${应}（✗ 旧随机掉落并发；实得 ${增}）`);
+			}
+			/* ⑦ 选择**上锁**：一经作出 ✗ 改选／✗ 重掷侦察（设计 §「属性脱离」） */
+			S7.读档().当前 = 'E3'; S7.读档().结果 = {}; S7.读档().战斗 = {};
+			await S7B.战斗行动(0, { interactive: false });
+			/* ⑦b ★`F1`（`dev-10` 的 D 票）：**掷果随锁存**（确定性）＋「未胜 ⇒ 续战 ⇒ 胜」后 `成败` 与**首次掷果**一致 */
+			S7.读档().当前 = 'E3'; S7.读档().结果 = {}; S7.读档().战斗 = {};
+			await S7B.战斗行动(0, { interactive: false });
+			const 锁 = S7.读档().战斗?.E3;
+			ok(!!锁 && !!锁.掷 && typeof 锁.掷.success === 'boolean',
+				`★锁里须带**首次掷果**（✗ 只有 {选项,标签,脱离} ⇒ 续战会假记「失败」；实得 ${JSON.stringify(锁)}）`);
+			ok(!('__选项' in (S7.读档() ?? {})), '★瞬时量（`__选项`）✗ 得写进存档域（F2）');
+			/* 续战 ⇒ 结账：**成败须取自首次掷果**（夹具：压低该怪血量 ⇒ 近确定获胜；★✗ 控骰） */
+			const 二 = await S7B.战斗行动(1, { interactive: false });
+			/* ★判据面须含**两条**拒路（我第一版只认 LOCKED ⇒ 真随机里首次行动若**直接获胜**则走 DONE ⇒ 假红）：
+			 *   ①选择已作出但**未结账** ⇒ `SEVEN_BATTLE_LOCKED`（✗ 改选）②已结账 ⇒ `SEVEN_NODE_DONE`（✗ 重发）。
+			 *   ⇒ 要判的是「**第二次选择一律被拒**」，✗ 只判其中一条码。 */
+			ok(二?.ok === false && ['SEVEN_BATTLE_LOCKED', 'SEVEN_NODE_DONE'].includes(二.code),
+				`★同一节点的第二次选择须拒（✗ 改选／✗ 重发；实得 ${JSON.stringify(二)}）`);
+			/* ⑦c ★`B2`（`dev-10`）：**F1 的后果格** —— 受控 `S7.掷检定` ＋ 受控 `BS.战果` 序
+			 *   （`['stalemate','victory']`）**保证必激励**：①非胜 ⇒ 锁留且 ✗ 写 `结果` ②续战获胜 ⇒
+			 *   `成败` 须与**首次掷果**一致 ＋ 存档面须留 `掷.roll`。
+			 *   ⚠ **放在组末** ＋ `finally` 复原两桩 ⇒ ✗ 污染同组其它格（本格第一版就是这样把后文带红的）；
+			 *   ⚠ 若两桩之一**不可写**（冻结等）⇒ 具名红（✗ 静默退回概率判据 —— B2 的原病）。 */
+			{
+				const 桩可写 = (o, k) => {
+					const d = Object.getOwnPropertyDescriptor(o, k);
+					return !d || (d.writable !== false && !Object.isFrozen(o));
+				};
+				ok(桩可写(S7, '掷检定') && 桩可写(B, '战果'),
+					'★受控桩不可写 ⇒ 本格会退化成概率判据（B2 的原病）⇒ 具名红');
+				const 原掷 = S7.掷检定, 原果 = B.战果, 序号 = ['stalemate', 'victory'];
+				try {
+					S7.掷检定 = () => ({ success: true, roll: 20, mod: 0, bonus: 3, total: 23, dc: 10, die: '1d20' });
+					B.战果 = () => 序号.shift() ?? 'victory';
+					S7.读档().当前 = 'E3'; S7.读档().结果 = {}; S7.读档().战斗 = {};
+					const 一 = await S7B.战斗行动(0, { interactive: false });
+					ok(一?.战果 === 'stalemate' && !S7.读档().结果?.E3,
+						`★未胜 ⇒ ✗ 写「结果」且锁须留（实得 战果=${一?.战果}｜结果=${JSON.stringify(S7.读档().结果?.E3 ?? null)}）`);
+					ok(!!S7.读档().战斗?.E3, '★未胜后锁须**仍在**（续战用同一选择）');
+					const 结 = await S7B.继续({ interactive: false });
+					ok(结?.ok === true && 结?.战果 === 'victory', `★续战获胜须结账（实得 ${JSON.stringify(结)}）`);
+					ok(S7.读档().结果?.E3?.成败 === '成功',
+						`★续战胜后账上成败须与**首次掷果**一致（应「成功」；实得 ${S7.读档().结果?.E3?.成败}）—— B2/F1 的假事实`);
+					ok(S7.读档().结果?.E3?.掷?.roll === 20, '★存档面须留**首次掷果**（✗ null）');
+				} finally {
+					S7.掷检定 = 原掷; B.战果 = 原果;
+					S7.读档().结果 = {}; S7.读档().战斗 = {};
+				}
+			}
+		}
+	} finally {
+		State.variables[域] = 档存 ?? undefined;
+		if (D.Player.items) State.variables.inventory = 背存 ?? [];
+		const 本组失败 = fails.length - 组前失败;
+		console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 66 组：${本组失败 === 0
+			? '结构全绿（四组映射与字面量／成军独立／奖励路守卫／真随机两路／敌组恒等／随战果结构断言／选择上锁）'
+			: `★本组 ${本组失败} 处失败`}`);
+	}
+}
+
+/* ── 67. `books#415`（A4）：开发测试模式 —— 按用途指定**原始骰面**（正反十格） ──────────────────
+ *
+ * 病（票面）：开发者要能「指定一个或一段**合法原始骰面**」，而**正式加值与判定照走**；
+ *   ✗ 把单位随机钉到 1、✗ 直接写成功位（那是**冒充**，✗ 算能力）。
+ * 裁：A1 终裁 ＋ 引擎 `sgstory#2031`（PR `#2042`，已合 `32b0e981`）的**六项裁定**；本笔的 pin 即消费它。
+ * 断什么（十格）：
+ *   ① **指定面真消费**（真豁免 ⇒ 面＝指定面 ＋ 账上记「受控」，**行为证据**：结果仍由正式加值／DC 决定）
+ *   ② **指定 20 仍走正式数学**（DC 999 ⇒ 同一颗 20 仍**失败**）
+ *   ③ **无关用途不消费**（另用途掷骰走真随机并记「未受新控制」；目标臂一分未动）
+ *   ④ **越界面**（臂面 > d20）⇒ 整次**具名拒** ＋ **零部分消费**
+ *   ⑤ **过宽装**（只给 purpose）⇒ `DICE_ARM_TOO_BROAD`
+ *   ⑥ **耗尽后恢复**（面吃完 ⇒ 同用途走真随机）
+ *   ⑦ **清除后恢复**（`清()` ⇒ 额度账空 ＋ 走真随机）
+ *   ⑧ **未接入用途**（如 `check.skill`）⇒ 收据 `未覆盖` 非空 ⇒ 入口报 **生效=false**（✗ 显示「已生效」）
+ *   ⑨ **不泄漏正式局**：装／消费前后 `State.variables` **逐字不变**；旧 `setSequence` **✗ 被吃**（两账互不干扰）；
+ *      抽尽仍**具名抛** `RNG_EXHAUSTED`
+ *   ⑩ **会话隔离**：`clearAll(未知 id)` ⇒ 返 **0** 且本会话臂**照旧生效**（★B1 的同形断言，故事侧再钉一次）
+ */
+head('67. `books#415`（A4）：开发测试模式 —— 按用途指定原始骰面（正反十格）');
+{
+	const 组前失败 = fails.length;
+	const 骰 = B?.测试骰;
+	const Cc = R.diceControl;
+	const 甲 = D.Player;
+	const 名 = 甲?.name ?? null;
+	ok(!!骰, '故事侧入口 `setup.BABEL.测试骰` 未装载（`src/story/zz-dice-test.js` 没装？）');
+	ok(!!Cc, '引擎缺 `RPG.diceControl`（须 `sgstory#2031` 的能力 ⇒ 查本笔的 pin）');
+	if (骰 && Cc) {
+		const 起手 = () => { 骰.清(); Cc.清账(); R.rng.reset?.(); };
+		const 账 = () => 骰.读().骰序账;
+		const 该 = (p) => 账().filter((x) => x.purpose === p);
+		const 抛码 = (fn) => { try { fn(); return null; } catch (e) { return e?.code ?? String(e?.message ?? e); } };
+		try {
+			/* ① 指定面**真消费**（行为证据：真豁免，结果由正式加值／DC 决定） */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [20] });
+			const 中 = D.save(甲, 'fortitude', 1);
+			ok(中.roll === 20, `★指定面须真被吃：实得 d20＝${中.roll}（✗ 钉 1、✗ 写成功位）`);
+			ok(该('check.save').some((x) => x.source === '受控' && x.face === 20), '★账上须有**受控**条目且面＝20（可读可复算）');
+
+			/* ② 指定 20 **仍走正式数学** */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [20] });
+			const 败 = D.save(甲, 'fortitude', 999);
+			ok(败.roll === 20 && 败.success === false, `★指定 20 仍须走正式数学（DC 999 ⇒ 败），✗ 写成功位（实得 roll=${败.roll} success=${败.success}）`);
+
+			/* ③ 无关用途**不消费** */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [7, 7] });
+			R.rollDetail('1d20', { purpose: 'damage', actor: 名, 组: 0 });
+			ok(该('damage').some((x) => x.source === '未受新控制'), '★无关用途须**不消费**目标额度（并记「未受新控制」）');
+			ok(骰.读().额度账[0]?.已消费 === 0, `★目标臂**一分未动**（实得已消费 ${骰.读().额度账[0]?.已消费}）`);
+
+			/* ④ 越界面 ⇒ 整次具名拒 ＋ **零部分消费** */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [25] });
+			const 拒 = 抛码(() => D.save(甲, 'fortitude', 1));
+			ok(拒 === 'DICE_FACE_OUT_OF_RANGE', `★越界面须**具名拒**（实得 ${拒}）`);
+			ok(骰.读().额度账[0]?.已消费 === 0 && 账().filter((x) => x.purpose === 'check.save').length === 0,
+				'★越界拒后须**零部分消费**（臂未吃、账上无该用途条目）');
+
+			/* ⑤ 过宽装（只给 purpose）⇒ 具名拒 */
+			起手();
+			ok(抛码(() => 骰.装({ purpose: 'check.save', faces: [1] })) === 'DICE_ARM_TOO_BROAD', '★只给 purpose ⇒ 须 `DICE_ARM_TOO_BROAD`（✗ 静默装一条宽臂）');
+
+			/* ⑥ 耗尽后恢复真随机 */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [7] });
+			ok(D.save(甲, 'fortitude', 1).roll === 7, '★耗尽前的第一颗须吃指定面 7');
+			D.save(甲, 'fortitude', 1);
+			ok(该('check.save')[1]?.source === '未受新控制', '★面吃完后**同用途**须走真随机（记「未受新控制」）');
+			ok(骰.读().额度账.length === 0, '★面吃完 ⇒ 该臂应被撤下（额度账回空）');
+
+			/* ⑦ 清除后恢复真随机 */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [9, 9] });
+			ok(骰.清() === 1, '★`清()` 应撤销 1 条臂（返条数）');
+			D.save(甲, 'fortitude', 1);
+			ok(该('check.save').at(-1)?.source === '未受新控制' && 骰.读().额度账.length === 0, '★清除后须恢复正式随机（额度账空 ＋ 记「未受新控制」）');
+
+			/* ⑧ 未接入用途（引擎无此接点）⇒ 入口须报 **生效=false** */
+			起手();
+			const 收 = 骰.装({ purpose: 'check.skill', actor: 名, faces: [1] });
+			ok(收.生效 === false && 收.未覆盖 === true,
+				`★未接入用途须**明报未生效**（引擎收据 「未覆盖」是布尔：实得 生效=${收.生效} 未覆盖=${JSON.stringify(收.未覆盖)}）`);
+			ok(骰.读().未覆盖.some((x) => x.purpose === 'check.skill'), '★`报告().未覆盖` 须列出该用途');
+			/* 正对照：**已接入**用途的收据须报「未覆盖=false／生效=true」（两向都断，✗ 只断一个方向） */
+			const 收正 = 骰.装({ purpose: 'check.save', actor: 名, faces: [1] });
+			ok(收正.生效 === true && 收正.未覆盖 === false, `★已接入用途须报生效（实得 生效=${收正.生效} 未覆盖=${JSON.stringify(收正.未覆盖)}）`);
+
+			/* ⑨ 不泄漏正式局：存档面逐字不变 ＋ 旧注入 ✗ 被吃 ＋ 抽尽仍具名抛 */
+			起手();
+			const 档前 = JSON.stringify(State.variables);
+			骰.装({ purpose: 'check.save', actor: 名, faces: [13] });
+			D.save(甲, 'fortitude', 1);
+			ok(JSON.stringify(State.variables) === 档前, '★装／消费控制**不得写存档面**（`State.variables` 须逐字不变）');
+			R.rng.setSequence?.([0.2]);   /* ★注入的是**单元值**（[0,1)）：0.2 ⇒ `pick(20)` ＝ floor(0.2×20)+1 ＝ **5** */
+			骰.装({ purpose: 'check.save', actor: 名, faces: [13] });
+			ok(D.save(甲, 'fortitude', 1).roll === 13, '★受控颗须吃臂面 13（✗ 吃旧注入）');
+			ok(R.rollDetail('1d20', { purpose: 'damage', actor: 名 }).rolls[0] === 5, '★旧 `setSequence` **✗ 被受控路径吃掉**（两账互不干扰）');
+			ok(抛码(() => R.rollDetail('1d20', { purpose: 'damage', actor: 名 })) === 'RNG_EXHAUSTED', '★旧注入抽尽仍须**具名抛** `RNG_EXHAUSTED`（✗ 静默回退真随机）');
+			R.rng.reset?.();
+
+			/* ⑩ 会话隔离（B1 同形：未知会话 id ⇒ 返 0，本会话不受影响） */
+			起手();
+			骰.装({ purpose: 'check.save', actor: 名, faces: [11] });
+			ok(Cc.clearAll('并不存在的会话') === 0, '★`clearAll(未知 id)` 须返 **0**');
+			ok(D.save(甲, 'fortitude', 1).roll === 11, '★未知 id 清场**不得动本会话**（臂仍生效 ⇒ 吃到 11）');
+
+			/* ⑪ ★**读档双清**（`dev-10` 复核 B3 · 领队转本笔）：这道面**此前无格** —— 摘掉订阅仍全绿 ✗。
+			 *   ★为何要做**重放**：无头装具里 `SugarCube.Save` **默认缺席**（本档 `:2441` 成文）⇒ 本档装载时
+			 *     订阅**根本没发生** ⇒ ✗ 装个桩再断言「有订阅」是假绿。故：先装带 `onLoad` 的桩 ⇒ **重放本档 IIFE**
+			 *     （⇒ 订阅落进桩）⇒ **真触发**回调 ⇒ 看**行为**（✗ 只看内部字段）。 */
+			const 旧SC = globalThis.SugarCube;
+			try {
+				const 订阅 = [];
+				globalThis.SugarCube = Object.assign({}, 旧SC, { Save: { onLoad: { add: (fn) => 订阅.push(fn) } } });
+				骰.清(); Cc.清账();
+				eval(fs.readFileSync(path.join(storySrc, 'story', 'zz-dice-test.js'), 'utf8'));
+				ok(订阅.length === 1, `★本档须**订阅**宿主 onLoad（重放后应恰 1 条，实得 ${订阅.length}）`);
+				骰.装({ purpose: 'check.save', actor: 名, faces: [19] });
+				ok(骰.读().额度账.length === 1, '前置：读档前应恰有 1 条臂');
+				订阅.forEach((fn) => fn());
+				ok(骰.读().额度账.length === 0, '★读档后额度账须**空**（✗ 让上一局的臂跨存档继续生效）');
+				ok(D.save(甲, 'fortitude', 1).roll !== 19, '★读档**后再掷 ✗ 等于指定面**（行为证据：控制确已撤下）');
+			} finally {
+				globalThis.SugarCube = 旧SC;
+			}
+
+			/* ⑫ ★**静态**：`play.twee` 的「读档」链须**逐字**带 `测试骰?.清()`（另一道读档清场；✗ 只靠模块订阅） */
+			const 试玩 = fs.readFileSync(path.join(storySrc, 'story', 'play.twee'), 'utf8');
+			const 读档行 = 试玩.split('\n').find((l) => l.includes('<<link "读档"'));
+			ok(typeof 读档行 === 'string' && 读档行.includes('测试骰?.清()'),
+				`★play.twee 的读档链须含 \`测试骰?.清()\`（实得：${读档行 ?? '（无该行）'}）`);
+		} finally {
+			骰.清(); Cc.清账(); R.rng.reset?.();
+		}
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 67 组：${本组失败 === 0 ? '十二格全绿（真消费·行为证据／20 仍走正式数学／无关用途零消费／越界零部分消费／过宽拒／耗尽恢复／清除恢复／未接入明报未生效／不泄漏正式局·两账互不干扰／会话隔离／**读档双清（动态·重放触发 onLoad）**／读档链静态逐字）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 /* ── 67. `books#415`（A4）：开发测试模式 —— 按用途指定**原始骰面**（正反十格） ──────────────────
  *
  * 病（票面）：开发者要能「指定一个或一段**合法原始骰面**」，而**正式加值与判定照走**；
