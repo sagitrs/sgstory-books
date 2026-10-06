@@ -182,6 +182,12 @@ jobs:
       - name: 内容边界登记表 · 自检
         working-directory: books
         run: node tools/check-content-inventory.mjs --selftest
+      - name: twee 标签配平（逐段：闭合标签数 ≤ 开标签数 · `#354` 那类静默孤儿标签）
+        working-directory: books
+        run: node tools/check-twee-tags.mjs
+      - name: ★twee 标签配平门自检（孤儿标签须红在对的段 · 合法形/注释/装置错三向不得误报）
+        working-directory: books
+        run: node tools/check-twee-tags.mjs --selftest
 
       # ★门必须**红得了**（同「恒绿门自证」的体例）：往**临时**清单里塞一处无符引用，
       #   断言本门确实 rc≠0 且具名到那一处 ⇒ 证明上面的开关**没被写成装饰**；随后按字节复原。
@@ -206,6 +212,30 @@ jobs:
           echo "✓ 门红得了且具名（--require-symbols 生效）；清单已复原"
           git diff --quiet -- stories/babel/scenarios/scenarios.json || { echo "✗ 清单未复原（✗ 留脏）"; exit 1; }
 
+      # ★门必须**红得了**（同族第二例 · `#127`）：把一条**已加树前缀**的引用改回**裸形**
+      #   （负控用**历史真档**：`world/babel2.js` 那处曾是一棵树上同名、另一棵树内容不同的真案例）
+      #   ⇒ 断言本门 rc≠0 且具名到「两树都命中且内容不同」⇒ 证明这条新判据**不是装饰**；随后按字节复原。
+      - name: ★引用核门自证 ②（树消歧 · 裸形注入 ⇒ 须 rc≠0 且具名）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          cp stories/babel/scenarios/scenarios.json /tmp/scen2.bak
+          python3 - <<'PY'
+          import json
+          p = 'stories/babel/scenarios/scenarios.json'
+          d = json.load(open(p, encoding='utf-8'))
+          d['场景'][0]['备注'] += '　`world/babel2.js:117`（`行会·军械堆`）'   # ★裸形（两树同名异内容）
+          json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
+          PY
+          if node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols > /tmp/refs2.out 2>&1; then
+            cp /tmp/scen2.bak stories/babel/scenarios/scenarios.json
+            echo "✗ 注入裸形跨树引用后本门仍绿 ⇒ 树消歧判据没生效（门是装饰）"; cat /tmp/refs2.out; exit 1
+          fi
+          cp /tmp/scen2.bak stories/babel/scenarios/scenarios.json
+          grep -qF "两树都命中且内容不同" /tmp/refs2.out || { echo "✗ 红了但没具名到树消歧那一支"; cat /tmp/refs2.out; exit 1; }
+          echo "✓ 树消歧判据红得了且具名；清单已复原"
+          git diff --quiet -- stories/babel/scenarios/scenarios.json || { echo "✗ 清单未复原（✗ 留脏）"; exit 1; }
+
       # ── 步骤键形门（`sgstory#1994` 的教训机械化；`sgstory-books#263` 同族：本仓 workflows 的**结构**也得有门）──
       #   ★为何是**本仓副本**而不是调引擎那份：本仓 CI 的引擎树停在声明 pin，而该门引入于 pin **之后**
       #     （引入提交 `d167d679`）⇒ 引擎树里此刻没有它。取舍与同步要求写在 `tests/gates/workflow-steps.mjs` 档头。
@@ -219,6 +249,24 @@ jobs:
       - name: ★packs 声明面门自检（清单塞不存在 id ⇒ 须 rc=1 具名；复原逐字节同）
         working-directory: books
         run: node tests/gates/pack-manifest.mjs --engine "$GITHUB_WORKSPACE/engine" --selftest
+
+      # ── `books#295` 池 B 首笔批：两份**登记面**对账（都是纯 Node、无浏览器 ⇒ 属本门）──
+      - name: ★README 表格结构核（每行单元数须＝本表表头）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/check-readme-tables.mjs tools/README.md
+          node tools/check-readme-tables.mjs --selftest
+
+      # ★本件即「**工具清单 ⇄ CI 步骤**互为具名子集」的对账面：任一侧多出的项，要么补另一侧、
+      #   要么进它内里的**具名豁免表**（附一句理由）—— ✗ 不许静默留外。
+      #   ★它也是本笔「四支 smoke 已接线／其余各有具名理由」这条声明的**机械依据** ✓
+      - name: ★工具清单 ⇄ CI 步骤（互为具名子集；豁免须具名）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          node tools/check-tool-registry.mjs --books "$PWD"
+          node tools/check-tool-registry.mjs --selftest
 
       - name: 步骤键形门（每步须有 run/uses · 块内 run 不重复 · workflow 须有 name）
         working-directory: books

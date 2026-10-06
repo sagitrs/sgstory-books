@@ -140,28 +140,30 @@ const prepL1 = async (p) => {
   const 在手上 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
   if (在手上 !== true) 档.push('  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped='+JSON.stringify(在手上)+'）');
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
+  /* ★★`books#365`：`:: 遭遇战` 段的「迎战／查看」是 `<<link>>` ⇒ 落成 `#passages` 内的
+   *   `<a class="link-internal macro-link">`（**不在 `.choice-box`**）⇒ ★**必须点「迎战」战斗才起** ——
+   *   ✗ 漏这一步 ⇒ 下面的「攻击」永远取不到 ⇒ `kills` 恒 0、`gathered` 恒 0（★本档四条红的同一根因）。 */
+  await 点段内(p,'迎战'); await p.waitForTimeout(1200);
 };
 const 到L1事件屏 = async p => {
-  await 点(p,'战斗教学'); await 点(p,'站起来'); await p.waitForTimeout(700);
-  await 清到达拍(p);   // ★②-1：✗ 漏这一步 ⇒ 下面全落空
-  /* ★★★`#280` ⑭ 实测（A/B 隔离，♪变量唯一）：**「拾起」就已经把剑装备上了**（`equipped: true`）；
-   *   ★再点一下背包里的「长剑」＝**把它卸下来**（`equipped: false`）。
-   *   ⑩（`itemsInBag`）上线后菜单**只留在手上的武器** ⇒ 卸掉之后菜单只剩「空手打击」
-   *   ⇒ 打不死幼獾 ⇒ `kills` 恒 0（★本档上一版就是这么把臂跑红的，✗ 不是产品问题 · 见 `books#280` ⑭）。
-   *   故此处**只拾起**（✗ 不再点「长剑」）—— 并把这条前件**钉成断言**（✗ 不成立就明印"后续读数不可用"）。 */
-  await 点(p,'拾起'); await p.waitForTimeout(400);
-  {
-    const 装备 = await p.evaluate(()=>{try{return (SugarCube.State.variables.inventory||[]).some((x)=>x?.equipped===true)}catch(e){return null}});
-    if (装备 !== true) 档.push(`  · 前置：拾起后**武器须在手上**（否则菜单只剩空手 ⇒ 后续战斗读数不可用） —— ★未成立（equipped=${JSON.stringify(装备)}）`);
-  }
+  /* ★★`books#365`：**一处源** —— 起手整套（战斗教学 ⇒ 站起来 ⇒ 清到达拍 ⇒ 拾起 ＋装备前件 ⇒ 遭遇 ⇒ **迎战**）
+   *   全在 `prepL1` 里；本函数**只负责**后半：打完 ⇒ 过 ②-4 结算门（「收下」）⇒ 等事件屏（采集／不采了）。
+   *   ✗ 先前本函数自写了一份起手并**又调一次** `prepL1`（两处起手）；且两处都**漏了「迎战」** ⇒ 战斗永不起 ⇒ 下面全零。 */
   await prepL1(p);
+  /* ★外层已完成同一起手（含「迎战」）⇒ ✗ 不再重复调 `prepL1`（✗ 两处起手＝两处真值） */
   for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
-    if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
+    if (ls.some(x=>x.includes('迎战'))){ await 点段内(p,'迎战'); await p.waitForTimeout(1200); }
+    else if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
     else if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); }
+  /* ★★`books#365`：②-4 **结算门**（`books#351` 起）—— 胜后停在一屏，**须点「收下」**才走到事件屏；
+   *   ✗ 漏这一步 ⇒ 事件屏的「采集／不采了」永不出现（第二条同根因）。 */
   for (let k=0;k<30;k++){ const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.startsWith('采集'))||ls.some(x=>x.includes('不采了'))) break;
+    if (ls.some(x=>x==='收下')){ await 点段内(p,'收下'); await p.waitForTimeout(1300); continue; }
     if (ls.some(x=>x.includes('继续探索'))){ await 点(p,'继续探索'); continue; }
-    if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); } else await p.waitForTimeout(500); } };
+    if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
+    else if (ls.some(x=>x.includes('迎战'))){ await 点段内(p,'迎战'); await p.waitForTimeout(1200); }
+    else await p.waitForTimeout(500); } };
 
 
 

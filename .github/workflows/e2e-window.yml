@@ -154,6 +154,32 @@ jobs:
           echo "books 零改动 ✓（装前=装后）"
           { echo "- jsdom 装机时长: $((t1-t0))s"; du -sh node_modules | awk '{print "- node_modules: " $1}'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      # ── ★真浏览器族（`e2e-280-*`）的运行时装：Chromium ＋ playwright 模块 ──
+      #   ★为何要装：本 job 用 `ubuntu-latest`，运行时**没有**本族缺省路径的浏览器
+      #     （`~/.cache/ms-playwright/chromium-<rev>/…`）⇒ 用 playwright 自己那条命令装**同版**
+      #     （`playwright@1.63.0 ↔ chromium-1243` —— 装的路径**正是**本族缺省路径）。
+      #   ★`--with-deps` 装系统库（字体/音频等）⇒ 仓内**不需要** `LD_LIBRARY_PATH`（那是本机开发形的补丁）。
+      #   ★仍是 ephemeral：`npm i --no-save --no-package-lock` ＋ 下一步核 `books` 没被写脏（同 jsdom 那步的双核）。
+      - name: 瞬时安装 playwright ＋ Chromium（真浏览器族运行时装）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          t0=$(date +%s)
+          books_before=$(git status --porcelain)
+          npm install playwright@1.63.0 --no-save --no-package-lock --no-audit --no-fund 2>&1 | tail -3
+          npx --yes playwright@1.63.0 install --with-deps chromium 2>&1 | tail -5
+          t1=$(date +%s)
+          CH="$HOME/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome"
+          [ -x "$CH" ] || { echo "::error title=e2e-window::Chromium 不在本族缺省路径 $CH（版本/路径须与 tools 里的缺省一致）"; ls -d "$HOME"/.cache/ms-playwright/* 2>/dev/null || true; exit 1; }
+          "$CH" --version | sed 's/^/  Chromium /'
+          books_after=$(git status --porcelain)
+          if [ "$books_before" != "$books_after" ]; then
+            echo "::error title=e2e-attribution::真浏览器时装动了 books（✗ 须 ephemeral）"
+            diff <(printf '%s\n' "$books_before") <(printf '%s\n' "$books_after") || true
+            exit 1
+          fi
+          { echo "- Chromium 装机时长: $((t1-t0))s"; "$CH" --version | sed 's/^/- /'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
       - name: 构建产物（引擎 build.py ＋ 本仓故事）
         working-directory: books
         run: |
@@ -328,6 +354,40 @@ jobs:
           #   harness 侧**没有**可 poke 的"段内状态变更"入口 ✓。本步断的是「**刷新函数的局部性**」（改了 hp ⇒ 只有 hp 计数 +1 ✓）；
           #   D11 断的是「**段内变更有没有人去调刷新**」⇒ 两者**不可互推** ⇒ ★**别把本步的绿读成"D11 已护住"** ✓。
           echo "布局壳 panels 守卫 ✓（三面全过 ＋ 守护串在；未覆盖 D11 ⇒ 见上注释）"
+
+      # ── ★真浏览器 smoke 子集（`books#295` 池 B 首笔批 · **名单写死**）──
+      #   名单：`e2e-280-kills-easy`（⑭ 主线可通关的最小真读数）｜`e2e-280-encounter-stop`（②-2 遭遇停）｜
+      #         `e2e-280-save-delete`（⑫ 存档栏位可用性）｜`e2e-280-playtest`（多臂；`#374` 修好后 **10/0** ⇒ 本席判**入**）
+      #   ★**✗ 不含** `e2e-280-fullrun`（整局 ~4 分钟）—— 池 B 明示「**候议**」；其具名理由写在
+      #     `tools/check-tool-registry.mjs` 的**豁免表**里（那份表就是本门的对账面）。
+      #   ★每支**两道都跑**：正跑 ＋ `--selftest`（刀）；并**取守护串** —— ✗ 只信退出码
+      #     （输出形变了 ⇒ 判据会**静默**退化成装饰；本 workflow 已有同款教训注释）。
+      - name: ★真浏览器 smoke 子集（写死四支 · 正跑＋自检）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          export PW_DIR="$GITHUB_WORKSPACE/books"          # ★本族的模块解析根（其下有 node_modules/playwright）
+          export CHROME_BIN="$HOME/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome"
+          ART="$GITHUB_WORKSPACE/books/stories/babel/babel-trial.html"
+          fail=0
+          run_one() {
+            local f="$1" 守护="$2" rc=0
+            echo "── $f"
+            node "$f" --books "$PWD" --engine "$GITHUB_WORKSPACE/engine" --art "$ART" > "/tmp/out" 2>&1 || rc=$?
+            tail -6 /tmp/out
+            if [ "$rc" -eq 2 ]; then echo "::error title=e2e-280::$f 是**装置错**（rc=2：引擎根／产物／浏览器）⇒ ✗ 不是产品红"; fail=1; return 0; fi
+            if [ "$rc" -ne 0 ]; then echo "::error title=e2e-280::$f 判据红（rc=$rc）⇒ 读 /tmp/$f.out 的具名红"; fail=1; return 0; fi
+            grep -qF "$守护" "/tmp/out" || { echo "::error title=e2e-280::$f 没打印守护串「$守护」（读数没跑到 ⇒ 绿的没有根据）"; fail=1; return 0; }
+            node "$f" --selftest > /tmp/knife.out 2>&1 || { echo "::error title=e2e-280::$f 自检（刀）红 ⇒ 判据恐已退化"; tail -6 /tmp/knife.out; fail=1; return 0; }
+            echo "  ✓ 正跑 ＋ 自检（刀）都过"
+          }
+          run_one tools/e2e-280-kills-easy.mjs    '通过 2｜失败 0'
+          run_one tools/e2e-280-encounter-stop.mjs '通过 4｜失败 0'
+          run_one tools/e2e-280-save-delete.mjs    '通过 2｜失败 0'
+          run_one tools/e2e-280-playtest.mjs       '通过 10｜失败 0'
+          [ "$fail" -eq 0 ] || exit 1
+          echo "真浏览器 smoke 子集 ✓（四支：正跑 ＋ 自检）"
+          { echo "- 真浏览器 smoke: kills-easy／encounter-stop／save-delete／playtest（正跑＋刀）✓"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
       - name: 引擎仓没被写脏（归因）
         run: |

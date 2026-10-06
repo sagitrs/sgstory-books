@@ -286,6 +286,19 @@ export function storyLinks(session) {
 		.filter((el) => { const v = el.getAttribute('data-passage'); return v && v !== cur; });
 }
 
+/** ★**段内可点项**（`books#382` 同批收口）：`<<link>>` 落地成 `#passages` 内的
+ *   `<a class="link-internal macro-link">`（**✗ 不带 `data-passage`**）。
+ *   `storyLinks()` 按 `data-passage` 找 ⇒ 这类入口**一个都找不到**（实测：当前段「开始」上正是两个 `<<link>>`）。
+ *   ★取法与 `e2e-280-*` 族一致（那族已改用「段内 `a,button`」；本件此前停在 `[[…]]` 时代）。
+ *   ★`data-passage` 那批**不在此列**（由 `storyLinks()` 负责 ⇒ ✗ 两边都算）。 */
+export function 段内可点(session) {
+	const 段 = session.doc.querySelector('#passages');
+	if (!段) return [];
+	return [...段.querySelectorAll('a,button')]
+		.filter((el) => !el.hasAttribute('data-passage'))
+		.filter((el) => (el.textContent ?? '').trim() !== '');
+}
+
 /**
  * ★点一个故事链接，**并断言导航真的发生**。
  *   ✗ 不返回 void —— 那会让调用方**对着过期 DOM 判**（本族最危险的形：不抛错、不改状态 ⇒
@@ -308,12 +321,21 @@ export const assertNavigated = (before, after, want, mechanism) => {
 export async function clickPassage(session, { to = null, mechanism = 'click' } = {}) {
 	const cur = currentPassage(session);
 	const links = storyLinks(session);
-	const el = to == null ? links[0] : links.find((x) => x.getAttribute('data-passage') === to);
+	let el = to == null ? links[0] : links.find((x) => x.getAttribute('data-passage') === to);
+	let want = el ? el.getAttribute('data-passage') : null;
+	/* ★★兜底（**只对 `to == null` 这一支**，✗ 不动 `to` 具名的语义）：段内 macro-link（`<<link>>` 形）。
+	 *   它的**目标段落事前不可知**（✗ 无 `data-passage`）⇒ ★判据只断「**导航确已发生**」，
+	 *   ✗ 不假装知道目标名 —— 而「点的动作真导航了」正是本件存在的核心理由 ✓。 */
+	let 是段内链 = false;
+	if (!el && to == null) {
+		el = 段内可点(session)[0] ?? null;
+		if (el) { 是段内链 = true; want = `（段内链「${(el.textContent ?? '').trim().slice(0, 20)}」·目标由故事决定）`; }
+	}
 	if (!el) {
 		throw new Error(`无可点故事链接${to ? `（要找 ${JSON.stringify(to)}）` : ''}：当前段 ${JSON.stringify(cur)}`
-			+ `；页面上 data-passage 目标 = ${JSON.stringify([...session.doc.querySelectorAll('[data-passage]')].map((x) => x.getAttribute('data-passage')))}`);
+			+ `；页面上 data-passage 目标 = ${JSON.stringify([...session.doc.querySelectorAll('[data-passage]')].map((x) => x.getAttribute('data-passage')))}`
+			+ `；段内可点项 = ${JSON.stringify(段内可点(session).map((x) => (x.textContent ?? '').trim().slice(0, 24)))}`);
 	}
-	const want = el.getAttribute('data-passage');
 	if (mechanism === 'jquery') {
 		const $ = session.window.jQuery;
 		if (!$) throw new Error('产物里无 jQuery（mechanism=jquery 不可用）');
@@ -325,6 +347,14 @@ export async function clickPassage(session, { to = null, mechanism = 'click' } =
 	}
 	await new Promise((r) => setTimeout(r, 120));            // 让导航落地
 	const now = currentPassage(session);
+	if (是段内链) {
+		/* ★macro-link 支：只断「**导航确已发生**」（✗ 不断目标名 —— 事前不可知） */
+		if (now === cur) {
+			throw new Error(`★点了 ${want} 但段落**未变**（仍 ${JSON.stringify(cur)}）`
+				+ `　—— 机制 ${JSON.stringify(mechanism)} 未导航（✗ 静默放过：后续断言会对着**过期 DOM** 判）`);
+		}
+		return now;
+	}
 	try {
 		return assertNavigated(cur, now, want, mechanism);
 	} catch (e) {
