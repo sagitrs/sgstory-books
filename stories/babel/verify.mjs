@@ -5624,4 +5624,113 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 	}
 }
 
+/* ============================================================
+ * 第 69 组：`books#398`（S4 余量）铜冠装备接线 ——
+ *   真头槽／真佩戴／占槽换装与**旧件保全**／**两种**失败安全（拒与抛）／结果 `E8` 防重／
+ *   读档往返后仍拒／谢绝不给冠／禁售（价格与不可售**分开**）／头槽语义（无 AC·不占 body·不免脆弱）
+ *   ★容量：**如实记读数**（裁 S：受测版本无合法容量门 ⇒ 不适用，✗ 手写 PASS）
+ *   ★口径＝S4 六裁 `6021846162`（H/P/M/R/B/S）＋ 承接席清单 `6021891030`
+ * ============================================================ */
+head('69. `books#398` S4：真头槽／占槽换装保全／失败安全两路／结果防重／谢绝／禁售／头槽语义／文本如实');
+{
+	const 域 = 'sevenNames';
+	const 七 = B?.七名河;
+	const L10 = B?.L10;
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 组前失败 = fails.length;
+	try {
+		ok(!!七, '故事脚本没挂上 `setup.BABEL.七名河`（`00-seven-names.js` 没被装载？）');
+		if (七) {
+			const 清背 = () => { D.Player.items = []; };
+			const 造 = (id, o = {}) => { const x = R.createItem(id); Object.assign(x, o); D.Player.items.push(x); return x; };
+			const 起档 = () => { State.variables[域] = { 态: '进行中', 当前: 'E8', 结果: {}, 机会: { 用: false, 实例: 'i-s4' }, 路径: [] }; return State.variables[域]; };
+			const 冠数 = () => (D.Player.items ?? []).filter((x) => x.id === 'rain-diadem').length;
+
+			/* ① 定义面（裁 H／P／B）：真槽声明 ＋ 参考价 100 ＋ 中文槽名 ＋ 描述 ✗ 宣布机械效果 */
+			const 冠 = R.createItem('rain-diadem');
+			ok(冠?.slot === 'head', `★裁 H：须有**真** \`slot\` 声明（实得 ${JSON.stringify(冠?.slot)}）`);
+			ok(冠?.stats?.cost === 100, `★裁 P：参考价须＝**100**（实得 ${JSON.stringify(冠?.stats?.cost)}）`);
+			ok(R.slotLabels?.head === '头部', `★头槽须有中文显示名（实得 ${JSON.stringify(R.slotLabels?.head)}）`);
+			ok(!/(加值|＋|\+|bonus)/.test(String(冠?.desc ?? '')), `★裁 B：描述 ✗ 宣布机械效果（实得 ${JSON.stringify(冠?.desc)}）`);
+
+			/* ② 真佩戴（裁 H）：走 E8 选项 0 ⇒ 真置 `equipped` ＋ 结果记**装**槽 */
+			清背(); 起档();
+			const r0 = 七.选行动(0);
+			ok(r0?.ok === true, `★E8「收下并戴上」应成功（实得 ${JSON.stringify(r0).slice(0, 90)}）`);
+			ok(R.equippedIn('head')?.id === 'rain-diadem', '★裁 H：佩戴＝**真**装备（`R.equippedIn(head)` ✓ ✗ 替身表 ✓）');
+			ok(State.variables[域].结果.E8?.装 === 'head', '★同上：结果须记**装**槽（可审 ✓）');
+
+			/* ③ 占槽换装（裁 H）：旧件**留背包**且 `entityId／charges／state` 逐字保全 */
+			清背(); const 旧冠 = 造('rain-diadem', { charges: 2, state: { 标记: '旧' } }); R.slotEquip.call(旧冠);
+			起档();
+			const r1 = 七.选行动(0);
+			ok(r1?.ok === true, `★占槽时换装应成功（正文已明写「转入背包…不吞物品」⇒ 选择即确认；实得 ${JSON.stringify(r1).slice(0, 80)}）`);
+			ok(R.equippedIn('head')?.entityId !== 旧冠.entityId, '★新件上位 ✓');
+			const 包旧 = (D.Player.items ?? []).find((x) => x.entityId === 旧冠.entityId);
+			ok(!!包旧 && 包旧.equipped === false, '★裁 H：旧件**留在背包**且已不装备（✗ 被吞 ✓）');
+			ok(包旧?.charges === 2 && 包旧?.state?.标记 === '旧', '★同上：`charges／state` **逐字保全** ✓');
+
+			/* ④ 失败安全·**不可装**（裁 H）：受控桩让本件**判不出槽** ⇒ 选行动拒 ＋ 旧件**仍在位** ＋ 新件收回 ＋ ✗ 写结果
+			 *   ★桩打在 `reviveItem`（槽名的**唯一来处**：快照上无 `slot` ⇒ 只能由定义复活 ✓） */
+			清背(); const 旧2 = 造('rain-diadem'); R.slotEquip.call(旧2); 起档();
+			const 原活 = R.reviveItem;
+			R.reviveItem = function (x) { return { ...x, slot: null }; };
+			let r2; try { r2 = 七.选行动(0); } finally { R.reviveItem = 原活; }
+			ok(r2?.ok === false && /DIADEM_NOT_EQUIPPABLE/.test(r2.code ?? ''), `★不可装 ⇒ 须**具名拒**（实得 ${JSON.stringify(r2).slice(0, 70)}）`);
+			ok(R.equippedIn('head')?.entityId === 旧2.entityId, '★拒时**旧件仍在位**（✗ 不暗卸 ✓）');
+			ok(冠数() === 1, '★新件**已收回**（✗ 重复发奖 ✓）');
+			ok(State.variables[域].结果.E8 === undefined, '★裁 M：拒时 **✗ 先写结果**（不先标已领取 ✓）');
+
+			/* ⑤ 失败安全·**抛**（裁 H）：装槽中途抛 ⇒ 具名拒 ＋ **旧件仍在位**（未动过）＋ 新件收回 ＋ ✗ 写结果 */
+			清背(); const 旧3 = 造('rain-diadem'); R.slotEquip.call(旧3); 起档();
+			R.reviveItem = function () { throw new Error('受控抛：换装中途'); };
+			let r3; try { r3 = 七.选行动(0); } finally { R.reviveItem = 原活; }
+			ok(r3?.ok === false && /DIADEM_EQUIP_FAILED/.test(r3.code ?? ''), `★装槽抛 ⇒ 须**具名拒**（实得 ${JSON.stringify(r3).slice(0, 70)}）`);
+			ok(R.equippedIn('head')?.entityId === 旧3.entityId, '★抛时**旧件仍在位**（✗ 半换装 ✓）');
+			ok(冠数() === 1, '★新件已收回 ✓');
+			ok(State.variables[域].结果.E8 === undefined, '★✗ 未写结果 ✓');
+
+			/* ⑥ 防重（裁 M）：同节点二次选行动 ⇒ 具名拒 ＋ 件数不变 */
+			清背(); 起档(); 七.选行动(0);
+			const 数1 = 冠数();
+			const r4 = 七.选行动(0);
+			ok(r4?.ok === false && /SEVEN_NODE_DONE/.test(r4.code ?? ''), `★二次选行动须拒（实得 ${r4?.code ?? '（无）'}）`);
+			ok(冠数() === 数1, '★件数不变（✗ 重复发奖 ✓）');
+
+			/* ⑦ 读档往返（裁 R）：结果随**同一份快照**回来 ⇒ 仍拒再领 */
+			State.variables[域] = JSON.parse(JSON.stringify(Save.roundtrip(State.variables[域])));
+			ok(State.variables[域].结果.E8?.选项 === 0, '★结果**随快照**回来（✗ 靠堆外集合 ✓）');
+			const r5 = 七.选行动(0);
+			ok(r5?.ok === false && /SEVEN_NODE_DONE/.test(r5.code ?? ''), '★读档往返后**仍拒**再领取 ✓');
+
+			/* ⑧ 谢绝（裁 M）：提交**放弃**结果 ＋ **不给冠** ＋ ✗ 装任何东西 */
+			清背(); 起档();
+			const r6 = 七.选行动(2);
+			ok(r6?.ok === true, `★谢绝也须成立（实得 ${JSON.stringify(r6).slice(0, 70)}）`);
+			ok(冠数() === 0, '★裁 M：谢绝**不给冠** ✓');
+			ok(State.variables[域].结果.E8?.放弃 === true, '★同上：结果须记**放弃** ✓');
+			ok(R.equippedIn('head') == null, '★谢绝 ✗ 装任何东西 ✓');
+
+			/* ⑨ 禁售（裁 P：价格与不可售**分开**）：目录不收；★**真售口**的行为断言在 `tools/verify-l10-city.mjs`（那里有真 permit 装置 ✓） */
+			ok(!Object.hasOwn(L10?.cfg?.sell ?? {}, 'rain-diadem'), '★裁 P：铜冠**不在收购目录** ✓');
+
+			/* ⑩ 头槽语义（裁 H）：无独立 AC／不占 body／**不免脆弱** */
+			清背(); 起档(); 七.选行动(0);
+			ok(!('ac_bonus' in (R.createItem('rain-diadem')?.stats ?? {})), '★头槽**无独立 AC** ✓');
+			ok(R.equippedIn('body') == null, '★装头槽**不占 body** ✓');
+			const 适 = B?.返程结算?.适用件?.() ?? [];
+			ok(适.some((x) => x.id === 'rain-diadem'), '★铜冠**在**脆弱适用集内（✗ 免脆弱 ✓）');
+
+			/* ⑪ 容量（裁 S）：★**如实记读数** —— 受测版本无合法容量门 ⇒ 不适用（✗ 手写 PASS、✗ 用占槽失败冒充） */
+			console.log('    （★裁 S 读数：本受测版本**无重量/格数容量门** ⇒ 容量不足**不适用**；✗ 不计入判据面 ✓）');
+		}
+	} finally {
+		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 69 组：${本组失败 === 0 ? '十一格全绿（真头槽定义／真佩戴／占槽换装旧件保全／拒路／抛路／防重／读档往返／谢绝／禁售目录／头槽语义／文本如实）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 printSummary();

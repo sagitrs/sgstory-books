@@ -62,6 +62,13 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		before = economy(); ok(C.sell('wood', 11) === false && economy() === before, '资源不足半结算');
 		for (const n of [4, 3, 3]) ok(C.sell('wood', n) === true, '有效资源交易失败');
 		ok(C.state().sold === 10 * C.cfg.sell.wood && amount('wood') === 0, '资源未扣或重复贡献');
+		/* ★S4（`books#398` 裁 P）：铜冠**不可售** —— 价格与不可售**分开** ⇒ 须覆盖**真售口**（✗ 只藏按钮 ✓） */
+		before = economy();
+		const 言S4 = []; const opS4 = R.perform; R.perform = (m) => { 言S4.push(String(m)); return opS4; };
+		let 冠售; try { 冠售 = C.sell('rain-diadem', 1); } finally { R.perform = opS4; }
+		ok(冠售 === false && economy() === before, '★S4：铜冠售出被拒且**零状态变化**（扣物/付币/记贡献**之前** ✓）');
+		ok(!Object.hasOwn(C.cfg.sell, 'rain-diadem'), '★S4：铜冠**不在收购目录** ✓');
+		ok(言S4.some((m) => m.includes('听雨之冠')), `★S4：须走**该 id 的具名拒**（✗ 别的兜底 ✓；实得 ${JSON.stringify(言S4.slice(-1))}）`);
 		const sold = C.state().sold, coins = amount('coin');
 		ok(C.buy('return-scroll') === true, '证前不能买合法返程用品');
 		ok(amount('coin') === coins - C.cfg.buy['return-scroll'] && C.state().sold === sold, '消费倒扣贡献或价表不同源');

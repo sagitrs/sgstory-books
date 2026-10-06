@@ -35,6 +35,10 @@ const reject = (text) => { R.perform(text); return false; };
 
 const sell = (id, n = 1) => {
 	if (!permit(locations.ration)) return false;
+	/* ★禁售（`books#398` 裁 P：价格与不可售**分开**）：`rain-diadem` **不在收购目录**（下方 `cfg.sell[id]`
+	 *   本就会拒）；此处**再**给一条**具名拒** —— ★位置在 `R.exchange`（扣物/付币/记贡献）**之前** ✓
+	 *   ⇒ 即便目录哪天误收它，这条仍兜住 ✓。✗ 不用无人消费的 `noSell` 字段冒充 ✓、✗ 不为它新造货币业务 ✓。 */
+	if (id === 'rain-diadem') return reject('听雨之冠是渡工给的报酬，这里不收。');
 	const price = cfg.sell[id];
 	if (!price || !Number.isSafeInteger(n) || n <= 0) return reject('这里只收目录上的资源，数量须为正整数。');
 	const value = price * n, s = state();
