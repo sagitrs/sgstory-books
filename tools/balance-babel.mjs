@@ -347,7 +347,7 @@ function 判战果(RPG, players, enemies) {
 		const 全晕 = enemies.length > 0 && enemies.every((e) => (RPG.isKnockedOut?.(e) ?? false));
 		return 全晕 ? 'knockout' : 'victory';
 	}
-	/* 双方都还有活人 ⇒ 僵持（本器按回合上限收场，无第三态可退）。 */
+	/* 双方都还有活人 ⇒ 僵持（★**引擎自己**收场 —— 本器**不截断**，✗ 按回合上限停手；见 `跑一场` 档头登记）。 */
 	return 'stalemate';
 }
 
@@ -377,6 +377,10 @@ function 造序列(样本号, 长度 = 4096) {
 /* ══════════════════════════════════════════════════════════════════════════
  * 一场：驱动真 `RPG.Battle.execute()`
  * ══════════════════════════════════════════════════════════════════════════ */
+/* ★`#439` 加固（T 笔）：`回合上限` 是**遗产参数** —— ★本档**从未消费**它（全档只出现于：本行、下面的注释、
+ *   头行打印、以及自证 ⑤ 的静态断言）。⇒ ★**本器不按任何上限截断**：一场由**引擎自己**收场（`battle:end`）。
+ *   ★因此 `stalemate` 一律是**引擎自判**的僵持，✗ 不是「本器打满 8 回合就地停」。登记在此（✗ 静默保留）。
+ *   ★守它的是自证 ⑤：★若今后真按上限截断（而不显式记账）⇒ 那一格**须红**（否则「胜率／平均回合」会被上限悄悄塑形）。 */
 async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策略名 = null } = {}) {
 	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
 	const 策略 = STRATEGIES[策略名 ?? 夹具.策略] ?? STRATEGIES['纯攻'];
@@ -836,6 +840,21 @@ async function 自证(env) {
 			/✗ 有 1 条被拒但/.test(行K), 行K.split('\n').pop());
 	}
 
+	/* ★⑤ `#439` 加固：**本器不截断** —— `回合上限` 是遗产参数、**未被消费**（登记见 `跑一场` 档头）。
+	 *   ★守的是「**先前就成立的行为**」：若今后有人真按上限截断而不显式记账 ⇒ ★本格**须红**（那时 `stalemate`
+	 *   会混入「打满上限」的样本 ⇒「胜率／平均回合」被上限塑形）。可复算：扫本档源文本，✗ 靠读码印象。 */
+	{
+		const 本档源 = fs.readFileSync(new URL(import.meta.url), 'utf8');
+		const 行 = [...本档源.matchAll(/[^\n]*回合上限[^\n]*/g)].map((m) => m[0].trim())
+			.filter((l) => !/^\s*(\/\*|\*|\/\/)/.test(l))
+			.filter((l) => !/遗产参数|未被消费|不截断|console\.log|自证 ⑤/.test(l))
+			.filter((l) => !/async function 跑一场|回合上限 = 8\s*[,}]/.test(l))
+			/* ★**自指**：本格自己的扫描行也含「回合上限」⇒ 须把自己排除 ✗ 否则它永远红 ✓ */
+			.filter((l) => !/本档源|matchAll/.test(l));
+		判('⑤ `#439` 加固：`回合上限` 须**未被消费**（本器不截断 ⇒ `stalemate` 一律引擎自判）', 行.length === 0,
+			`非登记引用 ${行.length} 处${行.length ? '：' + JSON.stringify(行) : ''}`);
+	}
+
 	const 红 = 结果.filter((x) => !x.ok).length;
 	console.log(`\n  自证：${结果.length - 红}/${结果.length} 如期` + (红 ? '  ★有红 ⇒ 本器读数不可信' : ''));
 	return 红;
@@ -910,7 +929,7 @@ async function main() {
 	const 样本数 = Number(argOf('samples', 100));
 	const 全 = FIXTURES.filter((f) => !只要 || f.id === 只要);
 	console.log(`战斗跑分器（LegacyBattleRunner · 驱动真 RPG.Battle.execute）`);
-	console.log(`夹具 ${全.length} 个｜每夹具样本 ${样本数}｜回合上限 8`);
+	console.log(`夹具 ${全.length} 个｜每夹具样本 ${样本数}｜★不截断（✗ 无回合上限：“回合上限”为遗产参数、当前未被消费）`);
 	const 全部输出 = [];
 	const 强制目标 = !!argOf('enforce-target');
 	let 红 = 0, 待判 = 0, 未达 = 0;
