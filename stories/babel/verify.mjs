@@ -289,7 +289,7 @@ ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
 if (map) {
 	ok(map.validate().length === 0, `地图结构不合法：${map.validate().join('；')}`);
 	ok(map.validateConnectivity('L1').length === 0, `L1 出发不可达：${map.validateConnectivity('L1').join('；')}`);
-	ok(map.locations.size === 30, `地点数应为 30（原 27 处，加 L10 登记处、工坊、医所；共炉／配给屋沿用旧 ID），实为 ${map.locations.size}`);
+	ok(map.locations.size === 31, `地点数应为 31（原 30 处 ＋ ★books#397 裁 (b) 新增的独立区域 W09「七名河」✓），实为 ${map.locations.size}`);
 }
 console.log(`  地点 ${map.locations.size} 个｜边 ${map.exits.length} 条`);
 
@@ -335,7 +335,11 @@ if (typeof R.layerOfLocation === 'function') {
 /* ---------- ③ 单向门（段间封闭：10 → 11 有边、11 → 无回边）---------- */
 head('③ 段间封闭（10→11 接通 ＋ 20→21 只定义不挂图）');
 const gate = map.exitsFrom('L10-gate');
-ok(gate.some((e) => e.to === 'L11'), '`L10-gate` 没有通往 L11 的边（10→11 未接通）');
+	/* ★`books#397` 裁 (b)：出城**首次分流** —— 教程未完成走 `W09` ✓／已完成走旧 `L11` ✓（互斥 ✓）。
+	 *   ⚠ 此处判**边的存在性**（原始 `exits` 数组 ✓）：**闸门过滤后**的可用性随三态变 ⇒ 由第 65 组 ⑩ 格钉 ✓；
+	 *     ✗ 不用 `exitsFrom`（按闸门过滤 ⇒ 会把「首次分流生效」误报成「边没了」✗）。 */
+	ok(map.exits.some((e) => e.from === 'L10-gate' && e.to === 'L11'), '`L10-gate` 没有通往 L11 的边（10→11 未接通）');
+	ok(map.exits.some((e) => e.from === 'L10-gate' && e.to === 'W09'), '`L10-gate` 没有通往 W09（首次出城教程）的边');
 ok(!map.exitsFrom('L11').some((e) => e.to === 'L10' || e.to.startsWith('L10-')),
 	`L11 有回 L10 的边（段间不是封闭的）：${map.exitsFrom('L11').map((e) => e.to).join('、')}`);
 const reach = map.reachableFrom('L1');                       // Set 或数组（两种都兼容）
@@ -4859,7 +4863,9 @@ head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一
 			ok(S7.读档().机会.用 === false, '★E0 入场**不消费**传送机会（裁②）');
 
 			/* ④ 唯一交付：走到 E1（★E0 是**门**，✗ 无行动 —— 先走 ✓）⇒ 一次成功恰发一次；重复提交 ⇒ 拒且背包不再变 */
-			const 计 = (id) => (D.Player.items ?? []).filter((x) => x.id === id).length;
+		/* ★尺＝**charges 感知**（✗ 不是槽数）：`RPG.give(id,n)` 会**并进同槽的 charges**（`resources.js` 成文 ✓）
+		 *   ⇒ 数槽会把「一槽 2 件」读成 1 件 ⇒ 判据随骰子飘 ✗（我首版即栽在此，本行是自纠 ✓）。 */
+		const 计 = (id) => R.heldTotal(D.Player, id) ?? 0;
 			const 走E1 = S7.走('left');
 			ok(走E1.ok === true && 走E1.当前 === 'E1', `★E0 走「左」应到 E1（实得 ${JSON.stringify(走E1).slice(0, 70)}）`);
 			const 前粮 = 计('ration');
@@ -4939,13 +4945,36 @@ head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一
 			ok(缺映射.length === 0, `★内容里每个候选 id 都要有真 id 映射（未映射：${缺映射.join('、')}）`);
 			const 非在册 = [...用到].map((k) => 内容.物品映射[k]).filter((id) => !R.items.has(id));
 			ok(非在册.length === 0, `★映射后的真 id 须在册（不在册：${非在册.join('、')}）`);
+
+			/* ⑩ 接线面（`books#397` 裁 (b) `6015911410`）：独立区域 W09 ＋ **首次分流互斥** ＋ E9 只回 L10
+			 *   ★闸门用 `map.exitsFrom`（它按 `when` **现算** ✓）⇒ 能真探到「此刻哪条开」✓。 */
+			const 图 = B.map;
+			ok(!!图?.locations?.has('W09'), '★独立区域 `W09` 应在图上（裁 (b)①）');
+			const 完成档 = () => {
+				State.variables[域] = { 态: '完成', 当前: 'E9', 结果: {}, 机会: { 用: true, 实例: 'x' }, 路径: ['E0', 'E9'] };
+			};
+			const 未完成档 = () => {
+				State.variables[域] = { 态: '进行中', 当前: 'E1', 结果: {}, 机会: { 用: false, 实例: 'x' }, 路径: ['E0', 'E1'] };
+			};
+			未完成档();
+			const 开未 = 图.exitsFrom('L10-gate').map((e) => e.to);
+			ok(开未.includes('W09'), `★教程未完成 ⇒ 出城应走 W09（实得开放：${开未.join('、')}）`);
+			ok(!开未.includes('L11'), `★教程未完成 ⇒ 旧 L11 **不应**开放（互斥 ✓；实得：${开未.join('、')}）`);
+			完成档();
+			const 开完 = 图.exitsFrom('L10-gate').map((e) => e.to);
+			ok(开完.includes('L11'), `★教程已完成后 ⇒ 出城应走旧 L11（实得开放：${开完.join('、')}）`);
+			ok(!开完.includes('W09'), `★教程已完成后 ⇒ W09 不应再开放（互斥 ✓；实得：${开完.join('、')}）`);
+			const 出口 = (图.exits ?? []).filter((e) => e.from === 'W09');
+			ok(出口.length === 1 && 出口[0].to === 'L10-camp', `★E9 **只回 L10**（裁 (b)④）：W09 应恰有一条通往 L10-camp 的边（实得 ${出口.map((e) => e.to).join('、')}）`);
+			const 旧L11 = (图.exits ?? []).find((e) => e.from === 'L10-gate' && e.to === 'L11');
+			ok(!!旧L11 && 旧L11.from === 'L10-gate' && 旧L11.to === 'L11', '★旧 L11 那条边**一字未动**（裁 (b)②：只外包闸门，✗ 不改 from/to ✓）');
 		}
 	} finally {
 		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
 		D.Player.items = (背存 ?? []).map((s) => R.reviveItem(s));
 	}
 	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 65 组：${本组失败 === 0 ? '九格全绿（拓扑独立字面量／读面零写／三态与开始／唯一交付／存档往返／导航静态权威／机会与完成／死亡零写／真id映射）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 65 组：${本组失败 === 0 ? '十格全绿（拓扑独立字面量／读面零写／三态与开始／唯一交付／存档往返／导航静态权威／机会与完成／死亡零写／真id映射／接线面（W09·首分流互斥·E9 只回 L10））' : `★本组 ${本组失败} 处失败`}`);
 }
 
 printSummary();
