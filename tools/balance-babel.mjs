@@ -110,6 +110,10 @@ const STRATEGIES = {
 	'防疗': (options, ctx) => {
 		if (目标步(options)) return 选目标(options, ctx);
 		if (ctx.自己血比 < 0.5) {
+			/* ★`books#201` 修：**先走真路** —— 页脚背包提交（`itemsInBag` 下选单里没有药）。
+			 *   ⚠ 顺序有意：只要背包里有治疗件就**提交它**，✗ 不再看选单（选单里那件是旧 pin 的形态）。 */
+			const 背包治 = (ctx.背包件 ?? []).find((id) => /herb-poultice|bandage/.test(String(id)));
+			if (背包治) return { 提交: 背包治 };
 			const 治 = options.find((o) => /草药糊|绷带/.test(o.text));
 			if (治) return 治.value;
 		}
@@ -135,6 +139,10 @@ const STRATEGIES = {
 		/* ⚠ 首版我按 `/使用/` 找 ⇒ **零命中**（实测：选项文案是「用已装备长剑攻击」与**光秃秃的件名**
 		 *   「铁铲」「矿镐」——后者才是「用这件」✓）⇒ 空手回落到武器 ⇒ 跑出 `applied×4 拒绝 0` ✗。 */
 		const 攻击 = /攻击|打击|挥|砍|劈/;
+		/* ★`books#201` 修：非武器件（采集工具／防具）现在**不在选单里** ⇒ 走页脚背包**提交**它们，
+		 *   引擎的派发链才会真把它们送进 `RPG.act` ⇒ 真产出 `rejected` ＋ `★明细`（本夹具要的正是它）。 */
+		const 背包非武器 = (ctx.背包件 ?? []).find((id) => /shovel|pick|buckler|shield|mail/.test(String(id)));
+		if (背包非武器) return { 提交: 背包非武器 };
 		const 非武器 = options.filter((o) => /铁铲|矿镐|铁锹|斧头|小圆盾|木盾|钢盾|塔盾/.test(o.text) && !攻击.test(o.text));
 		if (非武器.length) return 非武器[0].value;
 		const 攻 = options.find((o) => /长剑|铁镐|匕首/.test(o.text) && 攻击.test(o.text) && !/跳过|探索/.test(o.text));
@@ -462,6 +470,12 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				/* ★**结构锚**（`developer-9` 02:07 建议；正与「文案可能陈旧 ⇒ ✗ 凭它判来源」同族）：
 				 *   引擎的快捷用件项值形＝`quick:<下标>:use`（下标＝**库存下标**，与件选项 `String(i)` 同源）
 				 *   ⇒ 由库存里 `equipped===true` 的那件解出下标 ⇒ 「手上那把」按**件 id** 认，✗ 不靠「已装备」字样。 */
+				/* ★`books#201` 跑分器修：故事自 `books#280` ⑩／⑭ 起把道具**收敛到页脚背包**
+				 *   （`R.Battle.itemsInBag = true`）⇒ 战斗选单**只列手上武器**，药／工具／防具**一律不在选单里**
+				 *   ⇒ 策略按选单值挑治疗件**永远挑不到**（实测：选中治疗件 0 次 ⇒ 自证 ⑤a／⑤b／⑤c 三格红）。
+				 *   ⇒ 补一份**背包件 id 表**：策略可交回 `{提交:'<件id>'}` —— 走真玩家同路
+				 *     （`RPG.submitBattleAction` ⇒ 引擎 `Battle.submit` **当场兑现**等着的这一手）。 */
+				背包件: (V().inventory ?? []).map((x) => x?.id ?? null).filter(Boolean),
 				手上快用: (() => {
 					try {
 						const 装 = SC.setup.RPG.equippedIn?.('weapon') ?? null;
@@ -472,6 +486,21 @@ async function 跑一场(s, 夹具, 样本号, _忽略, { 回合上限 = 8, 策�
 				})(),
 			};
 			const pick = 策略(o, ctx);
+			/* ★`books#201` 跑分器修：策略可交回 `{提交:'<件id>'}` ⇒ 走**页脚背包那条真路**
+			 *   （`itemsInBag` 置位时选单里根本没有药／工具，策略无从「点」它们）。
+			 *   ⚠ 只在我们**正等着这一手**时走它：`submitBattleAction` 走 `Battle.submit`，它**当场兑现**
+			 *     `#等` 里那一手（引擎注释原文）⇒ 本覆盖随后返什么都**不再被用**（轨迹照记，供判据读）。
+			 *   ⚠ 引擎无此口（旧 pin）⇒ **回落到选单值**（✗ 崩）。 */
+			if (pick && typeof pick === 'object' && typeof pick.提交 === 'string'
+				&& typeof R.submitBattleAction === 'function') {
+				const 件 = String(pick.提交);
+				R.submitBattleAction({ item: 件 });
+				const 件名 = (() => { try { return R.createItem(件).name; } catch { return 件; } })();
+				轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: `submit:${件}`, 选文案: 件名, 血: D3.Player.hp,
+					耗: (V().inventory ?? []).filter((x) => /herb|bandage|poultice/.test(String(x?.id ?? '')))
+						.reduce((a, x) => a + Number(x?.charges ?? 0), 0) });
+				return o[0]?.value ?? 'skip';
+			}
 			const hit = o.find((x) => x.value === pick) ?? o[0];
 			轨迹.push({ i: 轨迹.length, 选项: o.map((x) => x.text), 选: hit?.value ?? null, 选文案: hit?.text ?? null, 血: D3.Player.hp,
 				/* ★治疗件**消耗**这道独立证据（`tester-3` 的非阻断加固）：charges 挂在**背包条目**上
@@ -522,6 +551,13 @@ function 摆夹具(s, 夹具, 层 = 夹具.层 ?? process.env.BALANCE_LAYER ?? '
 	const SC = s.SC, R = SC.setup.RPG, D3 = SC.setup.DND3, B = SC.setup.BABEL, V = () => SC.State.variables;
 	V().inventory = [];
 	V().span1Events = {};
+	/* ★`books#201` 跑分器修（**每样本须回到同一初始态**）：本器**每夹具只 boot 一次**，100 个样本在
+	 *   **同一会话**里连着跑；上一场若以 `death` 收场，故事会把本局记成**终局**（`babelRun.终局 = true`）
+	 *   ⇒ 故事侧的 `活着()` 转假 ⇒ **层动作与出口全被闸门关掉**。
+	 *   实测（修前）：`温泉→L9 头目` 100 样本里 **77 条**整批抛错「L8 的可用动作里没有 `温泉: true`」
+	 *   —— 首场死亡之后的所有样本都撞这道闸（前 23 条正常 ⇒ 击败率被读成 95.7%，那是**残样**的读数）。
+	 *   ⚠ 只清 `hp` 治一半：闸门看的是**账**（`babelRun.终局`），✗ 不是血。 */
+	if (V().babelRun && typeof V().babelRun === 'object') delete V().babelRun.终局;
 	B.map.moveTo(层);
 	夹具.摆位(R, D3, B, s);
 	return null;
