@@ -2,7 +2,7 @@
 
 状态：**待评审设计，尚未接入游戏。** 本PR只提交文档、固定内容目录和原创审阅插图，不改故事源码、引擎pin、测试工具、CI或存档。
 
-需求：[sgstory-books #393](https://github.com/sagitrs/sgstory-books/issues/393)；引擎配对需求：[sgstory #2021](https://github.com/sagitrs/sgstory/issues/2021)。通用能力见[引擎设计](https://github.com/sagitrs/sgstory/blob/docs/2021-seven-names-engine/docs/plans/seven-names-engine-support.md)。跨仓链接指向配对设计分支，若合入后删除分支，须改为合入提交链接。
+需求：[sgstory-books #393](https://github.com/sagitrs/sgstory-books/issues/393)；引擎配对需求：[sgstory #2021](https://github.com/sagitrs/sgstory/issues/2021)。通用能力见[引擎设计](https://github.com/sagitrs/sgstory/blob/9e5ef7dd/docs/plans/seven-names-engine-support.md)。跨仓链接指向配对设计的合入提交 9e5ef7dd。
 
 ## 1. 范围、依据与状态
 
