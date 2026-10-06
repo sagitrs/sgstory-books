@@ -5,7 +5,7 @@
      按已保存权威事实现算（E5 `6012606197`：src 是 data URL ⇒ 资产内部不可进）。
      本档只用构建链 SVG 白名单允许的元素与属性（支路虚线因白名单无 stroke-dasharray，
      由短线段拼接画出）。
-     ★坐标与 `src/ui/map.js` 的 `坐标` **逐点一致**，并由故事侧格「③b 坐标漂移守卫」防漂移。
+     ★坐标与 `src/ui/map.js` 的 `坐标` **逐点一致**，且圆点带 `id`（`E0`…`E9`）⇒ 故事侧格「③b」**按 id 对齐**核（✗ 不按下标 ✓；`id` 在构建链 SVG 属性白名单内 ✓）。
      来源：本项目为 W09 新绘（非 docs 审稿快照、非外部素材）；许可见同目录 LICENSE；用途＝地图面板底图。 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420" width="320" height="420">
   <title>七名河地图底图：自下而上的单向路线</title>
@@ -106,14 +106,14 @@
   <line x1="171.7" y1="106.8" x2="166.5" y2="102.0" stroke="#6b7d8f" stroke-width="2"/>
   <line x1="162.9" y1="98.6" x2="160.0" y2="96.0" stroke="#6b7d8f" stroke-width="2"/>
   <line x1="160" y1="120" x2="160" y2="28" stroke="#8fb0c8" stroke-width="3"/>
-  <circle cx="60" cy="380" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="60" cy="312" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="260" cy="312" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="60" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="160" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="260" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="160" cy="176" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="260" cy="176" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="160" cy="108" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
-  <circle cx="160" cy="40" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E0" cx="60" cy="380" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E1" cx="60" cy="312" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E2" cx="260" cy="312" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E3" cx="60" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E4" cx="160" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E5" cx="260" cy="244" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E6" cx="160" cy="176" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E7" cx="260" cy="176" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E8" cx="160" cy="108" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
+  <circle id="E9" cx="160" cy="40" r="12" fill="#16202b" stroke="#8fa8bd" stroke-width="2"/>
 </svg>
