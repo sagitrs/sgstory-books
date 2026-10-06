@@ -5528,4 +5528,100 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 68 组：${本组失败 === 0 ? '十格全绿（适用集／前态分类／按实体／装备清除／幂等零变化／拒挡移动／卷轴冻结例外零损毁／并槽分离／回滚面／名量）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ============================================================
+ * 候选组（**story 侧** · ★**组号待 T 域确认** —— 裁六 `6021566672` 第 5 项：
+ *   行为要求冻结，但**测试组号与工具改动归 T 域**；本席**不动** `tools/e2e-311-layout.mjs` ✗
+ *   ⇒ 只落**故事侧**格，探针/e2e 扩展另由 T 域出案 ✓）
+ *   `books#401` 3b：正式单图（底图 ＋ 覆盖层 ＋ 图例 ＋ 三类等价文字 ＋ 三路开关）
+ * ============================================================ */
+head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产接线／覆盖层按真结果／位置／图例非仅颜色／等价文字／开关零副作用／只读边界');
+{
+	const B4 = B?.地图;
+	ok(!!B4, '故事脚本没挂上 `setup.BABEL.地图`（`ui/map.js` 没被装载？）');
+	if (B4) {
+		const 域4 = 'sevenNames';
+		const 档4 = JSON.parse(JSON.stringify(State.variables[域4] ?? null));
+		const 背4 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+		const 组前4 = fails.length;
+		try {
+			/* ① 资产接线：`story.json` 声明 ＋ 运行时读得到（★单文件链由构建产物覆盖，e2e 侧另案 ✓） */
+			const mf = JSON.parse(fs.readFileSync(path.join(here, 'story.json'), 'utf8'));
+			ok(mf?.assets?.['babel-map-w09'] === 'assets/map-w09.svg', `★清单须声明底图（实得 ${JSON.stringify(mf?.assets?.['babel-map-w09'] ?? null)}）`);
+			const 引全 = fs.readFileSync(path.join(here, 'assets', 'map-w09.svg'), 'utf8');
+			/* ★先**剥注释**再判（✗ 否则注释里提到的字样会误命中 —— 本席旧账里的同族错 ✓）。 */
+			const 引 = 引全.replace(/<!--[\s\S]*?-->/g, '');
+			ok(!/<style|<text|class=|data-|role=/.test(引), '★底图须**白名单内**（✗ style/text/class/data-*/role ✓；Note：判前已剥注释 ✓）');
+			ok((引.match(/<line /g) ?? []).length >= 60, `★支路虚线须由短线段拼接（✗ stroke-dasharray ✗；实得 ${(引.match(/<line /g) ?? []).length} 段）`);
+			ok(/<title>/.test(引), '★底图须有 `<title>`（无障碍名 ✓）');
+
+			/* ② 覆盖层**按真结果**区分语义（★裁 §二.1：已处理≠胜利；失败／脱离按真结果 ✓） */
+			const 造读 = (果) => ({ 已开始: true, 当前: 'E3', 已处理: ['E3'], 结果: { E3: 果 },
+				定点: { E3: { type: 'battle', title: '鳄口' } }, 节点: { type: 'battle' }, 导航: [] });
+			ok(B4.标记(造读({ 战果: 'victory', 成败: '成功' }), 'E3') === '胜', '★战斗胜利 ⇒ 「胜」');
+			ok(B4.标记(造读({ 脱战: true, 战果: null, 成败: '成功' }), 'E3') === '脱离', '★成功脱离 ⇒ 「脱离」（✗ 与胜利混义 ✓）');
+			ok(B4.标记(造读({ 战果: 'stalemate', 成败: '失败' }), 'E3') === '未胜', '★未胜三支 ⇒ 「未胜」');
+			const 奖 = { 已开始: true, 当前: 'E4', 已处理: ['E4'], 结果: { E4: { 成败: '成功', 文本: '' } },
+				定点: { E4: { type: 'reward', title: '渡口' } }, 节点: { type: 'reward' }, 导航: [] };
+			ok(B4.标记(奖, 'E4') === '通过', '★奖励节点检定通过 ⇒ 「通过」（✗ 不叫胜利 ✓）');
+			ok(B4.标记({ ...奖, 结果: { E4: { 成败: '失败' } } }, 'E4') === '失败', '★检定失败 ⇒ 「失败」');
+			ok(B4.标记({ ...奖, 结果: { E4: { 成败: '无检定' } } }, 'E4') === '已办', '★无检定 ⇒ 「已办」（✗ 不冒充结果 ✓）');
+
+			/* ③ 位置按**实际上下文**；④ 覆盖层是**纯函数**（同输入同输出 ＋ ✗ 不改状态） */
+			const 前档 = JSON.stringify(State.variables);
+			const 一 = B4.覆盖层(造读({ 战果: 'victory', 成败: '成功' }));
+			const 二 = B4.覆盖层(造读({ 战果: 'victory', 成败: '成功' }));
+			ok(一 === 二, '★覆盖层须**纯函数**（同输入同输出 ✓）');
+			ok(JSON.stringify(State.variables) === 前档, '★覆盖层**零 State 写** ✓（E5 约束的同形 ✓）');
+			ok(一.includes('map-here'), '★当前位置标记在位（`map-here` ✓）');
+			ok(Object.keys(B4.坐标).length === 10, `★坐标须覆盖 10 节点（实得 ${Object.keys(B4.坐标).length}）`);
+			/* ③b ★**坐标漂移守卫**（「一个量只留一个名字」的机械保障 ✓）：模块坐标须与底图**逐点对齐**
+			 *   —— ★两处各存一份是**已知取舍**（白名单不容 `class`/`data-*` ⇒ 资产内无法回指 ✓）⇒ 用本格防漂移 ✓。 */
+			const 图点 = [...引.matchAll(/<circle cx="(\d+)" cy="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+			const 模点 = Object.values(B4.坐标).map(([x, y]) => [x, y]);
+			ok(图点.length === 模点.length && 图点.every((p, i) => p[0] === 模点[i][0] && p[1] === 模点[i][1]),
+				`★模块坐标须与底图圆点**逐点相同**（实得 图 ${图点.length} 点／模 ${模点.length} 点；首差 ${JSON.stringify(图点[0])} vs ${JSON.stringify(模点[0])}）`);
+
+			/* ⑤ 图例**非仅靠颜色**：实线＋虚线两形 ＋ 文字图例（运行时 DOM ⇒ ✗ 受资产白名单限制 ✓） */
+			B4.切换();
+			const 文 = B4.面板();
+			ok(/主干/.test(文) && /支路/.test(文) && /实线/.test(文) && /虚线/.test(文), '★图例须**文字化**（✗ 仅颜色 ✓）');
+			ok(/stroke-width="3"/.test(文) && /stroke-dasharray/.test(文), '★图例须**两形并存**（粗实线 ＋ 虚线 ✓）');
+
+			/* ⑥ 三类等价文字（裁④：留面板内 ✓） */
+			ok(/当前：/.test(文) && /可走：/.test(文) && /类型：/.test(文), '★三类等价文字须在面板内（当前／可走／类型 ✓）');
+
+			/* ⑦ ★开关：**真状态变**才出原句 ＋ 零副作用（裁 §二.3 ✓；★真开合的合法差分＝可见性/展开态 ✓） */
+			const 收 = []; const 原note = R.note;
+			const 域前 = JSON.stringify(State.variables); const 随前 = Math.random;
+			let 随动 = 0; Math.random = () => { 随动++; return 0.5; };
+			try {
+				R.note = (s) => 收.push(String(s));
+				for (let i = 0; i < 6; i++) B4.切换();     // 开/收 各 3 次 ⇒ 原句 6 条 ✓
+			} finally { R.note = 原note; Math.random = 随前; }
+			ok(收.length === 6, `★每次**真状态变**恰一条演出（6 次切换 ⇒ 6 条；实得 ${收.length}）`);
+			/* ★断**交替**（✗ 不断固定先后 —— 本格进入时面板可能已被前文打开过 ✓）：
+			 *   两句话各 3 条 ＋ 相邻必不同 ⇒ 「真状态变才出句」的同义断言 ✓。 */
+			const 开句数 = 收.filter((s) => s === '你打开了地图').length;
+			ok(开句数 === 3 && 收.filter((s) => s === '你收起了地图').length === 3,
+				`★两句话须各 3 条（实得 开 ${开句数}／收 ${收.length - 开句数}）`);
+			ok(收.every((s, i) => i === 0 || s !== 收[i - 1]), `★相邻必不同（✗ 同态重复刷 ✓；实得 ${JSON.stringify(收)}）`);
+			ok(收.every((s) => s === '你打开了地图' || s === '你收起了地图'), '★只许设计的两句（✗ 自造文案 ✓）');
+			ok(JSON.stringify(State.variables) === 域前, '★开关**零存档改动**（✗ 推时间／✗ 写域 ✓）');
+			ok(随动 === 0, `★开关**零随机消费**（实得 ${随动}）`);
+
+			/* ⑧ ★只读边界（裁 §二.5：✗ 不得成为返城／逃脱／存档／用物／战斗入口 ✓） */
+			const 展开 = B4.面板();
+			ok(!/<a\s|<button[^>]*(回城|返城|逃脱|存档|读档|使用|攻击)/.test(展开), '★地图面板内 ✗ 不得有返城／逃脱／存档／用物／战斗入口');
+			ok(!/data-action|onclick=/.test(展开), '★同上：✗ 不得出现动作钩子（除受控的 `data-map-toggle` ✓）');
+		} finally {
+			if (档4 === null) delete State.variables[域4]; else State.variables[域4] = 档4;
+			if (背4 === null) delete D.Player.items; else D.Player.items = 背4.map((s) => R.reviveItem(s));
+			if (B4 && B4.开()) B4.切换();          // ★收起，✗ 不留展开态影响后文 ✓
+		}
+		const 本组失败4 = fails.length - 组前4;
+		console.log(`  ${本组失败4 === 0 ? '✓' : '✗'} 候选组：${本组失败4 === 0 ? '八格全绿（资产接线／标记不混义／纯函数零写／位置／图例非仅颜色／等价文字／开关零副作用／只读边界）' : `★本组 ${本组失败4} 处失败`}（★组号待 T 域确认 ✓）`);
+	}
+}
+
 printSummary();
