@@ -85,7 +85,7 @@
       },
       "层": "both",
       "守的面": "span2 pin 行数值覆盖（✗ 静默缺口）",
-      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:42`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
+      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:43`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
     },
     {
       "id": "span2-house-rule-stock-roundtrip",
@@ -383,7 +383,7 @@
       },
       "层": "both",
       "守的面": "一段 Animals 逐值覆盖（与 `span2-vermin-hp-ac-per-item` 成 canonical／非 canonical **对照**；两条并立才钉住这组对照）",
-      "备注": "pin 行 `engine/README.md:41`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
+      "备注": "pin 行 `engine/README.md:42`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
     },
     {
       "id": "span1-herb-poultice-house-rule-use",
@@ -401,7 +401,7 @@
       ],
       "断言": {
         "逻辑": "HP +2（**house rule** 值）、充能 2→1→0；**双向**：充能 0 时使用**被拒**（✗ 静默 no-op）；往返后充能数不变",
-        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:619`（`RPG.inventoryLabel`）／`src/core/70-ui.js:70`（`RPG.itemRejectText`））；★**双向**分两面：①**0 充能槽**（可由 fixture 造）⇒ 渲染 **`×0`**（新形**自解释**，✗ 无「已用尽」字样）；②**正常用尽**⇒ 该槽**被摘**、该行**消失**（**符号实指**：`RPG.take` 委托 `RPG.withdraw`，后者的 `if (slot.charges <= 0) list.splice(i, 1)`；另两条同判据路径 `RPG.act` 的 `'use'` 分支／`35-gather.js` 采空自摘；**行号辅助** `src/core/30-inventory.js:55`（`return`）；往返后文本不变"
+        "渲染": "道具行文本随充能变：`草药糊×2` → `草药糊×1`（★**一律 `×N` 含 `×1`** —— **符号实指**：`RPG.inventoryLabel`／`RPG.inventoryLinks` 的 `${item.name}×${item.charges}`；**行号辅助**（随 pin 升版**同刷**）：`src/core/30-inventory.js:664`（`RPG.inventoryLabel`）／`src/core/70-ui.js:70`（`RPG.itemRejectText`））；★**双向**分两面：①**0 充能槽**（可由 fixture 造）⇒ 渲染 **`×0`**（新形**自解释**，✗ 无「已用尽」字样）；②**正常用尽**⇒ 该槽**被摘**、该行**消失**（**符号实指**：`RPG.take` 委托 `RPG.withdraw`，后者的 `if (slot.charges <= 0) list.splice(i, 1)`；另两条同判据路径 `RPG.act` 的 `'use'` 分支／`35-gather.js` 采空自摘；**行号辅助** `src/core/30-inventory.js:68`（`return`）；往返后文本不变"
       },
       "锚": [
         "#1748",
