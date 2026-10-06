@@ -79,7 +79,7 @@
 
 ''这一局到此为止 —— 死亡不会把你送回起点。''
 
-<<link "读档">><<run setup.BABEL.读档()>><</link>>
+<<link "读档">><<run setup.BABEL.测试骰?.清(); setup.BABEL.读档()>><</link>>
 <<link "重开">><<run Engine.restart()>><</link>>
 
 :: 试玩终点
