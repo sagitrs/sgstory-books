@@ -24,6 +24,8 @@ import process from 'node:process';
 /* ── ★具名豁免表（任一侧多出而不打算补另一侧的，逐条写理由；✗ 留空即静默漏项）──
  *   ★key ＝ 文件名（不含 `tools/`）；value ＝ 一句理由。 */
 export const 豁免 = Object.freeze({
+    /* ★S5 e2e 臂（`books#399`）四支：★需**先构建产物**（真 jsdom／真浏览器）⇒ 由 `e2e-window` 窗口式跑，✗ 不进逐 PR 的 `babel` 步。 */
+    'e2e-397-fixed-encounter-no-lootroll.mjs': 'S5 臂 A1：待接窗口式跑（需先建产物）',
   /* ★逐条**具名理由**（✗ 留空即静默漏项）。新增工具时：要么接线、要么在这里补一行。 */
   'run-l10-checks.py': 'L10 本地步序复现器（16+1 组；发布窗手跑体例）',
   'verify-l10-city.mjs': 'L10 无头装配判据模块（随故事主 verify 执行，✗ 不是独立 CLI 步骤）',
