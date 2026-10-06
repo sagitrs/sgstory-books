@@ -126,18 +126,13 @@ const 返程事务 = ({ 实例 = null, 演出 = null } = {}) => {
 		if (!Array.isArray(背)) return;
 		for (const 件 of [...背]) {
 			if (!消失集.has(件?.entityId)) continue;
-			let 目标 = 件;
-			const n = Number(件.charges ?? 1);
-			if (n > 1) {
-				/* ★NIT（D 席 ✓）：`charges>1` 时**切不动就拒**，✗ 不得退化成「删整摞」（会多删 ✓）。 */
-				if (typeof R.splitStack !== 'function') throw R.refuse('RETURN_SPLIT_UNAVAILABLE', `需要按实体切分 ${件.entityId}（charges=${n}）但引擎无 splitStack`);
-				目标 = R.splitStack(背, 件.entityId, n);
-				if (!目标) throw R.refuse('RETURN_SPLIT_FAILED', `按实体切分失败：${件.entityId}`);
-			}
-			if (目标.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(目标);
-			const 位 = 背.findIndex((x) => x && x.entityId === (目标?.entityId ?? 件.entityId));
-			if (位 < 0) continue;
-			背.splice(位, 1);
+			/* ★按**实体**整件移除（✗ 用同款 id ✓）。★**不切分**：本结算损毁的是**该实例的全部份数**
+			 *   （设计 §6「记录名称、身份、数量」⇒ 数量随实体一同消失 ✓），而引擎的 `splitStack`
+			 *   **拒**「切出整摞」（`STACK_SPLIT_WHOLE` ✗）⇒ 在此**既无意义、又会无谓失败** ✓
+			 *   （★此缺陷由 `#444` D 席 NIT 引出的新格 ②e 当场抓出：`charges=3` 的脆弱件曾使整笔事务被拒 ✗）。 */
+			if (件.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(件);
+			const 位 = 背.findIndex((x) => x && x.entityId === 件.entityId);
+			if (位 >= 0) 背.splice(位, 1);
 		}
 		for (const 件 of 背) {
 			if (排除id.includes(件.id)) continue;
