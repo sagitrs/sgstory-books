@@ -215,6 +215,36 @@ jobs:
       # ★门必须**红得了**（同族第二例 · `#127`）：把一条**已加树前缀**的引用改回**裸形**
       #   （负控用**历史真档**：`world/babel2.js` 那处曾是一棵树上同名、另一棵树内容不同的真案例）
       #   ⇒ 断言本门 rc≠0 且具名到「两树都命中且内容不同」⇒ 证明这条新判据**不是装饰**；随后按字节复原。
+      # ★门必须**红得了**（同族第二例 · `#127`）：把一条**已加树前缀**的引用改回**裸形**
+      #   （负控用**历史真档**：`world/babel2.js` 那处曾是一棵树上同名、另一棵树内容不同的真案例）
+      #   ⇒ 断言本门 rc≠0 且具名到「两树都命中且内容不同」⇒ 证明这条新判据**不是装饰**；随后按字节复原。
+      - name: ★引用核门自证 ②（树消歧 · 裸形注入 ⇒ 须 rc≠0 且具名）
+        working-directory: books
+        run: |
+          set -euo pipefail
+          cp stories/babel/scenarios/scenarios.json /tmp/scen2.bak
+          python3 - <<'PY'
+          import json
+          p = 'stories/babel/scenarios/scenarios.json'
+          d = json.load(open(p, encoding='utf-8'))
+          d['场景'][0]['备注'] += '　`world/babel2.js:117`（`行会·军械堆`）'   # ★裸形（两树同名异内容）
+          json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
+          PY
+          if node tools/check-refs.mjs --engine "$GITHUB_WORKSPACE/engine" --require-symbols > /tmp/refs2.out 2>&1; then
+            cp /tmp/scen2.bak stories/babel/scenarios/scenarios.json
+            echo "✗ 注入裸形跨树引用后本门仍绿 ⇒ 树消歧判据没生效（门是装饰）"; cat /tmp/refs2.out; exit 1
+          fi
+          cp /tmp/scen2.bak stories/babel/scenarios/scenarios.json
+          grep -qF "两树都命中且内容不同" /tmp/refs2.out || { echo "✗ 红了但没具名到树消歧那一支"; cat /tmp/refs2.out; exit 1; }
+          echo "✓ 树消歧判据红得了且具名；清单已复原"
+          git diff --quiet -- stories/babel/scenarios/scenarios.json || { echo "✗ 清单未复原（✗ 留脏）"; exit 1; }
+
+      # ── 步骤键形门（`sgstory#1994` 的教训机械化；`sgstory-books#263` 同族：本仓 workflows 的**结构**也得有门）──
+      #   ★为何是**本仓副本**而不是调引擎那份：本仓 CI 的引擎树停在声明 pin，而该门引入于 pin **之后**
+      #     （引入提交 `d167d679`）⇒ 引擎树里此刻没有它。取舍与同步要求写在 `tests/gates/workflow-steps.mjs` 档头。
+      # ── 故事清单 `packs` 的声明面门（`#295` 甲的**消费侧**；★T 批面）──
+      #  判：清单合法 ＋ 声明的包在引擎检出里真有（✗ 拼错提前到门里红）＋ **能力门**：引擎 build.py 有 `packs` 口时
+      #  真构建并断「产物里没有未声明的规则包」；引擎 pin 还没有该口时**明确印「待判」**（✗ 不算绿 ⇒ 抬 pin 后自动生效）。
       - name: 故事清单 packs 声明面门（清单合法 · 包 id 真存在 · ★能力门：产物只装已声明包）
         working-directory: books
         run: node tests/gates/pack-manifest.mjs --engine "$GITHUB_WORKSPACE/engine"

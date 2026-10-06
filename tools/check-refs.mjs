@@ -86,15 +86,27 @@ function resolve(rawFile) {
 	for (const pre of ['books/', 'engine/']) {
 		if (file.startsWith(pre)) { only = pre.slice(0, -1); file = file.slice(pre.length); }
 	}
+	const 命中 = [];
 	for (const [root, list] of IDX) {
 		if (only && (root === BOOKS) !== (only === 'books')) continue;
 		const hits = only
 			? list.filter((rel) => rel === file)
 			: list.filter((rel) => rel === file || rel.endsWith('/' + file));
-		if (hits.length === 1) return { root, rel: hits[0] };
 		if (hits.length > 1) return { ambiguous: hits, root };
+		if (hits.length === 1) 命中.push({ root, rel: hits[0] });
 	}
-	return null;
+	if (命中.length === 0) return null;
+	if (命中.length === 1) return 命中[0];
+	/* ★★`#127`：**两树都命中** —— 旧形「本仓优先」是**首树命中即返**，于是「两树同路径、内容不同」被**静默**
+	 *   解到本仓（引用面看不出取的是哪棵树 ⇒ 跨树写错行号可静默过门 ✗）。
+	 *   ⇒ 现形：**内容相同**才按「本仓优先」（照旧 ✓）；**内容不同** ⇒ 红，要求写**树限定**
+	 *     （`books/…` 或 `engine/…` —— 与本件既有的显式树前缀写法一致 ✓）。 */
+	const 本 = 命中.find((x) => x.root === BOOKS) ?? 命中[0];
+	const 引 = 命中.find((x) => x !== 本);
+	if (!引) return 本;
+	const 文 = (x) => fs.readFileSync(path.join(x.root, x.rel), 'utf8');
+	if (文(本) === 文(引)) return 本;
+	return { 跨树异: { 本仓: 本, 引擎: 引 } };
 }
 
 function readAt(rawFile, n, docRaw) {
@@ -110,6 +122,7 @@ function readAt(rawFile, n, docRaw) {
 	}
 	if (!r) return { ok: false, why: `文件不存在（本仓／引擎皆无此路径或其后缀）：${rawFile}` };
 	if (r.ambiguous) return { ok: false, why: `引用有歧义（同一棵树命中 ${r.ambiguous.length} 处）⇒ 写全路径：${rawFile} ⇒ ${r.ambiguous.slice(0, 3).join('、')}…` };
+	if (r.跨树异) return { ok: false, why: `★**两树都命中且内容不同**（books：${r.跨树异.本仓.rel} ／ engine：${r.跨树异.引擎.rel}）⇒ 须写**树限定**：「books/${rawFile}」或「engine/${rawFile}」（✗ 静默取本仓 ⇒ 跨树写错行号可过门 ✗）` };
 	const all = fs.readFileSync(path.join(r.root, r.rel), 'utf8').split(/\r?\n/);
 	if (n < 1 || n > all.length) return { ok: false, why: `行号越界：${r.rel}:${n}（共 ${all.length} 行）` };
 	return { ok: true, all, where: `${r.root === BOOKS ? 'books' : 'engine'}/${r.rel}` };
@@ -178,7 +191,7 @@ for (const r of 场景) {
 }
 
 console.log(`─ 清单引用核：${场景.length} 条｜规范形引用 ${处} 处（**符号核 ${符号核}**｜仅范围核 ${仅范围核}）｜引擎 ${ENGINE}`);
-console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜散文形**一律红**');
+console.log('  解析顺序＝本仓优先（同树多命中 ⇒ 红）｜★**两树都命中而内容异 ⇒ 红**（须写树限定 `books/`／`engine/`）｜散文形**一律红**');
 console.log(`  通过 ${Math.max(0, 处 - fail.length)}｜不符 ${fail.length}　★明账：仅范围核 ${仅范围核}（＝待补显式符号，逐条递减到零）`);
 if (要求符号 && 仅范围核 > 0) {
 	fail.push(`★${仅范围核} 处引用**没有显式符号**（\`--require-symbols\` ⇒ 每处都须写成 \`路径:行\`（\`符号\`））`);
