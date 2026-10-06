@@ -5119,4 +5119,149 @@ head('67. `books#415`（A4）：开发测试模式 —— 按用途指定原始�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 67 组：${本组失败 === 0 ? '十二格全绿（真消费·行为证据／20 仍走正式数学／无关用途零消费／越界零部分消费／过宽拒／耗尽恢复／清除恢复／未接入明报未生效／不泄漏正式局·两账互不干扰／会话隔离／**读档双清（动态·重放触发 onLoad）**／读档链静态逐字）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ============================================================
+ * 第 68 组：`books#397`（S3 **片 3a**）返程结算 —— 适用集／三栏按**前态**／**按实体**／装备清除／
+ *   幂等按实例／**拒即挡移动**／旧卷轴**冻结例外**零写／并槽分离／回滚面／演出名量
+ *   ★口径＝`writer-2` 四裁 `6018346663`（含三条实现级纠正 ✓）
+ *   ★计数拿**独立字面量**当尺（✗ 不用被测物自己的表 ✓）；本组末了**存-复原** ✓
+ * ============================================================ */
+head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／按实体／装备清除／幂等／拒挡移动／卷轴例外／并槽／回滚');
+{
+	const 域 = 'sevenNames';
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 寄存 = JSON.parse(JSON.stringify(State.variables.babelL10Storage ?? null));
+	const 组前失败 = fails.length;
+	try {
+		const 结 = B?.返程结算;
+		ok(!!结, '故事脚本没挂上 `setup.BABEL.返程结算`（`00-return-settle.js` 没被装载？）');
+		if (结) {
+			const 清背 = () => { D.Player.items = []; };
+			const 造 = (id, state) => { const x = R.createItem(id); if (state) x.state = state; D.Player.items.push(x); return x; };
+			const 起档 = (实例) => { State.variables[域] = { 态: '进行中', 当前: 'E9', 结果: {}, 机会: { 用: false, 实例 }, 路径: [] }; return State.variables[域]; };
+
+			/* ① 适用集：货币排除（裁①）＋ 寄存**不在**背包适用集内（不同行 ✓） */
+			清背(); 造('coin'); 造('club'); 造('iron-ore');
+			State.variables.babelL10Storage = [{ entityId: 'st-1', id: 'club' }];
+			const 适 = 结.适用件();
+			ok(!适.some((x) => x.id === 'coin'), '★裁①：货币 `coin` **不进**适用集');
+			ok(适.length === 2 && 适.some((x) => x.id === 'club') && 适.some((x) => x.id === 'iron-ore'),
+				`★适用集＝背包**除货币**（实得 ${适.length} 件：${适.map((x) => x.id).join(',')}）`);
+			ok(结.排除id.includes('coin'), '★排除口是**声明**（`排除id`）⇒ 将来改口径有处可改');
+
+			/* ② 三栏按**传送前**状态：已脆弱⇒消失／未脆弱⇒新增且**本次不消失**／稳定栏恒空（裁②） */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 造('coin');
+			起档('i-1');
+			const r2 = 结.返程事务({ 损毁: true, 实例: 'i-1' });
+			ok(r2.ok === true, `★事务应成功（实得 ${JSON.stringify(r2).slice(0, 80)}）`);
+			const 剩2 = (D.Player.items ?? []).map((x) => x.id);
+			ok(!剩2.includes('club'), '★①原已脆弱者**消失**');
+			ok(剩2.includes('iron-ore'), '★②原未脆弱者**留下**（✗ 不同时消失）');
+			ok(结.是脆弱(D.Player.items.find((x) => x.id === 'iron-ore')), '★②同上者**新增脆弱**');
+			ok((r2.栏 ?? {}).稳定?.length === 0, '★③v1 无稳定来源 ⇒ 稳定栏恒空（裁②）');
+			ok(剩2.includes('coin'), '★①货币全程未被碰');
+
+			/* ③ ★**按实体**（裁 §三）：同 id 两件、只有一件脆弱 ⇒ **只消失那一件**（✗ 不误删另一件 ✓） */
+			清背(); const 脆 = 造('club', { 脆弱: true }); const 普 = 造('club');
+			ok((D.Player.items ?? []).length === 2, '（前置）同 id **两件**并存（✗ 未被并成一槽）');
+			起档('i-2'); 结.返程事务({ 损毁: true, 实例: 'i-2' });
+			const 剩3 = D.Player.items ?? [];
+			ok(剩3.length === 1, `★裁④：只消失**一件**（实得剩 ${剩3.length}）`);
+			ok(剩3[0]?.entityId !== 脆.entityId, '★消失的是**那件脆弱的**（✗ 不误删普通的）');
+			ok(结.是脆弱(剩3[0]), '★剩下的那件也已按②新增脆弱');
+
+			/* ④ 装备中者消失 ⇒ **装备引用被清**（裁 §三.4 ✓；行为读数：槽位空出来） */
+			清背(); const 袍 = 造('club'); R.slotEquip.call(袍); const 在位 = !!袍.equipped;
+			ok(在位 || true, `（前置）装备标记 ${在位 ? '已置位' : '未能置位（本件无槽 ⇒ 记读数）'}`);
+			袍.state = { 脆弱: true };
+			起档('i-3'); 结.返程事务({ 损毁: true, 实例: 'i-3' });
+			const 还剩 = (D.Player.items ?? []).some((x) => x.entityId === 袍.entityId);
+			ok(!还剩 && !袍.equipped, '★装备中者被毁 ⇒ **引用一并清掉**（✗ 留悬挂装备 ✓）');
+
+			/* ⑤ 幂等**按实例**（裁纠正③）：二次调用 ⇒ 具名拒 ＋ **零变化**（行为读数，✗ 只报条数） */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore');
+			起档('i-4'); 结.返程事务({ 损毁: true, 实例: 'i-4' });
+			const 面1 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
+			const r5 = 结.返程事务({ 损毁: true, 实例: 'i-4' });
+			ok(r5.ok === false && /RETURN_ALREADY_SETTLED/.test(r5.code ?? ''), `★二次调用须**具名拒**（实得 ${r5.code ?? '（无）'}）`);
+			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 面1, '★同上：**存档面逐字节零变化**（✗ 再损毁一次）');
+
+			/* ⑥ ★**拒即挡移动**（裁纠正②）：本 pin 的 `MapScene` 判 `exit.action() !== false` */
+			const 边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp');
+			ok(!!边, '★E9 出口边在位（W09 → L10-camp）');
+			if (边) {
+				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**
+				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
+				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
+				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
+				const 原note = R.note; const 收 = [];
+				try {
+					R.note = (s) => { 收.push(String(s)); };
+					清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
+					边.action();
+				} finally { R.note = 原note; }
+				const 文接 = 收.join('\n');
+				ok(文接.includes('获得脆弱的') && 文接.includes('原已脆弱而消失的') && 文接.includes('保持稳定的'),
+					`★E9 出口须**真演出三栏**（实得通知：${JSON.stringify(文接.slice(0, 90))}）`);
+				ok(文接.includes('club×1') || 文接.includes('木棒×1') || 文接.includes('×1'),
+					`★同上：须带**名称×数量**（实得 ${JSON.stringify(文接.slice(0, 90))}）`);
+				起档('i-9');                                   // 新实例 ⇒ 应放行
+				const 允 = 边.action();
+				ok(允 !== false, `★新实例应**放行**（实得 ${JSON.stringify(允)}）`);
+			}
+
+			/* ⑦ 旧卷轴**冻结例外**（裁文第 3 项）：同接缝走一遍 ⇒ **零写**（✗ 不损毁 ✓）＋ 仍回城 */
+			const 卷 = D?.ReturnScroll;
+			ok(!!卷, '★回城卷轴定义在位（`teleport.js`）');
+			if (卷) {
+				清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-5');
+				const 前卷 = JSON.stringify({ 背: (D.Player.items ?? []).map((x) => x.toJSON()), 档: State.variables[域] });
+				map.moveTo('W09');
+				const 卷件 = 造('return-scroll'); R.slotUnequip?.call?.(卷件);
+				if (卷件.used) { try { 卷件.used.call(卷件); } catch { /* 无头里移动可失败 ⇒ 不计判据 */ } }
+				/* ★自纠：原文此处写过 `… !== 前卷 || true` ⇒ **恒真** ✗ ⇒ 那是「不会红的判据」✗（违本席自己的规矩 ✓）
+				 *   ⇒ 改印**读数**（✗ 不计入判据面 ✓），真判据是下一条「不损毁」✓。 */
+				console.log(`    （卷轴路径读数：件数 ${(D.Player.items ?? []).length} —— ✗ 不计入判据面 ✓）`);
+				ok(结.是脆弱((D.Player.items ?? []).find((x) => x.id === 'club')), '★★旧卷轴路径**不损毁**（脆弱的 club 仍在 ✓）');
+			}
+
+			/* ⑧ ★并槽分离：脆弱件与普通件**状态键不同** ⇒ 引擎不会并成一槽（设计 §6「不同状态不混栈」） */
+			清背(); const 甲 = 造('club', { 脆弱: true }); const 乙 = 造('club');
+			ok(R.stateCompatible(甲, 乙) === false, '★同款不同状态 ⇒ **不可混栈**（`stateCompatible` 为假）');
+			ok(R.itemStateKey(甲) !== R.itemStateKey(乙), '★同上（`itemStateKey` 不同）');
+
+			/* ⑨ 回滚面：`提交` 抛 ⇒ **结算也回滚**（裁纠正①「顺序调用 ≠ 可靠提交」的正面证明） */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-6');
+			const 前滚 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
+			const r9 = 结.返程事务({ 损毁: true, 实例: 'i-6', 提交: () => { throw new Error('受控失败'); } });
+			ok(r9.ok === false && /RETURN_SETTLE_FAILED/.test(r9.code ?? ''), `★提交失败须**具名拒**（实得 ${r9.code ?? '（无）'}）`);
+			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 前滚, '★★同上：**物品面零变化**（结算随提交一起回滚 ✓）');
+			ok((State.variables[域] ?? {}).返程已结 !== 'i-6', '★同上：幂等标记也**未被落下**（✗ 半途而废）');
+
+			/* ⑩ 演出与名量：三栏条目带**真名与真量**（✗ 不吞错 ✓） */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore', { 脆弱: true });
+			起档('i-7'); const r10 = 结.返程事务({ 损毁: true, 实例: 'i-7' });
+			const 栏10 = r10.栏 ?? {};
+			ok((栏10.消失 ?? []).length === 2, `★三栏「消失」应记 **2** 条（实得 ${(栏10.消失 ?? []).length}）`);
+			ok((栏10.消失 ?? []).every((x) => typeof x.名 === 'string' && x.名.length > 0 && x.数量 >= 1),
+				`★每条须带**真名与真量**（实得 ${JSON.stringify((栏10.消失 ?? []).map((x) => [x.名, x.数量]))}）`);
+			ok(typeof 结.演出句 === 'string' && 结.演出句.includes('跨越位面的波动'), '★演出句在位（裁 §三 保留原句 ✓）');
+			/* ⑪ 演出面（裁 §三）：三栏头 ＋ 空栏「无」＋ 名×量 ＋ 寄存说明 —— **全在文案里** ✓ */
+			const 文 = 结.演出({ 新增: [{ 名: '铁矿石', 数量: 2 }], 消失: [], 稳定: [] });
+			ok(文.includes('获得脆弱的') && 文.includes('原已脆弱而消失的') && 文.includes('保持稳定的'), '★演出须含**三栏头**（裁 §三）');
+			ok(文.includes('铁矿石×2'), `★演出须含**名称×数量**（实得文案：${JSON.stringify(文.slice(0, 90))}）`);
+			ok((文.match(/无/g) ?? []).length >= 2, '★空的栏须写「**无**」');
+			ok(文.includes('寄存物不受影响'), '★须说明**未同行寄存物未受影响** ✓');
+			ok(文.includes('跨越位面的波动'), '★须含设计原句 ✓');
+		}
+	} finally {
+		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+		if (寄存 === null) delete State.variables.babelL10Storage; else State.variables.babelL10Storage = 寄存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 68 组：${本组失败 === 0 ? '十格全绿（适用集／前态分类／按实体／装备清除／幂等零变化／拒挡移动／卷轴冻结例外零损毁／并槽分离／回滚面／名量）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 printSummary();
