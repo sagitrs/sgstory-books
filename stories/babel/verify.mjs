@@ -5383,6 +5383,23 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			ok(!剩E.some((x) => x.entityId === 同脆.entityId), '★②e：同款**另一件脆弱的**照②规则消失（✗ 与该摞无关 ✓）');
 			ok(剩E.filter((x) => x.id === 'club').length === 1, `★②e：同款剩**恰 1 件**（实得 ${剩E.filter((x) => x.id === 'club').length}）`);
 
+			/* ②f ★**「物品面失败 ⇒ 复原」的可达格**（dev 的残留项 ✓，照他的便宜补法 ✓）
+			 *   ★去掉切分后这条补偿路径**无格无刀** ✗（我上轮已如实声明 ✓）⇒ 用**具名桩**逼它走到 ✓。
+			 *   ★关键：桩**在第二件才抛** ⇒ 第一件**已卸已删** ⇒ 这样「复原」才**承重**（✗ 不是空转 ✓）。 */
+			清背();
+			const 装A = 造('club'); 装A.state = { 脆弱: true };
+			const 装B = 造('club'); 装B.state = { 脆弱: true };
+			try { R.slotEquip.call(装A); } catch {}  try { R.slotEquip.call(装B); } catch {}   // ★两件(各占一槽或后者被拒 ⇒ 皆按读数 ✓)
+			const 陪3 = 造('iron-ore'); 起档('i-f');
+			const 原卸2 = R.slotUnequip; let 卸次 = 0;
+			R.slotUnequip = function (...a) { 卸次++; if (卸次 >= 2) throw new Error('桩：第二件卸装失败'); return 原卸2.apply(this, a); };
+			let rf; try { rf = 结.返程事务({ 实例: 'i-f' }); } finally { R.slotUnequip = 原卸2; }
+			ok(rf?.ok === false, `★②f 物品面失败须**拒**（实得 ${JSON.stringify(rf).slice(0, 70)}）`);
+			ok((D.Player.items ?? []).some((x) => x.entityId === 装A.entityId), '★②f：**第一件已删 ⇒ 须被复原**（✗ 半途 ✓）');
+			ok((D.Player.items ?? []).some((x) => x.entityId === 装B.entityId), '★②f：第二件亦在 ✓');
+			ok((D.Player.items ?? []).some((x) => x.entityId === 陪3.entityId), '★②f：同批其它件亦在（逐件复原 ✓）');
+			ok(State.variables[域]?.返程已结 !== 'i-f', '★②f：**域面未提交**（✗ 半途已落 ✓）');
+
 			/* ③ ★**按实体**（裁 §三）：同 id 两件、只有一件脆弱 ⇒ **只消失那一件**（✗ 不误删另一件 ✓） */
 			清背(); const 脆 = 造('club', { 脆弱: true }); const 普 = 造('club');
 			ok((D.Player.items ?? []).length === 2, '（前置）同 id **两件**并存（✗ 未被并成一槽）');
