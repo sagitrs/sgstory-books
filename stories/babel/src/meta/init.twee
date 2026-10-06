@@ -28,6 +28,8 @@
 <<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1", 终局: false, 时间: 0 }>>
 <<set $babelGiven to {}>>
 /* L10 两项主进度与个人库存分开；方法、目录、地图不进档。 */
+/* ★`books#206`：城镇设施域（设施表；`下次产出日`＝**绝对日号**）。方法与目录不进档。 */
+<<set $babelTown to { 设施: {} }>>
 <<set $babelL10 to { sold: 0, resident: false }>>
 <<set $babelL10Storage to []>>
 /* ★`books#132` L1–L9 弧的**本局账**（宝箱态…；L5+ 的事件抽签也将落这里）。

@@ -23,7 +23,12 @@ const state = () => {
 };
 const at = (id) => alive() && !B.战中 && B.map?.current === id;
 const permit = (id, certificate = false) => at(id) && (!certificate || resident());
-const time = (n) => { const r = (State.variables.babelRun ??= {}); r.时间 = Number(r.时间 ?? 0) + n; };
+/* ★`books#206`：时间账的**唯一写家**在 `00-clock-town.js`（`B.时钟`）⇒ 本处改为**委派**
+ *   —— 原先本档与 `babel.js` 各写一遍 `babelRun.时间` ⇒ 一个量两个实现（本仓已记的坑）。
+ *   ★本档早于 `babel.js`、晚于 `00-clock-town.js` 装载 ⇒ 装载期即有 `B.时钟`（缺失即具名抛错）。 */
+const 时钟 = setup.BABEL.时钟;
+if (!时钟) throw new Error('[00-l10-city.js] 未见 B.时钟 —— 00-clock-town.js 没被装载？');
+const time = (n) => 时钟.记时间(n);
 const refresh = () => { B.记血?.(); R.refreshPanels?.(); };
 const pay = (n) => R.exchange(D.Player, { take: [{ id: 'coin', n }] }).status === 'applied';
 const reject = (text) => { R.perform(text); return false; };
