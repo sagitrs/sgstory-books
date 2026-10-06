@@ -20,7 +20,7 @@
 /* ★`books#280` ⑧（操作者建议 · 后续版本）：**背包视图** —— 常驻入口（每段落都在）＋全道具列表＋就地使用。
  *   与 `notice` 面同族：twee 只留骨架，内容一律由 `ui/bag.js` 的 `R.bagHTML()` 给（面板注册名 `bag`）。 */
 <div class="bagbar" data-panel="bag"></div>
-<div class="mapbar" data-panel="babel-map"></div>
+<div class="mapbar" data-panel="seven-names-map"></div>
 /* ★`books#188` P1-2／P1-4：**战斗面**两块 —— 敌组状态与治疗读数（只战斗内有内容，平时为空）。
  *   内容一律由 `ui/battle.js` 的渲染函数给（同 `notice` 面板的口径：twee 只留骨架）。 */
 <div class="enemybar" data-panel="enemy"></div>

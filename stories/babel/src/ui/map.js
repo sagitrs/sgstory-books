@@ -34,6 +34,10 @@ const 标记 = (r, id) => {
 	if (型 === 'battle' || 果?.战果 != null || 果?.脱战 != null) {
 		if (果?.战果 === 'victory') return '胜';
 		if (果?.脱战 === true) return '脱离';
+		/* ★`未胜` **一句说清它覆盖什么**（D 席 N3 ✓）：战斗面的**三种非胜收场**——`stalemate`（僵持）／
+		 *   `stunned`（击晕）／`down`（未胜倒地）—— 现合成**一格**「未胜」✓（裁 §二.1 点名要区分的是
+		 *   「检定失败／谢绝／**成功脱离**」✓，这三者已各自区分 ✓）；★若将来要把三种收场**再拆**，
+		 *   在此处按 `果.战果` 分派即可 ✓（内容档已有四名：victory／stunned／stalemate／down ✓）。 */
 		return '未胜';
 	}
 	if (果?.成败 === '成功') return '通过';
@@ -74,11 +78,11 @@ const 等价文字 = (r) => {
 const 面板 = () => {
 	const r = B.七名河?.读?.() ?? null;
 	if (!开) {
-		return `<button type="button" class="map-open" tabindex="0" data-map-toggle="1" aria-expanded="false" aria-controls="babel-map-area">打开地图</button>`;
+		return `<button type="button" class="map-open" tabindex="0" data-map-toggle="1" aria-expanded="false" aria-controls="seven-names-map-area">打开地图</button>`;
 	}
 	const a = 资产();
 	const 图 = a
-		? `<div class="map-wrap" id="babel-map-area" tabindex="-1"><img class="babel-art map-art" data-babel-asset="babel-map-w09" src="${a.src}" width="${a.width}" height="${a.height}" alt="七名河地图：自下而上的单向路线" data-map-toggle="1">${覆盖层(r)}</div>`
+		? `<div class="map-wrap" id="seven-names-map-area" tabindex="-1"><img class="babel-art map-art" data-babel-asset="babel-map-w09" src="${a.src}" width="${a.width}" height="${a.height}" alt="七名河地图：自下而上的单向路线" data-map-toggle="1">${覆盖层(r)}</div>`
 		: `<div class="map-wrap"><p class="map-missing">（地图图样不可用 —— 文字与操作不受影响 ✓）</p></div>`;
 	/* ★图例：主干**实线**／支路**虚线**，**非仅靠颜色** ✓（裁④＋§三 ✓）。 */
 	const 图例 = `<div class="map-legend">图例：<svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="#8fb0c8" stroke-width="3"/></svg> 主干（实线）　<svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="#6b7d8f" stroke-width="2" stroke-dasharray="7 5"/></svg> 支路（虚线）</div>`;
@@ -98,7 +102,7 @@ B.地图 = Object.freeze({ 开: () => 开, 切换, 面板, 坐标, 覆盖层, �
 /* ── ★**三路同一个开关**（裁 §二.3 ✓）：入口按钮／图区点击／ESC ⇒ **全走 `切换()`** ✓ ──
  *   ★键盘与触屏真可操作（裁 §二.4 ✓）：入口是**真按钮**（可聚焦 ＋ `aria-expanded` ✓）；
  *   关闭有**明确名称**（收起地图 ✓）；★收起后**焦点回到入口** ✓。 */
-const 焦点回入口 = () => { try { document?.querySelector?.('[data-panel="babel-map"] .map-open')?.focus?.(); } catch { /* 无头环境无 DOM ⇒ 不做 ✓ */ } };
+const 焦点回入口 = () => { try { document?.querySelector?.('[data-panel="seven-names-map"] .map-open')?.focus?.(); } catch { /* 无头环境无 DOM ⇒ 不做 ✓ */ } };
 if (typeof document?.addEventListener === 'function') {
 	document.addEventListener('click', (e) => {
 		if (!e?.target?.closest?.('[data-map-toggle]')) return;
@@ -113,4 +117,4 @@ if (typeof document?.addEventListener === 'function') {
 	});
 }
 
-R.registerPanel('babel-map', { name: '地图', host: '[data-panel="babel-map"]', render: 面板 });
+R.registerPanel('seven-names-map', { name: '地图', host: '[data-panel="seven-names-map"]', render: 面板 });

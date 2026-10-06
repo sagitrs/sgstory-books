@@ -5483,10 +5483,10 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 			ok(Object.keys(B4.坐标).length === 10, `★坐标须覆盖 10 节点（实得 ${Object.keys(B4.坐标).length}）`);
 			/* ③b ★**坐标漂移守卫**（「一个量只留一个名字」的机械保障 ✓）：模块坐标须与底图**逐点对齐**
 			 *   —— ★两处各存一份是**已知取舍**（白名单不容 `class`/`data-*` ⇒ 资产内无法回指 ✓）⇒ 用本格防漂移 ✓。 */
-			const 图点 = [...引.matchAll(/<circle cx="(\d+)" cy="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
-			const 模点 = Object.values(B4.坐标).map(([x, y]) => [x, y]);
-			ok(图点.length === 模点.length && 图点.every((p, i) => p[0] === 模点[i][0] && p[1] === 模点[i][1]),
-				`★模块坐标须与底图圆点**逐点相同**（实得 图 ${图点.length} 点／模 ${模点.length} 点；首差 ${JSON.stringify(图点[0])} vs ${JSON.stringify(模点[0])}）`);
+			const 图点 = Object.fromEntries([...引.matchAll(/<circle id="(E\d)" cx="(\d+)" cy="(\d+)"/g)].map((m) => [m[1], [Number(m[2]), Number(m[3])]]));
+			const 差 = Object.entries(B4.坐标).filter(([n, [x, y]]) => !图点[n] || 图点[n][0] !== x || 图点[n][1] !== y);
+			ok(Object.keys(图点).length === 10, `★底图圆点须带 \`id\`（实得 ${Object.keys(图点).length} 个；D 席 N2 ✓）`);
+			ok(差.length === 0, `★模块坐标须与底图圆点**按 id 逐点相同**（实得差 ${JSON.stringify(差)}）`);
 
 			/* ⑤ 图例**非仅靠颜色**：实线＋虚线两形 ＋ 文字图例（运行时 DOM ⇒ ✗ 受资产白名单限制 ✓） */
 			B4.切换();
