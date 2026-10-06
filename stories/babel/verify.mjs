@@ -5332,6 +5332,16 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			ok((r2.栏 ?? {}).稳定?.length === 0, '★③v1 无稳定来源 ⇒ 稳定栏恒空（裁②）');
 			ok(剩2.includes('coin'), '★①货币全程未被碰');
 
+			/* ②b ★**长程**幂等（`#443` 补格）：★造「引擎账里**没有**、而故事标记**已落**」的局面 ✓
+			 *   —— ✗ 引擎的近窗去重会兜住重复请求 ⇒ 不这样造，**故事自持键去掉也测不出来** ✓（K2 不咬逼出 ✓）。 */
+			const 域5 = State.variables[域];
+			域5.机会 = Object.assign({}, 域5.机会 ?? {}, { 实例: 'i-long' }); 域5.返程已结 = 'i-long';
+			清背(); 造('club', { 脆弱: true });
+			const r5b = 结.返程事务({ 实例: 'i-long' });
+			ok(r5b.ok === false && /RETURN_ALREADY_SETTLED/.test(r5b.code ?? ''),
+				`★长程幂等须由**故事自持键**兜住（引擎账有界＝200 ⇒ ✗ 靠不住 ✓；实得 ${r5b.code ?? '（无）'}）`);
+			ok((D.Player.items ?? []).some((x) => x.id === 'club'), '★同上：✗ 未二次损毁（club 仍在 ✓）');
+
 			/* ③ ★**按实体**（裁 §三）：同 id 两件、只有一件脆弱 ⇒ **只消失那一件**（✗ 不误删另一件 ✓） */
 			清背(); const 脆 = 造('club', { 脆弱: true }); const 普 = 造('club');
 			ok((D.Player.items ?? []).length === 2, '（前置）同 id **两件**并存（✗ 未被并成一槽）');
@@ -5394,6 +5404,9 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				 *   ⇒ 改印**读数**（✗ 不计入判据面 ✓），真判据是下一条「不损毁」✓。 */
 				console.log(`    （卷轴路径读数：件数 ${(D.Player.items ?? []).length} —— ✗ 不计入判据面 ✓）`);
 				ok(结.是脆弱((D.Player.items ?? []).find((x) => x.id === 'club')), '★★旧卷轴路径**不损毁**（脆弱的 club 仍在 ✓）');
+				/* ★N2（`#443`）：例外须有**具名口** ⇒ 取到具名 code，✗ 只断「没损毁」✓ */
+				const 回执 = 结.旧卷轴返程();
+				ok(回执?.code === 'RETURN_SCROLL_EXEMPT', `★旧卷轴须给具名 code（实得 ${回执?.code ?? '（无）'}）`);
 			}
 
 			/* ⑧ ★并槽分离：脆弱件与普通件**状态键不同** ⇒ 引擎不会并成一槽（设计 §6「不同状态不混栈」） */
@@ -5401,14 +5414,25 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			ok(R.stateCompatible(甲, 乙) === false, '★同款不同状态 ⇒ **不可混栈**（`stateCompatible` 为假）');
 			ok(R.itemStateKey(甲) !== R.itemStateKey(乙), '★同上（`itemStateKey` 不同）');
 
-			/* ⑨ 回滚面：`提交` 抛 ⇒ **结算也回滚**（裁纠正①「顺序调用 ≠ 可靠提交」的正面证明） */
+			/* ⑨ ★引擎提交边界的两条路（`#443`：✗ 不再验「我自建的回滚」那套 ✓）
+			 *   ★分工如实：**近窗去重**与**前像二次确认**由引擎承担 ✓；**长程**幂等由故事自持键 ✓（见档头 ✓）。 */
 			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-6');
-			const 前滚 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
-			const r9 = 结.返程事务({ 损毁: true, 实例: 'i-6', 提交: () => { throw new Error('受控失败'); } });
-			ok(r9.ok === false && /RETURN_SETTLE_FAILED/.test(r9.code ?? ''), `★提交失败须**具名拒**（实得 ${r9.code ?? '（无）'}）`);
-			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 前滚, '★★同上：**物品面零变化**（结算随提交一起回滚 ✓）');
-			ok((State.variables[域] ?? {}).返程已结 !== 'i-6', '★同上：幂等标记也**未被落下**（✗ 半途而废）');
-
+			const r9a = 结.返程事务({ 实例: 'i-6' });
+			ok(r9a.ok === true, `（前置）首次事务应成功（实得 ${JSON.stringify(r9a).slice(0, 70)}）`);
+			delete State.variables[域].返程已结;                  // ★绕开**故事自持**的长程标记 ⇒ 专测**引擎近窗去重** ✓
+			const 面9 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
+			const r9 = 结.返程事务({ 实例: 'i-6' });
+			ok(r9.ok === false && /RETURN_ALREADY_SETTLED/.test(r9.code ?? ''), `★重复请求须**具名拒**（实得 ${r9.code ?? '（无）'}）`);
+			ok(/近窗去重/.test(r9.why ?? ''), `★且须来自**引擎账**（✗ 不是故事标记先拦 ✓；实得 why=${JSON.stringify((r9.why ?? '').slice(0, 60))}）`);
+			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 面9, '★同上：**物品面零变化**（`publish` ✗ 再跑 ✓）');
+			/* 前像二次确认：直接在**引擎面**上证（本模块内部 preview→commit 一气呵成 ⇒ ✗ 无法从外面塞陈旧票 ✓） */
+			const 域活 = State.variables[域];   // ★活块（模块内 `读档` 未导出 ✓）
+			const 票9 = R.commitBoundary.preview({ request: 'probe:stale', facts: 域活, apply: (d) => { d.__探针9 = 1; } });
+			ok(票9.status === 'previewed', `（前置）引擎 preview 应给票（实得 ${票9.status}）`);
+			域活.__探针9 = 999;                                  // ★改前像 ⇒ 票据陈旧 ✓
+			const 陈 = R.commitBoundary.commit(票9.ticket, { facts: 域活 });
+			ok(陈.status === 'rejected' && 陈.code === 'COMMIT_STALE', `★前像已变 ⇒ 须拒 \`COMMIT_STALE\`（实得 ${陈.status}／${陈.code ?? '（无）'}）`);
+			ok(域活.__探针9 === 999, '★同上：拒时**零写**（✗ 按旧计划落地 ✓）');
 			/* ⑩ 演出与名量：三栏条目带**真名与真量**（✗ 不吞错 ✓） */
 			清背(); 造('club', { 脆弱: true }); 造('iron-ore', { 脆弱: true });
 			起档('i-7'); const r10 = 结.返程事务({ 损毁: true, 实例: 'i-7' });

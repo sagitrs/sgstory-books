@@ -57,63 +57,94 @@ const 分类 = (前) => ({
 });
 
 /**
- * **一次返程事务**：结算 ＋ 用机会 ＋ 完成 ＋ 落幂等标记 —— **同一笔** ✓。
- * @param {{损毁?: boolean, 实例?: string|null, 提交?: (() => void)|null}} o
- *   `损毁=false` 供**旧卷轴**那条路（裁文：旧卷轴例外**已冻结** ⇒ ✗ 不执行脆弱损毁 ✓）；
- *   `提交` ＝调用方**本笔专属**的落账（E9：用机会 ＋ 完成 ✓）⇒ ★它**在事务内**跑 ⇒
- *   失败与结算**一起回滚** ✓（这正是裁文纠正①「一处函数＋顺序调用 ≠ 可靠提交」的修法 ✓）。
- * @returns {{ok:true, 栏:object, 实例:string|null} | {ok:false, code:string, why:string}}
+ * **一次返程事务**（`#443` 改造）：★**域面走引擎提交边界** `RPG.commitBoundary` ✓，✗ 我自建回滚。
+ *
+ * ## 为什么改（`#442` 的评审 N1 提出，我认）
+ * `src/core/33-commit.js`（E2 `sgstory#2025` · 设计 §4「返程的一致提交」）档头：设计把「可靠提交边界」
+ * 列为**引擎职责** ✓ ⇒ 复用它，✗ 手搓「快照⇒计划⇒一次应用⇒try/catch 回滚」✓。
+ *
+ * ## 职责怎么分（★两处如实声明 ✗ 不含糊）
+ *   · **域面**（可序列化活块＝`State.variables['sevenNames']` ✓）⇒ 走 `preview`／`commit` ✓ ⇒ 得
+ *     **近窗去重**（`COMMIT_ALREADY_SETTLED` ＋ 零副作用 ✓）／**前像二次确认**（`COMMIT_STALE` ✓）／
+ *     **记账写后回读**（`COMMIT_LEDGER_FAILED` ⇒ 回滚 ✓）。
+ *   · **物品面 ✗ 不在该边界内**（物品是**类实例数组** ✗ 过不了 `规整`；且边界要求「与 `preview` 同一块
+ *     **活事实**」，传副本会得到「交易静默没发生」✗）⇒ 走**引擎自己的口**：★按**实体**用
+ *     `RPG.splitStack(bag, entityId, n)`（`30-inventory.js:179` ✓「批次按身份切分」· E1 `sgstory#2023` ✓）
+ *     ＋ `RPG.slotUnequip` ✓，✗ 不再直接 `splice`；它在 `publish` 里跑 ⇒ **✗ 与域面不同原子** ✓（如实声明 ✓）。
+ *   · **长程幂等仍故事自持** ✓：引擎边界注**自己写明**「去重是**窗口** ✗ 绝对：账有界（默认 200，超限丢最旧）
+ *     ⇒ 只有**最近** `上限` 笔请求受保护；更早的请求号被重放 ⇒ **会再执行一次**」✓ ⇒ `域.返程已结 = 实例`
+ *     **留着承重** ✓（✗ 不退成读面缓存 ✓）。
+ *
+ * @param {{实例?: string|null, 演出?: ((栏:object)=>void)|null}} o
+ * @returns {{ok:true, 栏:object, 实例:string, 边界:string} | {ok:false, code:string, why:string}}
  */
-const 返程事务 = ({ 损毁 = true, 实例 = null, 提交 = null } = {}) => {
+const 返程事务 = ({ 实例 = null, 演出 = null } = {}) => {
 	const s = 读档();
 	if (!s) return { ok: false, code: 'SEVEN_NOT_STARTED', why: '七名河教程未在进行中' };
 	const 本次 = 实例 ?? s.机会?.实例 ?? null;
-	/* ★旧卷轴例外（裁文：**已冻结** ⇒ ✗ 损毁 ✓）：**先**于幂等检查 ⇒ 它与本结算**无关** ✓，
-	 *   仍走同一实现以求**一眼可审** ✓（✗ 靠「这里没写」隐式豁免 ✓）。✗ 不碰任何物品 ✓，也 ✗ 落标记 ✓。 */
-	if (!损毁) {
-		if (typeof 提交 === 'function') 提交();
-		return { ok: true, 栏: { 消失: [], 新增: [], 稳定: [] }, 实例: 本次, 未损毁: true };
-	}
-	/* ★裁③：幂等**按实例** ⇒ 同一次返程的重复回调/重绘/恢复 ⇒ 零变化 ＋ 具名拒 ✓。 */
-	if (本次 && s.返程已结 === 本次) {
-		return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: `本次返程（${本次}）已结算（✗ 再损毁）` };
+	if (!本次) return { ok: false, code: 'RETURN_NO_INSTANCE', why: '本次返程没有实例号 ⇒ ✗ 无法幂等' };
+	/* ★长程幂等（故事自持键 ✓）；与引擎**近窗**去重并存 ✓（边界见上 ✓）。 */
+	if (s.返程已结 === 本次) return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: `本次返程（${本次}）已结算（✗ 再损毁）` };
+	const 边 = R.commitBoundary;
+	if (typeof 边?.preview !== 'function' || typeof 边?.commit !== 'function') {
+		return { ok: false, code: 'RETURN_NO_ENGINE', why: '引擎缺 `RPG.commitBoundary`（本笔声明 pin 起应有）' };
 	}
 
-	/* ── 计划（✗ 先不写）────────────────────────────────────────── */
+	/* 计划：分类只看**传送前**状态 ✓；按**实体** ✓（✗ 按同款 id ✓）。 */
 	const 前 = 快照();
 	const 栏 = 分类(前);
-	/* ★裁§三：**按实体**处理 ⇒ 用 entityId 定位（✗ 按 id 误删另一件 ✓）。 */
-	const 消失集 = new Set(栏.消失.map((x) => x.entityId).filter((x) => x != null));
-	const 需要消失 = (件) => 消失集.has(件.entityId);
+	const 消失集 = new Set((栏.消失 ?? []).map((x) => x.entityId).filter((x) => x != null));
 
-	/* ── 应用（一次；出错**回滚**）──────────────────────────────── */
-	const 备份 = JSON.parse(JSON.stringify(State.variables[域键]));
-	const 背件 = (D.Player.items ?? []).map((x) => JSON.parse(JSON.stringify(x.toJSON ? x.toJSON() : x)));
-	try {
-		/* ① 消失：先**清装备引用**（裁 §三.4 ✓），再从背包里按**实体**移除 ✓。 */
-		for (const 件 of [...(D.Player.items ?? [])]) {
-			if (!需要消失(件)) continue;
-			if (件.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(件);
-			const 位 = D.Player.items.indexOf(件);
-			if (位 >= 0) D.Player.items.splice(位, 1);
+	/* ── 域面：引擎提交边界（票据纯数据 ✓；`apply` 只在草稿上跑 ✓ 活事实零接触 ✓）── */
+	const 预览 = 边.preview({
+		request: `sevenNames:返程:${本次}`,
+		facts: s,
+		apply: (草稿) => {
+			草稿.机会 = Object.assign({}, 草稿.机会 ?? {}, { 用: true, 实例: 本次 });
+			草稿.态 = '完成';
+			草稿.返程已结 = 本次;
+			草稿.返程结果 = { 实例: 本次, 栏: { 消失: 栏.消失, 新增: 栏.新增, 稳定: 栏.稳定 } };
+		},
+	});
+	if (预览.status !== 'previewed') {
+		return { ok: false, code: 预览.code ?? 'RETURN_PREVIEW_REJECTED', why: `预览未通过（${预览.status}）` };
+	}
+
+	/* ── 物品面（`publish` 内 ✓ 按实体幂等 ⇒ 重入不二损毁 ✓）＋ 演出 ── */
+	const 物品面 = () => {
+		const 背 = D.Player?.items;
+		if (!Array.isArray(背)) return;
+		for (const 件 of [...背]) {
+			if (!消失集.has(件?.entityId)) continue;
+			let 目标 = 件;
+			try {
+				const n = Number(件.charges ?? 1);
+				if (typeof R.splitStack === 'function' && n > 1) 目标 = R.splitStack(背, 件.entityId, n) ?? 件;
+			} catch { 目标 = 件; }
+			if (目标 && 目标.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(目标);
+			const 位 = 背.findIndex((x) => x && x.entityId === (目标?.entityId ?? 件.entityId));
+			if (位 >= 0) 背.splice(位, 1);
 		}
-		/* ② 新增脆弱：保留 `entityId`／数量／`charges`／其他 `state` ✓（只加一位 ✓）。 */
-		for (const 件 of (D.Player.items ?? [])) {
+		for (const 件 of 背) {
 			if (排除id.includes(件.id)) continue;
 			件.state = Object.assign({}, 件.state ?? {}, { [脆弱键]: true });
 		}
-		/* ③ 调用方本笔的落账（E9：用机会 ＋ 完成 ✓）—— ★同在事务内 ⇒ 失败一起回滚 ✓。 */
-		if (typeof 提交 === 'function') 提交();
-		/* ④ 落幂等标记（★按实例 ✓）。 */
-		建档().返程已结 = 本次;
-	} catch (e) {
-		/* ★真事务：任意失败 ⇒ **存档面零变化** ✓（✗ 半途而废 ✓）。 */
-		if (D.Player?.items) D.Player.items = 背件.map((x) => R.reviveItem(x));
-		State.variables[域键] = 备份;
-		return { ok: false, code: 'RETURN_SETTLE_FAILED', why: `返程结算失败，已回滚（${e?.message ?? e}）` };
-	}
-	return { ok: true, 栏, 实例: 本次 };
+	};
+
+	const 结算 = 边.commit(预览.ticket, {
+		facts: s,
+		publish: () => { 物品面(); if (typeof 演出 === 'function') 演出(栏); },
+	});
+	if (结算.status === 'settled' && 结算.reused) return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '引擎账上该请求已提交（近窗去重 ✓）' };
+	if (结算.status !== 'applied') return { ok: false, code: 结算.code ?? 'RETURN_COMMIT_REJECTED', why: `提交未成（${结算.status}）` };
+	return { ok: true, 栏, 实例: 本次, 边界: 'commitBoundary' };
 };
+
+/** ★旧卷轴返程：**冻结例外**的**具名口**（`#443` N2 ✓）。
+ *  裁文（`writer-2` 四裁 `6018346663` 第 3 项）**不批准**「付费旧卷轴也执行脆弱结算」⇒ 例外**已冻结** ✓。
+ *  此口的意义＝**显式可审** ✗ 不靠「挂在别处没写」✓：返回**具名 code**，判据据它断 ✓。 */
+const 旧卷轴返程 = () => ({ ok: true, code: 'RETURN_SCROLL_EXEMPT', 未损毁: true,
+	why: '旧卷轴例外已冻结（✗ 执行脆弱损毁 ✓），按同一实现出具名回执' });
 
 /** ★设计原句（裁 §三：**保留**）：传送结算的演出首句 ✓。 */
 const 演出句 = '跨越位面的波动使你以外的存在变得模糊，只有强大的存在才能在传送中保持自我。';
@@ -135,5 +166,5 @@ const 读返程 = () => {
 	return { 栏: 分类(前), 实例: s?.机会?.实例 ?? null, 已结: s?.返程已结 ?? null, 适用件: 前 };
 };
 
-BS.返程结算 = { 域键, 脆弱键, 排除id, 适用件, 是脆弱, 快照, 分类, 返程事务, 读返程, 演出,
+BS.返程结算 = { 域键, 脆弱键, 排除id, 适用件, 是脆弱, 快照, 分类, 返程事务, 旧卷轴返程, 读返程, 演出,
 	演出句 };
