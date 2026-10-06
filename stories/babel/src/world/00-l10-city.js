@@ -254,6 +254,10 @@ const build = () => {
 	m.validate();
 	return m;
 };
+/** ★`books#208` 备注（改准，dev-9 发现）：**引擎零发射 `save:ready`** —— 唯一发射＝verify 工具侧的**合成**
+ *  ⇒ 生产里本监听**不跑** ⇒ 「旧档补域」**不能**靠它；真正生效的是各处 `??=` 的**惰性建域**（本档 `state()`／
+ *  `00-clock-town.js` 的 `城写()`）✓。宿主往返请走宿主自己的 onLoad 口（README 已明：✗ 把它当宿主往返）✓。
+ *  本函数**保留**（verify 工具与将来的宿主若真发射，行为正确 ✓）。 */
 const ensure = () => {
 	state(); // 旧档缺新域才补零；不追算旧贡献、清空旧农田或改既得资格。
 	const locker = (State.variables.babelL10Storage ??= []);

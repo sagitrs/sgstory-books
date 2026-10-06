@@ -4674,5 +4674,140 @@ head('63. `books#206`：时钟走格 ＋ 生产一次性结算 ＋ 远征批量�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 63 组：${本组失败 === 0 ? '五格全绿（走格／生产／上限／唯一写家／唯一常量）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ── 64. `books#208`（轨 C · 批 3 第三笔）：物品／节点／建筑 **三域**域属账 ＋ 冲突检测 ─────────
+ *
+ * 病（`#172` 批 3 要拆的面）：同一件东西**既能从背包找、又能从节点找**（`babel2.js:83` 记「料场节点
+ *   应当进背包」正是这一族）⇒ 一旦两本账都把它当**实体** ⇒ 改一处、另一处静默失效
+ *   （`babel.js:9` 的 adoptHub 那类事故：接管后旧 hub 的 `desc`／`actions` 静默无效 ✗）。
+ * 裁（操作者 · 经领队 2026-10-06 03:34Z；落档评论 `6008797745`，㈢ 见 `6012882578`）：
+ *   ㈠三域**落故事侧** ㈡沿用 **`entityId`** ＋ 源码出现 `instanceId` ⇒ 红
+ *   ㈢`设施`（`#206` 的生产装置类）**并入 building 域**（命名沿用 ✓ ✗ 不另立第三域）
+ * 断什么（五格）：
+ *   ① **三域各自可独立装配／读取**（清掉另两域 ⇒ 第三个仍给出自身清单；★先建**非空**夹具 ⇒ ✗ 免得恒真）
+ *   ② **域属唯一 ＋ 冲突检测**：正常态 `冲突` 为空；★**注入**同一 `entityId` 到两域 ⇒ 检测**必须**报出
+ *   ③ **旧档补号**：无号设施经**写口**补号 ✓、**幂等** ✓、JSON 往返稳定 ✓、★高水位越过已见号（塞 `it-999`
+ *      ⇒ 下一次 `newEntityId()` 须 > 999 ✓ ✗ 否则新号与旧档碰撞）
+ *   ④ **`instanceId` 名禁**（★**先剥注释**再扫故事源 ⇒ ✗ 免得命中注释＝假红；并断**非空**：`entityId` 须有命中
+ *      ⇒ 证明扫描真的在读码 ✗ 免得「文件读不到 ⇒ 0 命中 ⇒ 假绿」）
+ *   ⑤ **读路径零变化**（域属读一次 ⇒ `State.variables` 逐字节不变；照 `10-item.js:45-58` 的既有判据）
+ * 刀（D／T 席照此各断一次，结果须**具名**）：
+ *   ① 把 `00-domains.js` 的 `物品域()` 改成读 `babelL10Storage` ⇒ ①（背包那件读不到）红｜② 去掉 `域属账`
+ *   的 `域集.length > 1` 判据（冲突不报）⇒ ②红｜③ 去掉 `城写()` 里的 `补号()` 调用 ⇒ ③红｜④ 在故事源里
+ *   写一处 `instanceId` ⇒ ④红｜⑤ 让 `物品域()` 顺手 `??=` 建键 ⇒ ⑤红
+ * ⚠ 装置：本格改 `babelTown`／`gatherNodes`／背包／高水位 ⇒ 末了**存-复原**（同 62／63 格口径）。
+ */
+head('64. `books#208`：三域域属账（物品／节点／建筑）＋ 冲突检测 ＋ 旧档补号（唯一域属）');
+{
+	const 存 = {
+		run: JSON.parse(JSON.stringify(State.variables.babelRun ?? null)),
+		town: JSON.parse(JSON.stringify(State.variables.babelTown ?? null)),
+		nodes: JSON.parse(JSON.stringify(State.variables.gatherNodes ?? null)),
+		bag: JSON.parse(JSON.stringify((D.Player.items ?? []).map((s) => (s.toJSON ? s.toJSON() : s)))),
+		位: map.current,
+	};
+	const 组前失败 = fails.length;
+	try {
+		const 域 = B.域, 城 = B.城镇;
+		ok(!!域 && typeof 域.域属账 === 'function', '★机器件没导出（`B.域.域属账`）—— 判据取不到域属账');
+		ok(Array.isArray(域?.域名单) && 域.域名单.join(',') === 'inventory,node,building',
+			`★三域名单须恰为 inventory,node,building（实得 ${JSON.stringify(域?.域名单)}）`);
+
+		/* ① 三域**各自**可独立装配／读取 —— 先造**非空**夹具（✗ 免得三条列空表也算过） */
+		D.Player.items = [];
+		R.give('coin');
+		/* ★节点物取**故事自己的**采集点值（✗ 硬编我猜的道具名 —— 首跑即崩在「未注册的道具 id」） */
+		const 节点物 = B.gatherPoints?.L1 ?? 'stone-pile';
+		State.variables.gatherNodes = { L1: R.createItem(节点物).toJSON() };
+		State.variables.babelTown = { 设施: {} };
+		城.建设施('farm', { 周期: 30 });
+		ok(域.物品域().length >= 1, `★夹具：背包应至少 1 件实体（实得 ${域.物品域().length}）—— 后面的域属断言会恒真`);
+		ok(域.节点域().length === 1, `★夹具：节点域应恰 1 份（实得 ${域.节点域().length}）`);
+		ok(域.建筑域().length === 1, `★夹具：建筑域应恰 1 座（实得 ${域.建筑域().length}）`);
+		const 只留 = (k) => { for (const x of ['inventory', 'node', 'building']) if (x !== k) {
+			if (x === 'inventory') D.Player.items = [];
+			if (x === 'node') State.variables.gatherNodes = {};
+			if (x === 'building') State.variables.babelTown = { 设施: {} };
+		} };
+		const 备份 = JSON.parse(JSON.stringify({ 包: (D.Player.items ?? []).map((s) => s.toJSON?.() ?? s), 节: State.variables.gatherNodes, 城: State.variables.babelTown }));
+		for (const [k, 读] of [['inventory', () => 域.物品域().length], ['node', () => 域.节点域().length], ['building', () => 域.建筑域().length]]) {
+			const 备 = JSON.parse(JSON.stringify(备份));
+			D.Player.items = []; State.variables.gatherNodes = {}; State.variables.babelTown = { 设施: {} };
+			if (k === 'inventory') D.Player.items = 备.包.map((s) => R.reviveItem(s));
+			if (k === 'node') State.variables.gatherNodes = 备.节;
+			if (k === 'building') State.variables.babelTown = 备.城;
+			ok(读() >= 1, `★三域须能**各自独立**读取：只留 ${k} 时仍应给出自身清单（实得 ${读()}）`);
+			D.Player.items = 备.包.map((s) => R.reviveItem(s)); State.variables.gatherNodes = 备.节; State.variables.babelTown = 备.城;
+		}
+
+		/* ② 域属唯一 ＋ **冲突检测**（正例：注入同号 ⇒ 检测必须报出） */
+		const 包件 = 域.物品域()[0] ?? { entityId: '(夹具失效)' };
+		ok(域.物品域().length >= 1, '★夹具失效：物品域取不到实体（⇒ 后面的单点域属断言只能跟着红）');
+		const 属 = 域.域属(包件.entityId);
+		ok(!!属 && 属.唯一 === true && 属.域 === 'inventory',
+			`★单点域属：背包那件应唯一属 inventory（实得 ${JSON.stringify(属)}）`);
+		ok(域.域属账().冲突.length === 0, `★正常态不应有域属冲突（实得 ${JSON.stringify(域.域属账().冲突)}）`);
+		const 节点键 = Object.keys(State.variables.gatherNodes)[0];
+		State.variables.gatherNodes[节点键].entityId = 包件.entityId;      // ★注入：同一号出现在两域
+		const 冲 = 域.域属账().冲突;
+		ok(冲.length === 1 && 冲[0].entityId === 包件.entityId,
+			`★**冲突检测必须真在**：同号出现在 inventory 与 node ⇒ 应报 1 条冲突（实得 ${JSON.stringify(冲)}）`);
+		ok(域.域属(包件.entityId).唯一 === false, '★冲突态下单点域属应报「不唯一」（✗ 随便挑一个域了事）');
+
+		/* ③ 旧档补号：写口补号 ＋ 幂等 ＋ 往返稳定 ＋ 高水位越过 */
+		State.variables.babelTown = { 设施: { old: { id: 'farm', 产出: 'grain', 等级: 1, 周期: 30, 开工日: 1, 下次产出日: 31, 库存: 0 } } };
+		delete State.variables.babelTown.设施.old.entityId;                 // ★旧档：无号
+		ok(!State.variables.babelTown.设施.old.entityId, '★夹具：该设施应无号');
+		/* ★走**真写口**（✗ 不只手调 `补号()`）⇒ 接线若断（`城写()` 不再调 补号）本格必须红 */
+		城.建设施('mill', { 周期: 10 });
+		ok(!!State.variables.babelTown.设施.old?.entityId, '★写口须顺带**补号**旧档里无号的设施（✗ 只补新建的那座）');
+		城.补号();
+		const 一号 = State.variables.babelTown.设施.old.entityId;
+		ok(!!一号, '★旧档补号：写口补号后应有号');
+		城.补号();
+		ok(State.variables.babelTown.设施.old.entityId === 一号, '★补号须**幂等**（再补一次号不得变）');
+		const 往返 = JSON.parse(JSON.stringify(State.variables.babelTown));
+		ok(往返.设施.old.entityId === 一号, '★补号后经 JSON 往返，号须稳定');
+		State.variables.babelTown = 往返;
+		城.补号();
+		ok(State.variables.babelTown.设施.old.entityId === 一号, '★载入补号后的档再补一次 ⇒ 号仍不变');
+		State.variables.babelTown.设施.old.entityId = 'it-999';             // ★高水位：已见大号
+		城.补号();
+		const 新号 = R.newEntityId();
+		ok(Number(String(新号).replace(/^it-/, '')) > 999,
+			`★高水位须越过已见号：见过 it-999 后新发号应 > 999（实得 ${新号}）—— ✗ 否则新号与旧档碰撞`);
+
+		/* ④ `instanceId` 名禁（剥注释后扫故事源；并断**非空**证明扫描真在读码） */
+		const 剥注释 = (s) => s
+			.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+			.replace(/^[ \t]*\/\/[^\n]*$/gm, (m) => ' '.repeat(m.length))
+			.replace(/([^:]|^)\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+		const 源码 = [];
+		(function walk(d) {
+			for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+				const q = path.join(d, e.name);
+				if (e.isDirectory()) walk(q); else if (e.name.endsWith('.js')) 源码.push([q, 剥注释(fs.readFileSync(q, 'utf8'))]);
+			}
+		})(storySrc);
+		const 旧名 = 源码.filter(([, s]) => /instanceId/.test(s));
+		ok(旧名.length === 0, `★实例身份只许叫 \`entityId\`（裁㈡）：源码出现 \`instanceId\` ⇒ 红 —— 命中：${旧名.map(([q]) => path.relative(storySrc, q)).join('、')}`);
+		const 新名 = 源码.filter(([, s]) => /entityId/.test(s)).length;
+		ok(新名 >= 2, `★非空性：\`entityId\` 应至少在若干档里出现（实得 ${新名} 档）—— ✗ 免得「读不到文件 ⇒ 0 命中」被当成通过`);
+
+		/* ⑤ 读路径零变化 */
+		const 前 = JSON.stringify(State.variables);
+		域.域属账(); 域.域属('it-1'); 域.物品域(); 域.节点域(); 域.建筑域();
+		ok(JSON.stringify(State.variables) === 前, '★域属读一次 ⇒ 存档面**零变化**（读了却动了档）');
+	} finally {
+		if (存.run === null) delete State.variables.babelRun; else State.variables.babelRun = 存.run;
+		if (存.town === null) delete State.variables.babelTown; else State.variables.babelTown = 存.town;
+		if (存.nodes === null) delete State.variables.gatherNodes; else State.variables.gatherNodes = 存.nodes;
+		D.Player.items = 存.bag.map((s) => R.reviveItem(s));
+		map.moveTo(存.位);
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 64 组：${本组失败 === 0 ? '五格全绿（三域独立／域属唯一与冲突／旧档补号／名禁／读路径零变化）' : `★本组 ${本组失败} 处失败`}`);
+}
+
 await verifyL10({ R, D, B, map, ok, head });
 printSummary();
