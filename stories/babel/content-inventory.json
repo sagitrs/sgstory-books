@@ -59,6 +59,7 @@
     },
     {
       "path": "stories/babel/src/ui/ui.twee",
+      "path": "stories/babel/src/ui/map.js",
       "类别": "呈现/版式",
       "依据": "领队 21:13 裁①：照实况固化（`ui/**` 是面板/渲染/样式 ✓）"
     },
