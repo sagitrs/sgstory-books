@@ -131,6 +131,9 @@ const 选行动 = (i) => {
 	const id = s.当前, node = C.节点表[id];
 	if (!node) return 拒('SEVEN_NO_NODE', `未知节点 ${id}`);
 	if (node.type === 'portal') return 拒('SEVEN_NOT_EVENT', `${id} 是传送门，✗ 无行动`);
+	/* ★片 2（`books#397`）承接：**战斗节点 ✗ 走奖励路** —— 片 1 只挡了 `portal` ⇒ 战斗节点会被
+	 *   当成奖励节点走（只掷检定、发空 loot、**不打**）。战斗入口在 `01-seven-names-battle.js`（`战斗行动`）✓。 */
+	if (node.type === 'battle') return 拒('SEVEN_IS_BATTLE', `${id} 是战斗节点 ⇒ 走战斗入口（✗ 奖励路）`);
 	if (已处理(s).includes(id)) return 拒('SEVEN_NODE_DONE', `${id} 已处理（✗ 不重发奖励）`);
 	const opt = node.options?.[i];
 	if (!opt) return 拒('SEVEN_NO_OPTION', `${id} 无第 ${i} 个选项`);
@@ -197,5 +200,8 @@ BS.七名河 = {
 	域键, 态, 高歌猛进, 入口: C.入口, 出口: C.出口, 主干: C.主干, 边表: C.边表, 定点表: C.定点表, 节点表: C.节点表,
 	读档, 已处理, 可走, 节点导航, 门向补充, 属性修正, 掷检定,
 	读, 开始, 选行动, 走, 用机会, 完成, 死,
+	/* ★片 2（`books#397`）：**唯一交付口**外放 —— 设计明文「战斗铜矿交付**复用同一交付口**」
+	 *   ⇒ 战斗侧（`01-seven-names-battle.js`）经此复用，✗ 各自再写一份 `R.give` ＋ 账目。 */
+	交付, 收回,
 };
 R.save.declareDomain(域键, 'byPack');
