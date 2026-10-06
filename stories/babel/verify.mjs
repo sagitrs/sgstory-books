@@ -5342,6 +5342,32 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				`★长程幂等须由**故事自持键**兜住（引擎账有界＝200 ⇒ ✗ 靠不住 ✓；实得 ${r5b.code ?? '（无）'}）`);
 			ok((D.Player.items ?? []).some((x) => x.id === 'club'), '★同上：✗ 未二次损毁（club 仍在 ✓）');
 
+			/* ②c ★**写闸**（`#444` RC-2 补格 ✓）：上面 ②b 只测**读闸**（手工先写标记）⇒
+			 *   把 `apply` 里那行**写**删掉也照样绿 ✗（D 席的刀即此 ✓）⇒ 此处专测**写** ✓。 */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-w');
+			const rw = 结.返程事务({ 实例: 'i-w' });
+			ok(rw.ok === true, '（前置）写闸事务应成功');
+			const 域w = State.variables[域];
+			ok(域w?.返程已结 === 'i-w', `★成功事务后**须把实例写进域**（✗ 只读不写 ✓；实得 ${JSON.stringify(域w?.返程已结 ?? null)}）`);
+			ok(R.commitBoundary.settled('sevenNames:返程:i-w') != null, '★引擎账上须查得到该请求（`settled(request)` ✓）');
+			/* ★存档往返后再调同实例 ⇒ 仍须拒（写下的标记要**过得了存档** ✓） */
+			const 档w = JSON.parse(JSON.stringify(域w));
+			State.variables[域] = JSON.parse(JSON.stringify(档w));
+			const rw2 = 结.返程事务({ 实例: 'i-w' });
+			ok(rw2.ok === false && /RETURN_ALREADY_SETTLED/.test(rw2.code ?? ''),
+				`★存档往返后同实例仍须拒（实得 ${rw2.code ?? '（无）'}）`);
+			ok((D.Player.items ?? []).filter((x) => x.id === 'club').length === 0, '★同上：✗ 未二次损毁 ✓');
+
+			/* ②d ★**RC-1 的防线格**（`#444`）：物品面失败 ⇒ **拒** ＋ **域面未提交** ＋ 物品**复原**
+			 *   —— 这正是「把物品面放进 `publish`」会得到的**静默半途**的反面 ✓（引擎 `publish` 吞异常且 `status` 仍 applied ✓）。 */
+			清背(); { const 双 = R.createItem('club'); 双.charges = 2; 双.state = { 脆弱: true }; D.Player.items.push(双); }
+			起档('i-x');
+			const 原切 = R.splitStack; R.splitStack = undefined;      // ★逼物品面失败（charges>1 且切不动 ⇒ 拒 ✓）
+			let rx; try { rx = 结.返程事务({ 实例: 'i-x' }); } finally { R.splitStack = 原切; }
+			ok(rx?.ok === false, `★物品面失败须**拒**（✗ 返回 ok:true ＝静默半途 ✓；实得 ${JSON.stringify(rx).slice(0, 70)}）`);
+			ok(State.variables[域]?.返程已结 !== 'i-x', '★同上：**域面未提交**（✗ 半途已落 ✓）');
+			ok((D.Player.items ?? []).some((x) => x.id === 'club' && Number(x.charges) === 2), '★同上：物品**已复原**（✗ 已被删 ✓）');
+
 			/* ③ ★**按实体**（裁 §三）：同 id 两件、只有一件脆弱 ⇒ **只消失那一件**（✗ 不误删另一件 ✓） */
 			清背(); const 脆 = 造('club', { 脆弱: true }); const 普 = 造('club');
 			ok((D.Player.items ?? []).length === 2, '（前置）同 id **两件**并存（✗ 未被并成一槽）');

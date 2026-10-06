@@ -110,33 +110,61 @@ const 返程事务 = ({ 实例 = null, 演出 = null } = {}) => {
 		return { ok: false, code: 预览.code ?? 'RETURN_PREVIEW_REJECTED', why: `预览未通过（${预览.status}）` };
 	}
 
-	/* ── 物品面（`publish` 内 ✓ 按实体幂等 ⇒ 重入不二损毁 ✓）＋ 演出 ── */
+	/* ── ★物品面：在引擎边界之**外**（`#444` RC-1 修法＝他给的出路 (c) ✓），**自带补偿** ──
+	 *   ✗ 不能放 `publish`：引擎（`33-commit.js:218-221`）把 `publish` 当**演出／重绘** ⇒ **吞异常**、只置
+	 *   `published:false` ＋ `publishError`，`status` **仍是 `'applied'`** ⇒ 我按状态判会**放过**它 ⇒
+	 *   症状是「`ok:true`、不挡移动、演出没跑」＝**静默半途** ✗；且域面已落已记账 ⇒ 同 `request` 再调会被
+	 *   **近窗去重**拦下（`publish` ✗ 再跑）⇒ **半途态无出路** ✗。
+	 *   ⇒ 现在：**先做物品面** ＋ 自带补偿（`背件` ⇒ `reviveItem` ✓）⇒ 物品面失败 ＝ **域面尚未提交** ⇒
+	 *     复原物品并拒 ⇒ **零半途** ✓；域面提交失败/被去重 ⇒ 同样复原物品 ✓。
+	 *   ★「✗ 在边界内」**≠**「不需要补偿」✓（D 席语 ✓）。 */
 	const 物品面 = () => {
 		const 背 = D.Player?.items;
 		if (!Array.isArray(背)) return;
 		for (const 件 of [...背]) {
 			if (!消失集.has(件?.entityId)) continue;
 			let 目标 = 件;
-			try {
-				const n = Number(件.charges ?? 1);
-				if (typeof R.splitStack === 'function' && n > 1) 目标 = R.splitStack(背, 件.entityId, n) ?? 件;
-			} catch { 目标 = 件; }
-			if (目标 && 目标.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(目标);
+			const n = Number(件.charges ?? 1);
+			if (n > 1) {
+				/* ★NIT（D 席 ✓）：`charges>1` 时**切不动就拒**，✗ 不得退化成「删整摞」（会多删 ✓）。 */
+				if (typeof R.splitStack !== 'function') throw R.refuse('RETURN_SPLIT_UNAVAILABLE', `需要按实体切分 ${件.entityId}（charges=${n}）但引擎无 splitStack`);
+				目标 = R.splitStack(背, 件.entityId, n);
+				if (!目标) throw R.refuse('RETURN_SPLIT_FAILED', `按实体切分失败：${件.entityId}`);
+			}
+			if (目标.equipped && typeof R.slotUnequip === 'function') R.slotUnequip.call(目标);
 			const 位 = 背.findIndex((x) => x && x.entityId === (目标?.entityId ?? 件.entityId));
-			if (位 >= 0) 背.splice(位, 1);
+			if (位 < 0) continue;
+			背.splice(位, 1);
 		}
 		for (const 件 of 背) {
 			if (排除id.includes(件.id)) continue;
 			件.state = Object.assign({}, 件.state ?? {}, { [脆弱键]: true });
 		}
 	};
+	const 背件 = (D.Player?.items ?? []).map((x) => (x?.toJSON ? JSON.parse(JSON.stringify(x.toJSON())) : null)).filter(Boolean);
+	const 复原物品 = () => { if (D.Player && 背件.length) D.Player.items = 背件.map((x) => R.reviveItem(x)); };
+	try {
+		物品面();
+	} catch (e) {
+		复原物品();
+		return { ok: false, code: e?.code ?? 'RETURN_ITEM_FACE_FAILED', why: `物品面失败，已复原（${e?.message ?? e}）` };
+	}
 
+	/* ── 域面：引擎提交边界；`publish` 只放**演出**（✗ 不放领域面 ✓ 见上）── */
 	const 结算 = 边.commit(预览.ticket, {
 		facts: s,
-		publish: () => { 物品面(); if (typeof 演出 === 'function') 演出(栏); },
+		publish: () => { if (typeof 演出 === 'function') 演出(栏); },
 	});
-	if (结算.status === 'settled' && 结算.reused) return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '引擎账上该请求已提交（近窗去重 ✓）' };
-	if (结算.status !== 'applied') return { ok: false, code: 结算.code ?? 'RETURN_COMMIT_REJECTED', why: `提交未成（${结算.status}）` };
+	if (结算.status === 'settled' && 结算.reused) {
+		复原物品();
+		return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '引擎账上该请求已提交（近窗去重 ✓），物品面已复原' };
+	}
+	if (结算.status !== 'applied') {
+		复原物品();
+		return { ok: false, code: 结算.code ?? 'RETURN_COMMIT_REJECTED', why: `提交未成（${结算.status}），物品面已复原` };
+	}
+	/* ★演出失败（`published:false`／`publishError`）＝**只影响呈现**：事实与物品都已落 ✓ ⇒ 调用方**只重绘** ✓
+	 *   （✗ 不拒、✗ 不回滚 —— 否则会把已成之事回退 ✓；引擎档头同形 ✓）。 */
 	return { ok: true, 栏, 实例: 本次, 边界: 'commitBoundary' };
 };
 
