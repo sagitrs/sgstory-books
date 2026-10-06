@@ -20,6 +20,7 @@
 /* ★`books#280` ⑧（操作者建议 · 后续版本）：**背包视图** —— 常驻入口（每段落都在）＋全道具列表＋就地使用。
  *   与 `notice` 面同族：twee 只留骨架，内容一律由 `ui/bag.js` 的 `R.bagHTML()` 给（面板注册名 `bag`）。 */
 <div class="bagbar" data-panel="bag"></div>
+<div class="mapbar" data-panel="babel-map"></div>
 /* ★`books#188` P1-2／P1-4：**战斗面**两块 —— 敌组状态与治疗读数（只战斗内有内容，平时为空）。
  *   内容一律由 `ui/battle.js` 的渲染函数给（同 `notice` 面板的口径：twee 只留骨架）。 */
 <div class="enemybar" data-panel="enemy"></div>
@@ -220,3 +221,17 @@ body.战中 #passages { margin-top: 9rem; }
  *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.1·<pin 短sha>` ✓。
  *   ⚠ 判据：`<<if>>` 兜底（变量缺失 ⇒ 什么都不显 ⇒ 零噪声 ✓）。 */
 <<if $buildVersion>>版本 $buildVersion<</if>>
+
+/* ★`books#401` 3b：地图宿主紧接背包之后（裁六 `6021566672` 第 3 项 ✓ —— `.bagbar` 之后、`.enemybar` 之前 ✓）。 */
+.mapbar { color: #8fa8bd; font-size: 0.85em; margin-top: 0.3em; }
+.mapbar .map-open { cursor: pointer; text-decoration: underline; background: none; border: 0; color: #a8c8e0; font: inherit; padding: 0; }
+.mapbar .map-wrap { position: relative; display: inline-block; margin-top: 0.3em; max-height: 40vh; }
+.mapbar .map-art { display: block; max-height: 40vh; height: auto; cursor: pointer; }
+.mapbar .map-overlay { position: absolute; inset: 0; pointer-events: none; }
+.mapbar .map-legend { margin-top: 0.2em; color: #97a9ba; }
+.mapbar .map-eq { margin-top: 0.2em; line-height: 1.5; }
+.mapbar .map-mark { fill: #ffd479; font: bold 12px sans-serif; }
+.mapbar .map-here { fill: #6ef0a0; stroke: #0d1319; stroke-width: 2; }
+.mapbar .map-missing { color: #c8b4a4; margin: 0.2em 0; }
+.mapbar .map-axis { fill: #dbe7f2; font: bold 11px sans-serif; text-anchor: middle; }
+.mapbar .map-type { fill: #8fa8bd; font: 10px sans-serif; text-anchor: middle; }
