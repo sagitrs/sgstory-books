@@ -33,6 +33,11 @@
       "依据": "领队 21:13 裁①：照实况固化（`story/**` 是段落与出口骨架 ✓）"
     },
     {
+      "path": "stories/babel/src/story/zz-dice-test.js",
+      "类别": "规则/装置",
+      "依据": "References #415（A4）：开发测试模式的**薄壳** —— 只按用途指定原始骰面，逐颗控制与三账全在引擎（`sagitrs/sgstory#2031`）；✗ 叙事内容、✗ 段落骨架。"
+    },
+    {
       "path": "stories/babel/src/ui/00-visual.js",
       "类别": "呈现/版式",
       "依据": "books#311：读取可选静态素材，按既有可见名字/ID 生成装饰 HTML；不写游戏状态或执行动作"
