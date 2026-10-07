@@ -4828,6 +4828,13 @@ head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一
 	const 组前失败 = fails.length;
 	try {
 		const S7 = B?.七名河;
+
+		/* ★组头**显式复位活性**（`#453` RC ✓：本组判据依赖「活人」⇒ 前序组若留下 hp=0／death／终局 ⇒
+		 *   同树 3 跑 1 红 ✗）。★**只复位、不存-复还** —— 与 harness **自身先例** `:448-450` 同形 ✓
+		 *   （那里也只复位；各组自己的存-复原只管**各自域／物品**，✗ 不涉活性 ✓）。 */
+		D.Player.hp = D.Player.maxHp;
+		D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
 		ok(!!S7, '故事脚本没挂上 `setup.BABEL.七名河`（`00-seven-names.js` 没被装载？）');
 		if (S7) {
 			/* ① 静态拓扑：**独立字面量**当尺（设计 events.json@56829d8c） */
@@ -5757,6 +5764,13 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 	const 组前 = fails.length;
 	try {
 		const S7 = B?.七名河, 结 = B?.返程结算;
+
+		/* ★组头**显式复位活性**（`#453` RC ✓：本组判据依赖「活人」⇒ 前序组若留下 hp=0／death／终局 ⇒
+		 *   同树 3 跑 1 红 ✗）。★**只复位、不存-复还** —— 与 harness **自身先例** `:448-450` 同形 ✓
+		 *   （那里也只复位；各组自己的存-复原只管**各自域／物品**，✗ 不涉活性 ✓）。 */
+		D.Player.hp = D.Player.maxHp;
+		D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
 		ok(!!S7 && !!结, '前置：`BS.七名河` 与 `BS.返程结算` 都须在位');
 		if (S7 && 结) {
 			const 出边 = (map.exits ?? []).filter((e) => e.from === 'W09' && e.to === B.聚落);
@@ -5844,6 +5858,13 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 	const 组前 = fails.length;
 	try {
 		const S7 = B?.七名河, 结 = B?.返程结算, L10 = B?.L10;
+
+		/* ★组头**显式复位活性**（`#453` RC ✓：本组判据依赖「活人」⇒ 前序组若留下 hp=0／death／终局 ⇒
+		 *   同树 3 跑 1 红 ✗）。★**只复位、不存-复还** —— 与 harness **自身先例** `:448-450` 同形 ✓
+		 *   （那里也只复位；各组自己的存-复原只管**各自域／物品**，✗ 不涉活性 ✓）。 */
+		D.Player.hp = D.Player.maxHp;
+		D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
 		const 清背 = () => { D.Player.items = []; };
 		const 造 = (id, state) => { const x = R.createItem(id); if (state) x.state = state; D.Player.items.push(x); return x; };
 		const 起 = (当前, 实例) => { State.variables[域] = { 态: '进行中', 当前, 结果: {}, 机会: { 用: false, 实例 }, 路径: ['E0'] }; return State.variables[域]; };
