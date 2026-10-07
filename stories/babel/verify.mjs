@@ -5464,13 +5464,20 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
 				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
 				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
-				const 原note = R.note; const 收 = [];
+				/* ★`#483` 同族校正（领队 2026-10-07）：产品演出改走**引擎真口** `pushNotice`（✗ 不再打
+				 *   在无人提供的 `R.note` 上 ✓）⇒ 本格改**读引擎通知面的具名通道**（✗ 装钩 —— 那样
+				 *   「玩家侧**显不显示**」测不出来 ✗）。 */
+				const 句前 = (R.notices({ channel: 'map-scene' }) ?? []).length;
+				let 文接 = '';
 				try {
-					R.note = (s) => { 收.push(String(s)); };
+
 					清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
 					边.action();
-				} finally { R.note = 原note; }
-				const 文接 = 收.join('\n');
+				} finally {
+					const 全 = (R.notices({ channel: 'map-scene' }) ?? []).map((n) => n.text);
+					文接 = 全.slice(0, Math.max(0, 全.length - 句前)).reverse().join('\n');
+				}
+				ok(文接.length > 0, `★E9 出口演出须**真进引擎通知面**（✗ 只打无人提供的钩 ✓；实得 ${JSON.stringify(文接.slice(0, 60))}）`);
 				ok(文接.includes('获得脆弱的') && 文接.includes('原已脆弱而消失的') && 文接.includes('保持稳定的'),
 					`★E9 出口须**真演出三栏**（实得通知：${JSON.stringify(文接.slice(0, 90))}）`);
 				ok(文接.includes('club×1') || 文接.includes('木棒×1') || 文接.includes('×1'),
@@ -5935,9 +5942,10 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		ok73(活.__p73 === 999, '★④同上：拒时**零写** ✓'); delete 活.__p73;
 		/* ⑤**故障恢复**（`publish` 抛）⇒ 事实与物品都在 ⇒ **只重绘**（✗ 不重跑领域副作用 ✓） */
 		清背(); 造('club', { 脆弱: true }); 起('E6', 'i-c5');
-		const 原note73 = R.note; let 抛次 = 0;
-		R.note = ((o) => function () { 抛次++; throw new Error('受控抛：演出面'); })(原note73);
-		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.note = 原note73; }
+		/* ★`#483` 同族校正：注入对象由 `R.note`（无提供者）改为引擎真口 `pushNotice` ✓。 */
+		const 原push73 = R.pushNotice; let 抛次 = 0;
+		R.pushNotice = function () { 抛次++; throw new Error('受控抛：演出面'); };
+		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.pushNotice = 原push73; }
 		ok73(r5?.ok === true, `★⑤演出抛 ⇒ 事务**仍成功**（✗ 被回滚 ✓；实得 ${JSON.stringify(r5).slice(0, 70)}）`);
 		ok73(State.variables[域].态 === '完成' && State.variables[域].返程已结 === 'i-c5', '★⑤同上：**事实与标记都在**（只重绘 ✓）');
 		/* ⑥**非法／耗尽**（机会已用）⇒ 边不可用 ＋ 再调仍拒 */
