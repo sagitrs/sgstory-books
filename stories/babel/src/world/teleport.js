@@ -2,6 +2,13 @@
  * 传送与 L9 前进步行同落 L10-camp；不复制事件／资源，不复活真死者。
  * 购买复用 L10 候选目录和 RPG.exchange，不另写一套扣钱发货逻辑。
  */
+/* ★★**演出出口校正（`#483` 双裁同族 · 领队 2026-10-07 细分）**：本档演出/拒因原一律经 `R.note`，
+ *   而 **`RPG.note` 在任何一侧都无定义**（实测 `typeof setup.RPG.note === 'undefined'`；全仓 `.note =`
+ *   定义搜索为空 ✓）⇒ 那是**无人提供的钩** ⇒ ★**玩家侧看不到**：①**返程结算的演出句 ＋ 三栏**
+ *   （设计 §8 明令要演的 ✓）②**拒因兜底**（「✗ 这一步没能执行」＝可读性兜底 ✓）。真浏览器实测通知面命中 **0** ✓。
+ *   ⇒ 改走**引擎真口** `pushNotice(句, { channel })` ✓，**按语义分通道**（领队裁 ✓，两者皆 `key` 级
+ *   ⇒ **关键档下也进正文** ✓）：演出／三栏／场景叙述 ⇒ `map-scene`（名「场景」✓）；拒因兜底 ⇒
+ *   `item-refuse`（名「物品·不可用」✓）。 */
 const DND3 = setup.DND3, R = setup.RPG, B = setup.BABEL;
 const 聚落 = 'L10-camp', 卷轴 = 'return-scroll';
 B.聚落 = 聚落;
@@ -80,7 +87,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				from: id, to: 聚落,
 				text: '沿已清理来路走回共炉（免费；✗ 不另买卷轴）',
 				when: () => 可快回() && 层号(地图.current) === 层,
-				action: () => { B.map.moveTo(聚落); R.note?.('你沿来路走回共炉。路上的事还是那些事，资源没多也没少。'); },
+				action: () => { B.map.moveTo(聚落); R.pushNotice?.('你沿来路走回共炉。路上的事还是那些事，资源没多也没少。', { channel: 'map-scene' }); },
 			});
 			挂了几条 += 1;
 		}
@@ -163,7 +170,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 								? ((typeof 门?.战斗行动 === 'function') ? 门.战斗行动(i, { interactive: true }) : { ok: false, why: '战斗入口未装载（`01-seven-names-battle.js` 缺席）' })
 								: 七.选行动(i);
 						} catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
-						if (r && r.ok === false) { R.note?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`); return false; }
+						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 'item-refuse' }); return false; }
 						return true;
 					},
 				})),
@@ -200,9 +207,9 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				 *   ★裁文纠正②「提交拒绝必须**真挡住移动**」：本 pin 的 `MapScene` 判 `exit.action() !== false`
 				 *   （`src/core/60-map.js:377` ✓）⇒ 此处**必须返回 `false`** ✓（返回 `{ok:false}` ✗ 不挡 ✓）。 */
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例,
-					演出: (栏) => R.note?.(B.返程结算.演出(栏)) });
+					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 'map-scene' }) });
 				if (!r) return true;                       // （✗ 无结算模块时不动旧行为 ✓）
-				if (!r.ok) { R.note?.(`✗ ${r.why}`); return false; }
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 'item-refuse' }); return false; }
 				return true;
 			},
 		}));
@@ -218,9 +225,9 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 			when: () => B.L10.alive() && !B.战中 && 七.读().已开始 && 七.读().态 !== '完成' && 七.读().当前 !== 'E9' && !七.读().机会.用,   // ★同上：战中／死亡须拒 ✓
 			action: () => {
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例, 完成: false,
-					演出: (栏) => R.note?.(B.返程结算.演出(栏)) });
+					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 'map-scene' }) });
 				if (!r) return true;
-				if (!r.ok) { R.note?.(`✗ ${r.why}`); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 'item-refuse' }); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
 				return true;
 			},
 		}));
