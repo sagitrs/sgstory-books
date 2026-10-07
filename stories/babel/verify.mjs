@@ -5641,13 +5641,23 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 			ok(/当前：/.test(文) && /可走：/.test(文) && /类型：/.test(文), '★三类等价文字须在面板内（当前／可走／类型 ✓）');
 
 			/* ⑦ ★开关：**真状态变**才出原句 ＋ 零副作用（裁 §二.3 ✓；★真开合的合法差分＝可见性/展开态 ✓） */
-			const 收 = []; const 原note = R.note;
-			const 域前 = JSON.stringify(State.variables); const 随前 = Math.random;
+			/* ★★**领队双裁（`#483`，2026-10-07）**落两件：
+			 *   a) 演出走**引擎真口** `R.pushNotice`（`map.js` 已照改 ✓）⇒ 本段改**读引擎通知面**的
+			 *      **具名通道** `map-scene`（✗ 不再给无人提供的 `R.note` 装钩 —— 那样「玩家侧显不显示」
+			 *      **测不出来** ✗）；
+			 *   b) 差分按**具名白名单**：只放过 `$rpgNotices` 这本**具名演出记录**账，✗ 不豁免整个
+			 *      通知／State 域（＝裁六 §三原文 ✓）。 */
+			const 两句 = () => R.notices({ channel: 'map-scene', limit: 50 }).map((n) => n.text)
+				.filter((s) => s === '你打开了地图' || s === '你收起了地图');   // ★只认设计的两句（✗ 自造文案 ✓）
+			const 域前 = (() => { const c = JSON.parse(JSON.stringify(State.variables)); delete c.rpgNotices; return JSON.stringify(c); })();
+			const 随前 = Math.random;
 			let 随动 = 0; Math.random = () => { 随动++; return 0.5; };
+			const 句前 = 两句().length;
 			try {
-				R.note = (s) => 收.push(String(s));
 				for (let i = 0; i < 6; i++) B4.切换();     // 开/收 各 3 次 ⇒ 原句 6 条 ✓
-			} finally { R.note = 原note; Math.random = 随前; }
+			} finally { Math.random = 随前; }
+			const 全部 = 两句();                            // 引擎列表**新在前** ⇒ 本轮新增在**头部** ✓
+			const 收 = 全部.slice(0, 全部.length - 句前);
 			ok(收.length === 6, `★每次**真状态变**恰一条演出（6 次切换 ⇒ 6 条；实得 ${收.length}）`);
 			/* ★断**交替**（✗ 不断固定先后 —— 本格进入时面板可能已被前文打开过 ✓）：
 			 *   两句话各 3 条 ＋ 相邻必不同 ⇒ 「真状态变才出句」的同义断言 ✓。 */
@@ -5656,7 +5666,10 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 				`★两句话须各 3 条（实得 开 ${开句数}／收 ${收.length - 开句数}）`);
 			ok(收.every((s, i) => i === 0 || s !== 收[i - 1]), `★相邻必不同（✗ 同态重复刷 ✓；实得 ${JSON.stringify(收)}）`);
 			ok(收.every((s) => s === '你打开了地图' || s === '你收起了地图'), '★只许设计的两句（✗ 自造文案 ✓）');
-			ok(JSON.stringify(State.variables) === 域前, '★开关**零存档改动**（✗ 推时间／✗ 写域 ✓）');
+			ok((() => { const c = JSON.parse(JSON.stringify(State.variables)); delete c.rpgNotices; return JSON.stringify(c); })() === 域前,
+				'★开关**零存档改动**（按**具名白名单**：只放过 `$rpgNotices` 的**具名演出记录** ✓；其余逐字节同 ⇒ ✗ 推时间／✗ 写域 ✓）');
+			ok(两句().length >= 6 && 两句().every((s) => s === '你打开了地图' || s === '你收起了地图'),
+				'★演出句须**真进引擎通知面**（✗ 只打在无人提供的钩上 —— 领队双裁 a ✓）');
 			ok(随动 === 0, `★开关**零随机消费**（实得 ${随动}）`);
 
 			/* ⑧ ★只读边界（裁 §二.5：✗ 不得成为返城／逃脱／存档／用物／战斗入口 ✓） */
