@@ -5460,8 +5460,18 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			const 边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp');
 			ok(!!边, '★E9 出口边在位（W09 → L10-camp）');
 			if (边) {
+				/* ★`#484` 两请之①：**行程拒绝须落具名通道**（developer 刀 B 观察项 · 同形 ✓）。
+				 *   ★**单点常量**：通道语义（「行程拒绝」vs「物品·不可用」）**候 writer-2 代裁** ✓
+				 *     ⇒ 裁到别的通道时**只改这一处** ✓。
+				 *   ★围住**第一次**调用：那一次 `r.ok===false` ⇒ 才真发拒因（第二次是幂等重调 ⇒ 不再拒 ✓）。 */
+				const 拒通道 = 'item-refuse';
+				const 拒前 = (R.notices({ channel: 拒通道 }) ?? []).length;
 				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
+				const 拒后 = (R.notices({ channel: 拒通道 }) ?? []).map((n) => n.text);
+				const 文拒 = 拒后.slice(0, Math.max(0, 拒后.length - 拒前)).reverse().join('\n');
+				ok(文拒.length > 0 && 文拒.split('\n').some((s) => s.startsWith('✗ ')),
+					`★行程拒绝须落 \`${拒通道}\` 通道（✗ 只打在无人提供的钩上 ⇒ 玩家看不见 ✓；实得 ${JSON.stringify(文拒.slice(0, 70))}）`);
 				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
 				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
 				/* ★`#483` 同族校正（领队 2026-10-07）：产品演出改走**引擎真口** `pushNotice`（✗ 不再打
