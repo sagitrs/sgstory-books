@@ -5837,10 +5837,6 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 			okR(JSON.stringify(State.variables[域]) === 前卷, '★同上：豁免路径**零写** ✓');
 			okR(!/旧卷轴/.test(String(出边.map((e) => e.text).join('|'))), '★同上：卷轴 ✗ 不并入两路出口（互不混义 ✓）');
 		}
-	} finally {
-		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
-		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
-	}
 		/* ★★`#450` 补格（tester-3 接线 RC **实质成立** ✓ · 领队代裁加急 ✓）：本组原**直接调
 		 *   `结.返程事务(...)`** ✗ ⇒ **两条边的 `action` 从未被执行** ⇒ 接线一断，全部格照绿 ✗
 		 *   （＝他说的「**提前边无人守**」✓）。补两格，形＝**取边 `find` → 备态 → 调 `action` → 断** ✓。 */
@@ -5869,6 +5865,10 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 		okR(State.variables[域].态 === '完成', `★格B：E9 确认回城 ⇒ **完成**（实得 ${State.variables[域].态}）`);
 		okR(State.variables[域].机会.用 === true, '★格B：机会**已消费** ✓');
 		okR(九边.when() === false, '★格B（负向）：用完后 E9 边**现算为假**（✗ 可重复过门 ✓）');
+	} finally {
+		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+	}
 	const 本组失败 = fails.length - 组前;
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 72 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（两路同事务同键／提前✗完成且可恢复／E9 才完成／两路都结算／存取不刷不重损／两路互斥／卷轴具名豁免零写／★**两出口边接线：取边→备态→调 action()→断**）`);
 }
