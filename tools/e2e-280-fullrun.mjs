@@ -191,7 +191,7 @@ const b = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox',
   console.error(`✗ 环境错（浏览器起不来：${CHROME}）：${e.message}\n  ★试 LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu`); process.exit(2); });
 
 /* ── 主流程 ───────────────────────────────────────────────────────────── */
-const 红 = [], 档 = [];
+const 红 = []; let 档 = [];   /* ★★档 须可重赋（★上面那步把本片判据升为硬红 ✓） */
 const ok = (c, m) => { if (!c) 红.push(`  ✗ ${m}`); };
 try {
   const c = await b.newContext({ viewport: { width: 1280, height: 720 } });
@@ -352,33 +352,55 @@ try {
         console.log(`  ★W09 完成()：${JSON.stringify(完成读数)}`);
         if (完成读数.具名 || 完成读数.具名红) 档.push(`  · W09 完成() 出声：${JSON.stringify(完成读数)}`);
         await p.waitForTimeout(600);
-        /* ── ★S8 ② 第五片：**④ 基准「真在效」判据**（★本席当日口径：★✗ 让旗子**空转** ✓）──────
-         *   ★病（我实测）：`--基准` 此前**只被 K8 自检**校验 ⇒ ★**跑起来根本没应用** ✗
-         *     ⇒ 「甲／乙对照」**是空声称** ✓（★与「`--knife` 只印一句」同族 ✓）。
-         *   ★本判据**只读**：★在 W09 入口记**装备签名** ⇒ ★对所选基准**逐件断** ✓（✗ 补血／✗ 清负面／✗ 刷药 ✓）。 */
-        const 装签 = await p.evaluate(() => {
-          const SC = SugarCube, D = SC.setup?.DND3;
-          const 袋 = D?.Player?.items ?? [];
-          const 未清 = 袋.map((x) => x?.id).filter((x) => x == null);
-          let 已装 = null;
-          try { 已装 = D?.Player?.equipped ? JSON.parse(JSON.stringify(D.Player.equipped)) : null; } catch { 已装 = null; }
-          return { 件: 袋.map((x) => ({ id: x?.id ?? null, 装: !!x?.equipped ?? null })), hp: D?.Player?.hp ?? null, 未清 };
-        });
-        const 有 = (id) => 装签.件.some((x) => x.id === id);
-        const 装 = (id) => 装签.件.some((x) => x.id === id && x.装 === true);
-        console.log(`  ★基准=${基准}｜装备签名=${JSON.stringify(装签.件)}｜hp=${装签.hp}`);
-        if (基准 === '乙') {
-          for (const [面, id] of [['身', 'mail'], ['盾', 'heavy-wooden-shield'], ['武', 'sword-quenched']]) {
-            if (!有(id)) 档.push(`  · ★S8 ② ④基准：★乙 基准**在效**须含 ${面}件 \`${id}\`（★✗ 旗子空转 —— 实测装备签名 ${JSON.stringify(装签.件.map((x) => x.id))}）`);
-            else if (!装(id)) 档.push(`  · ★S8 ② ④基准：乙 的 ${id} 须**真装上**（✗ 只在背包）`);
-          }
-        } else {
-          if (!有('sword')) 档.push('  · ★S8 ② ④基准：甲 基准须含基础 `sword`（实得 ' + JSON.stringify(装签.件.map((x) => x.id)) + '）');
-          for (const id of ['mail', 'heavy-wooden-shield', 'sword-quenched'])
-            if (有(id)) 档.push(`  · ★S8 ② ④基准：甲 是**低装备对照** ⇒ ✗ 不得含 \`${id}\`（实得含）`);
-        }
         let 返城路 = null;
         if (await 在W09()) {
+        /* ── ★S8 ② 第五片：**④ 入场基准·声明式装具**（★照领队 14:35 裁「甲案」✓）──────────────────
+         *   ★裁文：★终裁禁的是**入口暗补**（补血／清负面／刷药）✗；★**基准装具本身**要装 ✓
+         *     ⇒ ★本段**只动装备面**（`R.give` ＋ `R.equip` ✓），★✗ 碰 hp／负面／药 ✓ —— ★且**幂等**（已有则不再发 ✓）。
+         *   ★两基准：★乙＝`mail` ＋ `heavy-wooden-shield` ＋ `sword-quenched`（★逐件**在装** ✓）；★甲＝基础 `sword` 单装（★✗ 含那三件 ✓）。
+         *   ★读数**逐件印出** ⇒ ★两跑可**并排比** ✓（★✗ 只看旗子 ✓）。 */
+        const 基准应用 = await p.evaluate((表) => {
+          const SC = SugarCube, D = SC.setup?.DND3, R = SC.setup?.RPG;
+          const 袋 = () => (D?.Player?.items ?? []);
+          const 发装 = (id) => {
+            if (!id) return { id, 略: '基准表此面为空' };
+            const 已有 = 袋().some((x) => x?.id === id);
+            if (!已有 && typeof R?.give === 'function') R.give(id);
+            const 装 = () => { try { if (typeof R?.equip === 'function') R.equip(id); } catch (e) { return String(e?.message ?? e).slice(0, 60); } return true; };
+            const 装果 = 装();
+            return { id, 前有: 已有, 装果 };
+          };
+          /* ★低装备对照（甲）：★基准表**没点名的**那三件须**卸下**（★可在背包 ✓，★✗ 在装 ✓）
+           *   —— ★由**表驱动**（✗ 写死甲乙 ✓）：★表里没这一面 ⇒ 该面那件卸掉 ✓。 */
+          const 卸 = (id) => { try { if (R?.isEquipped?.(id)) R.unequip(id); } catch (e) { return String(e?.message ?? e).slice(0, 60); } return true; };
+          const 表点名 = new Set([表.身, 表.盾, 表.武].filter(Boolean));
+          const 卸记 = ['mail', 'heavy-wooden-shield', 'sword-quenched', 'sword'].filter((id) => !表点名.has(id)).map((id) => ({ 卸: id, 果: 卸(id) }));
+          const 记 = [发装(表.身), 发装(表.盾), 发装(表.武)].filter((x) => x?.id);
+          const 件 = 袋().map((x) => ({ id: x?.id ?? null, 装: !!x?.equipped, charges: x?.charges ?? null }));
+          const 药数 = 袋().filter((x) => /herb|bandage|poultice/.test(String(x?.id ?? ''))).reduce((a, x) => a + Number(x?.charges ?? 0), 0);
+          let 防 = null, 攻 = null;
+          try { 防 = R?.acOf?.(D?.Player) ?? null; } catch { 防 = null; }
+          return { 记, 卸记, 件, hp: D?.Player?.hp ?? null, 药数, 防 };
+        }, 基准表[基准]);
+        console.log(`  ★基准装具（${基准}·卸=${JSON.stringify(基准应用.卸记 ?? [])}）：${JSON.stringify(基准应用.记)}｜签名=${JSON.stringify(基准应用.件.map((x) => x.id + (x.装 ? '*' : '')))}｜hp=${基准应用.hp}｜药=${基准应用.药数}`);
+        const 件有 = (id) => 基准应用.件.some((x) => x.id === id);
+        const 件装 = (id) => 基准应用.件.some((x) => x.id === id && x.装 === true);
+        /* ★★正式判据（★领队 14:35 裁要件①「装备签名只读判据**转正式**」✓）：
+         *   ★乙 ⇒ **逐件在装**（✗ 只在背包 ✓）；★甲 ⇒ 含基础 `sword` 且在装 ＋ **✗ 含那三件** ✓。
+         *   ★两跑**各自验**（★同一条判据、两个期望 ⇒ ★并排比 ✓）。 */
+        if (基准 === '乙') {
+          for (const [面, id] of [['身', 'mail'], ['盾', 'heavy-wooden-shield'], ['武', 'sword-quenched']]) {
+            if (!件有(id)) 档.push(`  · ★S8 ② ④基准：乙 的 ${面}件 \`${id}\` 须**已在袋**（实得 ${JSON.stringify(基准应用.件.map((x) => x.id))}）`);
+            else if (!件装(id)) 档.push(`  · ★S8 ② ④基准：乙 的 ${id} 须**真在装**（✗ 只在背包）`);
+          }
+        } else {
+          if (!件有('sword')) 档.push(`  · ★S8 ② ④基准：甲 须含基础 \`sword\`（实得 ${JSON.stringify(基准应用.件.map((x) => x.id))}）`);
+          else if (!件装('sword')) 档.push('  · ★S8 ② ④基准：甲 的基础 `sword` 须**真在装**');
+          for (const id of ['mail', 'heavy-wooden-shield', 'sword-quenched']) {
+            if (件装(id)) 档.push(`  · ★S8 ② ④基准：甲 是**低装备对照** ⇒ \`${id}\` 须**未在装**（实得在装）`);
+            else if (件有(id)) console.log(`  ★登记：甲 的 \`${id}\` **在袋但未装** ✓（低装备对照以**装备面**为准 ✓）`);
+          }
+        }
           /* ★先点 **E9 完成路**的具名出口（`确认回城 · 用掉本次传送机会（E9）`）；★无它才退回「提前返程」路
            *   —— ★两条路**只差「是否完成」**（`teleport.js` ③ vs ③b）⇒ ★判据须**知道点了哪条**（✗ 混着断）。 */
           const E9口 = p.locator('#passages a,#passages button').filter({ hasText: /确认回城/ });
@@ -505,6 +527,12 @@ try {
   await b.close().catch(() => {});
   process.exit(2);
 }
+/* ★领队 14:35 裁要件③「K8 表 ＋ 签名断言**配刀**（摘装具 ⇒ 红 ✓）」——
+ *   ★「红」须是**真红**（rc=1 ✓），✗ 只在「声明」里印一句 ✓。
+ *   ⇒ 本片 **①恰一次／③死亡支／④基准** 三族的**判据**升为**硬失败** ✓；
+ *   ★**②重访的「前置未满足 ⇒ 空转（未判）」仍是声明** ✓（★那是**未判**，✗ 不是红 ✓）。 */
+for (const x of 档) if (/★S8 ② (①恰一次|③死亡支|④基准)/.test(x)) 红.push(x);
+档 = 档.filter((x) => !/★S8 ② (①恰一次|③死亡支|④基准)/.test(x));
 console.log([...档, ...红].join('\n'));
 console.log(红.length === 0 ? `\n  ⇒ 整局通过（${档.length} 条声明）` : `\n  ⇒ 通过 ${档.length}｜失败 ${红.length}`);
 await b.close();
