@@ -79,7 +79,7 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           # ★`#1879` D9：版本徽标取值**一处定义**（job 级＝写 `$GITHUB_ENV` ⇒ 后续各步皆可见）。
           #   ✗ 各步自算：`--version` 加参只改一处 ⇒ 「★构建可复现」步不带参重建 ⇒ sha1 异 ⇒ 误报「构建不确定」。
-          echo "VER=v0.0.1·$(cut -c1-8 <<<"$ref")" >> "$GITHUB_ENV"
+          echo "VER=v0.0.3·$(cut -c1-8 <<<"$ref")" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
         with:
