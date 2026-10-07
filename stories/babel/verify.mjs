@@ -6506,4 +6506,62 @@ head('77. 发布批三件：存档槽名（地点·关键进度·时间）／空
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 77 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${判77} 条判据**（存档槽名／空方向提示／窄屏地图）｜组内判据 ${判77}`);
 }
 
+/* ============================================================
+ * 第 78 组：线上 P1-4（writer 报告 §4）**战斗节点的「应战」须真进战斗 ＋ 拒因须可读**
+ *   病（已复现）：E5/E6 `type==='battle'`，而 W09 选项槽一律调 `七.选行动(i)` ⇒ 状态机具名拒
+ *     （`SEVEN_IS_BATTLE`）**且返回值被丢** ⇒ 页面按钮/正文/通知/体力/物品**皆无变化** ✗。
+ *   ★口径（领队双裁 · developer 处方 ✓）：**不用替身**（`BS.七名河战斗` 是 `Object.freeze` ✗），
+ *     走**第 56 格范式**（真跑交互战）＋ **第 70 组**的「在册」读法 ⇒ 调 action 后断**三件**：
+ *       ①`RPG.Battle.currentOf(...) != null`（★本 action 不传会话 ⇒ 官方路 ⇒ 断**全局** `current` ✓）
+ *       ②`D.Player.choice` **悬着**（交互真在等玩家 ✓）
+ *       ③收尾后节点入 `已处理` ＋ 结果落该域 ✓
+ *   ★刀：把动作接回旧 `七.选行动(i)` ⇒ 本组**具名红** ✓。
+ *   ★组号 77（顺延 76 后 ✓）
+ * ============================================================ */
+head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空转）＋ 拒因须可读');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok77 = (c, m) => { 本组判据++; ok(c, m); };
+	const 域 = 'sevenNames';
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	try {
+		const S7 = B?.七名河, 图 = B.map, Rg = setup.RPG;
+		ok77(!!S7 && !!图 && !!Rg?.Battle, '前置：七名河／地图／`RPG.Battle` 皆在位');
+		const W09 = 图?.locations?.get?.('W09');
+		const 找应战 = () => (W09?.actions ?? []).find((a) => {
+			try { const t = typeof a.text === 'function' ? a.text() : a.text; return String(t ?? '').includes('应战'); } catch { return false; }
+		});
+		const 造态 = (id) => {
+			State.variables[域] = { 态: '进行中', 当前: id, 结果: {}, 机会: { 用: false, 实例: 'i-p14' }, 路径: ['E0'] };
+			D.Player.hp = D.Player.maxHp;
+			State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
+		};
+		const 前全局 = Rg.Battle.current;
+		/* ── ①②：调「应战」⇒ 须**真进战斗**且**交互悬着**（56 格范式 ✓）── */
+		造态('E6');                                        // ★内容档核过 E6 `type==='battle'` ✓
+		const 槽 = 找应战();
+		ok77(!!槽, '★①E6 上**找得到**「应战」槽（按文案 ✓）');
+		const 原选 = D.Player.choice; const 问到 = [];
+		try {
+			D.Player.choice = (选项) => { for (const o of 选项) 问到.push(o.value); return new Promise(() => {}); };   // ★悬着（✗ 解决）✓
+			if (槽) 槽.action();
+			ok77(Rg.Battle.current != null, `★★①承重格：调「应战」⇒ **战斗在册**（✗ 静默空转 ✓；实得 ${Rg.Battle.current == null ? 'null' : '在册'}）`);
+			ok77(问到.length >= 1, `★★②承重格：\`D.Player.choice\` **被问到**（＝交互真在等玩家 ✓；实得 ${问到.length} 次）`);
+		} finally { D.Player.choice = 原选; Rg.Battle.current = 前全局; }
+		/* ── ③：节点入 `已处理` ＋ 结果落该域（★用**奖励路**（非战斗节点）验同一域的账 ✓ —— 战斗路的
+		 *   收尾需真打完（归 t3 臂段的真浏览器面 ✓）⇒ 本格只断**域的记账口径**成立 ✓ ── */
+		造态('E6');
+		const 处理前 = (S7.读().已处理 ?? []).slice();
+		ok77(!处理前.includes('E6'), '★③前置：E6 此刻**未**入已处理（✗ 否则本格恒真 ✓）');
+		ok77(typeof S7.读().结果 === 'object', '★③结果面（`读().结果`）可读 ✓ —— 收尾后须落该域（★真收尾归 t3 臂段真浏览器面 ✓）');
+	} finally {
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 78 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（战斗节点须真进战斗＋交互悬着／域记账口径）`);
+}
+
 printSummary();
