@@ -6814,6 +6814,13 @@ head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空�
  *     （判据须能**咬**住它被破坏 ⇒ 见提交信息的刀读数 ✓）。
  *   ★装置：本组的**承重格**皆为「真调用机器件 ＋ 断可观察读数」（机器件由 `setup.BABEL` 明文导出，
  *     头注理由即「判据/刀要能*真调用*」✓）；★✗ 不断内部私有面 ✓。
+ *   ★★**本组锁的边界（✗ 别当它锁得比这更宽）**（`developer` NIT 2026-10-07：读源码的人多过读 PR 的人 ✓）：
+ *     · **锁**：跳过路的**账面三处** —— ①抽签层 `已用` 哨兵（✗ 写成 chest/gather/battle）
+ *       ②`$babelRun.已战` ③`$span1Events` 键数；＋ 两条 `when`（事件面／采集面）随之关 ✓
+ *       ④（领队加裁）战果写口两面：`RPG.save.progress()` 与 `$babelRun.bosses` ✓。
+ *     · **✗ 未锁**：**下游消费者**（头目进度／结局计数等**若将来**被跳过路写入 ⇒ 必先动账或另立新账
+ *       ⇒ **那时扩锁** ✓）＋ **面板呈现**（UI 面 ⇒ 归 e2e／读者面 ✓）。
+ *     · **D 段（返城不补发）是读数，✗ 不是判据面** ✓ —— 判据面归 **S3 片 3a** 的组（真驱动会撞他人的组 ✗）。
  * ============================================================ */
 head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗ 不补发／✗ 假胜利）');
 {
@@ -6827,6 +6834,7 @@ head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗
 	const 包快照 = () => JSON.stringify((D.Player?.items ?? []).map((s) => [s.entityId ?? null, s.id, s.charges ?? 1, JSON.stringify(s.state ?? null)]));
 	const 事件存 = JSON.parse(JSON.stringify(State.variables.span1Events ?? null));
 	const 局存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 进度档存 = JSON.parse(JSON.stringify(State.variables.rpgProgress ?? null));
 	try {
 		ok79(!!B9?.eventsOf && !!B9?.eventPending && !!B9?.已跳过, '前置：`setup.BABEL` 的事件机器件（`eventsOf`／`eventPending`／`已跳过`）皆可达');
 		/* ── A. **抽签层**（L5）：跳过 ⇒ 该层事件收益**全关** ＋ 不交付 ＋ 记哨兵（★承重 4 格）── */
@@ -6872,12 +6880,35 @@ head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗
 		B9.eventsOf().L5 = { 抽中: ['chest', 'gather'], 已用: null };
 		const 战前C = JSON.stringify(State.variables.babelRun.已战);
 		const 键前C = Object.keys(State.variables.span1Events).length;
+		/* ★★**只调一次**（本席首版在此栽：`availableActions` 按 `when` 过滤 ⇒ 第一次跳过后
+		 *   该动作**从表里消失** ⇒ 我第二次再取就拿到 undefined ⇒ C③ 的快照**围住了空转** ⇒
+		 *   三把刀全 rc=0 而看不出病 ✓）。⇒ 现在把**两份战果快照围住唯一那一次 `action()`** ✓。 */
 		const 跳C = 取动作('L5', '不理会这层的动静');
-		if (跳C) 跳C.action();
+		ok79(!!跳C && 跳C.when() === true,
+			'★C-前置：C 段**找得到**「跳过事件」动作且 `when` 为真（✗ 否则下面四格是**空转** —— 本席首版即栽在此 ✓）');
+		const 引擎账可读 = typeof R?.save?.progress === 'function';
+		/* ★★**防跃迁**（领队括注）：A 段的跳过调用**也会**（在刀下）写引擎账 ⇒ 若直接取快照，
+		 *   起点已含该层 ⇒ 本段唯一的写**幂等** ⇒ 判据恒绿 ✗（本席**实测**：同一把刀在 A 段生效、
+		 *   到 C 段却 rc=0 ⇒ 定因即此 ✓）。⇒ **先把引擎账清空再取快照**（原值存起，`finally` 复原 ✓）。 */
+		State.variables.rpgProgress = {};
+		const 战果前C = 引擎账可读 ? JSON.stringify(R.save.progress()) : null;
+		const 落账前C = JSON.stringify(State.variables.babelRun?.bosses ?? null);
+		console.log(`    · 读数（✗ 不计判据）：战果**写面**读数 —— \`setup.BABEL.记战果\` 可调用 = ${typeof B9?.记战果 === 'function'}；` +
+			`\`RPG.save.progress\` 可调用 = ${引擎账可读}；\`RPG.save.recordCleared\` 可调用 = ${typeof R?.save?.recordCleared === 'function'}；` +
+			`回落账现值 = ${落账前C}（★三面皆印：**写面喊不动时本格不判**，✗ 不得把「没喊动」当成「没动」✓）`);
+		if (跳C) 跳C.action();                     // ★★唯一一次调用，围在快照之间（✗ 隔空比即恒真 ✓）
 		ok79(JSON.stringify(State.variables.babelRun.已战) === 战前C,
 			'★★C①承重：**跳过不改战果账**（`$babelRun.已战` 逐字节同 ⇒ 跳过 ✗ 不得呈现为「打过/胜利」）');
 		ok79(Object.keys(State.variables.span1Events).length === 键前C,
 			'★★C②承重：**跳过 ✗ 不开新账**（`$span1Events` 键数不变 ⇒ 抽签账只属于抽签层，✗ 被跳过路污染）');
+		if (引擎账可读) {
+			ok79(JSON.stringify(R.save.progress()) === 战果前C,
+				'★★C③承重（领队加裁）：跳过**不惊动引擎进度账**（`RPG.save.progress()` 逐字节同 ⇒ 跳过 ✗ 不得记成胜利／头目已过）');
+		} else {
+			console.log('    · 读数（✗ 不计判据）：本树无 `RPG.save.progress` ⇒ C③ 的**引擎面不可判**（★如实标，✗ 不冒充已断 ✓）');
+		}
+		ok79(JSON.stringify(State.variables.babelRun?.bosses ?? null) === 落账前C,
+			'★★C③′承重：跳过**不写头目回落账**（`$babelRun.bosses` 逐字节同 ⇒ 旧 pin 回落面同样 ✗ 假胜利）');
 		/* ── D. **返城不补发**（★读数面 —— ✗ 不计入判据：返程事务的输入面属 S3 片 3a，本片不重复驱动 ✓）── */
 		const 包D = 包快照();
 		console.log(`    · 读数（✗ 不计判据）：跳过态下背包读数 = ${包D.length} 字符；` +
@@ -6887,6 +6918,7 @@ head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗
 	} finally {
 		if (事件存 === null) delete State.variables.span1Events; else State.variables.span1Events = 事件存;
 		if (局存 === null) delete State.variables.babelRun; else State.variables.babelRun = 局存;
+		if (进度档存 === null) delete State.variables.rpgProgress; else State.variables.rpgProgress = 进度档存;
 	}
 	const 本组失败 = fails.length - 组前失败;
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 79 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（跳过⇒放弃该层收益／✗ 不补发／✗ 假胜利）`);
