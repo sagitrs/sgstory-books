@@ -31,6 +31,7 @@ export const 豁免 = Object.freeze({
   /* ★逐条**具名理由**（✗ 留空即静默漏项）。新增工具时：要么接线、要么在这里补一行。 */
   'run-l10-checks.py': 'L10 本地步序复现器（16+1 组；发布窗手跑体例）',
   'verify-l10-city.mjs': 'L10 无头装配判据模块（随故事主 verify 执行，✗ 不是独立 CLI 步骤）',
+  'e2e-413-test-mode.mjs': 'T 席测试模式验收包（A2）的真浏览器臂：须真页 reload 才能验 `babelTest/` 跨刷新，CI 无浏览器 ⇒ 本地手跑体例，候接线评估',
   'e2e-314-l10-city.mjs': 'L10 真浏览器臂（由 writer 侧 run-l10-checks.py 在本地/发布窗手跑；候接线评估）',
   'e2e-311-visual.mjs': '视觉专项臂（#373 刚合：本地手跑体例，CI 接线候 #388 语义票后评估）',
   'e2e-311-layout.mjs': '同上（两视口几何臂，候评估）',
