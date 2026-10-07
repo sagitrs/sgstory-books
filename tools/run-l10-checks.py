@@ -42,7 +42,7 @@ except Exception as exc:
     print(f'Setup error: {exc}', file=sys.stderr)
     sys.exit(2)
 
-version = 'v0.0.1·' + pin[:8]
+version = 'v0.0.3·' + pin[:8]
 product = books / 'stories/babel/babel-trial.html'
 build = ['python3', str(engine / 'build.py'), str(books / 'stories/babel'),
          '--out', 'babel-trial.html', '--version', version]

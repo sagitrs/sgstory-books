@@ -257,16 +257,32 @@ setup.BABEL.装宿主存档门 = () => {
 };
 setup.BABEL.装宿主存档门();   // boot 装一次（宿主配置此时已在位；缺席则静默跳过，由判据格断）
 
-/** **自动命名**（票面 §8.2：带**真实层数**）：`层·地点名`，战前保底再加 `·战前`。 */
-setup.BABEL.存档名 = ({ 战前 = false } = {}) => {
+/** **自动命名**：`层·地点名[·关键进度][·时间][·战前]`。
+ *  ★线上 P1-3（writer 实测 §3）：「普通档名『回合 8』不如**地点、关键进度和时间**好辨认」⇒ 补三段。
+ *  ★保留面（既有格在断）：①名内**始终含真实层数**；②战前保底名**以 `·战前` 结尾** ⇒ 新段一律加在它**之前**。
+ *  ★时间可注入（`时`）⇒ 判据格能给**确定值**（✗ 逼格断「现在几点」）。
+ */
+setup.BABEL.存档名 = ({ 战前 = false, 时 = null } = {}) => {
 	const m = setup.BABEL.map;
 	const 层 = setup.BABEL.layerOf?.() ?? null;
 	const 地名 = m?.locations?.get?.(m.current)?.name ?? m?.current ?? null;
+	const 进度 = (() => {
+		const S7 = setup.BABEL.七名河;
+		try {
+			const r = S7?.读?.();
+			if (!r?.已开始) return null;
+			return r.已完成 ? '七名河·已完成' : `七名河·${r.当前 ?? '进行中'}`;
+		} catch (e) { return null; }        // ✗ 吞：读面缺席 ⇒ 只少一段，✗ 让整串失败
+	})();
+	const d = 时 ?? new Date();
+	const 两 = (n) => String(n).padStart(2, '0');
+	const 时刻 = `${两(d.getMonth() + 1)}-${两(d.getDate())} ${两(d.getHours())}:${两(d.getMinutes())}`;
+	const 尾 = `${战前 ? '·战前' : ''}`;
 	/* ★玩家**还没进入任何层**时（boot 直接点快存是可能的）不给「?·未知」这种半成品串：
 	 *   层与地点都没有 ⇒ 只印「未入层」；有层无地点 ⇒ 只印层号。 */
-	if (层 == null && 地名 == null) return `未入层${战前 ? '·战前' : ''}`;
-	if (地名 == null) return `${层}${战前 ? '·战前' : ''}`;
-	return `${层 ?? '?'}·${地名}${战前 ? '·战前' : ''}`;
+	if (层 == null && 地名 == null) return `未入层·${时刻}${尾}`;
+	if (地名 == null) return `${层}·${时刻}${尾}`;
+	return `${层 ?? '?'}·${地名}${进度 ? `·${进度}` : ''}·${时刻}${尾}`;
 };
 
 /** **可否存档**（P0：战斗中一律拒绝；宿主或槽位不可用亦拒）。 */
@@ -332,6 +348,17 @@ setup.BABEL.页脚快存 = () => {
 	return r;
 };
 
+/* ★线上 P1-3（writer 实测 · `sgstory-books-live-critique-2026-10-07`）：**快存写出了记录，
+ *   但存档菜单无法载入它**（「无快读口」✗）。★本函数＝**唯一的「快存槽有没有档」判据**，
+ *   供 UI 决定要不要显示「载入快存」入口 ⇒ ★与 `快读` **同源**（同用 `has`，✗ 不各写一份 ✓）。
+ *   ★为何必须 `has`：真宿主的 `isEmpty(i)` **一旦有过任何写入**就对**所有号**返回假（空槽亦然）
+ *   ⇒ 拿它当空否判据会把空槽当有档（`#183` 调查所得 ✓）。`has` 缺席才退回 `isEmpty`（明知不可靠）✓。 */
+setup.BABEL.快存有位 = (slot = 槽位.快存) => {
+	const S = 宿主槽();
+	if (typeof S?.has === 'function') return S.has(slot) === true;
+	if (typeof S?.isEmpty === 'function') return S.isEmpty(slot) !== true;   // ★更老的宿主：不可靠，故仅作回落 ✓
+	return false;
+};
 setup.BABEL.快读 = (slot = 槽位.快存) => {
 	const S = 宿主槽();
 	if (typeof S?.load !== 'function' || typeof S.isEmpty !== 'function') {

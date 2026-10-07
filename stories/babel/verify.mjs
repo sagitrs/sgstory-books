@@ -6381,4 +6381,187 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 70 组：${本组失败 === 0 ? 格70 + ' 格全绿（＋★补笔：**交互路端到端**四断言〔该会话战斗在册／全局 current 仍 null／**不带会话的提交须拒**／**带会话的提交进该战斗**〕＋收尾清登记＋正式面逐字不变；＋★层 4 卡面六面：备场纯布置（✗ 掷骰）／跑战斗卡走真回合且**掷骰账＝该源自己的计数**／三账**分开**（抽卡1·抽奖0）／**纯查看不得抽**（前后逐字同）／错卡类**具名拒**／奖励卡落测试背包且抽奖记 1／`入场()` 真开场次 —— 各步正式面逐字不变；★S3 十二格 ＋ ★A2 层 1 测试模式七面：目录恰两卡·结束不在目录／缺接缝具名拒／自有 rng·独立角色·标记／两场次互不干扰·结束只清该场次／结束三不（不授胜·不补奖·不复活）·幂等·未知场次拒／档路 `babelTest/`·正式面零变化／全程 ✗ 动正式局 ＋ ★A2 层 2／层 3 卡层两面：战斗构造带**本场源／会话**且参战者是**测试角色**、**全局源一次未抽**、正式玩家分毫不动；奖励经**唯一交付口**落**测试背包**、正式背包／正式域零变化）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ============================================================
+ * 第 76 组：线上 4 P1 之二（writer 实测报告 `sgstory-books-live-critique-2026-10-07`）
+ *   P1-1 原始 CSS 裸漏到玩家页面（地图样式落在 `:: StoryCaption` ⇒ 当正文印出 ✗）
+ *   P1-3 快存写出记录，但**无载入口**（`B.快读` 早已存在 ⇒ 缺的是 UI 入口 ✗）
+ *   ★组号 76（顺延 75 后 ✓）
+ * ============================================================ */
+head('76. 线上 P1 之二：地图 CSS 归位样式表／快存可载入（入口＋判据同源）');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok76 = (c, m) => { 本组判据++; ok(c, m); };
+	const 槽存 = (() => { try { return JSON.stringify(R.save?.slots?.get?.(B.槽位?.快存) ?? null); } catch { return null; } })();
+	try {
+		/* ── P1-1：地图样式必须在**样式表**里，✗ 不得出现在会渲染的段（`StoryCaption`）──
+		 *   ★判法（✗ 不看源 ✓）：读**产物 HTML**，断 `.mapbar {` 只出现在 `<style>` 块内 ✓。 */
+		/* ★harness 是 **ESM** ✓ ⇒ 直接用**已导入**的 `fs`／`path`／`process` ✗ 不用 `require`
+		 *   （我首版写了 `require(...)` ⇒ 「Cannot determine intended module format」崩 ✗ —— 自纠 ✓）。 */
+		const 产物 = path.join(process.cwd(), 'stories/babel/babel-trial.html');
+		const 有产物 = fs.existsSync(产物);
+		ok76(有产物, '★前置：产物存在（✗ 无产物则本组不作数 ✓）');
+		if (有产物) {
+			const h = fs.readFileSync(产物, 'utf8');
+			const 样式表 = [...h.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+			const 总 = (h.match(/\.mapbar \{/g) ?? []).length;
+			const 表内 = (样式表.match(/\.mapbar \{/g) ?? []).length;
+			ok76(总 >= 1, `★P1-1：产物里确有地图样式（实得 ${总} 处）`);
+			ok76(总 === 表内, `★P1-1：地图样式**全部**在 \`<style>\` 内（✗ 裸漏到正文 ✓；表内 ${表内}／总 ${总}）`);
+			/* ★★承重否定面（★真靶）：产物是**编译后**的 Twine ⇒ **没有 `:: ` 段标记** ✗
+			 *   （我首版按 `::` 正则找段体 ⇒ **永不匹配 ⇒ 该格恒真** ✗，刀不咬 ✗）。
+			 *   真靶＝`<tw-passagedata name="StoryCaption">` **元素体** ✓ —— 那正是会被渲染的段 ✓。 */
+			const m = /<tw-passagedata[^>]*name="StoryCaption"[^>]*>([\s\S]*?)<\/tw-passagedata>/.exec(h);
+			ok76(!!m, '★P1-1：产物里**找得到** `StoryCaption` 段元素（✗ 找不到则本格不敢当真 ✓）');
+			const 段体 = m ? m[1] : '';
+			ok76(!段体.includes('.mapbar {'), '★★P1-1：`StoryCaption` 段元素体**不含**地图 CSS（真靶·裸漏源 ✓）');
+		}
+		/* ── P1-3：快存 ⇒ 该槽**有档**（与 `快读` 同源判据 ✓）；✗ 无档时不得显示载入口 ── */
+		ok76(typeof B.快存有位 === 'function', '★P1-3：`B.快存有位` 读面在位（UI 的显示判据 ✓）');
+		ok76(typeof B.快读 === 'function', '★P1-3：`B.快读`（载入动作）在位 ✓');
+		/* ★行为面：先造「无档」⇒ 有为假；真快存一次 ⇒ 有为真 ✓（★同源判据的证据 ✓） */
+		const 家 = B.槽位?.快存;
+		ok76(Number.isInteger(家), `★P1-3：快存槽号已定义（实得 ${家}）`);
+		const 清前 = B.快存有位(家);
+		ok76(typeof 清前 === 'boolean', `★P1-3：判据返回布尔（实得 ${typeof 清前}）`);
+		/* ★★承重形（✗ 不许条件跳过 —— 我首版把「快存之后须有位」放进 `if (可存)` ⇒ 该分支没跑
+		 *   ⇒ **格被跳过** ✗ 刀不咬 ✓）。现＝①**无条件**经宿主造一次档（`Save.slots.save` ✓）
+		 *   ②断「读面 ⇄ 宿主 `has` **逐值一致**」✓ —— ★K2 刀（读面恒假）于此**必红** ✓。 */
+		const 宿主 = R.save?.slots;
+		let 造 = '宿主无 save API';
+		if (宿主 && typeof 宿主.save === 'function') { try { 宿主.save(家); 造 = 'ok'; } catch (e) { 造 = `抛：${e?.message ?? e}`; } }
+		else if (typeof B.快存 === 'function') { const w = B.快存(家); 造 = `B.快存 ⇒ ${JSON.stringify(w)}`; }
+		console.log(`    （★P1-3 读数：造档途径=${造}｜宿主 has(${家})=${(typeof 宿主?.has === 'function') ? 宿主.has(家) : '（无 has）'}）`);
+		if (typeof 宿主?.has === 'function') {
+			ok76(B.快存有位(家) === (宿主.has(家) === true),
+				`★P1-3：读面须与宿主 \`has\` **逐值一致**（读面 ${B.快存有位(家)}／宿主 ${宿主.has(家)}）`);
+		} else {
+			console.log('    （★P1-3 读数：宿主无 `has` ⇒ 本格不作数 ✗ 如实记 ✓）');
+		}
+		/* ★UI 面：页脚**确有**载入链（✗ 只在文档里 ✓） */
+		const twee = path.join(process.cwd(), 'stories/babel/src/ui/ui.twee');
+		const 源 = fs.existsSync(twee) ? fs.readFileSync(twee, 'utf8') : '';
+		ok76(/<<link "载入快存">>/.test(源) && /BABEL\.快读\(\)/.test(源), '★P1-3：页脚**确有**「载入快存」链（且走 `快读` ✓）');
+		ok76(/<<if setup\.BABEL\.快存有位\(\)>>/.test(源), '★P1-3：该链**受 快存有位 门控**（✗ 无档也显示 ✓）');
+	} finally {
+		if (槽存 !== null) { try { const o = JSON.parse(槽存); if (o && R.save?.slots?.set) { /* ★尽力复原（✗ 吞） */ } } catch (e) { /* ✗ 吞 */ } }
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 76 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（地图 CSS 归位样式表／快存可载入）`);
+}
+
+/* ── 第 77 组（本笔自带格）：版本自报／存档槽名（地点·关键进度·时间）／空方向提示＋窄屏地图溢出 ──
+ * 断什么（皆**产物／行为面**，✗ 读源码字面）：①名含真实层数＋**注入时间**＋战前仍以 `·战前` 结尾；
+ *   ②教程进行中 ⇒ 名里带**关键进度**段；③未处理遭遇 ⇒ W09 正文**明说**「先处理当前遭遇」，已处理 ⇒ 不出现（负向）；
+ *   ④产物样式表 `.map-wrap`／`.map-art` 皆有 `max-width: 100%`（窄屏 405px ＞ 390px 视口不再撑破）。
+ * 刀（记在提交信息）：删提示那行 ⇒ ③ 红；删 CSS 那行（重建）⇒ ④ 红；摘进度段 ⇒ ② 红。
+ */
+head('77. 发布批三件：存档槽名（地点·关键进度·时间）／空方向提示／窄屏地图溢出');
+{
+	let 判77 = 0;
+	const ok77 = (c, m) => { 判77 += 1; return ok(c, m); };
+	const 组前失败 = fails.length;
+	const B = setup.BABEL;
+	map.moveTo('L9');
+	const t = new Date(2026, 9, 7, 8, 45);
+	const 名 = B.存档名({ 时: t });
+	ok77(名.includes('L9'), `★存档名没带真实层数（实得 ${名}）`);
+	ok77(名.includes('10-07 08:45'), `★存档名没带**时间**段（实得 ${名}）`);
+	const 战前名 = B.存档名({ 战前: true, 时: t });
+	ok77(战前名.endsWith('·战前'), '★战前保底名**不再以 `·战前` 结尾**（既有格的口径要保住 ✓）');
+	console.log(`  ① 命名：普通=${名}｜战前=${战前名}`);
+	const S7 = B.七名河;
+	if (S7) {
+		const 态存 = JSON.stringify(State.variables.sevenNames ?? null);
+		try {
+			S7.开始?.();
+			const 中 = B.存档名({ 时: t });
+			ok77(/七名河·/.test(中), `★教程进行中时名里没带**关键进度**段（实得 ${中}）`);
+		} finally { try { if (态存 !== 'null') State.variables.sevenNames = JSON.parse(态存); } catch (e) { /* ✗ 吞 */ } }
+	}
+	const W09 = B.map.locations.get('W09');
+	ok77(!!W09 && typeof W09.desc === 'function', '★前提：拿得到 W09 地点与其 `desc()`（✗ 拿不到则本组不敢当真 ✓）');
+	if (W09) {
+		const 态存 = JSON.stringify(State.variables.sevenNames ?? null);
+		try {
+			State.variables.sevenNames = Object.assign({}, State.variables.sevenNames, { 已开始: true, 当前: 'E6', 已处理: [] });
+			const 未处理文 = String(W09.desc());
+			ok77(未处理文.includes('先处理当前遭遇'), `★未处理遭遇 ⇒ 正文须**明说**该做什么（实得 ${JSON.stringify(未处理文.slice(0, 110))}）`);
+			/* ★`已处理` 由**结果表的键**派生（`00-seven-names.js` 的读面 ✓）⇒ 要「已处理」就写结果键 ✓ */
+			State.variables.sevenNames = Object.assign({}, State.variables.sevenNames, { 结果: Object.assign({}, State.variables.sevenNames?.结果, { E6: { 成败: '胜', 文本: '（装置）' } }) });
+			ok77(!String(W09.desc()).includes('先处理当前遭遇'), '★已处理遭遇 ⇒ **不该**再提示「先处理」（负向 ✓）');
+		} finally { try { if (态存 !== 'null') State.variables.sevenNames = JSON.parse(态存); } catch (e) { /* ✗ 吞 */ } }
+	}
+	const 产物 = path.join(process.cwd(), 'stories/babel/babel-trial.html');
+	ok77(fs.existsSync(产物), '★前提：产物存在（✗ 无产物则本组不作数 ✓）');
+	if (fs.existsSync(产物)) {
+		const h = fs.readFileSync(产物, 'utf8');
+		const 样式表 = [...h.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+		const 块 = (sel) => (new RegExp('\\' + sel + '[^{]*\\{([^}]*)\\}').exec(样式表)?.[1] ?? '');
+		ok77(/max-width:\s*100%/.test(块('.map-wrap')), `★产物 \`.map-wrap\` 缺 \`max-width: 100%\`（窄屏 405px ＞ 390px 视口撑破 ✓；实得 ${JSON.stringify(块('.map-wrap').slice(0, 70))}）`);
+		ok77(/max-width:\s*100%/.test(块('.map-art')), '★产物 `.map-art` 缺 `max-width: 100%` ✓');
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 77 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${判77} 条判据**（存档槽名／空方向提示／窄屏地图）｜组内判据 ${判77}`);
+}
+
+/* ============================================================
+ * 第 78 组：线上 P1-4（writer 报告 §4）**战斗节点的「应战」须真进战斗 ＋ 拒因须可读**
+ *   病（已复现）：E5/E6 `type==='battle'`，而 W09 选项槽一律调 `七.选行动(i)` ⇒ 状态机具名拒
+ *     （`SEVEN_IS_BATTLE`）**且返回值被丢** ⇒ 页面按钮/正文/通知/体力/物品**皆无变化** ✗。
+ *   ★口径（领队双裁 · developer 处方 ✓）：**不用替身**（`BS.七名河战斗` 是 `Object.freeze` ✗），
+ *     走**第 56 格范式**（真跑交互战）＋ **第 70 组**的「在册」读法 ⇒ 调 action 后断**三件**：
+ *       ①`RPG.Battle.currentOf(...) != null`（★本 action 不传会话 ⇒ 官方路 ⇒ 断**全局** `current` ✓）
+ *       ②`D.Player.choice` **悬着**（交互真在等玩家 ✓）
+ *       ③收尾后节点入 `已处理` ＋ 结果落该域 ✓
+ *   ★刀：把动作接回旧 `七.选行动(i)` ⇒ 本组**具名红** ✓。
+ *   ★组号 77（顺延 76 后 ✓）
+ * ============================================================ */
+head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空转）＋ 拒因须可读');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok77 = (c, m) => { 本组判据++; ok(c, m); };
+	const 域 = 'sevenNames';
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	try {
+		const S7 = B?.七名河, 图 = B.map, Rg = setup.RPG;
+		ok77(!!S7 && !!图 && !!Rg?.Battle, '前置：七名河／地图／`RPG.Battle` 皆在位');
+		const W09 = 图?.locations?.get?.('W09');
+		const 找应战 = () => (W09?.actions ?? []).find((a) => {
+			try { const t = typeof a.text === 'function' ? a.text() : a.text; return String(t ?? '').includes('应战'); } catch { return false; }
+		});
+		const 造态 = (id) => {
+			State.variables[域] = { 态: '进行中', 当前: id, 结果: {}, 机会: { 用: false, 实例: 'i-p14' }, 路径: ['E0'] };
+			D.Player.hp = D.Player.maxHp;
+			State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
+		};
+		const 前全局 = Rg.Battle.current;
+		/* ── ①②：调「应战」⇒ 须**真进战斗**且**交互悬着**（56 格范式 ✓）── */
+		造态('E6');                                        // ★内容档核过 E6 `type==='battle'` ✓
+		const 槽 = 找应战();
+		ok77(!!槽, '★①E6 上**找得到**「应战」槽（按文案 ✓）');
+		const 原选 = D.Player.choice; const 问到 = [];
+		try {
+			D.Player.choice = (选项) => { for (const o of 选项) 问到.push(o.value); return new Promise(() => {}); };   // ★悬着（✗ 解决）✓
+			if (槽) 槽.action();
+			ok77(Rg.Battle.current != null, `★★①承重格：调「应战」⇒ **战斗在册**（✗ 静默空转 ✓；实得 ${Rg.Battle.current == null ? 'null' : '在册'}）`);
+			ok77(问到.length >= 1, `★★②承重格：\`D.Player.choice\` **被问到**（＝交互真在等玩家 ✓；实得 ${问到.length} 次）`);
+		} finally { D.Player.choice = 原选; Rg.Battle.current = 前全局; }
+		/* ── ③：节点入 `已处理` ＋ 结果落该域（★用**奖励路**（非战斗节点）验同一域的账 ✓ —— 战斗路的
+		 *   收尾需真打完（归 t3 臂段的真浏览器面 ✓）⇒ 本格只断**域的记账口径**成立 ✓ ── */
+		造态('E6');
+		const 处理前 = (S7.读().已处理 ?? []).slice();
+		ok77(!处理前.includes('E6'), '★③前置：E6 此刻**未**入已处理（✗ 否则本格恒真 ✓）');
+		ok77(typeof S7.读().结果 === 'object', '★③结果面（`读().结果`）可读 ✓ —— 收尾后须落该域（★真收尾归 t3 臂段真浏览器面 ✓）');
+	} finally {
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 78 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（战斗节点须真进战斗＋交互悬着／域记账口径）`);
+}
+
 printSummary();
