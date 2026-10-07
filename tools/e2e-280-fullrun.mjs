@@ -151,7 +151,6 @@ if (process.argv.includes('--selftest')) {
         `走全=${JSON.stringify(全.走过)}｜全·越界=${全.越界.length}（须 0）｜5 支接口=${半.走过.length}（须 5）｜被拒支报法=${JSON.stringify(坏.越界)}`);
     }
   console.log(红S.length ? `\n  ⇒ 自检失败 ${红S.length} 条\n${红S.join('\n')}` : '\n  ⇒ 自检：12/12 如期（K1／K2 判出口形；K3–K5c 判选件；K6／K7 机械防「取法回退」与「忘了钉随机」✓；K8–K10 判基准与两条判据的牙齿；K11 判六路驱动会走全且越界具名 ✓）');
-console.log(红S.length ? `\n  ⇒ 自检失败 ${红S.length} 条\n${红S.join('\n')}` : '\n  ⇒ 自检：11/11 如期（K1／K2 判出口形；K3–K5c 判选件；K6／K7 机械防「取法回退」与「忘了钉随机」✓；K8–K10 判 S8 W09 相位的基准与两条判据的牙齿 ✓）');
   process.exit(红S.length ? 1 : 0);
 }
 
