@@ -21,14 +21,15 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
-const flags = new Set(['--books', '--engine', '--selftest', '--combat-redraw']);
+const flags = new Set(['--books', '--engine', '--selftest', '--combat-redraw', '--map-asset']);
 let books, engine, chromium, chrome, html;
 try {
 	for (let i = 0; i < args.length; i++) {
 		if (!flags.has(args[i])) throw Error(`unknown argument: ${args[i]}`);
-		if (!['--selftest', '--combat-redraw'].includes(args[i]) && (!args[++i] || args[i].startsWith('--'))) throw Error('missing argument value');
+		if (!['--selftest', '--combat-redraw', '--map-asset'].includes(args[i]) && (!args[++i] || args[i].startsWith('--'))) throw Error('missing argument value');
 	}
-	if (args.includes('--selftest') && args.includes('--combat-redraw')) throw Error('--selftest and --combat-redraw are separate entries');
+	for (const [a, b] of [['--selftest', '--combat-redraw'], ['--selftest', '--map-asset'], ['--combat-redraw', '--map-asset']])
+		if (args.includes(a) && args.includes(b)) throw Error(`${a} and ${b} are separate entries`);
 	const value = (f) => args.includes(f) ? args[args.indexOf(f) + 1] : null;
 	if (!value('--books') || !value('--engine') || !process.env.PW_DIR || !process.env.CHROME_BIN) {
 		throw Error('require --books, --engine, PW_DIR and CHROME_BIN');
@@ -47,6 +48,8 @@ try {
 }
 const selftest = args.includes('--selftest');
 const combatRedraw = args.includes('--combat-redraw');
+/* ★`71-a`（T 域出案定稿 `6027828976`·**面 4**）：真渲染 · 坏图对真资产的覆盖 ✓ */
+const mapAsset = args.includes('--map-asset');
 const measure = (page) => page.evaluate(() => {
 	const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON() ?? null;
 	return { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, touch: navigator.maxTouchPoints,
@@ -106,7 +109,20 @@ const decorationAudit = (page) => page.evaluate(async () => {
 		decoded.push({ id, width: image.naturalWidth, height: image.naturalHeight });
 		if (image.naturalWidth !== asset.width || image.naturalHeight !== asset.height) bad.push(`SVG_DECODE_DIMENSIONS:${id}`);
 	}
-	if (decoded.length !== 8) bad.push('EIGHT_SVG_DECODE_PREREQUISITE');
+	/* ★★T 域定形（`#485` 第 112 行裁 · 2026-10-07）：**按「声明集」判，✗ 按「数目」判** ──────────
+	 *   ★病（既有红 · 与 71-a 无关 ✓）：★旧形 `decoded.length !== 8` ⇒ ★数的是「**恰好 8 张**」✗
+	 *     ⇒ ★S7 加了第 9 张（`assets/map-w09.svg` ✓）⇒ ★**恒红** ✗（★而它红得**没有信息** ⇒ 新增资产＝合法动作 ✓）。
+	 *   ★本条的**本意**（★我读上下文判的）：★保证「**逐件解尺寸**那条断言**不是空转**」✓ ——
+	 *     ★即：`setup.storyAssets` **有东西** ✓ ＋ **每一件都真解过码** ✓。
+	 *   ★⇒ 新形（两件，皆**具名**）：
+	 *     ①**声明集非空**（★空 ⇒ 下面逐件尺寸断言**整体空转** ✗ ⇒ 恒真式 ✓）
+	 *     ②**逐 id 对齐**（★声明集里每一 id 都在 `decoded` 里 ✓ ⇒ ★**漏解一件**仍必红 ✓）
+	 *   ★★这样子：★**新增资产** ⇒ 不再拖红 ✓；★**表空／漏解** ⇒ 仍必红 ✓（★刀见 `--selftest` 注释 ✓）。 */
+	const 声明集 = Object.keys(setup.storyAssets ?? {});
+	const 解集 = new Set(decoded.map((d) => d.id));
+	const 漏解 = 声明集.filter((id) => !解集.has(id));
+	if (声明集.length === 0) bad.push('SVG_ASSET_PREREQUISITE:声明集为空（逐件尺寸断言会空转）');
+	if (漏解.length) bad.push(`SVG_ASSET_PREREQUISITE:漏解 ${漏解.join(',')}`);
 	const portrait = passage().querySelector('.babel-player-art');
 	await portrait.decode();
 	const oldSrc = portrait.getAttribute('src'), oldHidden = portrait.hidden;
@@ -172,7 +188,74 @@ try {
 			if (entry.decoration.failures.length) rc = 1;
 		} finally { await context.close(); }
 	}
-	for (const mode of combatRedraw ? [] : ['zoom', 'narrow']) {
+	if (mapAsset) {
+		/* ★`71-a`（T 域出案定稿 `6027828976`·**面 4**）：**真渲染 · 坏图对真资产的覆盖** ✓
+		 *   ★核心命题：★**底图坏了 ⇒ 退化但不塌** —— 面板文本**照出**（✗ 空白 ✗ 抛 ✓）＋ 覆盖层**仍在** ✓。
+		 *   装置：真 Chromium ＋ **真产物**（✗ 不合成 ✓）；三跑＝① **正控**（好图 ⇒ 同名断言成立 ✓）
+		 *   ② **负**（坏图＝底图 `data:` 载荷截成空 SVG ⇒ **同名断言仍须成立** ✓）③ **刀**（摘掉「结果」投影那一路 ⇒
+		 *   本模式须**具名红** ✓ —— 证明「文本照出」不是恒真式 ✓）。
+		 *   ★边界（沿用该件档头自陈）：只判**退化与不塌** ✓；✗ 判解码正确性／字体／物理设备 ✓。 */
+		const 面板读 = (page) => page.evaluate(() => {
+			const p = document.querySelector('[data-panel="seven-names-map"]');
+			if (!p) return { 有面板: false };
+			const t = (p.textContent ?? '').replace(/\s+/g, ' ').trim();
+			const ov = p.querySelector('svg.map-overlay'), img = p.querySelector('img[data-babel-asset]');
+			return { 有面板: true, 文本: t.slice(0, 160), 文本长: t.length, 有当前: t.includes('当前：'),
+				有状态: t.includes('尚未处理') || t.includes('已办（'), 有覆盖层: !!ov,
+				覆盖层件: ov ? ov.children.length : 0, 有底图: !!img, 底图src长: img ? (img.getAttribute('src') ?? '').length : 0 };
+		});
+		const 原文 = html.toString('utf8');   // ★基准＝本笔起动时的产物（✗ 逐跑累积改 ✓；`html` 是 Buffer ⇒ 转串做替换、回写再转 Buffer ✓）
+		const 跑一跑 = async (标签, 期望红 = false) => {
+			const 进 = { mode: `map-asset:${标签}`, inputs: [], 页错: [], 失败: [] }; report.cases.push(进);
+			const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+			try {
+				const page = await context.newPage();
+				page.on('pageerror', (e) => 进.页错.push(String(e.message).slice(0, 160)));
+				await page.goto(`http://127.0.0.1:${server.address().port}/candidate.html`);
+				const active = page.locator('#passages .passage:not(.passage-out)');
+				for (const text of ['战斗教学', '站起来，活动一下手脚']) { await active.getByText(text, { exact: true }).click(); 进.inputs.push(text); }
+				await page.waitForFunction(() => SugarCube.setup.BABEL.map.current === 'L1', null, { timeout: 15000 });
+				await page.locator('[data-panel="seven-names-map"] .map-open').first().click(); 进.inputs.push('打开地图');
+				await settle(page); 进.读 = await 面板读(page);
+				const r = 进.读;
+				if (!r.有面板) 进.失败.push('面板不在（`[data-panel="seven-names-map"]` 找不到）');
+				else {
+					if (!(r.文本长 > 0)) 进.失败.push('面板文本**没照出**（长度 0 ⇒ 底图一坏就塌）');
+					if (!r.有当前) 进.失败.push('等价文字「当前：」那段不在');
+					if (!r.有状态) 进.失败.push('★结果投影那一路（「尚未处理」／「已办（…）」）不在');
+					if (!r.有覆盖层) 进.失败.push('覆盖层 `svg.map-overlay` 不在');
+					if (!(r.覆盖层件 > 0)) 进.失败.push('覆盖层是空的（一个件都没有）');
+					if (!r.有底图) 进.失败.push('底图 `img[data-babel-asset]` 不在');
+				}
+				if (进.页错.length) 进.失败.push(`页面抛了：${进.页错[0]}`);
+				进.期望红 = 期望红;
+				/* ★读数口径：**负**与**正控**须绿 ✓；**刀**须**具名红** ✓（它的红是**证据**、不是产品回归 ✓）
+				 *   ⇒ 刀若意外**绿** ⇒ 才判红并具名「★刀没咬住」 ✓（否则恒真式无人发现 ✓）。 */
+				if (期望红) {
+					if (进.失败.length === 0) { 进.失败.push('★刀**没咬住**：摘掉结果投影那一路后，本模式的断言**仍全过** ⇒ 判据是恒真式（✗ 放行）'); rc = 1; }
+				} else if (进.失败.length) rc = 1;
+			} finally { await context.close(); }
+			return 进;
+		};
+		html = Buffer.from(原文, 'utf8'); await 跑一跑('正控-好图');
+		{
+			const m = /(babel-map-w09[\s\S]{0,400}?data:image\/svg\+xml;base64,)[A-Za-z0-9+/=]{200,}/.exec(原文);
+			if (!m) { const e = Error('装置错：抓不到底图 `data:` 载荷 ⇒ 坏图**证不出**（✗ 静默当绿 ✓）'); e.setup = true; throw e; }
+			html = Buffer.from(原文.replace(m[0], `${m[1]}PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=`), 'utf8'); await 跑一跑('负-坏图（载荷截成空 SVG）');
+		}
+		{
+			let 文 = 原文, 命中 = 0;
+			for (const 锚 of ['尚未处理', '已办（']) {
+				if (!文.includes(锚)) { const e = Error(`装置错：刀锚「${锚}」不在产物里 ⇒ ★**锚失效**（✗ 不是产品回归 ✓；请改锚 ✓）`); e.setup = true; throw e; }
+				文 = 文.split(锚).join(''); 命中++;
+			}
+			if (命中 !== 2 || 文 === 原文) { const e = Error('装置错：刀未生效（替换数或文本未变）⇒ 证不出'); e.setup = true; throw e; }
+			html = Buffer.from(文, 'utf8'); await 跑一跑('刀-摘结果投影', true);   // ★刀 ⇒ **期望红**（它的红是证据）✓
+		}
+		html = Buffer.from(原文, 'utf8');   // ★复原（✗ 把装置留在刀态 ✓）
+		report.mapAsset = { 判据: 'J2：负向判据须有正控 ⇒ 本模式自带 正控／负／刀 三跑', 边界: '只判退化与不塌；✗ 判解码正确性／字体／物理设备' };
+	}
+	for (const mode of (combatRedraw || mapAsset) ? [] : ['zoom', 'narrow']) {
 		const context = await browser.newContext(mode === 'zoom'
 			? { viewport: { width: 720, height: 500 }, deviceScaleFactor: 2 }
 			: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
