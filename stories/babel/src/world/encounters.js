@@ -26,6 +26,20 @@ if (typeof setup.BABEL.战果 !== 'function') {
 
 const run = () => (State.variables.babelRun ??= { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L1', 时间: 0 });
 
+/* ★`books#413`（A2·S2）：把**本局账的唯一口径**交给「运行上下文」（`src/story/zz-run-context.js`）取用 ——
+ *   ✗ 让那份上下文另写一份默认账形（同一个量两套算法＝本仓已记的坑）；正式路径照旧，测试会话另有其账 ✓。 */
+setup.BABEL.本局账 = run;
+
+/* ★`books#413`（A2·S2）：本档的**正式全局读者**（玩家／本局账）一律经**运行上下文**取 ——
+ *   · **官方路径**：上下文栈空 ⇒ 取**正式上下文**（`setup.DND3.Player`／`run()`）⇒ 行为**逐字不变** ✓；
+ *   · **测试会话**：调用方用 `BS.运行.在(测试上下文, fn)` 显式置入 ⇒ 同一条规则代码吃**它自己那份**玩家／账 ✓
+ *     （裁 5：✗ 借正式对象再回滚 ✗ 另造结算数学 ⇒ 只换**取对象的口** ✓）。
+ *   ★「缺上下文 ✗ 悄悄借正式源」的落实：**缺省是给官方旧调用**的合法路径 ✓，而测试侧**必须**显式置上下文
+ *     （A2 的判据按此断：测试链跑完 ⇒ 正式面逐字不变 ✓）。 */
+const 运 = () => setup.BABEL.运行?.取?.() ?? null;
+const 玩家 = () => 运()?.玩家?.() ?? DND3.Player;
+const 本账 = () => 运()?.账?.() ?? run();
+
 /**
  * 取一个**新鲜的**怪物实例。
  *
@@ -94,7 +108,7 @@ setup.BABEL.gather = () => {
 	const res = R.act(held, point, player, 'gather', player);
 	if (res && res.status === 'applied') {
 		setup.BABEL.commitNode(layer, held);   // 单点写回（charges 已扣）
-		run().gathered += 1;
+		本账().gathered += 1;
 	}
 	return res;
 };
@@ -129,15 +143,15 @@ setup.BABEL.gather = () => {
  * @param {string} [opts.层] 死亡发生的层 id（缺省取当前层；**须在跳段前取**）
  * @returns {{settled: boolean, reason: string, 死前层?: string}} */
 setup.BABEL.结算战败 = ({ 源 = '未知', 层 = null } = {}) => {
-	const P = DND3.Player;
+	const P = 玩家();
 	if (!P || P.isDown !== true) return { settled: false, reason: '未倒下' };
 	if (P.hp > 0 && !P.contains('death')) return { settled: false, reason: '非致命倒下' };
-	if (run().终局 === true) return { settled: false, reason: '本局已终局' };   // 幂等门（不复活 ⇒ 尸体恒在）
+	if (本账().终局 === true) return { settled: false, reason: '本局已终局' };   // 幂等门（不复活 ⇒ 尸体恒在）
 	const 死前层 = 层 ?? setup.BABEL.layerOf?.() ?? null;
 	if (typeof DND3.grantDeathIfDown === 'function') DND3.grantDeathIfDown(P);
 	/* ★不复活：**不调 `respawn`**（它会把位置搬回起点层、清档、把 hp 填满 —— 那是被本裁定推翻的旧终端）。 */
-	run().终局 = true;
-	run().deaths += 1;                  // ★语义＝「本局战败次数」（结算屏标签随之改）
+	本账().终局 = true;
+	本账().deaths += 1;                  // ★语义＝「本局战败次数」（结算屏标签随之改）
 	/* `#1798` B4：终局是**结论行** ⇒ 走 `death` 通道（`key`），「仅关键」档下仍进正文。 */
 	R.perform(`你在第 ${String(死前层 ?? '?').replace('L', '')} 层倒下了 —— 这一局到此为止。`, { channel: 'death' });
 	SugarCube.Engine.play('游戏失败');
@@ -383,7 +397,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	 *   ⚠ 仍必须门控 `interactive`（无头自检里没人可点，`await choice` 会**永久挂起**）。 */
 	const exit = () => {
 		if (!interactive) return undefined;
-		return DND3.Player.choice([{ text: '继续探索', value: '探索' }]).then((v) => SugarCube.Engine.play(v));
+		return 玩家().choice([{ text: '继续探索', value: '探索' }]).then((v) => SugarCube.Engine.play(v));
 	};
 	const bail = (msg) => { R.perform(msg); return exit(); };
 	const layer = setup.BABEL.layerOf();
@@ -439,7 +453,8 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		/* ★`sgstory#1934`（`books#220` 同票）：**本场实例留给战后段** —— 战果判定已收并到引擎的
 		 *   解析器（`RPG.outcomeResolver`，`world/boss.js` 的 `战果` 只取名）⇒ 它要「本场的回合预算」
 		 *   才判得动「循环走完而双方仍在」那一支 ⇒ 这里把 `场` 交下去（✗ 让故事侧另存一份回合数）。 */
-		场 = new R.Battle(限, [DND3.Player], foes, interactive);
+			场 = new R.Battle(限, [玩家()], foes, interactive,
+				{ 源: setup.BABEL.运行?.取?.()?.rng?.(), 会话: setup.BABEL.运行?.取?.()?.场次id ?? null });   // ★`#2043`：本场源／会话
 		await 场.execute();
 	} finally {
 		setup.BABEL.战中 = false;
@@ -450,10 +465,10 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	/* ★`books#180`：胜／僵持／击晕／失败**只在一处判**（`setup.BABEL.战果`）——
 	 *   旧形把「胜」写成 `foes.every(isDown)`，与下面的「玩家是否也倒了」**相邻且不互斥** ⇒
 	 *   同归于尽时**先发了战利品**、再走失败流。现在：先取战果，各消费者按它分支。 */
-	const 果 = setup.BABEL.战果({ foes, player: DND3.Player, 战斗: 场 });   // ★`场` 可能是 null（异常路径）⇒ `战果` 里按旧形回落 ✓
+	const 果 = setup.BABEL.战果({ foes, player: 玩家(), 战斗: 场 });   // ★`场` 可能是 null（异常路径）⇒ `战果` 里按旧形回落 ✓
 
 	if (果 === 'victory') {
-		run().kills += foes.length;
+		本账().kills += foes.length;
 		const loot = R.rollLoot(layer);
 		for (const l of loot) R.give(l.id, l.n);
 		/* ★`books#132`：本层**必掉**（L2 绷带／L4 钥匙）—— 在随机掉落**之后**补授 ⇒ 与随机面不冲突。
@@ -472,7 +487,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		setup.BABEL.记战果?.(layer, 果);
 		/* ★`books#259` 裁 1（战斗不可跳）：**战后**置「本层已战」—— `world/babel.js` 的向上边与
 		 *   事件面都读它（✗ 战前置：打一半退出不该算已战；本处置在 `场.execute()` 之后 ⇒ 那是「打过了」）。 */
-		const _r = run(); (_r.已战 ??= {})[layer] = true;
+		const _r = 本账(); (_r.已战 ??= {})[layer] = true;
 
 		/* ★`books#280` ②-4（裁④「奖励结算停」· 领队原文：四个节拍各成一段＋玩家点击推进）：
 		 *   **胜利结算屏** —— 单屏印战果〔击败数 ＋ 战利品（本块上面已印）〕⇒ 玩家答「**收下**」，
@@ -486,18 +501,18 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 		 *     既有读取出口的判据与装置 ✗ 不受扰）。 */
 		R.perform(`【战斗结算】击败 ${foes.length} 名挡路者，战利品已入包。`);
 		if (interactive) {
-			await DND3.Player.choice([{ text: '收下', value: '收下' }]);
+			await 玩家().choice([{ text: '收下', value: '收下' }]);
 		}
 	}
 
 	/* ★`books#180`：头目战场上的**非胜利收场** ⇒ 退回**准备区**（操作者裁定「撤退落点＝准备区」；
 	 *   本仓的交互战斗没有独立「撤退」机制 ⇒ 「撤退」＝**未胜而离场**，与僵持／击晕同一条落点）。
 	 *   ⚠ 位置写在 `map.moveTo`（✗ 只改读数）：下一屏就是准备区那张图。 */
-	if (果 !== 'victory' && !DND3.Player.isDown && setup.BABEL.落准备区?.(layer)) {
+	if (果 !== 'victory' && !玩家().isDown && setup.BABEL.落准备区?.(layer)) {
 		R.perform('它没有追出来。你退回门前的营地，喘了口气。');
 	}
 
-	if (DND3.Player.isDown) {
+	if (玩家().isDown) {
 		/* ★`books#171`／`#176`：改走**统一入口**（`setup.BABEL.结算战败`）—— 与危害源共用一处，
 		 *   且**只在真终局时**计数／印行（旧形无条件 `deaths += 1`）。
 		 *   ★终端＝**游戏失败**（不复活）：跳段在入口内统一做 ⇒ 两个源同形（本处不再单独跳）。 */
@@ -520,7 +535,7 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
 	 * ⚠ 仅**交互**通路给出口：无头自检（`verify.mjs` 的 `{ interactive: false }`）里没人可点，
 	 *   `await choice(...)` 会**永久挂起** ⇒ 必须门控（本席按此实现，✗ 无条件 await）。 */
 	if (interactive) {
-		const v = await DND3.Player.choice([{ text: '继续探索', value: '探索' }]);
+		const v = await 玩家().choice([{ text: '继续探索', value: '探索' }]);
 		SugarCube.Engine.play(v);
 	}
 };
@@ -533,9 +548,9 @@ setup.BABEL.fight = async ({ interactive = true } = {}) => {
  *   读数不需要那个精度（已在 README 的「已知面」里写明）。
  */
 setup.BABEL.noteTraumas = () => {
-	const seen = run().traumasSeen;
+	const seen = 本账().traumasSeen;
 	for (const id of Object.keys(DND3.Traumas)) {
-		if (DND3.Player.contains(id) && !seen.includes(id)) seen.push(id);
+		if (玩家().contains(id) && !seen.includes(id)) seen.push(id);
 	}
 	return seen;
 };
