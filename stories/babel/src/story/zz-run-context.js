@@ -40,8 +40,17 @@
 	const 置 = (c) => { 栈.push(c); return c; };
 	/** 还原上一上下文（返回被弹出者；空栈 ⇒ `null`）。 */
 	const 还原 = () => (栈.length ? 栈.pop() : null);
-	/** 以某上下文跑一段：**异常也保证还原** ✓。 */
-	const 在 = (c, fn) => { 置(c); try { return fn(); } finally { 还原(); } };
+	/** 以某上下文跑一段：**异常也保证还原** ✓。
+	 *   ★`books#413` A2 补笔：**异步**也要罩住 —— 若 `fn` 返回 thenable，则还原须等它**落定**之后
+	 *     （否则上下文在第一个 `await` 处就被弹掉 ⇒ 战斗的**异步尾**（结算/写账）会跑在**正式**上下文里 ✗ ✗
+	 *     —— 这正是「测试局的战斗把结果写进正式域」的隐蔽通道 ✓）。同步路径**逐字不变** ✓。 */
+	const 在 = (c, fn) => {
+		置(c);
+		let r;
+		try { r = fn(); } catch (e) { 还原(); throw e; }
+		if (r && typeof r.then === 'function') return r.then((v) => { 还原(); return v; }, (e) => { 还原(); throw e; });
+		还原(); return r;
+	};
 
 	setup.BABEL.运行 = { 正式, 取, 置, 还原, 在, 栈深: () => 栈.length };
 })();
