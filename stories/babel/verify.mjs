@@ -6036,4 +6036,80 @@ head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 74 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
 }
 
+
+/* ============================================================
+ * 第 74 组：`books#457`（D1 首片）**普通快速回城** —— 核心 03 §C7②【已定】四条
+ *   ①免费（✗ 不消耗卷轴/物品）②沿已清理来路（缺一层即不可用）③✗ 不靠科技瞬移
+ *   （落点与步行/卷轴同 `L10-camp`）＋ ✗ 不恢复资源/✗ 不重发事件 ④落点一致
+ *   ★组号 74（71=3b／72=S6 主组／73=S6 C-D-E／69=S4／70=A2 ✓ ⇒ 顺延 ✓）
+ *   ★✗ 不碰 0.0.3 链：本组只测**普通层**（L1…L9）✓
+ * ============================================================ */
+head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬移／落点同 L10-camp');
+{
+	let 本组判据 = 0;
+	const ok74 = (c, m) => { 本组判据++; ok(c, m); };
+	const 域 = 'sevenNames';
+	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	try {
+		const K = B?.快回, 图 = B.map, 聚 = B.聚落;
+		ok74(!!K && !!图 && !!聚, '前置：快回模块／地图／聚落皆在位');
+		ok74(K.挂了() >= 9, `★普通层皆挂了免费路（L1…L9 ⇒ ≥9；实得 ${K?.挂了?.()}）`);
+		/* ★四条①免费：可用时**零物品消耗**（背包逐字节不变 ✓）＋ ✗ 不要求持有卷轴 ✓ */
+		const 起 = (当前, 已战) => {
+			State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 已战: Object.assign({}, 已战), 终局: false });
+			D.Player.hp = D.Player.maxHp;
+			D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
+			图.moveTo(当前);
+		};
+		const 全清 = (到) => { const o = {}; for (let i = 1; i <= 到; i += 1) o[`L${i}`] = true; return o; };
+		起('L5', 全清(5));
+		ok74(K.可快回() === true, '★②来路全清（L1–L4 已战 ✓）⇒ 可快回');
+		/* ★①口径改准（我首版断「计数＝0」✗ 那是断**背包现状**，不是断**规格**）：
+		 *   规格是「**✗ 不应要求先购买**回程卷轴」⇒ 做法＝**把卷轴清零**，再看快回**照样可用** ✓。 */
+		const 清卷轴 = () => { const n = D.Player.items ?? []; D.Player.items = n.filter((x) => x?.id !== 'return-scroll'); };
+		清卷轴();
+		ok74(R.heldTotal(D.Player, 'return-scroll') === 0, '★①（前置）已把卷轴清零 ✓');
+		/* ★先**种一件已知物**（`club`）—— 我首版此处背包是空的 ⇒ 「逐字节不变」格**空转** ✗
+		 *   （K2 刀给一件再拿走一件，净变 0 ⇒ 不咬 ✗）。★有物在包 ⇒ 该格才承重 ✓。 */
+		R.give('club', 1);
+		const 背前 = JSON.stringify(D.Player.items ?? []);   // ★快照取在**清零＋种物之后** ✓
+		ok74(K.可快回() === true, '★①免费：**手上零卷轴**仍可快回 ✓（✗ 不要求先购买 ✓）');
+		const 路 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
+		ok74(路.length === 1 && 路[0].when() === true, '★④存在且**现算可用**的 L5 ⇒ L10-camp 免费路');
+		/* ★②「缺一层即不可用」——★关键反例（半清 ⇒ 边不出现 ✓） */
+		起('L5', Object.assign(全清(5), { L3: false }));
+		ok74(K.可快回() === false, '★②来路**缺 L3**（未清）⇒ 可快回为假 ✓（✗ 半可用 ✓）');
+		const 路2 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
+		ok74(路2.length === 1 && 路2[0].when() === false, '★②同上：该边**现算不可用**（✗ 静默放行 ✓）');
+		/* ★③✗ 科技瞬移／✗ 不恢复：快回后**资源与事件账逐字节不变** ✓ */
+		起('L5', 全清(5));
+		State.variables.babelRun.已取 = { L1: 1, L2: 2 };
+		const 账前 = JSON.stringify(State.variables.babelRun);
+		const a = 路.find((e) => e.from === 'L5') ?? (图.exits ?? []).find((e) => e.from === 'L5' && e.to === 聚);
+		a.action();
+		/* ★★承重格（`#457` 自纠）：★「免费」必须**围住动作**观察 —— 我首版把这条断在
+		 *   `a.action()` **之前** ⇒ 比的是快照与同一状态下几行后的背包 ⇒ **恒真** ✗（三把刀都不咬 ✓）。
+		 *   现改为：**动作前快照 → 动作 → 比对**，且明确要求逐字节相同 ✓。 */
+		ok74(JSON.stringify(D.Player.items ?? []) === 背前, '★①免费：**快回之后**背包逐字节不变（✗ 不消耗物品 ✓）');
+		ok74(图.current === 聚, `★④落点与步行/卷轴**同一处**（⇒ ${聚}；实得 ${图.current}）`);
+		const 账后 = JSON.parse(JSON.stringify(State.variables.babelRun));
+		ok74(账后.已战?.L1 === true && 账后.已战?.L5 === true, '★③快回**不动战果账** ✓');
+		ok74(JSON.stringify(账后.已取) === JSON.stringify({ L1: 1, L2: 2 }), '★③快回**不重发事件/不恢复资源**（已取账逐字不变 ✓）');
+		/* ★③边界：人已在聚落 ⇒ 不可快回；L1（无来路）⇒ 视作全清 ✓ */
+		起('L1', {});
+		ok74(K.可快回() === true, '★②边界：L1 **无来路** ⇒ 视作全清 ✓（✗ 误判为不可用 ✓）');
+		图.moveTo(聚);
+		ok74(K.可快回() === false, '★③边界：人在聚落 ⇒ 不可快回 ✓（✗ 自环 ✓）');
+		/* ★✗ 不碰 0.0.3：W09 两条边仍在且语义未变 ✓（只断存在性与闸门可调用 ✓） */
+		const w09 = (图.exits ?? []).filter((e) => e.from === 'W09');
+		ok74(w09.length === 2 && w09.every((e) => typeof e.when === 'function'), '★✗ 不碰 0.0.3：W09 两条出口**仍在**且闸门完好 ✓');
+		ok74(!(图.exits ?? []).some((e) => e.from === 'L10-camp' && e.to === 'L10-camp'), '★③✗ 无自环免费路 ✓');
+	} finally {
+		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
+		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
+	}
+	console.log(`  ${本组判据 > 0 ? '✓' : '✗'} 第 74 组：全绿 —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
+}
+
 printSummary();
