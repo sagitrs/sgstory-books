@@ -3432,6 +3432,7 @@ head('㊼ `books#259` 裁（writer 第三条 P1）：跳过＝关面不补（跳
 		console.log('  跳过门：跳过态采集闭 ✓｜跳过入口消失 ✓｜读档回同态同闭 ✓｜撤回账后重新可用 ✓');
 	} finally {
 		if (节点) 节点.charges = 次数存;
+		try { if (图位存 && map?.locations?.has?.(图位存)) map.moveTo(图位存); } catch (e) { /* ✗ 吞：位置复原尽力而为 ✓ */ }
 		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
 		if (位存) map.moveTo(位存);
 	}
@@ -5762,6 +5763,8 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
 	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
 	const 组前 = fails.length;
+	let 本组判据 = 0;
+	const okR = (c, m) => { 本组判据++; ok(c, m); };   // ★运行算判据数（`#450` 补格同笔 ✓）
 	try {
 		const S7 = B?.七名河, 结 = B?.返程结算;
 
@@ -5771,7 +5774,7 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 		D.Player.hp = D.Player.maxHp;
 		D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
 		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
-		ok(!!S7 && !!结, '前置：`BS.七名河` 与 `BS.返程结算` 都须在位');
+		okR(!!S7 && !!结, '前置：`BS.七名河` 与 `BS.返程结算` 都须在位');
 		if (S7 && 结) {
 			const 出边 = (map.exits ?? []).filter((e) => e.from === 'W09' && e.to === B.聚落);
 			const 起 = (当前, 实例) => { State.variables[域] = { 态: '进行中', 当前, 结果: {}, 机会: { 用: false, 实例 }, 路径: ['E0'] }; return State.variables[域]; };
@@ -5784,29 +5787,29 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 			/* ★**前像**（✗ 不用「当下恒真量」✓ D 席 NIT）：`当前`／`已处理结果`／`路径` 三者的调用前快照 ✓ */
 			const 前像 = JSON.stringify({ 当前: 档前.当前, 结果: 档前.结果, 路径: 档前.路径, 已处理: (B.七名河.读().已处理 ?? []) });
 			const 早 = 结.返程事务({ 实例: 'i-s6', 完成: false });
-			ok(早.ok === true, `★提前返程须成功（实得 ${JSON.stringify(早).slice(0, 70)}）`);
-			ok(R.commitBoundary.settled('sevenNames:返程:i-s6') != null, '★同上：请求键须**落在引擎账**（`settled` 查得到 ✓ ⇒ 与 E9 同键空间 ✓）');
+			okR(早.ok === true, `★提前返程须成功（实得 ${JSON.stringify(早).slice(0, 70)}）`);
+			okR(R.commitBoundary.settled('sevenNames:返程:i-s6') != null, '★同上：请求键须**落在引擎账**（`settled` 查得到 ✓ ⇒ 与 E9 同键空间 ✓）');
 			const 再 = 结.返程事务({ 实例: 'i-s6', 完成: true });
-			ok(再.ok === false && /RETURN_ALREADY_SETTLED/.test(再.code ?? ''), `★同实例**再走另一路也须拒**（✗ 两路各记一套账 ✓；实得 ${再.code ?? '（无）'}）`);
+			okR(再.ok === false && /RETURN_ALREADY_SETTLED/.test(再.code ?? ''), `★同实例**再走另一路也须拒**（✗ 两路各记一套账 ✓；实得 ${再.code ?? '（无）'}）`);
 
 			/* ② ★提前**✗ 不完成**，且**位置与路径保留**（设计 §6「下次从 E0 进入，沿已选路线恢复」✓） */
-			ok(State.variables[域].态 !== '完成', `★提前返程 ✗ 不得置「完成」（实得 ${State.variables[域].态}）`);
+			okR(State.variables[域].态 !== '完成', `★提前返程 ✗ 不得置「完成」（实得 ${State.variables[域].态}）`);
 			/* ★②（D 席 NIT ✓）：✗ 不用 `includes('E0')`（**任何运行都含 E0 ⇒ 恒真、不带信息** ✗）⇒
 			 *   改断「**当前／已处理结果／路径 未被重置**」＝**前像 ⇄ 后像**逐项同 ✓（这才是「沿已选路线恢复」✓）。 */
-			ok(State.variables[域].当前 === 档前.当前, `★提前返程**不得重置「当前」**（应仍在 ${档前.当前}；实得 ${State.variables[域].当前}）`);
+			okR(State.variables[域].当前 === 档前.当前, `★提前返程**不得重置「当前」**（应仍在 ${档前.当前}；实得 ${State.variables[域].当前}）`);
 			const 后像 = JSON.stringify({ 当前: State.variables[域].当前, 结果: State.variables[域].结果, 路径: State.variables[域].路径, 已处理: (B.七名河.读().已处理 ?? []) });
-			ok(后像 === 前像, `★同上：**当前／结果／路径／已处理**须**逐项不变**（✗ 被重置 ✓；前 ${前像.slice(0, 90)} ／ 后 ${后像.slice(0, 90)}）`);
-			ok(State.variables[域].机会.用 === true, '★同上：机会**已消费**（本次实例一次 ✓）');
+			okR(后像 === 前像, `★同上：**当前／结果／路径／已处理**须**逐项不变**（✗ 被重置 ✓；前 ${前像.slice(0, 90)} ／ 后 ${后像.slice(0, 90)}）`);
+			okR(State.variables[域].机会.用 === true, '★同上：机会**已消费**（本次实例一次 ✓）');
 
 			/* ③ ★E9 才完成 */
 			清背(); 起('E9', 'i-s6b');
 			const 成 = 结.返程事务({ 实例: 'i-s6b', 完成: true });
-			ok(成.ok === true && State.variables[域].态 === '完成', `★E9 确认回城 ⇒ **完成**（实得 态=${State.variables[域].态}）`);
+			okR(成.ok === true && State.variables[域].态 === '完成', `★E9 确认回城 ⇒ **完成**（实得 态=${State.variables[域].态}）`);
 
 			/* ④ ★两路都跑结算（三栏）—— 早返那条也要损毁／附加 ✓ */
 			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起('E6', 'i-s6c');
 			const 早2 = 结.返程事务({ 实例: 'i-s6c', 完成: false });
-			ok(早2.ok === true && (早2.栏?.消失 ?? []).length === 1 && (早2.栏?.新增 ?? []).length === 1, `★提前路**同样结算**（消失 1／新增 1 ✓；实得 ${JSON.stringify(早2.栏 ?? {}).slice(0, 80)}）`);
+			okR(早2.ok === true && (早2.栏?.消失 ?? []).length === 1 && (早2.栏?.新增 ?? []).length === 1, `★提前路**同样结算**（消失 1／新增 1 ✓；实得 ${JSON.stringify(早2.栏 ?? {}).slice(0, 80)}）`);
 
 			/* ⑤ ★存取往返：✗ 不刷机会、✗ 不重复损毁（票面第 4 条 ✓） */
 			/* ★旁注（领队准 ✓·`#450`）：**真存读**（宿主级存/读往返、`Save.onLoad` 归位与槽面）
@@ -5816,30 +5819,58 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 			State.variables[域] = JSON.parse(JSON.stringify(档));
 			const 件后 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
 			const 再损 = 结.返程事务({ 实例: 'i-s6c', 完成: false });
-			ok(再损.ok === false, '★存读往返后同实例仍拒（✗ 不重复损毁 ✓）');
-			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 件后, '★同上：**物品面逐字节不变** ✓');
-			ok(State.variables[域].机会.用 === true && State.variables[域].机会.实例 === 'i-s6c', '★同上：机会**未被刷新**（同实例 ✓）');
+			okR(再损.ok === false, '★存读往返后同实例仍拒（✗ 不重复损毁 ✓）');
+			okR(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 件后, '★同上：**物品面逐字节不变** ✓');
+			okR(State.variables[域].机会.用 === true && State.variables[域].机会.实例 === 'i-s6c', '★同上：机会**未被刷新**（同实例 ✓）');
 
 			/* ⑥ ★两路互斥（按地点）—— 65 组的同形，此处钉「开关面」 */
-			ok(出边.length === 2, `★W09 出 L10 应恰两条（实得 ${出边.length}）`);
+			okR(出边.length === 2, `★W09 出 L10 应恰两条（实得 ${出边.length}）`);
 			State.variables[域] = { 态: '进行中', 当前: 'E9', 结果: {}, 机会: { 用: false, 实例: 'x' }, 路径: [] };
-			ok(出边.filter((e) => e.when()).length === 1, '★E9 ⇒ 只完成路可用 ✓');
+			okR(出边.filter((e) => e.when()).length === 1, '★E9 ⇒ 只完成路可用 ✓');
 			State.variables[域].当前 = 'E7';
-			ok(出边.filter((e) => e.when()).length === 1, '★非 E9 ⇒ 只提前路可用 ✓');
+			okR(出边.filter((e) => e.when()).length === 1, '★非 E9 ⇒ 只提前路可用 ✓');
 
 			/* ⑦ ★旧卷轴＝**具名豁免**（裁 B ✓）：与两路**分开**，零损毁零写 ✓ */
 			const 前卷 = JSON.stringify(State.variables[域]);
 			const 回执 = 结.旧卷轴返程?.();
-			ok(回执?.code === 'RETURN_SCROLL_EXEMPT', `★旧卷轴须为**具名豁免**（实得 ${回执?.code ?? '（无）'}）`);
-			ok(JSON.stringify(State.variables[域]) === 前卷, '★同上：豁免路径**零写** ✓');
-			ok(!/旧卷轴/.test(String(出边.map((e) => e.text).join('|'))), '★同上：卷轴 ✗ 不并入两路出口（互不混义 ✓）');
+			okR(回执?.code === 'RETURN_SCROLL_EXEMPT', `★旧卷轴须为**具名豁免**（实得 ${回执?.code ?? '（无）'}）`);
+			okR(JSON.stringify(State.variables[域]) === 前卷, '★同上：豁免路径**零写** ✓');
+			okR(!/旧卷轴/.test(String(出边.map((e) => e.text).join('|'))), '★同上：卷轴 ✗ 不并入两路出口（互不混义 ✓）');
 		}
 	} finally {
 		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
 		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
 	}
+		/* ★★`#450` 补格（tester-3 接线 RC **实质成立** ✓ · 领队代裁加急 ✓）：本组原**直接调
+		 *   `结.返程事务(...)`** ✗ ⇒ **两条边的 `action` 从未被执行** ⇒ 接线一断，全部格照绿 ✗
+		 *   （＝他说的「**提前边无人守**」✓）。补两格，形＝**取边 `find` → 备态 → 调 `action` → 断** ✓。 */
+		const 图位存 = map?.current;   // ★跨组污染防线：我两格会动地图/域 ⇒ 毕后必复原 ✓
+		const 取边 = (针) => (map.exits ?? []).find((e) => e.from === 'W09' && e.to === B.聚落
+			&& String(e.text ?? '').includes(针));
+		const 早边 = 取边('提前结束本次出城'), 九边 = 取边('确认回城');
+		okR(!!早边 && !!九边, '★前置：两条出口边**都在**（提前边／E9 确认边 ✓）');
+		/* 格A（提前边）：备态 ⇒ **调 action()** ⇒ 断成功 ＋ ✗ 完成 ＋ 机会已消费 */
+		State.variables[域] = { 态: '进行中', 当前: 'E4', 结果: {}, 机会: { 用: false, 实例: 'i-edge-a' }, 路径: ['E0'] };
+		D.Player.hp = D.Player.maxHp;
+		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
+		okR(早边.when() === true, '★格A：提前边**现算可用**（进行中 ∧ ✗E9 ∧ 机会未用 ✓）');
+		const 甲 = 早边.action();
+		okR(甲 === true, `★格A：\`action()\` **须返回 true**（✗ false 会被引擎挡移动 ✓；实得 ${JSON.stringify(甲)}）`);
+		okR(State.variables[域].态 === '进行中', `★格A：提前返程 **✗ 不得置完成**（实得 ${State.variables[域].态}）`);
+		okR(State.variables[域].机会.用 === true, '★格A：机会**已消费** ✓');
+		okR(早边.when() === false, '★格A（负向）：机会已用 ⇒ 提前边**现算为假**（✗ 静默放行 ✓）');
+		/* 格A（负向·互斥）：人到 E9 ⇒ 提前边须自动关闭 */
+		State.variables[域] = { 态: '进行中', 当前: 'E9', 结果: {}, 机会: { 用: false, 实例: 'i-edge-b' }, 路径: ['E0'] };
+		okR(早边.when() === false, '★格A（负向·互斥）：人在 E9 ⇒ 提前边**须关**（✗ 两路同开 ✓）');
+		okR(九边.when() === true, '★格B（前置·互斥）：同态下 **E9 确认边可用** ✓');
+		/* 格B（E9 边 · 正向）：调 action() ⇒ 断成功 ＋ 完成 ＋ 机会已消费 */
+		const 乙 = 九边.action();
+		okR(乙 === true, `★格B：\`action()\` **须返回 true**（实得 ${JSON.stringify(乙)}）`);
+		okR(State.variables[域].态 === '完成', `★格B：E9 确认回城 ⇒ **完成**（实得 ${State.variables[域].态}）`);
+		okR(State.variables[域].机会.用 === true, '★格B：机会**已消费** ✓');
+		okR(九边.when() === false, '★格B（负向）：用完后 E9 边**现算为假**（✗ 可重复过门 ✓）');
 	const 本组失败 = fails.length - 组前;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 72 组：${本组失败 === 0 ? '十格全绿（两路同事务同键／提前✗完成且可恢复／E9 才完成／两路都结算／存取不刷不重损／两路互斥／卷轴具名豁免零写）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 72 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（两路同事务同键／提前✗完成且可恢复／E9 才完成／两路都结算／存取不刷不重损／两路互斥／卷轴具名豁免零写／★**两出口边接线：取边→备态→调 action()→断**）`);
 }
 
 
