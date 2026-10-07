@@ -28,6 +28,7 @@
 | `tools/e2e-drive.mjs` | 真产物的驾驶层 |
 | `tools/e2e-216-sidebar-save-dom.mjs` | 侧栏存档按钮的**真 DOM 臂**（战中禁点·点了也不落档 · 战后恢复且真落档 · 读档后无残影）＋ 两把刀 |
 | `tools/e2e-209-host-save.mjs` | `books#209` 宿主存档门禁的真宿主臂（战中禁存／战后委托／读档后面板归零） |
+| `tools/e2e-413-test-mode.mjs` | ★`books#413`（A2）**测试模式端到端真浏览器臂**：入场→两卡真跑（战斗／奖励两个场次）→骰三账→纯查看（✗ 抽）→结束口（三不／幂等／只清该场次）→**真 `reload()` 验 `babelTest/` 跨刷新**→正控（正式面逐字不变＋异步后 `运行.栈深()` 归位）。**27 条判据**；两把刀各咬段（摘 `localStorage` 真写 ⇒ ⑥ 三红；摘 `在()` 异步还原 ⇒ ⑦ 一红）。★跑法：`CHROME=<chrome> LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-413-test-mode.mjs <babel-trial.html 绝对路径>`（★`playwright` 须可解析 ⇒ 本席用 `~/tmp` 侧的 `node_modules` 符号链接） |
 | `tools/e2e-210-reserved-slots.mjs` | `books#257` 保留槽四臂（动作层 ✗ 执行层 · 保护该在动作层） |
 | `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源） |
 | `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
