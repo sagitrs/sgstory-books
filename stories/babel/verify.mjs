@@ -6803,4 +6803,93 @@ head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 78 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（战斗节点须真进战斗＋交互悬着／域记账口径）`);
 }
 
+
+/* ============================================================
+ * 第 79 组：D1 三片 —— **跳过战斗的分账**（核心 04 §4.1【最新已定边界】后半 · `books#474`）
+ *   规格逐字：「完美事件转成奖励与 Boss 纯跳过分账，前者有其**新结局奖励**，后者**不补发跳过战的奖励**」
+ *    ＋ 上条【已定方向】：「跳过该战斗，同时**放弃该战奖励**；这是放弃战利品的加速，**不是假胜利**」
+ *   ★本组只锁**分账**这一条（✗ 不碰「完美事件转成奖励」——§3 前提三项未落 ✗）。
+ *   ★★**先行者**（我侦察所得，✗ 我重造）：`books#259` 已立「**跳过＝关面不补**」＋ `已用='__跳过'` 哨兵
+ *     ＋ 固定层采集的 `&& !已跳过` 闸 ⇒ 本节四条的**语义已成立** ⇒ ★本组的作用是**锁住它**
+ *     （判据须能**咬**住它被破坏 ⇒ 见提交信息的刀读数 ✓）。
+ *   ★装置：本组的**承重格**皆为「真调用机器件 ＋ 断可观察读数」（机器件由 `setup.BABEL` 明文导出，
+ *     头注理由即「判据/刀要能*真调用*」✓）；★✗ 不断内部私有面 ✓。
+ * ============================================================ */
+head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗ 不补发／✗ 假胜利）');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok79 = (c, m) => { 本组判据++; ok(c, m); };
+	const B9 = setup.BABEL;
+	const 文本 = (a) => String(typeof a.text === 'function' ? a.text() : a.text);
+	const 取动作 = (id, 含) => (map.locations.get(id)?.availableActions ?? []).find((a) => 文本(a).includes(含));
+	/** ★背包快照：**只取判定所需键**（✗ 深拷实例本体）⇒ 逐字节可比的「**同形**」快照 ✓。 */
+	const 包快照 = () => JSON.stringify((D.Player?.items ?? []).map((s) => [s.entityId ?? null, s.id, s.charges ?? 1, JSON.stringify(s.state ?? null)]));
+	const 事件存 = JSON.parse(JSON.stringify(State.variables.span1Events ?? null));
+	const 局存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	try {
+		ok79(!!B9?.eventsOf && !!B9?.eventPending && !!B9?.已跳过, '前置：`setup.BABEL` 的事件机器件（`eventsOf`／`eventPending`／`已跳过`）皆可达');
+		/* ── A. **抽签层**（L5）：跳过 ⇒ 该层事件收益**全关** ＋ 不交付 ＋ 记哨兵（★承重 4 格）── */
+		State.variables.span1Events = {};
+		State.variables.babelRun = { 已战: { L5: true }, 已跳过: {} };
+		B9.eventsOf().L5 = { 抽中: ['chest', 'gather'], 已用: null };
+		ok79(B9.eventPending('L5', 'chest') === true && B9.eventPending('L5', 'gather') === true,
+			'★A-前置：L5 抽中 chest＋gather 且未用 ⇒ 两条事件**此刻皆挂**（✗ 否则后面两格恒真 ⇒ 假绿）');
+		const 跳抽 = 取动作('L5', '不理会这层的动静');
+		ok79(!!跳抽 && 跳抽.when() === true, '★A-前置：L5 表内**找得到**「跳过事件」动作且 `when` 为真（按文案取，✗ 不猜索引）');
+		const 奖A = B9.宝箱奖励表?.L5;
+		/** ★件数读数（✗ 不断「在不在包中」—— 夹具本就有 `axe` ⇒ 那样会**恒真/恒假** ✗）。 */
+		const 件数 = (id) => (D.Player?.items ?? []).filter((s) => s.id === id).reduce((n, s) => n + Number(s.charges ?? 1), 0);
+		ok79(!!奖A, `★A-前置：箱奖励表能取到 L5 的奖（实得 \`${奖A}\`）`);
+		const 奖数前A = 件数(奖A);
+		const 包前A = 包快照();
+		if (跳抽) 跳抽.action();
+		ok79(B9.eventPending('L5', 'chest') === false, '★★A①承重：**跳过 ⇒ 宝箱事件关**（＝放弃该层收益；✗ 跳完还能回头开箱）');
+		ok79(B9.eventPending('L5', 'gather') === false, '★★A②承重：**跳过 ⇒ 采集事件同关**（两条由同一 `已用` 门控 ⇒ 一起断）');
+		ok79(B9.eventsOf().L5.已用 === '__跳过',
+			`★★A③承重：跳过记的是**哨兵**（✗ 假胜利：不得写成 chest／gather／battle 任一「玩过」类；实得 \`${B9.eventsOf().L5.已用}\`）`);
+		ok79(件数(奖A) === 奖数前A, `★★A④承重：跳过**不交付该层收益**（\`${奖A}\` 件数不增：前 ${奖数前A} ⇒ 后 ${件数(奖A)}）`);
+		ok79(包快照() === 包前A, `★★A④′承重：跳过**不改背包**（逐字节同；前 ${包前A.length} 字符／后 ${包快照().length}）`);
+		/* ── B. **固定事件层**：跳过 ⇒ 采集关（★承重 2 格；★层号**现查**取第一个可判者，✗ 不写死）── */
+		let 固定层 = null, 采动作 = null;
+		for (const id of ['L1', 'L2', 'L3', 'L4', 'L9']) {
+			if (!B9.事件门适用?.(id)) continue;
+			State.variables.babelRun = { 已战: { [id]: true }, 已跳过: {} };
+			const a = 取动作(id, '采');
+			if (a && a.when() === true) { 固定层 = id; 采动作 = a; break; }
+		}
+		ok79(!!固定层, `★B-前置：找到一个「固定事件层」（采集动作此刻可执行）—— 实得 \`${固定层}\`（✗ 否则下面两格无法判）`);
+		if (固定层) {
+			const 跳固 = 取动作(固定层, '不采了，继续向上');
+			ok79(!!跳固 && 跳固.when() === true, `★B-前置：\`${固定层}\` 表内有「不采了，继续向上」且 \`when\` 为真`);
+			if (跳固) 跳固.action();
+			ok79(B9.已跳过(固定层) === true, `★★B①承重：**跳过 ⇒ 已跳过 旗置上**（\`${固定层}\` ✓ —— 上行门与采集面共读它）`);
+			ok79(采动作.when() === false, `★★B②承重：**跳过 ⇒ 该层采集面关**（＝「跳完再回头补采」不成立；\`${固定层}\`）`);
+		}
+		/* ── C. ✗ 假胜利：跳过**不改战果账** ＋ **不开新账**（★承重 2 格）── */
+		State.variables.span1Events = {};
+		State.variables.babelRun = { 已战: { L5: true }, 已跳过: {} };
+		B9.eventsOf().L5 = { 抽中: ['chest', 'gather'], 已用: null };
+		const 战前C = JSON.stringify(State.variables.babelRun.已战);
+		const 键前C = Object.keys(State.variables.span1Events).length;
+		const 跳C = 取动作('L5', '不理会这层的动静');
+		if (跳C) 跳C.action();
+		ok79(JSON.stringify(State.variables.babelRun.已战) === 战前C,
+			'★★C①承重：**跳过不改战果账**（`$babelRun.已战` 逐字节同 ⇒ 跳过 ✗ 不得呈现为「打过/胜利」）');
+		ok79(Object.keys(State.variables.span1Events).length === 键前C,
+			'★★C②承重：**跳过 ✗ 不开新账**（`$span1Events` 键数不变 ⇒ 抽签账只属于抽签层，✗ 被跳过路污染）');
+		/* ── D. **返城不补发**（★读数面 —— ✗ 不计入判据：返程事务的输入面属 S3 片 3a，本片不重复驱动 ✓）── */
+		const 包D = 包快照();
+		console.log(`    · 读数（✗ 不计判据）：跳过态下背包读数 = ${包D.length} 字符；` +
+			`返程结算面 \`BS.返程结算.返程事务\` 在位 = ${!!setup.BABEL?.返程结算?.返程事务} ` +
+			`（★本片**只读**该面：它**不读**跳过/已用旗 ⇒ 「不补发」在**无补偿路**的意义上成立 ✓；` +
+			`真驱动归 S3 片 3a 的组，✗ 本片不冒充 ✓）`);
+	} finally {
+		if (事件存 === null) delete State.variables.span1Events; else State.variables.span1Events = 事件存;
+		if (局存 === null) delete State.variables.babelRun; else State.variables.babelRun = 局存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 79 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（跳过⇒放弃该层收益／✗ 不补发／✗ 假胜利）`);
+}
+
 printSummary();
