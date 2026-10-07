@@ -1,0 +1,6 @@
+River Study Sans: renamed glyph subset of Noto Sans CJK SC Regular.
+© 2014-2021 Adobe (http://www.adobe.com/).
+Original project: https://github.com/notofonts/noto-cjk
+License: SIL Open Font License 1.1 (FONT-LICENSE.txt).
+Original font SHA256: 2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b
+Only glyphs used by this static sample are included. Unlisted glyphs use the browser fallback font.

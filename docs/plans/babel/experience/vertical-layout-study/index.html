@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M5 13q8-8 15 0t15 0M5 23q8-8 15 0t15 0' fill='none' stroke='%23336e69' stroke-width='3'/%3E%3C/svg%3E">
+<title>七名河 · 竖向背景与双端版式小样</title>
+<link rel="stylesheet" href="study.css">
+<script src="study.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#reading">跳到正文</a>
+<header class="site-header">
+  <a class="brand" href="#reading"><span class="river-mark" aria-hidden="true">≋</span> 七名河 <small>版式小样 B</small></a>
+  <p class="demo-label">静态设计参考 · 未接入游戏</p>
+  <div class="preferences" data-demo-control hidden>
+    <label class="art-control"><input id="art-toggle" type="checkbox" checked> 图片</label>
+    <button id="size-toggle" type="button" aria-pressed="false">大字</button>
+  </div>
+</header>
+<div class="shell">
+  <aside class="left-rail" aria-label="人物与交互对象">
+    <div id="state-slot" class="panel-slot">
+      <section id="state-panel" class="panel" aria-labelledby="state-title">
+        <p class="eyebrow">人物面板 · 静态占位</p><h2 id="state-title">旅人状态</h2>
+        <dl class="stat-list"><div><dt>生命</dt><dd>— / —</dd></div><div><dt>防护</dt><dd>—</dd></div><div><dt>随行状态</dt><dd>未接入</dd></div></dl>
+        <p class="panel-note">正式界面应读取真实角色状态。本稿不生成生命、属性或战斗结果。</p>
+      </section>
+    </div>
+    <div id="identity-slot" class="panel-slot">
+      <section id="identity-panel" class="panel identity-panel" aria-labelledby="identity-title">
+        <p class="eyebrow">当前交互对象 · 造型提案</p><h2 id="identity-title">旧渡口渡工</h2>
+        <div class="portrait-frame"><img id="portrait" src="assets/portrait-ferry-worker.svg" width="720" height="1080" alt="旧渡口渡工的候选造型：靛青衣布，手持绳圈"><span class="portrait-fallback">肖像未显示</span></div>
+        <p id="identity-description">用绳圈与靛青衣布辨认职能。默认只显示唯一身份，不再叠姓名。</p>
+        <p class="panel-note">称谓与外貌未定稿；不合并既有NPC实体。</p>
+      </section>
+    </div>
+  </aside>
+  <main id="reading" tabindex="-1" class="reading">
+    <div class="reading-top"><p class="eyebrow">W09 · 七名河 / 事件呈现参考</p>
+      <label class="sample-switch" data-demo-control hidden>预览样稿（非路线）<select id="sample"><option value="E1">E1 岸边系绳</option><option value="E2">E2 失落水图</option></select></label>
+    </div>
+    <article aria-labelledby="event-title">
+      <header class="event-header"><p id="event-kicker" class="event-kicker">渡舟 · 浅色绳 · 木桩</p><h1 id="event-title">岸边系绳</h1><p id="event-description" class="event-description">舟绳与河岸劳动的事件意象</p></header>
+      <details class="event-art" open>
+        <summary>事件插图 <span>可收起，正文保持完整</span></summary>
+        <figure><div class="event-media"><img id="event-image" src="assets/e1-mooring.svg" width="1440" height="810" alt="浅滩上的渡舟、松开的浅色绳、木桩与石上两包干粮"><span class="image-fallback">插图未显示，事件名称与下方文字仍完整。</span></div><figcaption id="event-caption">浅滩、渡舟、浅色绳与木桩。画中干粮不表示已经领取。</figcaption></figure>
+      </details>
+      <div id="narrative" class="narrative"><p>一条小渡舟停在浅滩，松开的绳结让船头不断撞岸。渡工一边扶船，一边向你招手。他把两包干粮放在石上，想请你帮忙。</p><p>他指向上游：中间的浅湾没有鳄巢，那里还有备用补给；左侧芦丛却常有鳄兽出没。</p></div>
+      <section class="choices" aria-labelledby="choices-title"><h2 id="choices-title">你准备怎么做？</h2><p class="panel-note">以下只示意选项排版，不执行行动。</p>
+        <ul id="choice-list"><li><span>重新系稳舟绳</span><small>行动占位 · 不执行检定</small></li><li><span>观察船头水势</span><small>行动占位 · 不执行检定</small></li><li><span>告辞，继续上路</span><small>行动占位 · 不推进路线</small></li></ul>
+      </section>
+      <p class="result-note">尚未提交行动。本稿不展示成功结果、不发奖励，也不写事件完成。</p>
+      <details class="long-reading"><summary>展开长文阅读示例（版式说明，非剧情）</summary><div class="narrative">
+        <p>背景板只用来说明“这里是一片河岸”。细节落在边缘，中间留出素底。即使滚动到一段很长的文字，水纹、芦叶和人物都不应穿过字行；正文使用不透明的阅读底色，而不是靠阴影或细边勉强压住图片。</p>
+        <p>地点、身份与行动各有自己的文字信息。关闭图片后，事件名称、人物职能、正文和选项仍在；图片没有藏着必须点中的出口，也不代替规则说明。插图作为事件开头的记忆锚点，而不是每次重绘都强行打断阅读的弹窗。</p>
+        <p>桌面上的人物、身份、路图和背包可以留在两侧。窄屏不需要另一套功能：同一个面板移到弹窗，关闭后回到原来的阅读位置。先有稳定的内容结构，再做画面修饰，不让装饰决定业务规则。</p>
+        <p>本稿中的页面切换是查看两份独立样稿，不是从一个事件前往另一个事件。这里没有存档、掷骰、战斗、真实库存、领奖或返程。示意面板与正式游戏之间的接线、恢复和验收需要另有实施范围。</p>
+      </div></details>
+    </article>
+    <footer class="reading-footer">原创参考 B · 背景／事件／身份分层<br><a href="README.md">说明、来源与检查记录</a></footer>
+    <noscript><p>JavaScript未启用：保留E1正文、原生插图折叠与四个面板；设置、样稿切换及弹窗控件不可用。</p></noscript>
+  </main>
+  <aside class="right-rail" aria-label="路图与背包">
+    <div id="map-slot" class="panel-slot">
+      <section id="map-panel" class="panel" aria-labelledby="map-title"><p class="eyebrow">路线面板 · 只读结构参考</p><h2 id="map-title">河岸路图</h2>
+        <svg class="route-map" viewBox="0 0 220 250" role="img" aria-label="冻结路线：E0通往E1或E2；E1通往E3或E4；E2通往E4或E5；E3通往E6；E4通往E6或E7；E5通往E7；E6和E7通往E8；E8通往E9。E9只回L10。">
+          <g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M110 20L67 65M110 20L153 65M67 65L24 110M67 65L110 110M153 65L110 110M153 65L196 110M24 110L67 155M110 110L67 155M110 110L153 155M196 110L153 155M67 155L110 200M153 155L110 200M110 200L110 238"/></g>
+          <g fill="var(--panel)" stroke="currentColor"><circle cx="110" cy="20" r="15"/><circle cx="67" cy="65" r="15"/><circle cx="153" cy="65" r="15"/><circle cx="24" cy="110" r="15"/><circle cx="110" cy="110" r="15"/><circle cx="196" cy="110" r="15"/><circle cx="67" cy="155" r="15"/><circle cx="153" cy="155" r="15"/><circle cx="110" cy="200" r="15"/><circle cx="110" cy="238" r="11"/></g>
+          <g fill="currentColor" text-anchor="middle" dominant-baseline="central" font-size="12"><text x="110" y="20">E0</text><text x="67" y="65">E1</text><text x="153" y="65">E2</text><text x="24" y="110">E3</text><text x="110" y="110">E4</text><text x="196" y="110">E5</text><text x="67" y="155">E6</text><text x="153" y="155">E7</text><text x="110" y="200">E8</text><text x="110" y="238">E9</text></g>
+        </svg><p class="map-key">10节点 · 13边 · E9只回L10</p><p class="panel-note">本图不标“已到／已处理”，没有移动按钮，也不造E1到E2的通路。</p>
+      </section>
+    </div>
+    <div id="bag-slot" class="panel-slot">
+      <section id="bag-panel" class="panel" aria-labelledby="bag-title"><p class="eyebrow">物品面板 · 静态占位</p><h2 id="bag-title">背包</h2><div class="empty-bag" aria-hidden="true">◇</div><p>库存未接入</p><p class="panel-note">正式面板读取真实库存。本稿不提供物品使用、交易、保存或恢复。</p></section>
+    </div>
+  </aside>
+</div>
+<nav class="mobile-dock" aria-label="打开辅助面板" data-demo-control hidden><button type="button" data-panel="state">人物</button><button type="button" data-panel="identity">身份</button><button type="button" data-panel="map">路图</button><button type="button" data-panel="bag">背包</button></nav>
+<dialog id="panel-dialog" aria-labelledby="dialog-title"><header class="dialog-header"><h2 id="dialog-title">辅助面板</h2><form method="dialog"><button type="submit" autofocus>关闭</button></form></header><div id="dialog-content"></div></dialog>
+</body>
+</html>

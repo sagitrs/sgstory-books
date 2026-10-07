@@ -1,0 +1,2501 @@
+{
+  "kind": "manual-non-product-design-observations",
+  "startedAt": "2026-10-07T11:28:50.333718+00:00",
+  "endedAt": "2026-10-07T11:29:03.526776+00:00",
+  "elapsedSeconds": 13.193,
+  "environment": {
+    "machine": "ubuntu-4060m",
+    "browser": "Google Chrome for Testing 153.0.8010.12",
+    "headless": true,
+    "device": "desktop computer; viewport emulation, not real mobile hardware",
+    "network": "local static files, no game or external resource requests",
+    "font": "renamed Noto subset; failure mode intentionally blocks all assets"
+  },
+  "productTestsRun": false,
+  "suiteExitCode": null,
+  "sourceBinding": "source-fingerprints.json",
+  "observations": [
+    {
+      "command": {
+        "op": "new",
+        "name": "final-checks"
+      },
+      "at": "2026-10-07T11:28:50.583Z",
+      "evidence": "163-final-checks-new",
+      "layout": {
+        "width": 1440,
+        "bodyWidth": 1440,
+        "scrollHeight": 1000,
+        "scrollY": 0
+      },
+      "sample": {
+        "dockDisplay": null,
+        "panels": [
+          {
+            "id": "state",
+            "count": 0
+          },
+          {
+            "id": "identity",
+            "count": 0
+          },
+          {
+            "id": "map",
+            "count": 0
+          },
+          {
+            "id": "bag",
+            "count": 0
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": ""
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "goto",
+        "name": "final-checks",
+        "url": "http://127.0.0.1:41873/index.html",
+        "label": "c01-desktop-1440"
+      },
+      "at": "2026-10-07T11:28:51.384Z",
+      "evidence": "164-final-checks-c01-desktop-1440",
+      "layout": {
+        "width": 1440,
+        "bodyWidth": 1440,
+        "scrollHeight": 1380,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 395,
+          "y": 88.1875,
+          "width": 650,
+          "height": 1291.546875,
+          "top": 88.1875,
+          "right": 1045,
+          "bottom": 1379.734375,
+          "left": 395
+        },
+        "dockDisplay": "none",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n\n人物面板 · 静态占位\n\n旅人状态\n生命\n— / —\n防护\n—\n随行状态\n未接入\n\n正式界面应读取真实角色状态。本稿"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 1280,
+        "height": 900,
+        "label": "c02-desktop-1280"
+      },
+      "at": "2026-10-07T11:28:51.714Z",
+      "evidence": "165-final-checks-c02-desktop-1280",
+      "layout": {
+        "width": 1280,
+        "bodyWidth": 1280,
+        "scrollHeight": 1380,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 315,
+          "y": 88.1875,
+          "width": 650,
+          "height": 1291.546875,
+          "top": 88.1875,
+          "right": 965,
+          "bottom": 1379.734375,
+          "left": 315
+        },
+        "dockDisplay": "none",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n\n人物面板 · 静态占位\n\n旅人状态\n生命\n— / —\n防护\n—\n随行状态\n未接入\n\n正式界面应读取真实角色状态。本稿"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 1024,
+        "height": 768,
+        "label": "c03-1024"
+      },
+      "at": "2026-10-07T11:28:52.025Z",
+      "evidence": "166-final-checks-c03-1024",
+      "layout": {
+        "width": 1024,
+        "bodyWidth": 1024,
+        "scrollHeight": 1505,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 158,
+          "y": 112.09375,
+          "width": 708,
+          "height": 1287.546875,
+          "top": 112.09375,
+          "right": 866,
+          "bottom": 1399.640625,
+          "left": 158
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n\nW09 · 七名河 / 事件呈现参考\n\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · "
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 768,
+        "height": 1024,
+        "label": "c04-768"
+      },
+      "at": "2026-10-07T11:28:52.317Z",
+      "evidence": "167-final-checks-c04-768",
+      "layout": {
+        "width": 768,
+        "bodyWidth": 768,
+        "scrollHeight": 1505,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 30,
+          "y": 112.09375,
+          "width": 708,
+          "height": 1287.546875,
+          "top": 112.09375,
+          "right": 738,
+          "bottom": 1399.640625,
+          "left": 30
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n\nW09 · 七名河 / 事件呈现参考\n\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · "
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 390,
+        "height": 844,
+        "label": "c05-390"
+      },
+      "at": "2026-10-07T11:28:52.616Z",
+      "evidence": "168-final-checks-c05-390",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n事件插图\n插图未显示，事"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 360,
+        "height": 800,
+        "label": "c06-360"
+      },
+      "at": "2026-10-07T11:28:52.911Z",
+      "evidence": "169-final-checks-c06-360",
+      "layout": {
+        "width": 360,
+        "bodyWidth": 360,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 340,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 350,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n事件插图\n插图未显示，事"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 320,
+        "height": 640,
+        "label": "c07-320"
+      },
+      "at": "2026-10-07T11:28:53.205Z",
+      "evidence": "170-final-checks-c07-320",
+      "layout": {
+        "width": 320,
+        "bodyWidth": 320,
+        "scrollHeight": 1579,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 153.484375,
+          "width": 300,
+          "height": 1327.78125,
+          "top": 153.484375,
+          "right": 310,
+          "bottom": 1481.265625,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n事件插图\n插图未显示，事"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 844,
+        "height": 390,
+        "label": "c08-landscape"
+      },
+      "at": "2026-10-07T11:28:53.482Z",
+      "evidence": "171-final-checks-c08-landscape",
+      "layout": {
+        "width": 844,
+        "bodyWidth": 844,
+        "scrollHeight": 1505,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 68,
+          "y": 112.09375,
+          "width": 708,
+          "height": 1287.546875,
+          "top": 112.09375,
+          "right": 776,
+          "bottom": 1399.640625,
+          "left": 68
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n\nW09 · 七名河 / 事件呈现参考\n\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · "
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 390,
+        "height": 844,
+        "label": "390-for-panels"
+      },
+      "at": "2026-10-07T11:28:53.768Z",
+      "evidence": "172-final-checks-390-for-panels",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n事件插图\n插图未显示，事"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"state\"]",
+        "label": "c09-state"
+      },
+      "at": "2026-10-07T11:28:54.081Z",
+      "evidence": "173-final-checks-c09-state",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "role": "button",
+        "text": "关闭",
+        "label": "c09-state-close"
+      },
+      "at": "2026-10-07T11:28:54.404Z",
+      "evidence": "174-final-checks-c09-state-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "人物"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"identity\"]",
+        "label": "c09-identity"
+      },
+      "at": "2026-10-07T11:28:54.718Z",
+      "evidence": "175-final-checks-c09-identity",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Tab",
+        "label": "c10-tab"
+      },
+      "at": "2026-10-07T11:28:54.997Z",
+      "evidence": "176-final-checks-c10-tab",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Shift+Tab",
+        "label": "c10-shift-tab"
+      },
+      "at": "2026-10-07T11:28:55.278Z",
+      "evidence": "177-final-checks-c10-shift-tab",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Escape",
+        "label": "c09-identity-close"
+      },
+      "at": "2026-10-07T11:28:55.550Z",
+      "evidence": "178-final-checks-c09-identity-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "身份"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"map\"]",
+        "label": "c09-map"
+      },
+      "at": "2026-10-07T11:28:55.851Z",
+      "evidence": "179-final-checks-c09-map",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Escape",
+        "label": "c09-map-close"
+      },
+      "at": "2026-10-07T11:28:56.130Z",
+      "evidence": "180-final-checks-c09-map-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "路图"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"bag\"]",
+        "label": "c09-bag"
+      },
+      "at": "2026-10-07T11:28:56.448Z",
+      "evidence": "181-final-checks-c09-bag",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "dialog-content",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 1440,
+        "height": 1000,
+        "label": "c11-breakpoint-close"
+      },
+      "at": "2026-10-07T11:28:56.737Z",
+      "evidence": "182-final-checks-c11-breakpoint-close",
+      "layout": {
+        "width": 1440,
+        "bodyWidth": 1440,
+        "scrollHeight": 1380,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 395,
+          "y": 88.1875,
+          "width": 650,
+          "height": 1291.546875,
+          "top": 88.1875,
+          "right": 1045,
+          "bottom": 1379.734375,
+          "left": 395
+        },
+        "dockDisplay": "none",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "MAIN",
+        "id": "reading",
+        "cls": null,
+        "text": "W09 · 七名河 / 事件呈现参考\n\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n\n舟绳与河岸劳动的事件意象\n\n事件插图\n可收起，正文保持完整\n插图"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "select",
+        "name": "final-checks",
+        "selector": "#sample",
+        "value": "E2",
+        "label": "c12-e2-desktop"
+      },
+      "at": "2026-10-07T11:28:57.051Z",
+      "evidence": "183-final-checks-c12-e2-desktop",
+      "layout": {
+        "width": 1440,
+        "bodyWidth": 1440,
+        "scrollHeight": 1380,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 395,
+          "y": 88.1875,
+          "width": 650,
+          "height": 1291.546875,
+          "top": 88.1875,
+          "right": 1045,
+          "bottom": 1379.734375,
+          "left": 395
+        },
+        "dockDisplay": "none",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "MAIN",
+        "id": "reading",
+        "cls": null,
+        "text": "W09 · 七名河 / 事件呈现参考\n\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n石台 · 流图片 · 河岸线\n\n失落水图\n\n散落流图与测水工作的事件意象\n\n事件插图\n可收起，正文保持完整"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 390,
+        "height": 844,
+        "label": "c12-e2-mobile"
+      },
+      "at": "2026-10-07T11:28:57.368Z",
+      "evidence": "184-final-checks-c12-e2-mobile",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1497,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1292.6875,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1398.78125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "MAIN",
+        "id": "reading",
+        "cls": null,
+        "text": "预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n石台 · 流图片 · 河岸线\n\n失落水图\n事件插图\n插图未显示，事件名称与下方文字仍完整。\n石台、流图片与绷带。纸上图纹不是新的出口，绷带不是已领"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"identity\"]",
+        "label": "c12-e2-identity"
+      },
+      "at": "2026-10-07T11:28:57.689Z",
+      "evidence": "185-final-checks-c12-e2-identity",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1497,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1292.6875,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1398.78125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Escape",
+        "label": "c12-e2-close"
+      },
+      "at": "2026-10-07T11:28:57.971Z",
+      "evidence": "186-final-checks-c12-e2-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1497,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1292.6875,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1398.78125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "身份"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "#art-toggle",
+        "label": "c13-images-off"
+      },
+      "at": "2026-10-07T11:28:58.287Z",
+      "evidence": "187-final-checks-c13-images-off",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1347,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1142.6875,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1248.78125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "INPUT",
+        "id": "art-toggle",
+        "cls": null,
+        "text": ""
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "text": "事件插图",
+        "exact": false,
+        "label": "c14-art-collapse"
+      },
+      "at": "2026-10-07T11:28:58.603Z",
+      "evidence": "188-final-checks-c14-art-collapse",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1286,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1081.90625,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1188,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "SUMMARY",
+        "id": "",
+        "cls": null,
+        "text": "事件插图"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "#size-toggle",
+        "label": "c15-large-font"
+      },
+      "at": "2026-10-07T11:28:58.920Z",
+      "evidence": "189-final-checks-c15-large-font",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1423,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1218.859375,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1324.953125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "size-toggle",
+        "cls": null,
+        "text": "大字"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "text": "展开长文阅读示例（版式说明，非剧情）",
+        "label": "c15-long-text"
+      },
+      "at": "2026-10-07T11:28:59.232Z",
+      "evidence": "190-final-checks-c15-long-text",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 2752,
+        "scrollY": 579
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": -472.90625,
+          "width": 370,
+          "height": 2547.4375,
+          "top": -472.90625,
+          "right": 380,
+          "bottom": 2074.53125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "SUMMARY",
+        "id": "",
+        "cls": null,
+        "text": "展开长文阅读示例（版式说明，非剧情）"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "scroll",
+        "name": "final-checks",
+        "text": "本稿中的页面切换是查看两份独立样稿，不是从一个事件前往另一个事件。这里没有存档、掷骰、战斗、真实库存、领奖或返程。示意面板与正式游戏之间的接线、恢复和验收需要另有实施范围。",
+        "label": "c15-scrolled"
+      },
+      "at": "2026-10-07T11:28:59.575Z",
+      "evidence": "191-final-checks-c15-scrolled",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 2752,
+        "scrollY": 1908
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": -1801.90625,
+          "width": 370,
+          "height": 2547.4375,
+          "top": -1801.90625,
+          "right": 380,
+          "bottom": 745.53125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "SUMMARY",
+        "id": "",
+        "cls": null,
+        "text": "展开长文阅读示例（版式说明，非剧情）"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-checks",
+        "selector": "[data-panel=\"map\"]",
+        "label": "c15-scrolled-modal"
+      },
+      "at": "2026-10-07T11:28:59.883Z",
+      "evidence": "192-final-checks-c15-scrolled-modal",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 2752,
+        "scrollY": 1908
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": -1801.90625,
+          "width": 370,
+          "height": 2547.4375,
+          "top": -1801.90625,
+          "right": 380,
+          "bottom": 745.53125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-checks",
+        "key": "Escape",
+        "label": "c15-scrolled-close"
+      },
+      "at": "2026-10-07T11:29:00.165Z",
+      "evidence": "193-final-checks-c15-scrolled-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 2752,
+        "scrollY": 1908
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": -1801.90625,
+          "width": 370,
+          "height": 2547.4375,
+          "top": -1801.90625,
+          "right": 380,
+          "bottom": 745.53125,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "路图"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "resize",
+        "name": "final-checks",
+        "width": 320,
+        "height": 640,
+        "label": "c15-320-large-long"
+      },
+      "at": "2026-10-07T11:29:00.459Z",
+      "evidence": "194-final-checks-c15-320-large-long",
+      "layout": {
+        "width": 320,
+        "bodyWidth": 320,
+        "scrollHeight": 3099,
+        "scrollY": 2170
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": -2016.515625,
+          "width": 300,
+          "height": 2847.671875,
+          "top": -2016.515625,
+          "right": 310,
+          "bottom": 831.15625,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "路图"
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "new",
+        "name": "final-missing",
+        "mobile": true,
+        "missing": true
+      },
+      "at": "2026-10-07T11:29:00.793Z",
+      "evidence": "195-final-missing-new",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 844,
+        "scrollY": 0
+      },
+      "sample": {
+        "dockDisplay": null,
+        "panels": [
+          {
+            "id": "state",
+            "count": 0
+          },
+          {
+            "id": "identity",
+            "count": 0
+          },
+          {
+            "id": "map",
+            "count": 0
+          },
+          {
+            "id": "bag",
+            "count": 0
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": ""
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "goto",
+        "name": "final-missing",
+        "url": "http://127.0.0.1:41873/index.html",
+        "label": "c16-missing-assets"
+      },
+      "at": "2026-10-07T11:29:01.643Z",
+      "evidence": "196-final-missing-c16-missing-assets",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 2,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n图片\n大字\n预览样稿（非路线）\nE1 岸边系绳\nE2 失落水图\n\n渡舟 · 浅色绳 · 木桩\n\n岸边系绳\n事件插图\n插图未显示，事"
+      },
+      "events": [
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/portrait-ferry-worker.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/e1-mooring.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-backdrop.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-study-sans.woff2",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.934Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "click",
+        "name": "final-missing",
+        "selector": "[data-panel=\"identity\"]",
+        "label": "c16-missing-identity"
+      },
+      "at": "2026-10-07T11:29:01.984Z",
+      "evidence": "197-final-missing-c16-missing-identity",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": true,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "dialog-content",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 2,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "关闭"
+      },
+      "events": [
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/portrait-ferry-worker.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/e1-mooring.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-backdrop.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-study-sans.woff2",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.934Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "keyboard",
+        "name": "final-missing",
+        "key": "Escape",
+        "label": "c16-missing-close"
+      },
+      "at": "2026-10-07T11:29:02.262Z",
+      "evidence": "198-final-missing-c16-missing-close",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 1532,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 106.09375,
+          "width": 370,
+          "height": 1327.78125,
+          "top": 106.09375,
+          "right": 380,
+          "bottom": 1433.875,
+          "left": 10
+        },
+        "dockDisplay": "grid",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 2,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": null,
+        "text": "身份"
+      },
+      "events": [
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/portrait-ferry-worker.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.890Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/e1-mooring.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.891Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-backdrop.svg",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.933Z",
+          "name": "final-missing",
+          "kind": "requestfailed",
+          "url": "http://127.0.0.1:41873/assets/river-study-sans.woff2",
+          "message": "net::ERR_FAILED"
+        },
+        {
+          "time": "2026-10-07T11:29:00.934Z",
+          "name": "final-missing",
+          "kind": "error",
+          "message": "Failed to load resource: net::ERR_FAILED"
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "new",
+        "name": "final-nojs",
+        "mobile": true,
+        "noJS": true
+      },
+      "at": "2026-10-07T11:29:02.586Z",
+      "evidence": "199-final-nojs-new",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 844,
+        "scrollY": 0
+      },
+      "sample": {
+        "dockDisplay": null,
+        "panels": [
+          {
+            "id": "state",
+            "count": 0
+          },
+          {
+            "id": "identity",
+            "count": 0
+          },
+          {
+            "id": "map",
+            "count": 0
+          },
+          {
+            "id": "bag",
+            "count": 0
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "none"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": ""
+      },
+      "events": []
+    },
+    {
+      "command": {
+        "op": "goto",
+        "name": "final-nojs",
+        "url": "http://127.0.0.1:41873/index.html",
+        "label": "c17-nojs"
+      },
+      "at": "2026-10-07T11:29:03.420Z",
+      "evidence": "200-final-nojs-c17-nojs",
+      "layout": {
+        "width": 390,
+        "bodyWidth": 390,
+        "scrollHeight": 3131,
+        "scrollY": 0
+      },
+      "sample": {
+        "dialogOpen": false,
+        "readingRect": {
+          "x": 10,
+          "y": 875.625,
+          "width": 370,
+          "height": 1397.34375,
+          "top": 875.625,
+          "right": 380,
+          "bottom": 2272.96875,
+          "left": 10
+        },
+        "dockDisplay": "none",
+        "panels": [
+          {
+            "id": "state",
+            "parent": "state-slot",
+            "count": 1
+          },
+          {
+            "id": "identity",
+            "parent": "identity-slot",
+            "count": 1
+          },
+          {
+            "id": "map",
+            "parent": "map-slot",
+            "count": 1
+          },
+          {
+            "id": "bag",
+            "parent": "bag-slot",
+            "count": 1
+          }
+        ],
+        "fontStatus": "loaded",
+        "missingImages": 0,
+        "background": "url(\"http://127.0.0.1:41873/assets/river-backdrop.svg\")"
+      },
+      "active": {
+        "tag": "BODY",
+        "id": "",
+        "cls": null,
+        "text": "跳到正文\n≋\n七名河\n版式小样 B\n\n静态设计参考 · 未接入游戏\n\n人物面板 · 静态占位\n\n旅人状态\n生命\n— / —\n防护\n—\n随行状态\n未接入\n\n正式界面应读取真实角色状态。本稿不生成生命、属"
+      },
+      "events": []
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "kind": "rendered-design-source-fingerprints",
+  "base": "9d3732b5317af4606b3ce2fe0bbdd92a5b84efdc",
+  "gameRuntimeExecuted": false,
+  "files": [
+    {
+      "path": "index.html",
+      "bytes": 9065,
+      "sha256": "902c9dec481783e98c7bc4c35ee65734f9e8e9ad79af98aa43a3a2da28c87750"
+    },
+    {
+      "path": "study.css",
+      "bytes": 8000,
+      "sha256": "12c936f663a91cd64fc9a895053061d132b12c43b8dacb4d0fa48a0035946822"
+    },
+    {
+      "path": "study.js",
+      "bytes": 6038,
+      "sha256": "4d6e8f6e7a49769c4cb7d74981695ebe3ae27e7b1031f776274fba323a938843"
+    },
+    {
+      "path": "asset-manifest.json",
+      "bytes": 2626,
+      "sha256": "0d3bb07c96b4dda2774c3efb441e1fdf9c810cdb0eae936b570b61da5d949dab"
+    },
+    {
+      "path": "assets/FONT-LICENSE.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "assets/FONT-NOTICE.txt",
+      "bytes": 410,
+      "sha256": "149e141c3f93017d88120b779d1ea6f896939996db0f81552bfb3023eedf4983"
+    },
+    {
+      "path": "assets/e1-mooring.svg",
+      "bytes": 51120,
+      "sha256": "36fc7859124f7f7657faa00153d6b9ff72199dbcb3e9ddc8979a3c978749e2fc"
+    },
+    {
+      "path": "assets/e2-water-chart.svg",
+      "bytes": 51320,
+      "sha256": "f686d4b4624744bed9ecf9f403eaba135782e13cf8d09bbc650767d83997a2fc"
+    },
+    {
+      "path": "assets/portrait-ferry-worker.svg",
+      "bytes": 8194,
+      "sha256": "5f7694dd349900d745c0b96a6b56a7050adc8b4166fe44da94c77053f88ec05c"
+    },
+    {
+      "path": "assets/portrait-water-reader.svg",
+      "bytes": 7920,
+      "sha256": "db9f8dd5e03a783255874aca899371c91a1ad7db3961d9b58f5cbcb5ac46e3dd"
+    },
+    {
+      "path": "assets/river-backdrop.png",
+      "bytes": 83114,
+      "sha256": "156ad10e71716f4c0a12fa065418faaeee07efa444dc203e1b42742e487cb832"
+    },
+    {
+      "path": "assets/river-backdrop.svg",
+      "bytes": 1783,
+      "sha256": "2a1269a4ba9da3fbf1caf9784edc3beb0d5c84f387c02a8a7f4d43e9a6a42c4a"
+    },
+    {
+      "path": "assets/river-study-sans.woff2",
+      "bytes": 136528,
+      "sha256": "f9bf47d8bf5e981e487af6ebcd50f2e9110e6637e4e36ddc79dd18bc289b9208"
+    }
+  ],
+  "previewImages": {
+    "desktop.png": "164-final-checks-c01-desktop-1440.png (full page)",
+    "mobile.png": "160-show-mobile-mobile-present.png (top 390×844 viewport crop)",
+    "mobile-identity.png": "161-show-mobile-identity-present.png (top 390×844 viewport crop)"
+  }
+}
