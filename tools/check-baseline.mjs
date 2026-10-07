@@ -6,6 +6,10 @@
  *   ② `结论` 只能取 `非阻塞`／`阻塞`／`未判`；
  *   ③ **未判具名**：`结论 === '未判'` ⇒ `未判原因` **非空**（✗ 不许留空 —— 空着就等于「静默跳过」）。
  *   加 `--release`（发布口径）：**有 `阻塞` 即红**（零阻塞判定 ✓）。
+ * ★`--file <路径>`（`books#402` S8 · 0.0.3 手续）：★指定要核的基线档（相对仓根 ✓）；
+ *   ✗ 缺省 ⇒ `docs/playtest/baseline-0.0.2.json`（**零回归** ✓ —— 老调用形不受影响 ✓）。
+ *   ★为何要这个口：★0.0.3 验收要立**新基线档** ✓，而本器的判据是「**形状与可判性**」✗ 不是档名 ✓
+ *   ⇒ ★同一把尺子量多份基线，✗ 复制一支新脚本（★复制＝两份判据会漂 ✓）。
  * 退出码：0 全过；1 判据不符（逐条打印）；2 环境错（文件缺/不是 JSON）。
  */
 import fs from 'node:fs';
@@ -13,7 +17,11 @@ import path from 'node:path';
 import process from 'node:process';
 
 const repo = path.resolve(import.meta.dirname, '..');
-const 档 = path.join(repo, 'docs/playtest/baseline-0.0.2.json');
+const 档相对 = process.argv.includes('--file')
+	? (process.argv[process.argv.indexOf('--file') + 1] ?? '')
+	: 'docs/playtest/baseline-0.0.2.json';
+if (!档相对) { console.error('✗ 用法错：`--file` 后面要给路径（相对仓根）'); process.exit(2); }
+const 档 = path.isAbsolute(档相对) ? 档相对 : path.join(repo, 档相对);
 const release = process.argv.includes('--release');
 if (!fs.existsSync(档)) { console.error(`✗ 环境错：没有 ${path.relative(repo, 档)}`); process.exit(2); }
 let T; try { T = JSON.parse(fs.readFileSync(档, 'utf8')); } catch (e) { console.error(`✗ 环境错：解析失败 ${e.message}`); process.exit(2); }
