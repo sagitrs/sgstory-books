@@ -49,6 +49,8 @@
 | `tools/e2e-314-l10-city.mjs` | L10 真 Chromium 点击、宿主存档往返、刷新、返程及两个终局；资源注入不是平衡验收 |
 | `tools/e2e-311-visual.mjs` | `books#311` 完整产物素材字节／装饰 DOM／具名图片故障与重绘不变性（jsdom，不判解码／布局／字体） |
 | `tools/e2e-311-layout.mjs` | `books#311` 原生 Chromium 两视口几何、具名战期 CSS 夹具与 CSS 四刀 |
+| `tools/e2e-397-fixed-encounter-no-lootroll.mjs` | `books#399`(S5 臂 A1) 固定遭遇**不经随机掉落口**：四组各战后 `RPG.rollLoot`/`rollEncounter` 调用计数 **= 0** ＋ **正控**（确有固定交付）＋ 器具自证（死计即红） |
+| `tools/e2e-397-scout-flee-branch.mjs` | `books#399`(S5 臂 A2) 避战分流：**只选一次**（第二次具名拒）＋ **＋3 仅侦察／−6 仅脱离**（攻/伤/AC 三面逐字同）＋ **脱离无散货** ＋ **尺有敏感度正控** ＋ 刀（加成误接攻伤 ⇒ 具名红） |
 
 ## 退出码三分：`0`／`1`／`2` 各指什么（★读任何读数前先看这一节）
 
