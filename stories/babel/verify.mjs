@@ -5733,4 +5733,79 @@ head('69. `books#398` S4：真头槽／占槽换装保全／失败安全两路�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 69 组：${本组失败 === 0 ? '十一格全绿（真头槽定义／真佩戴／占槽换装旧件保全／拒路／抛路／防重／读档往返／谢绝／禁售目录／头槽语义／文本如实）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+/* ============================================================
+ * 第 72 组：`books#400`（**S6**）一次传送 —— ★**两路同一事务／同一幂等键空间**
+ *   裁 B（`6018346663`＋`6027479335`）：「提前」＝**教程内合法提前返程** ✓（✗ 不含付费旧卷轴 ✓）
+ *   ★号位：领队裁 —— **69 已由 `#449`（S4）认领**、**70 由 dev-9（A2）占**、**71＝3b** ⇒ 本组用 **72** ✓（✗ 不撞号 ✓）。
+ * ============================================================ */
+head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不完成且可恢复／E9 才完成／存取不刷机会不重损毁');
+{
+	const 域 = 'sevenNames';
+	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 组前 = fails.length;
+	try {
+		const S7 = B?.七名河, 结 = B?.返程结算;
+		ok(!!S7 && !!结, '前置：`BS.七名河` 与 `BS.返程结算` 都须在位');
+		if (S7 && 结) {
+			const 出边 = (map.exits ?? []).filter((e) => e.from === 'W09' && e.to === B.聚落);
+			const 起 = (当前, 实例) => { State.variables[域] = { 态: '进行中', 当前, 结果: {}, 机会: { 用: false, 实例 }, 路径: ['E0'] }; return State.variables[域]; };
+			const 清背 = () => { D.Player.items = []; };
+			const 造 = (id, state) => { const x = R.createItem(id); if (state) x.state = state; D.Player.items.push(x); return x; };
+
+			/* ① ★两路**同一事务**：早返与 E9 **同请求键** ⇒ 实例用过一次即两端皆拒 ✓（「同一幂等键空间」✓） */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起('E4', 'i-s6');
+			const 早 = 结.返程事务({ 实例: 'i-s6', 完成: false });
+			ok(早.ok === true, `★提前返程须成功（实得 ${JSON.stringify(早).slice(0, 70)}）`);
+			ok(R.commitBoundary.settled('sevenNames:返程:i-s6') != null, '★同上：请求键须**落在引擎账**（`settled` 查得到 ✓ ⇒ 与 E9 同键空间 ✓）');
+			const 再 = 结.返程事务({ 实例: 'i-s6', 完成: true });
+			ok(再.ok === false && /RETURN_ALREADY_SETTLED/.test(再.code ?? ''), `★同实例**再走另一路也须拒**（✗ 两路各记一套账 ✓；实得 ${再.code ?? '（无）'}）`);
+
+			/* ② ★提前**✗ 不完成**，且**位置与路径保留**（设计 §6「下次从 E0 进入，沿已选路线恢复」✓） */
+			ok(State.variables[域].态 !== '完成', `★提前返程 ✗ 不得置「完成」（实得 ${State.variables[域].态}）`);
+			ok((State.variables[域].路径 ?? []).includes('E0'), '★同上：**路径保留**（可恢复 ✓）');
+			ok(State.variables[域].机会.用 === true, '★同上：机会**已消费**（本次实例一次 ✓）');
+
+			/* ③ ★E9 才完成 */
+			清背(); 起('E9', 'i-s6b');
+			const 成 = 结.返程事务({ 实例: 'i-s6b', 完成: true });
+			ok(成.ok === true && State.variables[域].态 === '完成', `★E9 确认回城 ⇒ **完成**（实得 态=${State.variables[域].态}）`);
+
+			/* ④ ★两路都跑结算（三栏）—— 早返那条也要损毁／附加 ✓ */
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起('E6', 'i-s6c');
+			const 早2 = 结.返程事务({ 实例: 'i-s6c', 完成: false });
+			ok(早2.ok === true && (早2.栏?.消失 ?? []).length === 1 && (早2.栏?.新增 ?? []).length === 1, `★提前路**同样结算**（消失 1／新增 1 ✓；实得 ${JSON.stringify(早2.栏 ?? {}).slice(0, 80)}）`);
+
+			/* ⑤ ★存取往返：✗ 不刷机会、✗ 不重复损毁（票面第 4 条 ✓） */
+			const 档 = JSON.parse(JSON.stringify(State.variables[域]));
+			State.variables[域] = JSON.parse(JSON.stringify(档));
+			const 件后 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
+			const 再损 = 结.返程事务({ 实例: 'i-s6c', 完成: false });
+			ok(再损.ok === false, '★存读往返后同实例仍拒（✗ 不重复损毁 ✓）');
+			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 件后, '★同上：**物品面逐字节不变** ✓');
+			ok(State.variables[域].机会.用 === true && State.variables[域].机会.实例 === 'i-s6c', '★同上：机会**未被刷新**（同实例 ✓）');
+
+			/* ⑥ ★两路互斥（按地点）—— 65 组的同形，此处钉「开关面」 */
+			ok(出边.length === 2, `★W09 出 L10 应恰两条（实得 ${出边.length}）`);
+			State.variables[域] = { 态: '进行中', 当前: 'E9', 结果: {}, 机会: { 用: false, 实例: 'x' }, 路径: [] };
+			ok(出边.filter((e) => e.when()).length === 1, '★E9 ⇒ 只完成路可用 ✓');
+			State.variables[域].当前 = 'E7';
+			ok(出边.filter((e) => e.when()).length === 1, '★非 E9 ⇒ 只提前路可用 ✓');
+
+			/* ⑦ ★旧卷轴＝**具名豁免**（裁 B ✓）：与两路**分开**，零损毁零写 ✓ */
+			const 前卷 = JSON.stringify(State.variables[域]);
+			const 回执 = 结.旧卷轴返程?.();
+			ok(回执?.code === 'RETURN_SCROLL_EXEMPT', `★旧卷轴须为**具名豁免**（实得 ${回执?.code ?? '（无）'}）`);
+			ok(JSON.stringify(State.variables[域]) === 前卷, '★同上：豁免路径**零写** ✓');
+			ok(!/旧卷轴/.test(String(出边.map((e) => e.text).join('|'))), '★同上：卷轴 ✗ 不并入两路出口（互不混义 ✓）');
+		}
+	} finally {
+		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
+		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
+	}
+	const 本组失败 = fails.length - 组前;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 72 组：${本组失败 === 0 ? '十格全绿（两路同事务同键／提前✗完成且可恢复／E9 才完成／两路都结算／存取不刷不重损／两路互斥／卷轴具名豁免零写）' : `★本组 ${本组失败} 处失败`}`);
+}
+
+
 printSummary();
