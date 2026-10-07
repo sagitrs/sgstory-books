@@ -5966,6 +5966,7 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬移／落点同 L10-camp');
 {
 	let 本组判据 = 0;
+	const 组前失败 = fails.length;          // ★`#458` RC：红绿**由失败数定** ✗ 不由判据数定 ✓（照仓内范本 :5750/:5841/:5954 ✓）
 	const ok74 = (c, m) => { 本组判据++; ok(c, m); };
 	const 域 = 'sevenNames';
 	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
@@ -6028,7 +6029,8 @@ head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬�
 		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
 		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
 	}
-	console.log(`  ${本组判据 > 0 ? '✓' : '✗'} 第 74 组：全绿 —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 74 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
 }
 
 printSummary();
