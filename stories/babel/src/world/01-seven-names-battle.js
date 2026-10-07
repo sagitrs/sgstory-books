@@ -45,15 +45,26 @@
 		return Array.from({ length: n }, () => R.Character.revive(JSON.parse(JSON.stringify(proto.toJSON()))));
 	};
 
+	/** ★`books#413` A2：本档的**玩家／随机源／会话身份**一律从**运行上下文**取 ——
+	 *   · 正式上下文 ⇒ `DND3.Player`／`RPG.rng`／`场次id=null`（**旧行为逐字不变** ✓）；
+	 *   · 测试上下文 ⇒ 测试角色／**该场次自己的源**／场次 id（★隔离的落点 ✓）。
+	 *   ⚠ ✗ 本档自带默认账形（那会变成「同一个量两套算法」✗）—— 账仍走 `本局账` 的唯一口径 ✓。 */
+	const 取运行 = () => setup.BABEL.运行?.取?.() ?? null;
+	const 取玩家 = (给 = null) => 给 ?? 取运行()?.玩家?.() ?? D.Player;
+	const 取源 = () => 取运行()?.rng?.();
+	const 取场次 = () => 取运行()?.场次id ?? null;
+
 	/** 跑一场**固定敌组**的真战斗（照故事侧 `fight()` 的约定：战中门控 ＋ 面板刷新）。 */
-	const 跑一场 = async (node, { interactive = false } = {}) => {
+	const 跑一场 = async (node, { interactive = false, 玩家: 玩家给 = null } = {}) => {
 		const foes = 成军(node);
 		BS.战中 = true;
 		try { globalThis.document?.body?.classList?.add('战中'); } catch { /* 无 DOM ⇒ 略 */ }
 		R.refreshPanels?.();
+		const P = 取玩家(玩家给);   // ★测试局 ⇒ 测试角色（✗ 借正式玩家 ✓）
 		let 场 = null;
 		try {
-			场 = new R.Battle(回合上限, [D.Player], foes, interactive);
+			/* ★`sgstory#2043`：把**本场自己的源与会话**交给战斗 ⇒ 攻/伤骰、AI 选靶、**当前战斗归属**都在该会话内 ✓ */
+			场 = new R.Battle(回合上限, [P], foes, interactive, { 源: 取源(), 会话: 取场次() });
 			await 场.execute();
 		} finally {
 			BS.战中 = false;
@@ -61,7 +72,7 @@
 			R.refreshPanels?.();
 		}
 		/* ★战果**只在一处判**（故事侧 `setup.BABEL.战果` ⇒ 引擎 `outcomeResolver`）✗ 本档自写「胜＝全倒」 */
-		const 果 = BS.战果({ foes, player: D.Player, 战斗: 场 });
+		const 果 = BS.战果({ foes, player: P, 战斗: 场 });
 		return { foes, 场, 果 };
 	};
 
