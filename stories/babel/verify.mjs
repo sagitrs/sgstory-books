@@ -5777,6 +5777,9 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 			ok(早2.ok === true && (早2.栏?.消失 ?? []).length === 1 && (早2.栏?.新增 ?? []).length === 1, `★提前路**同样结算**（消失 1／新增 1 ✓；实得 ${JSON.stringify(早2.栏 ?? {}).slice(0, 80)}）`);
 
 			/* ⑤ ★存取往返：✗ 不刷机会、✗ 不重复损毁（票面第 4 条 ✓） */
+			/* ★旁注（领队准 ✓·`#450`）：**真存读**（宿主级存/读往返、`Save.onLoad` 归位与槽面）
+			 *   归 **`e2e-178-slots`／`#402`** 收口 ✓ —— ★本组只断**故事面**的「同实例幂等 ＋ 物品面不变」✓，
+			 *   ✗ 不声称已验宿主级存读 ✓（那需要真宿主装置 ✓）。 */
 			const 档 = JSON.parse(JSON.stringify(State.variables[域]));
 			State.variables[域] = JSON.parse(JSON.stringify(档));
 			const 件后 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
