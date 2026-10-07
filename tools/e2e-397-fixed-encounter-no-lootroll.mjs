@@ -97,10 +97,18 @@ async function 判(env) {
 				SC.setup.DND3.Player.items = 背存.map((x) => R.reviveItem(x));
 			}
 		}
-		/* ★正控：★本夹具下必须**真的发生过一次固定交付** ⇒ 否则负条是恒真式 */
-		const 有交付 = Object.entries(读数).filter(([, v]) => (v.交付 ?? 0) > 0).map(([k]) => k);
-		ok(有交付.length > 0,
-			`★正控失败：四组里**没有任何一组发生固定交付**（读数 ${JSON.stringify(读数)}）⇒ 上面「计数 = 0」是恒真式（✗ 什么都没发生当然 0）`);
+		/* ★正控（★**按组**，与负条**同粒度** —— 承 developer-9 的 N1 ✓）：
+		 *   ★旧的写法是「四组里**至少一组**有交付」✗ —— 那会漏：★若**某组该发而不发**
+		 *   （战果仍是 `victory` ✓）⇒ ★**正条与负条双绿** ✗ ⇒ 漏掉的正是我们要防的那一类 ✓。
+		 *   ★两条合起来才闭合：①**每组**：`战果 === 'victory'` ⇒ 交付**恰 1** ✓
+		 *                      ②**至少一组**真的以 `victory` 收场 ✓（✗ 否则 ① 整条空转 ✗）。 */
+		const 胜组 = Object.entries(读数).filter(([, v]) => v.战果 === 'victory');
+		ok(胜组.length > 0,
+			`★正控①（前置）：本夹具下**须至少一组以 \`victory\` 收场**（实得 ${JSON.stringify(Object.fromEntries(Object.entries(读数).map(([k, v]) => [k, v.战果])))}）⇒ ✗ 否则下面按组正控**空转** ✓`);
+		for (const [k, v] of 胜组) {
+			ok(v.交付 === 1,
+				`★正控②（按组）：★${k} \`战果==='victory'\` ⇒ 交付须**恰 1**（实得 ${v.交付}）—— ✗ 该发而不发（旧写法只断「四组里至少一组」，此处会漏 ✓）`);
+		}
 	} finally { 卸(); BS.战果 = 原果; }
 	return { fails, 读数 };
 }
@@ -109,9 +117,21 @@ async function 判(env) {
 if (自检) {
 	const env = resolveEnv(引擎);
 	/* ★刀：在**临时副本**上给「固定交付」前置一次真随机口调用 ⇒ 判据须具名红。 */
-	const 补 = fs.readFileSync(env.htmlPath, 'utf8').replace(
-		/(const 发 = 胜后交付\(node\);)/,
+	const 锚 = /(const 发 = 胜后交付\(node\);)/;
+	const 原文 = fs.readFileSync(env.htmlPath, 'utf8');
+	/* ★N2（承 developer-9 ✓）：★替换前**先断言锚命中** ✗ —— 否则该行将来改名 ⇒ 副本＝原文 ⇒
+	 *   自检只会报「刀没咬住」✗ ⇒ **会被误读成产品回归** ✗（★实为**锚失效** ✓，两件事须分开 ✓）。 */
+	if (!锚.test(原文)) {
+		console.error('  ✗ 刀锚点失效：`const 发 = 胜后交付(node);` **未命中**（★这是**锚失效**，✗ 不是产品回归 ✓；请改锚 ✓）');
+		process.exit(3);
+	}
+	const 补 = 原文.replace(
+		锚,
 		'if (typeof R?.rollLoot === "function") { try { R.rollLoot("L2"); } catch (e) {} }\n\t\t$1');
+	if (补 === 原文) {
+		console.error('  ✗ 刀锚点失效：替换**未发生**（★同上，✗ 不是产品回归 ✓）');
+		process.exit(3);
+	}
 	const 临时 = env.htmlPath + '.knife.html';
 	fs.writeFileSync(临时, 补);
 	const { fails } = await 判({ ...env, htmlPath: 临时 });
