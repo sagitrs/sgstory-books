@@ -220,8 +220,10 @@ body.战中 #passages { margin-top: 9rem; }
 /* ★`books#401` 3b：地图宿主紧接背包之后（裁六 `6021566672` 第 3 项 ✓ —— `.bagbar` 之后、`.enemybar` 之前 ✓）。 */
 .mapbar { color: #8fa8bd; font-size: 0.85em; margin-top: 0.3em; }
 .mapbar .map-open { cursor: pointer; text-decoration: underline; background: none; border: 0; color: #a8c8e0; font: inherit; padding: 0; }
-.mapbar .map-wrap { position: relative; display: inline-block; margin-top: 0.3em; max-height: 40vh; }
-.mapbar .map-art { display: block; max-height: 40vh; height: auto; cursor: pointer; }
+.mapbar .map-wrap { position: relative; display: inline-block; margin-top: 0.3em; max-height: 40vh; max-width: 100%; }
+/* ★线上 P1-1 §1：窄屏开图实测页面 **405px ＞ 390px 视口** ⇒ 底图按**固有宽度**撑破布局 ✓；
+ *   `max-width: 100%` 只**缩不放**（宽屏仍原尺寸，✗ 拉糊）✓。 */
+.mapbar .map-art { display: block; max-height: 40vh; max-width: 100%; height: auto; cursor: pointer; }
 .mapbar .map-overlay { position: absolute; inset: 0; pointer-events: none; }
 .mapbar .map-legend { margin-top: 0.2em; color: #97a9ba; }
 .mapbar .map-eq { margin-top: 0.2em; line-height: 1.5; }
@@ -233,7 +235,7 @@ body.战中 #passages { margin-top: 9rem; }
 
 :: StoryCaption
 /* ★`#1879` D9：**版本徽标**（侧栏常驻区）—— `$buildVersion` 由 `build.py --version` 在**产物文本**里注入；
- *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.1·<pin 短sha>` ✓。
+ *   源树缺省 `—`（`meta/init.twee` 的 StoryInit ✓）⇒ ✗ 传参时产物逐字节同旧；传参时显示 `v0.0.3·<pin 短sha>` ✓。
  *   ⚠ 判据：`<<if>>` 兜底（变量缺失 ⇒ 什么都不显 ⇒ 零噪声 ✓）。 */
 <<if $buildVersion>>版本 $buildVersion<</if>>
 
