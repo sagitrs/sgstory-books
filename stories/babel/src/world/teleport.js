@@ -3,6 +3,10 @@
  * 购买复用 L10 候选目录和 RPG.exchange，不另写一套扣钱发货逻辑。
  */
 const DND3 = setup.DND3, R = setup.RPG, B = setup.BABEL;
+
+/* ★★M-1（`#484` 重切 main）：**通道单源常量** —— 演出与拒因的通道名只在此处定义 ✓（判据侧同读 `B.通道` ✓）。 */
+const 拒通道 = 'item-refuse', 演出通道 = 'map-scene';
+B.通道 = Object.freeze({ 拒因: 拒通道, 演出: 演出通道 });
 const 聚落 = 'L10-camp', 卷轴 = 'return-scroll';
 B.聚落 = 聚落;
 B.回城卷轴 = 卷轴;
@@ -113,7 +117,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 								? ((typeof 门?.战斗行动 === 'function') ? 门.战斗行动(i, { interactive: true }) : { ok: false, why: '战斗入口未装载（`01-seven-names-battle.js` 缺席）' })
 								: 七.选行动(i);
 						} catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
-						if (r && r.ok === false) { R.note?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`); return false; }
+						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 拒通道 }); return false; }
 						return true;
 					},
 				})),
@@ -150,9 +154,9 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				 *   ★裁文纠正②「提交拒绝必须**真挡住移动**」：本 pin 的 `MapScene` 判 `exit.action() !== false`
 				 *   （`src/core/60-map.js:377` ✓）⇒ 此处**必须返回 `false`** ✓（返回 `{ok:false}` ✗ 不挡 ✓）。 */
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例,
-					演出: (栏) => R.note?.(B.返程结算.演出(栏)) });
+					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 演出通道 }) });
 				if (!r) return true;                       // （✗ 无结算模块时不动旧行为 ✓）
-				if (!r.ok) { R.note?.(`✗ ${r.why}`); return false; }
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 拒通道 }); return false; }
 				return true;
 			},
 		}));
@@ -168,9 +172,9 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 			when: () => B.L10.alive() && !B.战中 && 七.读().已开始 && 七.读().态 !== '完成' && 七.读().当前 !== 'E9' && !七.读().机会.用,   // ★同上：战中／死亡须拒 ✓
 			action: () => {
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例, 完成: false,
-					演出: (栏) => R.note?.(B.返程结算.演出(栏)) });
+					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 演出通道 }) });
 				if (!r) return true;
-				if (!r.ok) { R.note?.(`✗ ${r.why}`); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 拒通道 }); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
 				return true;
 			},
 		}));

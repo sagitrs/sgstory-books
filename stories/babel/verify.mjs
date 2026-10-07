@@ -5460,17 +5460,36 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			const 边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp');
 			ok(!!边, '★E9 出口边在位（W09 → L10-camp）');
 			if (边) {
-				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**
+				const 拒通道 = setup.BABEL?.通道?.拒因 ?? 'item-refuse';
+				R.pushNotice?.('★哨兵·拒因', { channel: 拒通道 });   // ★哨兵定位（同演出格 ✓）
+				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**（★围住这唯一一次调用 ✓）
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
+				{
+					const 全拒 = R.notices({ channel: 拒通道, limit: 500 }) ?? [];
+					const i拒 = 全拒.findIndex((n) => n.text === '★哨兵·拒因');
+					const 文拒 = 全拒.slice(0, i拒 < 0 ? 0 : i拒).map((n) => n.text).reverse().join('\n');
+					ok(文拒.length > 0 && 文拒.split('\n').some((x) => x.startsWith('✗ ')),
+						`★行程拒绝须落 \`${拒通道}\` 通道（✗ 只打在无人提供的钩上 ⇒ 玩家看不见 ✓；实得 ${JSON.stringify(文拒.slice(0, 80))}）`);
+				}
 				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
 				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
-				const 原note = R.note; const 收 = [];
-				try {
-					R.note = (s) => { 收.push(String(s)); };
-					清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
-					边.action();
-				} finally { R.note = 原note; }
-				const 文接 = 收.join('\n');
+				/* ★★M-1（`#484` 重切 main）：演出改走**引擎真口** `R.pushNotice` ⇒ 本格改**读引擎通知面的具名通道**
+				 *   （✗ 再给无人提供的 `R.note` 装钩 —— 那样「玩家侧**显不显示**」**测不出来** ✗）。 */
+				console.log('  ★探针：演出调用前后——先直呼一次看落哪：', JSON.stringify((() => { const a = (R.notices({ limit: 500 }) ?? []).length; R.pushNotice?.('★探针行', { channel: 'map-scene' }); const b = (R.notices({ limit: 500 }) ?? []); return { 前: a, 后: b.length, 首: b[0]?.text, 首通: b[0]?.channel }; })()));
+				const 演通道 = setup.BABEL?.通道?.演出 ?? 'map-scene';
+				/* ★装置：`RPG.notices()` **新的在前** 且缓冲**上限 200**（`71-notice.js`）⇒ 「长度差」在满缓冲下**恒空** ✗
+				 *   ⇒ 改用**哨兵行**定位：先压一行哨兵，再取它**之前**的那些（＝本次新增 ✓）。 */
+				R.pushNotice?.('★哨兵·演出', { channel: 演通道 });
+				清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
+				边.action();
+				{
+					const 全 = R.notices({ channel: 演通道, limit: 500 }) ?? [];
+					const i = 全.findIndex((n) => n.text === '★哨兵·演出');
+					var 文接 = 全.slice(0, i < 0 ? 0 : i).map((n) => n.text).reverse().join('\n');
+				}
+				ok(文接.length > 0, `★E9 出口演出须**真进引擎通知面**（✗ 只打无人提供的钩 ✓；实得 ${JSON.stringify(文接.slice(0, 60))}）`);
+				ok(setup.BABEL?.通道?.演出 === 'map-scene', `★「演出」通道**字面值**须为 map-scene（实得 ${JSON.stringify(setup.BABEL?.通道?.演出)}）`);
+				ok(setup.BABEL?.通道?.拒因 === 'item-refuse', `★「拒因」通道**字面值**须为 item-refuse（实得 ${JSON.stringify(setup.BABEL?.通道?.拒因)}）`);
 				ok(文接.includes('获得脆弱的') && 文接.includes('原已脆弱而消失的') && 文接.includes('保持稳定的'),
 					`★E9 出口须**真演出三栏**（实得通知：${JSON.stringify(文接.slice(0, 90))}）`);
 				ok(文接.includes('club×1') || 文接.includes('木棒×1') || 文接.includes('×1'),
@@ -5935,9 +5954,10 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		ok73(活.__p73 === 999, '★④同上：拒时**零写** ✓'); delete 活.__p73;
 		/* ⑤**故障恢复**（`publish` 抛）⇒ 事实与物品都在 ⇒ **只重绘**（✗ 不重跑领域副作用 ✓） */
 		清背(); 造('club', { 脆弱: true }); 起('E6', 'i-c5');
-		const 原note73 = R.note; let 抛次 = 0;
-		R.note = ((o) => function () { 抛次++; throw new Error('受控抛：演出面'); })(原note73);
-		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.note = 原note73; }
+		/* ★★M-1（`#484` 重切 main）：演出改走引擎真口 ⇒ 受控抛改注入 `R.pushNotice`（✗ 再注 `R.note` ✓）。 */
+		const 原push73 = R.pushNotice; let 抛次 = 0;
+		R.pushNotice = function () { 抛次++; throw new Error('受控抛：演出面'); };
+		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.pushNotice = 原push73; }
 		ok73(r5?.ok === true, `★⑤演出抛 ⇒ 事务**仍成功**（✗ 被回滚 ✓；实得 ${JSON.stringify(r5).slice(0, 70)}）`);
 		ok73(State.variables[域].态 === '完成' && State.variables[域].返程已结 === 'i-c5', '★⑤同上：**事实与标记都在**（只重绘 ✓）');
 		/* ⑥**非法／耗尽**（机会已用）⇒ 边不可用 ＋ 再调仍拒 */
