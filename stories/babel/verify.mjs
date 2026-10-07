@@ -5851,6 +5851,8 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
  * ============================================================ */
 head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故障恢复／部分转移·容器读数／回 L10 真环境');
 {
+	let 本组判据 = 0;   // ★`#455` RC（tester-3 ✓）：判据数**真算** ✗ 不许写死 ✓
+	const ok73 = (c, m) => { 本组判据++; ok(c, m); };   // ★★ 必须回指**原始 ok** ✓（✗ 自递归 —— 我首版就写了 ok73 ⇒ 栈溢出 ✗）   // ★组内唯一断言入口 ⇒ 删一条真判据，印出的数必 -1 ✓
 	const 域 = 'sevenNames';
 	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
 	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
@@ -5870,48 +5872,48 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		const 起 = (当前, 实例) => { State.variables[域] = { 态: '进行中', 当前, 结果: {}, 机会: { 用: false, 实例 }, 路径: ['E0'] }; return State.variables[域]; };
 		const 出边 = (map.exits ?? []).filter((e) => e.from === 'W09' && e.to === B.聚落);
 		const 可用 = () => 出边.filter((e) => { try { return e.when(); } catch { return false; } }).length;
-		ok(!!S7 && !!结 && !!L10 && 出边.length === 2, '前置：七名河／返程结算／L10／两条出口皆在位');
+		ok73(!!S7 && !!结 && !!L10 && 出边.length === 2, '前置：七名河／返程结算／L10／两条出口皆在位');
 
 		/* ── C 节：十情境的**正反**（票面第 1 条 ✓；★每条都断「拒绝零消耗 ＋ 不留半提交」✓）── */
 		/* ①**死亡** ⇒ 两路皆不可用 ＋ 零消耗（✗ 不出边、机会不动、✗ 无半提交 ✓） */
 		清背(); 造('club', { 脆弱: true }); 起('E9', 'i-c1');
 		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: true });
 		const 档死 = JSON.stringify(State.variables[域]);
-		ok(可用() === 0, `★①死亡 ⇒ **两路皆不可用**（实得 ${可用()}）`);
-		ok(JSON.stringify(State.variables[域]) === 档死, '★①同上：**零消耗**（域逐字不变 ✓ ✗ 半提交 ✓）');
-		ok((D.Player.items ?? []).filter((x) => x.id === 'club').length === 1, '★①同上：物品面未被损毁 ✓');
+		ok73(可用() === 0, `★①死亡 ⇒ **两路皆不可用**（实得 ${可用()}）`);
+		ok73(JSON.stringify(State.variables[域]) === 档死, '★①同上：**零消耗**（域逐字不变 ✓ ✗ 半提交 ✓）');
+		ok73((D.Player.items ?? []).filter((x) => x.id === 'club').length === 1, '★①同上：物品面未被损毁 ✓');
 		/* ②**战中** ⇒ 同形 */
 		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
 		const 原战 = B.战中; B.战中 = true;
-		try { ok(可用() === 0, `★②战中 ⇒ **两路皆不可用**（实得 ${可用()}）`); } finally { B.战中 = 原战; }
-		ok(可用() === 1, '★②（反例）非战中 ⇒ 恢复可用 ✓（证明上面那条是**战中**造成的 ✓）');
+		try { ok73(可用() === 0, `★②战中 ⇒ **两路皆不可用**（实得 ${可用()}）`); } finally { B.战中 = 原战; }
+		ok73(可用() === 1, '★②（反例）非战中 ⇒ 恢复可用 ✓（证明上面那条是**战中**造成的 ✓）');
 		/* ③**双击（同实例）** ⇒ 具名拒 ＋ 次次零变化 */
 		清背(); 造('club', { 脆弱: true }); 起('E4', 'i-c3');
 		const 一 = 结.返程事务({ 实例: 'i-c3', 完成: false });
 		const 面3 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
 		const 二 = 结.返程事务({ 实例: 'i-c3', 完成: false });
-		ok(一.ok === true && 二.ok === false && /RETURN_ALREADY_SETTLED/.test(二.code ?? ''), `★③双击 ⇒ **具名拒**（实得 ${二.code ?? '（无）'}）`);
-		ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 面3, '★③同上：**零变化**（✗ 二次损毁 ✓）');
+		ok73(一.ok === true && 二.ok === false && /RETURN_ALREADY_SETTLED/.test(二.code ?? ''), `★③双击 ⇒ **具名拒**（实得 ${二.code ?? '（无）'}）`);
+		ok73(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 面3, '★③同上：**零变化**（✗ 二次损毁 ✓）');
 		/* ④**旧预览**（前像已变）⇒ 引擎面 `COMMIT_STALE`（★同 68 组形；此处再钉本组语境 ✓） */
 		const 活 = State.variables[域];
 		const 票 = R.commitBoundary.preview({ request: 'probe73:stale', facts: 活, apply: (d) => { d.__p73 = 1; } });
-		ok(票.status === 'previewed', '★④（前置）preview 给票 ✓');
+		ok73(票.status === 'previewed', '★④（前置）preview 给票 ✓');
 		活.__p73 = 999;
 		const 陈 = R.commitBoundary.commit(票.ticket, { facts: 活 });
-		ok(陈.status === 'rejected' && 陈.code === 'COMMIT_STALE', `★④旧预览 ⇒ 拒 \`COMMIT_STALE\`（实得 ${陈.code ?? 陈.status}）`);
-		ok(活.__p73 === 999, '★④同上：拒时**零写** ✓'); delete 活.__p73;
+		ok73(陈.status === 'rejected' && 陈.code === 'COMMIT_STALE', `★④旧预览 ⇒ 拒 \`COMMIT_STALE\`（实得 ${陈.code ?? 陈.status}）`);
+		ok73(活.__p73 === 999, '★④同上：拒时**零写** ✓'); delete 活.__p73;
 		/* ⑤**故障恢复**（`publish` 抛）⇒ 事实与物品都在 ⇒ **只重绘**（✗ 不重跑领域副作用 ✓） */
 		清背(); 造('club', { 脆弱: true }); 起('E6', 'i-c5');
 		const 原note73 = R.note; let 抛次 = 0;
 		R.note = ((o) => function () { 抛次++; throw new Error('受控抛：演出面'); })(原note73);
 		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.note = 原note73; }
-		ok(r5?.ok === true, `★⑤演出抛 ⇒ 事务**仍成功**（✗ 被回滚 ✓；实得 ${JSON.stringify(r5).slice(0, 70)}）`);
-		ok(State.variables[域].态 === '完成' && State.variables[域].返程已结 === 'i-c5', '★⑤同上：**事实与标记都在**（只重绘 ✓）');
+		ok73(r5?.ok === true, `★⑤演出抛 ⇒ 事务**仍成功**（✗ 被回滚 ✓；实得 ${JSON.stringify(r5).slice(0, 70)}）`);
+		ok73(State.variables[域].态 === '完成' && State.variables[域].返程已结 === 'i-c5', '★⑤同上：**事实与标记都在**（只重绘 ✓）');
 		/* ⑥**非法／耗尽**（机会已用）⇒ 边不可用 ＋ 再调仍拒 */
 		起('E7', 'i-c6'); State.variables[域].机会.用 = true;
-		ok(可用() === 0, `★⑥机会已用（耗尽）⇒ 两路皆不可用（实得 ${可用()}）`);
+		ok73(可用() === 0, `★⑥机会已用（耗尽）⇒ 两路皆不可用（实得 ${可用()}）`);
 		const 六 = 结.返程事务({ 实例: 'i-c6', 完成: false });
-		ok(六.ok === true, '★⑥同上：**换新实例仍可结算**（★机会闸在**出口**面 ✓ 事务面只认实例 ✓ —— 如实记此分工 ✓）');
+		ok73(六.ok === true, '★⑥同上：**换新实例仍可结算**（★机会闸在**出口**面 ✓ 事务面只认实例 ✓ —— 如实记此分工 ✓）');
 
 		/* ── D 节余项 ── */
 		/* ⑦**部分转移**（`splitStack` 按实体切分 ✓）⇒ **只切出那一件**按脆弱消失 ✓，原实例其余份数不受影响 */
@@ -5921,38 +5923,39 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		起('E6', 'i-d7');
 		const 结7 = 结.返程事务({ 实例: 'i-d7', 完成: false });
 		const 剩7 = D.Player.items ?? [];
-		ok(结7.ok === true && !剩7.some((x) => x.entityId === 切?.entityId), '★⑦部分转移：**切出那件**按规则消失 ✓');
-		ok(剩7.some((x) => x.entityId === 原摞.entityId), '★⑦同上：**原实例仍在**（✗ 误删整摞 ✓）');
+		ok73(结7.ok === true && !剩7.some((x) => x.entityId === 切?.entityId), '★⑦部分转移：**切出那件**按规则消失 ✓');
+		ok73(剩7.some((x) => x.entityId === 原摞.entityId), '★⑦同上：**原实例仍在**（✗ 误删整摞 ✓）');
 		/* ⑧**容器**：★如实记读数（本受测版本**无真容器** ⇒ 容器项**不适用**，✗ 不冒充已验 ✓） */
 		console.log('    （★D 节容器读数：本受测版本**无真容器** ⇒ 「容器内件」**不适用** ✓ ✗ 不冒充已验 ✓）');
 
 		/* ── E 节：回 L10 后的**真环境**面（售货／补给／休息／出城 ✓）── */
 		清背(); 起('E9', 'i-e1');
 		const 完 = 结.返程事务({ 实例: 'i-e1', 完成: true });
-		ok(完.ok === true && State.variables[域].态 === '完成', '（前置）E9 完成 ✓');
+		ok73(完.ok === true && State.variables[域].态 === '完成', '（前置）E9 完成 ✓');
 		if (typeof B.买 === 'function') 清背();
 		R.give('wood', 4);
 		const 售前 = JSON.stringify(L10.state?.() ?? null);
 		const 售 = L10.sell('wood', 4);
-		ok(售 === true || 售 === false, `★E① 回到 L10 后**售货面可达**（返 ${JSON.stringify(售)} —— ★可达性读数 ✓ ✗ 不断其经济语义 ✓）`);
 		const 购 = L10.buy('ration');
-		ok(购 === true || 购 === false, `★E② **补给面可达**（返 ${JSON.stringify(购)} ✓）`);
 		const 歇 = L10.rest?.();
-		ok(歇 === true || 歇 === false || 歇 === undefined, `★E③ **休息面可达**（返 ${JSON.stringify(歇)} ✓）`);
+		/* ★`#453` NIT **真落地**（首版我 `replace` 静默未命中 ✗ 却报了「已改」✗ ⇒ 本次**带 assert** ✓）：
+		 *   恒真断言（`售===true||售===false` 之类）**✗ 不得计入判据面** ✓ ⇒ 只印读数 ✓；
+		 *   本组真正承重的判据在 E④（**完成后教程路必关**）＋ C／D 各格 ✓。 */
+		console.log(`    （★E①②③ 读数：售货返 ${JSON.stringify(售)}／补给返 ${JSON.stringify(购)}／休息返 ${JSON.stringify(歇)} —— 可达性**读数** ✓ ✗ 不计入判据面 ✓）`);
 		const 城门 = (map.exits ?? []).filter((e) => e.from === 'L10-gate');
-		ok(城门.length >= 2, `★E④ **出城面在位**（L10-gate 出边 ≥2：W09（教程未完成）／L11（已完成）✓；实得 ${城门.length}）`);
+		ok73(城门.length >= 2, `★E④ **出城面在位**（L10-gate 出边 ≥2：W09（教程未完成）／L11（已完成）✓；实得 ${城门.length}）`);
 		/* ★本意＝做题「**教程路已关**」✓；★L11 那条还带**闸门条件**（`边可否通行` ✓）⇒ 本格只**印读数** ✗ 不断它 ✓。 */
 		const w09路 = 城门.find((e) => e.to === 'W09'), l11路 = 城门.find((e) => e.to === 'L11');
-		ok(!!w09路 && w09路.when() === false, '★E④同上：完成后 ⇒ **教程路（→W09）须已关**（✗ 两路同开 ✓）');
+		ok73(!!w09路 && w09路.when() === false, '★E④同上：完成后 ⇒ **教程路（→W09）须已关**（✗ 两路同开 ✓）');
 		console.log(`    （★E④ 读数：→W09 可用=${!!w09路 && w09路.when()}／→L11 可用=${!!l11路 && (() => { try { return l11路.when(); } catch { return '闸门抛'; } })()} —— L11 侧带闸门条件 ⇒ **只印读数** ✗ 不断其可用性 ✓）`);
-		ok(JSON.stringify(L10.state?.() ?? null) === 售前 || 售 === false, '★E⑤ 上述调用**不改七名河域**（✗ 串面 ✓）');
+		ok73(JSON.stringify(L10.state?.() ?? null) === 售前 || 售 === false, '★E⑤ 上述调用**不改七名河域**（✗ 串面 ✓）');
 	} finally {
 		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
 		if (档存 === null) delete State.variables[域]; else State.variables[域] = 档存;
 		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
 	}
 	const 本组失败 = fails.length - 组前;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 73 组：${本组失败 === 0 ? '十五格全绿（C 十情境正反／D 部分转移＋容器读数／E 回 L10 真环境四面）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 73 组：${本组失败 === 0 ? `全绿 —— **${本组判据} 条判据**（C 十情境正反／D 部分转移／E 回 L10 真环境；★E①②③ 为**读数** ✗ 不计入判据面 ✓）` : `★本组 ${本组失败} 处失败`}`);
 }
 
 
