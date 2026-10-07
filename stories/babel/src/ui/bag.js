@@ -60,7 +60,9 @@ RB.bagSubmit = (id) => {
 		RB.perform('这个版本还不能在战斗中从背包使用道具 —— 请在战斗菜单里用。');
 		return { ok: false, reason: 'engine-lacks-api' };
 	}
-	const r = RB.submitBattleAction({ item: id });
+	/* ★`books#413` A2：**会话参**同刷 —— 测试局里提交的行动须进**该会话**的战斗（✗ 落进正式战斗 ✓）。
+	 *   缺省（正式局）⇒ `场次id` 为 null ⇒ 与旧调用**逐字同** ✓。 */
+	const r = RB.submitBattleAction({ item: id }, null, setup.BABEL?.运行?.取?.()?.场次id ?? null);
 	if (r?.ok !== true && r?.text) RB.perform(r.text);     // 具名拒上屏（✗ 静默丢弃返回值）
 	RB.refreshPanels();
 	return r;

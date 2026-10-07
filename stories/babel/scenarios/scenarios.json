@@ -73,7 +73,7 @@
       ],
       "断言": {
         "逻辑": "5 件（bombardier-beetle／brown-bear／fire-beetle／giant-bee／giant-stag-beetle）HP/AC **逐值与 pin 行一致**；★读**战斗实例**的 `maxHp`·`stats.ac`，**✗ 不读 UI**",
-        "渲染": "遭遇行 `挡在前面的是：<名>…。` 的**名字**落在二段遭遇表内（`books/stories/babel/src/world/encounters.js:366`（`挡在前面的是：`））—— **✗ 断数值**"
+        "渲染": "遭遇行 `挡在前面的是：<名>…。` 的**名字**落在二段遭遇表内（`books/stories/babel/src/world/encounters.js:380`（`挡在前面的是：`））—— **✗ 断数值**"
       },
       "锚": [
         "#1835"
@@ -85,7 +85,7 @@
       },
       "层": "both",
       "守的面": "span2 pin 行数值覆盖（✗ 静默缺口）",
-      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:43`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
+      "备注": "★声称侧形纪律另立 `#1835`（非 canonical 声明不进比对 ⇒ 读数却称零未覆盖）；本场景只钉**断言半**：`engine/README.md:50`（`Monsters/Monsters - Vermin.md`） pin 行 650 行／15ac359e11f4ad78"
     },
     {
       "id": "span2-house-rule-stock-roundtrip",
@@ -313,7 +313,7 @@
       ],
       "断言": {
         "逻辑": "逐层遭遇敌的 CR ≤ 该层 crMax（L1–L2 ≤0.5／L3–L4 ≤1／L5–L9 ≤2）；**双向**：L9 不出现 CR>2（**不越段**）",
-        "渲染": "遭遇行**非空**且其**名字集合 ⊆ 该层遭遇表 refs**（活行 = `挡在前面的是：<名>、<名>。`，`books/stories/babel/src/world/encounters.js:366`（`挡在前面的是：`））；★**✗ 不断 CR**（UI 不渲染 CR）"
+        "渲染": "遭遇行**非空**且其**名字集合 ⊆ 该层遭遇表 refs**（活行 = `挡在前面的是：<名>、<名>。`，`books/stories/babel/src/world/encounters.js:380`（`挡在前面的是：`））；★**✗ 不断 CR**（UI 不渲染 CR）"
       },
       "锚": [
         "#1729",
@@ -342,7 +342,7 @@
       ],
       "断言": {
         "逻辑": "收获**清空** `span1Farms` 并把本次收成**累计**进 `span1Harvests`；**双向**：无田时收获**被拒**（✗ 静默给 0/负数）；往返后两值均不变",
-        "渲染": "「试玩终点」行的 `开垦过的田：<N>` 与 `$span1Farms` 同值；★**双向**：`$span1Harvests`=0 时**无**「（已收获 …）」子句、>0 时**出现**且次数同值（`books/stories/babel/src/story/play.twee:102`（`$span1Farms`） 的条件子句 `<<if $span1Harvests>>…<</if>>`）"      },
+        "渲染": "「试玩终点」行的 `开垦过的田：<N>` 与 `$span1Farms` 同值；★**双向**：`$span1Harvests`=0 时**无**「（已收获 …）」子句、>0 时**出现**且次数同值（`books/stories/babel/src/story/play.twee:106`（`$span1Farms`） 的条件子句 `<<if $span1Harvests>>…<</if>>`）"      },
       "锚": [
         "#1806",
         "#1829"
@@ -371,7 +371,7 @@
       ],
       "断言": {
         "逻辑": "4 件（`badger`/`wolf`/`boar`/`monitor-lizard`）HP/AC **逐值与 pin 行一致**（6/15、13/14、25/16、22/15）；★读**战斗实例**/`DND3.<Monster>` 的 `maxHp`·`stats.ac`，**✗ 不读 UI**",
-        "渲染": "遭遇行 `挡在前面的是：<名>…。` 的**名字**落在该段遭遇表内（`books/stories/babel/src/world/encounters.js:366`（`挡在前面的是：`））—— **✗ 断数值**（UI 只渲染名字）"
+        "渲染": "遭遇行 `挡在前面的是：<名>…。` 的**名字**落在该段遭遇表内（`books/stories/babel/src/world/encounters.js:380`（`挡在前面的是：`））—— **✗ 断数值**（UI 只渲染名字）"
       },
       "锚": [
         "#1835"
@@ -383,7 +383,7 @@
       },
       "层": "both",
       "守的面": "一段 Animals 逐值覆盖（与 `span2-vermin-hp-ac-per-item` 成 canonical／非 canonical **对照**；两条并立才钉住这组对照）",
-      "备注": "pin 行 `engine/README.md:42`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
+      "备注": "pin 行 `engine/README.md:49`（`Monsters/Monsters - Animals.md`）：2382 行／`c14af45a23bc039e`；源行 `:113`(Badger)`:356`(Boar)`:1165`(Lizard, Monitor)`:2302`(Wolf)。声称侧形纪律另立 `#1835`"
     },
     {
       "id": "span1-herb-poultice-house-rule-use",
@@ -411,7 +411,7 @@
       "层": "both",
       "守的面": "**house rule（非 SRD）件**的显式声明 ＋ 使用行为 ＋ 往返存活",
       "构造": "中间经 保存→读档 往返",
-      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证（按 writer `#1842` 更正：`:3220` 在 3E 面本就对，错在**短名**）**：3E 装备表该行给的是**工具**而非本件那种消耗品 —— 见 `engine/tests/gates/pin-cache/equipment-3e.md:3220`（`Healer's Kit`）（＝源路径 `Basic Rules and Legal/equipment.md`，3590 行／`44b0c09a7783c8d9`；见 `engine/README.md:38`（`Basic Rules and Legal/equipment.md`））。⚠ **短名陷阱**：pin-cache 里 `equipment.md` 是 **5E** 那份（2286 行、`b027bc54551bf66b`；其 `:741` 有 `Herbalism Kit`）——3E 那份的缓存名是 `equipment-3e.md`。本席曾按短名把 3E 的 `:3220` 判成「越界」，实为**引错文件名**，已更正。　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
+      "备注": "`items/herb-poultice.js` `stats:{hp:2}`／`charges:2`，头注逐处标 house rule（§1.2）。★**非 SRD 的取证（按 writer `#1842` 更正：`:3220` 在 3E 面本就对，错在**短名**）**：3E 装备表该行给的是**工具**而非本件那种消耗品 —— 见 `engine/tests/gates/pin-cache/equipment-3e.md:3220`（`Healer's Kit`）（＝源路径 `Basic Rules and Legal/equipment.md`，3590 行／`44b0c09a7783c8d9`；见 `engine/README.md:45`（`Basic Rules and Legal/equipment.md`））。⚠ **短名陷阱**：pin-cache 里 `equipment.md` 是 **5E** 那份（2286 行、`b027bc54551bf66b`；其 `:741` 有 `Herbalism Kit`）——3E 那份的缓存名是 `equipment-3e.md`。本席曾按短名把 3E 的 `:3220` 判成「越界」，实为**引错文件名**，已更正。　★**`#1836` 在审**（引擎半 `sagitrs/sgstory#1838` **OPEN**；books pin 仍 `81d3a4b7`）⇒ 本断言按**修后** UI 写。**依赖序（三者同批，✗ 不可颠倒）**：`#1838` merge ⇒ books pin 升到该 merge sha ⇒ **实指复核**（行号随 pin 升版**同刷**）；pin 未升时本断言与所钉引擎**不符** —— 那正是**棘轮**要打红的态（✗ 别误当门坏了）。★**更正**（dev-9 实测）：0 充能槽**可以**存在（fixture／采集边界）且渲染 `×0` ⇒ 原写「✗ 不留 0 充能残槽 ⇒ 不存在 ×0 形」**不成立**，已改为「两面」断言。"
     },
     {
       "id": "cross-battle-end-victory",
@@ -431,7 +431,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "胜后掉落结算完成（`RPG.rollLoot` 走完）且角色仍在场；★**双向**：未胜时**不得**出现胜利出口；★实指：`books/stories/babel/src/world/encounters.js:438`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:103`（`8 回合上限`））",
+          "说明": "胜后掉落结算完成（`RPG.rollLoot` 走完）且角色仍在场；★**双向**：未胜时**不得**出现胜利出口；★实指：`books/stories/babel/src/world/encounters.js:452`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:117`（`8 回合上限`））",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
@@ -444,7 +444,7 @@
             }
           }
         },
-        "渲染": "遭遇战后**终态可导航**：段末有**可见可点**的出口 —— ★**主出口**＝`fight()` 渲染在**页底**的按钮（`books/stories/babel/src/world/encounters.js:523`（`继续探索`）；`#1856` 修：玩家在页底操作，段落顶部链接会被 30–58 个元素顶出视口）。★`#1877` P1-6：**段落顶部的静态兜底链已删**（它在段落渲染时即出现 ⇒ 战场没打就显示「打完，继续探索」）⇒ 出口**只此一条**（含 `fight()` 的早退分支，现也走同一 `choice` 通道落页底）"
+        "渲染": "遭遇战后**终态可导航**：段末有**可见可点**的出口 —— ★**主出口**＝`fight()` 渲染在**页底**的按钮（`books/stories/babel/src/world/encounters.js:400`（`继续探索`）；`#1856` 修：玩家在页底操作，段落顶部链接会被 30–58 个元素顶出视口）。★`#1877` P1-6：**段落顶部的静态兜底链已删**（它在段落渲染时即出现 ⇒ 战场没打就显示「打完，继续探索」）⇒ 出口**只此一条**（含 `fight()` 的早退分支，现也走同一 `choice` 通道落页底）"
       },
       "锚": [
         "#1856",
@@ -458,7 +458,7 @@
       "层": "both",
       "守的面": "**战斗三终点·胜** —— 掉落后**有出口**（✗ 停在无出口的段落 = 卡死）",
       "构造": "打完即看段落出口，✗ 直调底层战斗 API",
-      "备注": "★操作者令（2026-10-01）：三点（胜/败/僵持）各一条，每条断**终态可导航**；★**防线要等甲案**（tester-4 MAJOR）：静态文本断言**照不出** `#1856` 的失效形（成因全在**运行时/UX**；静态里链接缺陷态**也绿**）⇒ 甲案须落**活行判据**（真跑到该终点 ⇒ 读**真 DOM** ⇒ 断「存在**可见可点**的出口元素」，范本 `#1783`⑨）；今天三条仍在 `NOT_JUDGED` 里，**挡不住东西**。victory／defeat 亦须各加**同形活行面**。实指 `books/stories/babel/src/world/encounters.js:523`（`继续探索`）（**主出口**：页底「继续探索」按钮 —— `#1877` P1-6 后静态兜底链已删，出口**只此一条**）"
+      "备注": "★操作者令（2026-10-01）：三点（胜/败/僵持）各一条，每条断**终态可导航**；★**防线要等甲案**（tester-4 MAJOR）：静态文本断言**照不出** `#1856` 的失效形（成因全在**运行时/UX**；静态里链接缺陷态**也绿**）⇒ 甲案须落**活行判据**（真跑到该终点 ⇒ 读**真 DOM** ⇒ 断「存在**可见可点**的出口元素」，范本 `#1783`⑨）；今天三条仍在 `NOT_JUDGED` 里，**挡不住东西**。victory／defeat 亦须各加**同形活行面**。实指 `books/stories/babel/src/world/encounters.js:400`（`继续探索`）（**主出口**：页底「继续探索」按钮 —— `#1877` P1-6 后静态兜底链已删，出口**只此一条**）"
     },
     {
       "id": "cross-battle-end-defeat",
@@ -478,7 +478,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "败后走**游戏失败**（`books#176` 的操作者裁定②：死亡＝游戏失败、**不复活**）—— 停在**死亡层**、给出「读档／重开」两钮；旧 `RPG.respawn` 循环（回起点层・清档・hp 复位）**已废止**。★实指：`books/stories/babel/src/world/encounters.js:438`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:103`（`8 回合上限`））",
+          "说明": "败后走**游戏失败**（`books#176` 的操作者裁定②：死亡＝游戏失败、**不复活**）—— 停在**死亡层**、给出「读档／重开」两钮；旧 `RPG.respawn` 循环（回起点层・清档・hp 复位）**已废止**。★实指：`books/stories/babel/src/world/encounters.js:452`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:117`（`8 回合上限`））",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
@@ -491,7 +491,7 @@
             }
           }
         },
-        "渲染": "终态**可导航**：出现「游戏失败」段落文案 ＋ **可见可点**的两钮（`books/stories/babel/src/story/play.twee:82`（`读档`）／`重开`））；✗ 卡在无出口段落"      },
+        "渲染": "终态**可导航**：出现「游戏失败」段落文案 ＋ **可见可点**的两钮（`books/stories/babel/src/story/play.twee:80`（`读档`）／`重开`））；✗ 卡在无出口段落"      },
       "锚": [
         "#1856",
         "#1760"
@@ -504,7 +504,7 @@
       "层": "both",
       "守的面": "**战斗三终点·败** —— **游戏失败**有落点且可返回（读档／重开；✗ 卡死）",
       "构造": "败即看回溯段落出口",
-      "备注": "实指 `books/stories/babel/src/story/play.twee:77`（`:: 游戏失败`） 段）—— 旧「死亡回溯」段与其复活教学已随 `books#176` 删（与 `#170` 的 P0 同批）"    },
+      "备注": "实指 `books/stories/babel/src/story/play.twee:81`（`:: 游戏失败`） 段）—— 旧「死亡回溯」段与其复活教学已随 `books#176` 删（与 `#170` 的 P0 同批）"    },
     {
       "id": "cross-battle-end-stalemate",
       "段": "cross",
@@ -523,7 +523,7 @@
       ],
       "断言": {
         "逻辑": {
-          "说明": "到回合上限后战斗**必然收敛**（✗ 无限对峙）；收敛后角色状态可继续；★实指：`books/stories/babel/src/world/encounters.js:438`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:103`（`8 回合上限`））",
+          "说明": "到回合上限后战斗**必然收敛**（✗ 无限对峙）；收敛后角色状态可继续；★实指：`books/stories/babel/src/world/encounters.js:452`（`const 限 = rolled[0].roundLimit ?? 8`）＝ **8 回合上限**出处；上限说明在文件头 `books/stories/babel/src/world/encounters.js:117`（`8 回合上限`））",
           "步骤": [
             "loadFixture(入口态)",
             "rollEncounter(layer, {count:1})",
@@ -536,7 +536,7 @@
             }
           }
         },
-        "渲染": "终态**可导航**：段落「遭遇战」的段末出现**可见可点**的出口（链接/按钮）—— ★操作者**现卡死在此**；出口应落在与另两终点**同一处**（**主出口**＝`books/stories/babel/src/world/encounters.js:523`（`继续探索`）（页底「继续探索」按钮）—— ★`#1877` P1-6 后「遭遇战」段落的**静态兜底链已删**（同 `:454` 声明）⇒ 出口**只此一条**，✗ **无兜底链接**）；★**特有面**（✗ 与 victory 同址同形即无独立回归面）：僵持结束时 `.noticebar` 内**出现本场战斗的结束行**（battle-end 通道，`src/core/71-notice.js` 的注册表 ⇒ 活行判据）"
+        "渲染": "终态**可导航**：段落「遭遇战」的段末出现**可见可点**的出口（链接/按钮）—— ★操作者**现卡死在此**；出口应落在与另两终点**同一处**（**主出口**＝`books/stories/babel/src/world/encounters.js:400`（`继续探索`）（页底「继续探索」按钮）—— ★`#1877` P1-6 后「遭遇战」段落的**静态兜底链已删**（同 `:454` 声明）⇒ 出口**只此一条**，✗ **无兜底链接**）；★**特有面**（✗ 与 victory 同址同形即无独立回归面）：僵持结束时 `.noticebar` 内**出现本场战斗的结束行**（battle-end 通道，`src/core/71-notice.js` 的注册表 ⇒ 活行判据）"
       },
       "锚": [
         "#1856"

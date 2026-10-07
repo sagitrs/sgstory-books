@@ -73,12 +73,34 @@ R.defItem({
 R.slotLabels.head = '头部';
 
 /* ── 域访问（读路径零写 ✓）────────────────────────────────────── */
+/* ★`books#413` A2（裁：**改 S7 按上下文取** —— ✗ 另造适配层，那会变成「同一个量两套算法」）：
+ *   本档的**域／玩家／交付落点**一律从**运行上下文**取 ——
+ *     · **正式上下文**（缺省）⇒ `State.variables.sevenNames`／`DND3.Player`／`RPG.give`
+ *       ⇒ ★**七名河旧行为逐字不变** ✓（第 70 组既有格 ＋ 其余组为闸 ✓）；
+ *     · **测试上下文**（`场次id != null`）⇒ 该会话的**自有域**（会话事实）／**测试角色**／
+ *       `RPG.deposit(测试背包, …)` ⇒ 两局**天然不串** ✓。
+ *   ⚠ 判据取 `场次id != null`（✗ 取「有没有运行栈」）—— 正式局也恒在上下文里 ✓。 */
+const 运 = () => BS.运行?.取?.() ?? null;
+const 是测试 = () => 运()?.场次id != null;
+/** 域：测试 ⇒ **该会话的活体事实对象**（✗ 快照 —— 本档的状态机是**就地改**（`s.态 = …`）⇒
+ *   返快照会让测试局的写**静默丢失** ✗）；正式 ⇒ `State.variables.sevenNames` ✓。
+ *   ⚠ 取 `_facts` 是本**集成层**的取舍：会话只公开 `facts()`（快照 ✓）与 `commit()`（合并补丁 ✓），
+ *     而本档的写点是**就地改**（十几处）⇒ 若逐处改 `commit` 会摊大改动面；改由 `写域` 统一提交 ✓。 */
+const 域 = () => (是测试() ? (运()?.会话?._facts?.事实 ?? null) : State.variables[域键]);
+/** 域写回：测试 ⇒ 经会话 `commit`（该会话自己的账 ✓）；正式 ⇒ 直接回 `State`（旧行为 ✓）。 */
+const 写域 = (s) => {
+	if (是测试()) { 运()?.会话?.commit?.({ 事实: s }); return s; }
+	State.variables[域键] = s; return s;
+};
 /** 原始域（缺席即 `undefined` ⇒ ✗ **不建键**）。 */
-const 读档 = () => State.variables[域键];
+const 读档 = () => 域();
 /** **写路径**建域（唯一允许建键处 ✓；惰性，✗ 不依赖 `save:ready` —— 引擎零发射 ✓）。 */
-const 建档 = () => (State.variables[域键] ??= {
-	态: 态.未开始, 当前: C.入口, 结果: {}, 机会: { 用: false, 实例: null }, 路径: [],
-});
+const 建档 = () => {
+	const 现有 = 域();
+	if (现有) return 现有;
+	const 新 = { 态: 态.未开始, 当前: C.入口, 结果: {}, 机会: { 用: false, 实例: null }, 路径: [] };
+	return 是测试() ? 写域(新) : (State.variables[域键] ??= 新);
+};
 /** ★**派生**面：已处理集（✗ 不另存一份，见口径③）。 */
 const 已处理 = (s) => Object.keys((s ?? 读档())?.结果 ?? {});
 /** 静态可达列表（④：唯一权威＝内容档 `边表`；✗ 不抽签、✗ 不建键）。 */
@@ -100,7 +122,7 @@ const 节点导航 = (id) => (C.节点表[id]?.navigation ?? 门向补充[id] ??
 
 /* ── 判定（★用引擎纯判定原语，写路径归本档 ✓）────────────────────── */
 /** 属性修正：原始分→调整值一律现算（`DND3.modOf` ✓，✗ 不落字段）。 */
-const 属性修正 = (ability) => D.modOf(D.Player?.stats, ability);
+const 属性修正 = (ability) => D.modOf((是测试() ? 运()?.玩家?.() : null)?.stats ?? D.Player?.stats, ability);
 /** 掷一次本作自制检定：`d20 ＋ 属性修正 ＋ 本次修正 ≥ DC`（✗ 无技能等级；✗ 自然 1/20 不自动成败 ✓）。 */
 const 掷检定 = (check) => R.checkRoll({
 	mod: 属性修正(check.ability), dc: check.dc, bonus: check.modifier ?? 0,
@@ -110,15 +132,22 @@ const 掷检定 = (check) => R.checkRoll({
 /** 交付（候选 id ⇒ 真 id 后 `RPG.give`）。返回**已发件**（供失败收回 ✓）。 ✗ 不写任何账。 */
 const 交付 = (loot) => {
 	const 件 = [];
+	const 测试背包 = 是测试() ? (运()?.玩家?.()?.items ?? null) : null;
 	for (const [候选, n] of Object.entries(loot ?? {})) {
 		const id = C.物品映射[候选];
 		if (!id || !Number.isInteger(n) || n <= 0) continue;
-		R.give(id, n); 件.push([id, n]);
+		/* ★测试局 ⇒ 落**测试角色自己的背包**（`RPG.deposit` ＝ 引擎参数化交付原语 ✓；
+		 *   ✗ `RPG.give` —— 它恒投 `State.variables.inventory`（正式背包）✗ ⇒ 会污染正式局 ✓）。 */
+		if (测试背包) R.deposit(测试背包, id, n); else R.give(id, n);
+		件.push([id, n]);
 	}
 	return 件;
 };
 /** 收回（★容量不足等异常时用 —— 设计 §4：「失败**不先写已领取**」✓ ⇒ 先撤回再拒 ✓）。 */
-const 收回 = (件) => { for (const [id, n] of 件) R.give(id, -n); };
+const 收回 = (件) => {
+	const 测试背包 = 是测试() ? (运()?.玩家?.()?.items ?? null) : null;
+	for (const [id, n] of 件) { if (测试背包) R.deposit(测试背包, id, -n); else R.give(id, -n); }
+};
 /** 统一拒绝形（本仓成文：拒绝走**结果面**，✗ 不抛 —— 同 `src/core/55-session.js` ④）。 */
 const 拒 = (code, why) => ({ ok: false, code, why: why ?? code });
 
