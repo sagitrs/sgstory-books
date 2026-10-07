@@ -109,7 +109,20 @@ const decorationAudit = (page) => page.evaluate(async () => {
 		decoded.push({ id, width: image.naturalWidth, height: image.naturalHeight });
 		if (image.naturalWidth !== asset.width || image.naturalHeight !== asset.height) bad.push(`SVG_DECODE_DIMENSIONS:${id}`);
 	}
-	if (decoded.length !== 8) bad.push('EIGHT_SVG_DECODE_PREREQUISITE');
+	/* ★★T 域定形（`#485` 第 112 行裁 · 2026-10-07）：**按「声明集」判，✗ 按「数目」判** ──────────
+	 *   ★病（既有红 · 与 71-a 无关 ✓）：★旧形 `decoded.length !== 8` ⇒ ★数的是「**恰好 8 张**」✗
+	 *     ⇒ ★S7 加了第 9 张（`assets/map-w09.svg` ✓）⇒ ★**恒红** ✗（★而它红得**没有信息** ⇒ 新增资产＝合法动作 ✓）。
+	 *   ★本条的**本意**（★我读上下文判的）：★保证「**逐件解尺寸**那条断言**不是空转**」✓ ——
+	 *     ★即：`setup.storyAssets` **有东西** ✓ ＋ **每一件都真解过码** ✓。
+	 *   ★⇒ 新形（两件，皆**具名**）：
+	 *     ①**声明集非空**（★空 ⇒ 下面逐件尺寸断言**整体空转** ✗ ⇒ 恒真式 ✓）
+	 *     ②**逐 id 对齐**（★声明集里每一 id 都在 `decoded` 里 ✓ ⇒ ★**漏解一件**仍必红 ✓）
+	 *   ★★这样子：★**新增资产** ⇒ 不再拖红 ✓；★**表空／漏解** ⇒ 仍必红 ✓（★刀见 `--selftest` 注释 ✓）。 */
+	const 声明集 = Object.keys(setup.storyAssets ?? {});
+	const 解集 = new Set(decoded.map((d) => d.id));
+	const 漏解 = 声明集.filter((id) => !解集.has(id));
+	if (声明集.length === 0) bad.push('SVG_ASSET_PREREQUISITE:声明集为空（逐件尺寸断言会空转）');
+	if (漏解.length) bad.push(`SVG_ASSET_PREREQUISITE:漏解 ${漏解.join(',')}`);
 	const portrait = passage().querySelector('.babel-player-art');
 	await portrait.decode();
 	const oldSrc = portrait.getAttribute('src'), oldHidden = portrait.hidden;
