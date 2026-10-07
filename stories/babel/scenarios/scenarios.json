@@ -251,7 +251,7 @@
       "动作": [],
       "断言": {
         "逻辑": "RPG.gather 返回 applied|rejected（采集点须先在背包 ⇒ 不在 ⇒ rejected）；RPG.harvest 收完清 span1Farms",
-        "渲染": "地图动作「**采集（<采集点标签>｜一次采净 <N> 件）**」读取地点节点余量（`books/stories/babel/src/world/babel.js:497`（`基础采集动作`））；其 `when`（`books/stories/babel/src/world/babel.js:519`（`本层已战`））同时要求余量大于 0、`本层已战`、`!已跳过`。采空后该动作**不再出现**；节点属于地点，不要求先把点位道具放进玩家背包（活行断言 = 动作的出现/消失，✗ 自造「已采」标注）"
+        "渲染": "地图动作「**采集（<采集点标签>｜一次采净 <N> 件）**」读取地点节点余量（`books/stories/babel/src/world/babel.js:507`（`基础采集动作`））；其 `when`（`books/stories/babel/src/world/babel.js:529`（`本层已战`））同时要求余量大于 0、`本层已战`、`!已跳过`。采空后该动作**不再出现**；节点属于地点，不要求先把点位道具放进玩家背包（活行断言 = 动作的出现/消失，✗ 自造「已采」标注）"
       },
       "锚": [
         "#1746",
