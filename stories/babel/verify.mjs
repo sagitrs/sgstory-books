@@ -5999,6 +5999,9 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 	 *   断言统一走 `ok70` ⇒ 每格自动入账 ✓。 */
 	let 格70 = 0;
 	const ok70 = (c, m) => { 格70 += 1; return ok(c, m); };   // ★这里必须调**外层**的 `ok`（✗ 自递归 ⇒ 爆栈 ✓）
+	/* ★`#463` 修请：本组**自带** `捉` —— 原先它只存在于另一组的块作用域里 ✗，而 `main` rebuild 后本组已无该名
+	 *   ⇒ 「缺接缝 ⇒ 具名拒」那一格成了**死守卫**（无接缝的世界里一跑就 ReferenceError ✗）✓。 */
+	const 捉 = (f) => { try { f(); return null; } catch (e) { return e; } };
 	const TS = B?.测试档;
 	ok70(!!TS, '`setup.BABEL.测试档` 未装载（`src/story/zz-test-save.js` 没装？）');
 	if (TS) {
@@ -6105,15 +6108,15 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 					ok70(甲.rng && 甲.rng !== setup.RPG.rng, '★该场次须有**自有随机源**（✗ 全局那份 —— 共享随机流＝未隔离）');
 					ok70(甲.玩家 && 甲.玩家 !== setup.DND3.Player, '★测试角色须**独立实例**（✗ 借正式玩家后回滚＝明文禁）');
 					ok70(甲.玩家.测试 === true, '★测试角色带标记（供规则层/UI 分辨；✗ 拿显示名当身份）');
-					/* ②b ★**缺接缝须具名呈报**（有接缝的世界里也要能断这条 —— 临时摘掉 `makeRng` 再看 ✓） */
+					/* ②b ★**缺接缝须具名呈报** —— ★改成**运行时 stub 模拟**（✗ 靠换引擎树）：
+					 *   本格**无论引擎此刻有没有接缝都执行**（置 `setup.RPG.makeRng = undefined` ⇒ 试开 ⇒ 须具名拒 ⇒ 复原 ✓）✓。
+					 *   ★刀义：**摘掉本行 stub**（不置 undefined）⇒ 开卡会**成功** ⇒ 断不到具名码 ⇒ 本格**红** ✓。 */
 					{
 						const 旧mk = setup.RPG.makeRng;
-						setup.RPG.makeRng = undefined;
+						setup.RPG.makeRng = undefined;                                    // ★本行＝刀靶（摘它 ⇒ 红 ✓）
 						try {
-							let 抛2 = null;
-							try { TM.开('test-card-battle'); } catch (e) { 抛2 = e; }   // ★本格自带捕获（组内的 `捉` 在 `if (TS){}` 里 ⇒ 本格看不见 ✗）
-							ok70(抛2?.code === 'TEST_MODE_NO_ENGINE_RNG',
-								`★摘掉 \`makeRng\` ⇒ 须**具名**拒（实得 ${JSON.stringify(抛2?.code)}）—— ✗ 静默降级成共享全局源 ✓`);
+							ok70(捉(() => TM.开('test-card-battle'))?.code === 'TEST_MODE_NO_ENGINE_RNG',
+								'★**摘掉 `makeRng`（运行时 stub）⇒ 须具名拒**（✗ 静默降级成共享全局源 ⇒ 会把「未隔离」伪装成「跑通了」✓）');
 						} finally { setup.RPG.makeRng = 旧mk; }
 					}
 					/* ③ 两场次互不干扰 ＋ 结束只清**它自己**那张 */
