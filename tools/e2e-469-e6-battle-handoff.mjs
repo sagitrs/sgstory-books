@@ -43,6 +43,11 @@ async function 跑P14(p, ok, 段, 工具 = {}) {
 		const as = [...document.querySelectorAll('#passages a,#passages button')];
 		const t = as.find((e) => new RegExp(rx).test(e.textContent)); if (!t) return null; t.click(); return t.textContent.trim();
 	}, re); await p.waitForTimeout(1100); return r; };
+	/* ★★**钉随机**（承 `e2e-280-fullrun.mjs` 同法 ✓）：骰面取最大 ⇒ **我方必中·敌方必不中** ✓
+	 *   ⇒ ✗ 不靠运气：不钉的话（本席实测）同一棵树上会有「3 次打完 ✓」与「8 次没打完 ✗」两形 ⇒ **臂自身不稳** ✓。
+	 *   ★序列给足（抽干后引擎**不静默回退** ✓）；本档只跑一段 ⇒ 600 面足够 ✓。 */
+	await p.evaluate(() => { try { SugarCube.setup.RPG.rng.setSequence(Array.from({ length: 600 }, () => 1.0)); } catch (e) { /* 无 rng ⇒ 本节由下面的具名格报 */ } });
+
 	const 页 = () => p.evaluate(() => (document.getElementById('passages')?.innerText || '').replace(/\n/g, ' | '));
 	const 战UI = () => p.evaluate(() => /空手打击|跳过本回合|用已装备.*攻击/.test(document.getElementById('passages')?.innerText || ''));
 	const 态 = () => p.evaluate(() => { const 七 = SugarCube.setup.BABEL.七名河;
