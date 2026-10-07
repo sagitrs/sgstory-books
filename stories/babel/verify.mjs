@@ -5630,13 +5630,19 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 			ok(/当前：/.test(文) && /可走：/.test(文) && /类型：/.test(文), '★三类等价文字须在面板内（当前／可走／类型 ✓）');
 
 			/* ⑦ ★开关：**真状态变**才出原句 ＋ 零副作用（裁 §二.3 ✓；★真开合的合法差分＝可见性/展开态 ✓） */
-			const 收 = []; const 原note = R.note;
+			/* ★★M-2（`#482` 重切 main）：演出改走**引擎真口** `R.pushNotice` ⇒ 本格改**读引擎通知面的具名通道**
+			 *   （✗ 再给无人提供的 `R.note` 装钩 —— 那样「玩家侧**显不显示**」**测不出来** ✗）。
+			 *   ★哨兵定位：`RPG.notices()` **新的在前** 且缓冲**上限 200** ⇒ 用「长度差」在满缓冲下**恒空** ✗。 */
 			const 域前 = JSON.stringify(State.variables); const 随前 = Math.random;
 			let 随动 = 0; Math.random = () => { 随动++; return 0.5; };
+			const 演通道 = setup.BABEL?.通道?.演出 ?? 'map-scene';
+			R.pushNotice?.('★哨兵·地图开关', { channel: 演通道 });
 			try {
-				R.note = (s) => 收.push(String(s));
 				for (let i = 0; i < 6; i++) B4.切换();     // 开/收 各 3 次 ⇒ 原句 6 条 ✓
-			} finally { R.note = 原note; Math.random = 随前; }
+			} finally { Math.random = 随前; }
+			const 全演 = R.notices({ channel: 演通道, limit: 500 }) ?? [];
+			const i哨 = 全演.findIndex((n) => n.text === '★哨兵·地图开关');
+			const 收 = 全演.slice(0, i哨 < 0 ? 0 : i哨).map((n) => n.text).reverse();
 			ok(收.length === 6, `★每次**真状态变**恰一条演出（6 次切换 ⇒ 6 条；实得 ${收.length}）`);
 			/* ★断**交替**（✗ 不断固定先后 —— 本格进入时面板可能已被前文打开过 ✓）：
 			 *   两句话各 3 条 ＋ 相邻必不同 ⇒ 「真状态变才出句」的同义断言 ✓。 */
@@ -5645,7 +5651,10 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 				`★两句话须各 3 条（实得 开 ${开句数}／收 ${收.length - 开句数}）`);
 			ok(收.every((s, i) => i === 0 || s !== 收[i - 1]), `★相邻必不同（✗ 同态重复刷 ✓；实得 ${JSON.stringify(收)}）`);
 			ok(收.every((s) => s === '你打开了地图' || s === '你收起了地图'), '★只许设计的两句（✗ 自造文案 ✓）');
-			ok(JSON.stringify(State.variables) === 域前, '★开关**零存档改动**（✗ 推时间／✗ 写域 ✓）');
+			/* ★★裁六 §三（`#482` 上报 · 领队裁）：演出进**既有日志** ⇒ 只放过**具名演出记录**（`rpgNotices`）这一处差分，
+			 *   ✗ 不豁免整个通知／State 域 ✓（⇒ 除该本账外，State 必须逐字节同 ✓）。 */
+			const 去通 = (o) => { const c = JSON.parse(o); delete c.rpgNotices; return JSON.stringify(c); };
+			ok(去通(JSON.stringify(State.variables)) === 去通(域前), '★开关**零存档改动**（★只放过 `rpgNotices` 这本具名演出记录 ✓；✗ 推时间／✗ 写域 ✓）');
 			ok(随动 === 0, `★开关**零随机消费**（实得 ${随动}）`);
 
 			/* ⑧ ★只读边界（裁 §二.5：✗ 不得成为返城／逃脱／存档／用物／战斗入口 ✓） */
