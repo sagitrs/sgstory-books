@@ -4965,7 +4965,18 @@ head('65. `books#397`：七名河 —— 拓扑／读面零写／三态／唯一
 			ok(开完.includes('L11'), `★教程已完成后 ⇒ 出城应走旧 L11（实得开放：${开完.join('、')}）`);
 			ok(!开完.includes('W09'), `★教程已完成后 ⇒ W09 不应再开放（互斥 ✓；实得：${开完.join('、')}）`);
 			const 出口 = (图.exits ?? []).filter((e) => e.from === 'W09');
-			ok(出口.length === 1 && 出口[0].to === 'L10-camp', `★E9 **只回 L10**（裁 (b)④）：W09 应恰有一条通往 L10-camp 的边（实得 ${出口.map((e) => e.to).join('、')}）`);
+			ok(map.exits.filter((e) => e.from === 'W09').every((e) => e.to === B.聚落),
+					`★裁 (b)④ 本意＝**✗ 不开放下一层**：W09 的边**只许**通 L10-camp（✗ 通 L11／其它 ✓；实得 ${[...new Set((map.exits ?? []).filter((e) => e.from === 'W09').map((e) => e.to))].join('、')}）`);
+				/* ★S6 裁 B：W09 出 L10 有**两条合法路**，**按地点互斥**：E9 ⇒ 完成路；非 E9 ⇒ 提前路 ✗ 不算完成 ✓。 */
+				const 出边65 = (map.exits ?? []).filter((e) => e.from === 'W09' && e.to === B.聚落);
+				ok(出边65.length === 2, `★W09 出 L10 应**恰两条**（E9 完成路 ＋ 提前路 ✓；实得 ${出边65.length}）`);
+				const 旧位65 = S7.读().当前;
+				try {
+					State.variables[域] = Object.assign({}, State.variables[域], { 态: '进行中', 当前: 'E9', 机会: { 用: false, 实例: 'i-65' } });
+					ok(出边65.filter((e) => e.when()).length === 1, '★人在 **E9** ⇒ **只**完成路可用（提前路互斥 ✓）');
+					State.variables[域].当前 = 'E4';
+					ok(出边65.filter((e) => e.when()).length === 1, '★人在**非 E9** ⇒ **只**提前路可用（完成路互斥 ✓）');
+				} finally { State.variables[域].当前 = 旧位65; }
 			const 旧L11 = (图.exits ?? []).find((e) => e.from === 'L10-gate' && e.to === 'L11');
 			ok(!!旧L11 && 旧L11.from === 'L10-gate' && 旧L11.to === 'L11', '★旧 L11 那条边**一字未动**（裁 (b)②：只外包闸门，✗ 不改 from/to ✓）');
 		}
@@ -5754,7 +5765,10 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 			const 造 = (id, state) => { const x = R.createItem(id); if (state) x.state = state; D.Player.items.push(x); return x; };
 
 			/* ① ★两路**同一事务**：早返与 E9 **同请求键** ⇒ 实例用过一次即两端皆拒 ✓（「同一幂等键空间」✓） */
-			清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起('E4', 'i-s6');
+			清背(); 造('club', { 脆弱: true }); 造('iron-ore');
+			const 档前 = Object.assign(起('E4', 'i-s6'), { 结果: { E0: { 成败: '无检定', 文本: '入河口' } }, 路径: ['E0', 'E1', 'E4'] });
+			/* ★**前像**（✗ 不用「当下恒真量」✓ D 席 NIT）：`当前`／`已处理结果`／`路径` 三者的调用前快照 ✓ */
+			const 前像 = JSON.stringify({ 当前: 档前.当前, 结果: 档前.结果, 路径: 档前.路径, 已处理: (B.七名河.读().已处理 ?? []) });
 			const 早 = 结.返程事务({ 实例: 'i-s6', 完成: false });
 			ok(早.ok === true, `★提前返程须成功（实得 ${JSON.stringify(早).slice(0, 70)}）`);
 			ok(R.commitBoundary.settled('sevenNames:返程:i-s6') != null, '★同上：请求键须**落在引擎账**（`settled` 查得到 ✓ ⇒ 与 E9 同键空间 ✓）');
@@ -5763,7 +5777,11 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 
 			/* ② ★提前**✗ 不完成**，且**位置与路径保留**（设计 §6「下次从 E0 进入，沿已选路线恢复」✓） */
 			ok(State.variables[域].态 !== '完成', `★提前返程 ✗ 不得置「完成」（实得 ${State.variables[域].态}）`);
-			ok((State.variables[域].路径 ?? []).includes('E0'), '★同上：**路径保留**（可恢复 ✓）');
+			/* ★②（D 席 NIT ✓）：✗ 不用 `includes('E0')`（**任何运行都含 E0 ⇒ 恒真、不带信息** ✗）⇒
+			 *   改断「**当前／已处理结果／路径 未被重置**」＝**前像 ⇄ 后像**逐项同 ✓（这才是「沿已选路线恢复」✓）。 */
+			ok(State.variables[域].当前 === 档前.当前, `★提前返程**不得重置「当前」**（应仍在 ${档前.当前}；实得 ${State.variables[域].当前}）`);
+			const 后像 = JSON.stringify({ 当前: State.variables[域].当前, 结果: State.variables[域].结果, 路径: State.variables[域].路径, 已处理: (B.七名河.读().已处理 ?? []) });
+			ok(后像 === 前像, `★同上：**当前／结果／路径／已处理**须**逐项不变**（✗ 被重置 ✓；前 ${前像.slice(0, 90)} ／ 后 ${后像.slice(0, 90)}）`);
 			ok(State.variables[域].机会.用 === true, '★同上：机会**已消费**（本次实例一次 ✓）');
 
 			/* ③ ★E9 才完成 */
