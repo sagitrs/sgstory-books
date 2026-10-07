@@ -36,7 +36,19 @@ import process from 'node:process';
 import { createRequire } from 'node:module';
 
 /* ── 参数 ─────────────────────────────────────────────────────────────── */
-const argOf = (名, 缺 = null) => { const i = process.argv.indexOf(名); return i >= 0 ? process.argv[i + 1] : 缺; };
+/* ★S8 ② 第五片查出并修：★`argOf('基准')` 找的是**裸名** `基准`，而档头写的用法是 `--基准=乙|甲`（★带 `--`）
+ *   ⇒ ★**永远取缺省** ⇒ ★`甲` 路是**死代码** ✗（★与「`--knife` 只印一句」同族：★声称 > 覆盖 ✓）。
+ *   ★本修**两种形都收**（`--基准 甲` 与 `--基准=甲` ✓），★并把**实际取到的值**印出来 ✓（✗ 静默 ✓）。 */
+const 取值 = (名, 缺 = null) => {
+	const 带 = '--' + 名;
+	const 等形 = process.argv.find((x) => x.startsWith(带 + '='));
+	if (等形) return 等形.slice(带.length + 1);
+	const i = process.argv.indexOf(带);            // ★`--名 值`
+	if (i >= 0) return process.argv[i + 1];
+	const j = process.argv.indexOf(名);            // ★旧形（裸名，兼容 ✓）
+	return j >= 0 ? process.argv[j + 1] : 缺;
+};
+const argOf = (名, 缺 = null) => 取值(名.replace(/^--/, ''), 缺);
 const B = path.resolve(argOf('--books', process.cwd()));
 const PW = process.env.PW_DIR || path.join(process.env.HOME, 'bots/home/sagitrs-tester-4/tmp/pw');
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME, '.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');
@@ -340,6 +352,31 @@ try {
         console.log(`  ★W09 完成()：${JSON.stringify(完成读数)}`);
         if (完成读数.具名 || 完成读数.具名红) 档.push(`  · W09 完成() 出声：${JSON.stringify(完成读数)}`);
         await p.waitForTimeout(600);
+        /* ── ★S8 ② 第五片：**④ 基准「真在效」判据**（★本席当日口径：★✗ 让旗子**空转** ✓）──────
+         *   ★病（我实测）：`--基准` 此前**只被 K8 自检**校验 ⇒ ★**跑起来根本没应用** ✗
+         *     ⇒ 「甲／乙对照」**是空声称** ✓（★与「`--knife` 只印一句」同族 ✓）。
+         *   ★本判据**只读**：★在 W09 入口记**装备签名** ⇒ ★对所选基准**逐件断** ✓（✗ 补血／✗ 清负面／✗ 刷药 ✓）。 */
+        const 装签 = await p.evaluate(() => {
+          const SC = SugarCube, D = SC.setup?.DND3;
+          const 袋 = D?.Player?.items ?? [];
+          const 未清 = 袋.map((x) => x?.id).filter((x) => x == null);
+          let 已装 = null;
+          try { 已装 = D?.Player?.equipped ? JSON.parse(JSON.stringify(D.Player.equipped)) : null; } catch { 已装 = null; }
+          return { 件: 袋.map((x) => ({ id: x?.id ?? null, 装: !!x?.equipped ?? null })), hp: D?.Player?.hp ?? null, 未清 };
+        });
+        const 有 = (id) => 装签.件.some((x) => x.id === id);
+        const 装 = (id) => 装签.件.some((x) => x.id === id && x.装 === true);
+        console.log(`  ★基准=${基准}｜装备签名=${JSON.stringify(装签.件)}｜hp=${装签.hp}`);
+        if (基准 === '乙') {
+          for (const [面, id] of [['身', 'mail'], ['盾', 'heavy-wooden-shield'], ['武', 'sword-quenched']]) {
+            if (!有(id)) 档.push(`  · ★S8 ② ④基准：★乙 基准**在效**须含 ${面}件 \`${id}\`（★✗ 旗子空转 —— 实测装备签名 ${JSON.stringify(装签.件.map((x) => x.id))}）`);
+            else if (!装(id)) 档.push(`  · ★S8 ② ④基准：乙 的 ${id} 须**真装上**（✗ 只在背包）`);
+          }
+        } else {
+          if (!有('sword')) 档.push('  · ★S8 ② ④基准：甲 基准须含基础 `sword`（实得 ' + JSON.stringify(装签.件.map((x) => x.id)) + '）');
+          for (const id of ['mail', 'heavy-wooden-shield', 'sword-quenched'])
+            if (有(id)) 档.push(`  · ★S8 ② ④基准：甲 是**低装备对照** ⇒ ✗ 不得含 \`${id}\`（实得含）`);
+        }
         let 返城路 = null;
         if (await 在W09()) {
           /* ★先点 **E9 完成路**的具名出口（`确认回城 · 用掉本次传送机会（E9）`）；★无它才退回「提前返程」路
