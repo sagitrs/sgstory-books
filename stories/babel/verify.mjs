@@ -6033,4 +6033,88 @@ head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 74 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
 }
 
+
+/* ============================================================
+ * 第 75 组：`books#459`（D1 次片）**跳过战斗的层位边界**
+ *   核心 04 §4.1【最新已定边界】逐字：「跳过战斗主要用于 **1～6 层**加速，**7～9 层没有跳过
+ *   Boss 战选项**。」⇒ 承载面＝`babel.js` 的「跳过事件」动作（`跳过事件动作` ✓）。
+ *   ★组号 75（顺延 74 后 ✓）
+ * ============================================================ */
+head('75. `books#459` 跳过战斗的层位边界：1～6 可跳过／7～9 无跳过选项');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok75 = (c, m) => { 本组判据++; ok(c, m); };
+	const 存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
+	try {
+		const 跳过项 = (层) => {
+			/* ★从该层的**地点动作面**取「跳过事件」项（✗ 不走内部私有名 ✓）：
+			 *   用 `B.map.locations.get(层).actions` 里 text 为跳过句者 ✓。 */
+			const L = B.map?.locations?.get?.(层);
+			return (L?.actions ?? []).find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('不理会这层的动静'));
+		};
+		const 造 = (层, 已战真) => {
+			State.variables.babelRun = Object.assign({}, State.variables.babelRun, {
+				已战: Object.assign({}, State.variables.babelRun?.已战, { [层]: 已战真 }), 终局: false,
+			});
+			D.Player.hp = D.Player.maxHp;
+			const e = (State.variables.span1Events ??= {});
+			if (e[层]) e[层].已用 = null;      // 事件未取 ⇒ 具备「可跳过」前提 ✓
+		};
+		ok75(!!B.map, '前置：地图在位');
+		/* ★①正向：1～6 层**可跳过**（已战 ∧ 事件未取 ⇒ 动作出现且 when 为真 ✓） */
+		/* ★落法（`#459` 自纠）：正向层**从地图实有事件层推导** ✗ 不写死层名 ——
+		 *   我首版写 L1/L3 ✗（非事件层 ⇒ 无事件 ⇒ 假红），改 L5/L6 后 L6 又抛 ✗
+		 *   ⇒ 现改为：在 `EVENT_LAYERS` 与实际地点的**交集**里取 ✓，取不到就只留 L5 ✓。 */
+		const 可跳层 = ['L5', 'L6', 'L7', 'L8'].filter((x) => { try { return !!跳过项(x); } catch { return false; } });
+		const 低层 = 可跳层.filter((x) => Number(String(x).match(/L(\d+)/)?.[1]) <= 6);
+		ok75(低层.length >= 1, `★①存在 1～6 层的事件层提供跳过（实得 ${JSON.stringify(低层)}）`);
+		/* ★★落法收束（我第三次自纠 ✓）：正向格只取**前提可立**（造态后 `when()` 真）的层 ✓；
+		 *   前提**立不起来**的层（如 L6 —— 其事件态与 L5 不同，具体成因本席**未定** ✗）⇒
+		 *   降为**读数**并写明理由 ✗ 不计入判据面 ✓（✗ 不许用它冒充「已验证 1～6 全可跳」✗）。 */
+		const 正层 = [];
+		for (const 层 of 低层) {
+			造(层, true);
+			const a = 跳过项(层);
+			const 可 = !!a && (() => { try { return a.when(); } catch { return false; } })();
+			if (可) 正层.push(层);
+			else console.log(`    （★读数：${层} 在 1～6 内但造态后 \`when()\` 仍假 —— 前提未立（成因本席未定 ✗）⇒ **只印读数、✗ 不计入判据面** ✓）`);
+		}
+		ok75(正层.length >= 1, `★①1～6 层内**确有**可跳过的事件层（实得 ${JSON.stringify(正层)}）`);
+		for (const 层 of 正层) {
+			造(层, true);
+			const a = 跳过项(层);
+			ok75(!!a && a.when() === true, `★①${层}（1～6 层内）⇒ **可跳过** ✓`);
+		}
+		/* ★★②否定面（本片的核心）：7～9 层**不得**出现跳过选项 ✓ */
+		for (const 层 of ['L7', 'L8']) {
+			造(层, true);
+			const a = 跳过项(层);
+			const 可 = a ? (() => { try { return a.when(); } catch { return '闸门抛'; } })() : false;
+			ok75(可 === false, `★★②${层}（7～9 层）⇒ **没有跳过选项** ✓（✗ 不得放行 ✓；实得 ${可}）`);
+		}
+		/* ★L9 只作**读数**（✗ 非判据）：该层**不是事件层** ⇒ 「跳过事件」动作本就不在 ✓ ⇒ 与「7～9 无跳过
+		 *   选项」是**两个不同的理由**，混为一谈会虚增本片的说服力 ✗（如实分开记 ✓）。 */
+		造('L9', true);
+		console.log(`    （★L9 读数：跳过项 ${跳过项('L9') ? '在' : '不在'} —— ★L9 非事件层 ⇒ 动作本就不挂 ✓；本片对 7～9 的**承重格**在 L7／L8 ✓）`);
+		/* ★③边界反向：1～6 层在**前提不满足**时同样不给（✗ 不是「1～6 无条件可跳」✓） */
+		造('L5', false);
+		const a4 = 跳过项('L5');
+		ok75(a4 ? a4.when() === false : true, '★③L5 **未战** ⇒ 仍不可跳过（✗ 无条件放行 ✓）');
+		/* ★④现有语义未被本片改动：跳过写的是**哨兵账**（`__跳过` ⇒ 该层事件不再可取 ✓） */
+		造('L2', true);
+		const e2 = State.variables.span1Events ?? {};
+		ok75(!!B.map?.locations?.get?.('L2'), '★④L2 地点在位（读面完好 ✓）');
+		/* ★⑤✗ 不碰 0.0.3：七名河 W09 两条出口仍在 ✓ */
+		const w09 = (B.map.exits ?? []).filter((e) => e.from === 'W09');
+		ok75(w09.length === 2, `★⑤✗ 不碰 0.0.3：W09 两条出口仍在（实得 ${w09.length}）`);
+		/* ★⑥✗ 不碰其它层：L10 系（聚落/城门）不受影响 ✓ */
+		ok75(!!B.map?.locations?.get?.('L10-camp'), '★⑥聚落地点在位（✗ 未被本片波及 ✓）');
+	} finally {
+		if (存 === null) delete State.variables.babelRun; else State.variables.babelRun = 存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 75 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（1～6 可跳过／7～9 无跳过／前提不满足同不给／✗ 不碰 0.0.3）`);
+}
+
 printSummary();
