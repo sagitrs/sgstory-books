@@ -283,6 +283,46 @@ try {
        *   ★✗ 记入 `逐跳` —— W09 是**独立区域**、不记层号 ✓ ⇒ ★「逐跳单调」的**来源**由此保住 ✓ */
       if (await 在W09()) {
         await 接手W09();
+          /* ── ★S8 ② 第五片（`books#402`）：★两件**零写探针**（★✗ 扰动主线 ✓）────────────────
+           *   ③ **死亡支**：`七.死()` 是**刻意的零写** —— 保留「进行中（未完成）」✓ ✗ 写完成 ✗ 写成没来过 ✓
+           *   ② **重访不重掷**：再进教程（`开始()`）须**不重置**「已处理」⇒ 同一节点**不再重掷** ✓
+           *   ★两件都只**页内读 ＋ 调零写口** ⇒ **域 JSON 前后逐字比**＝它们**自证未扰动** ✓（✗ 靠我相信 ✓） */
+          const 零写读数 = await p.evaluate(() => {
+            const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+            const 七 = B?.七名河;
+            if (!七) return { 略: '页内无七名河' };
+            const 键 = 七.域键 ?? 'sevenNames';
+            const 域JSON = () => JSON.stringify(SugarCube.State.variables[键] ?? null);
+            const 前 = 域JSON(); const r0 = 七.读();
+            let 死 = null;
+            try { 死 = 七.死(); } catch (e) { return { 具名红: `死() 抛错：${String(e?.message ?? e).slice(0, 120)}` }; }
+            const 后死 = 域JSON(); const r1 = 七.读();
+            let 重 = null;
+            try { 重 = (typeof 七.开始 === 'function') ? 七.开始() : { 无口: true }; } catch (e) { 重 = { 抛: String(e?.message ?? e).slice(0, 80) }; }
+            const 后重 = 域JSON(); const r2 = 七.读();
+            return { 死, 死前后同: 前 === 后死, 态前: r0.态, 态后死: r1.态, 未完成: 死?.未完成 ?? null,
+                     当前前: r0.当前, 已处理前: r0.已处理 ?? [],
+                     重, 重前后同: 后死 === 后重, 重后当前: r2.当前, 重后已处理: r2.已处理 ?? [] };
+          });
+          console.log(`  ★零写探针（死／重访）：${JSON.stringify(零写读数)}`);
+          if (零写读数.略) 档.push(`  · 零写探针未跑：${零写读数.略}`);
+          if (零写读数.具名红) 档.push(`  · ${零写读数.具名红}`);
+          if (零写读数.死 && !(零写读数.死.ok === true && 零写读数.未完成 === true))
+            档.push(`  · ★S8 ② ③死亡支：「七.死()」须**具名成功且标「未完成」**（实得 ${JSON.stringify(零写读数.死)}）`);
+          if (零写读数.死 && 零写读数.死前后同 !== true)
+            档.push('  · ★S8 ② ③死亡支：「死()」须**零写**（域 JSON 前后逐字同 —— ✗ 写完成 ✗ 写成没来过）');
+          if (零写读数.死 && 零写读数.态后死 !== '进行中')
+            档.push(`  · ★S8 ② ③死亡支：死后态须仍为「进行中（未完成）」（实得 ${JSON.stringify(零写读数.态后死)}）`);
+          if (零写读数.重前后同 !== true)
+            档.push('  · ★S8 ② ②重访：再进教程（「开始()」）须**不改档**（重访 ✗ 重置）');
+          /* ★★「判据凭什么一定成立」自检（★本席当日口径）：★已处理集**为空** ⇒ ★上面那条「保留」**恒真** ✗
+           *   ⇒ ★**如实登记为「本轮空转·未判」** ✓（✗ 冒充已判 ✓；根因＝六路驱动只走 `走()`、✗ 选过行动 ✓）。 */
+          if (零写读数.已处理前 && 零写读数.已处理前.length === 0)
+            档.push('  · ★S8 ② ②重访不重掷：**前置未满足 ⇒ 本轮该断言空转（未判）** —— 已处理集为空（六路驱动只走 `走()`，✗ 选过行动）⇒ 「保留」恒真 ✗；下一步须**先真选一次行动**再断');
+          if (零写读数.已处理前 && JSON.stringify(零写读数.重后已处理) !== JSON.stringify(零写读数.已处理前))
+            档.push(`  · ★S8 ② ②重访不重掷：已处理集须**保留**（前 ${JSON.stringify(零写读数.已处理前)} ⇒ 后 ${JSON.stringify(零写读数.重后已处理)}）`);
+          if (零写读数.重后当前 !== 零写读数.当前前)
+            档.push(`  · ★S8 ② ②重访：位置须**保留**（前 ${JSON.stringify(零写读数.当前前)} ⇒ 后 ${JSON.stringify(零写读数.重后当前)}）`);
         /* ★走到 `E9`（出口）之后：★**点返城把这一局收掉** ✓ —— ✗ 让主线继续在 W09 里打转 ✓
          *   ★优先点「**提前结束本次出城**」（唯一现成的返城口 ✓）；★若已消失 ⇒ 退回（主线自会处理 ✓）。 */
         /* ★走到 `E9`（出口）⇒ ★**触发「完成」** ✓（★E9 是 portal：`走(E9)` 只把它置为当前 ⇒ 还须 `完成()` ✓
@@ -294,15 +334,21 @@ try {
           const r0 = 七.读();
           if (r0.当前 !== (r0.出口 ?? 'E9')) return { 略: `当前(${r0.当前}) ≠ 出口(${r0.出口})`, 态: r0.态 };
           if (typeof 七.完成 !== 'function') return { 具名: '七名河没给「完成」的口' };
-          try { 七.完成(); return { 成: true, 态后: 七.读().态 }; }
+          try { const rc = 七.完成(); return { 成: rc?.ok ?? null, code: rc?.code ?? null, 态后: 七.读().态 }; }
           catch (e) { return { 具名红: `完成() 抛错：${String(e?.message ?? e).slice(0, 120)}` }; }   // ★✗ 静默吞 ✓
         });
         console.log(`  ★W09 完成()：${JSON.stringify(完成读数)}`);
         if (完成读数.具名 || 完成读数.具名红) 档.push(`  · W09 完成() 出声：${JSON.stringify(完成读数)}`);
         await p.waitForTimeout(600);
+        let 返城路 = null;
         if (await 在W09()) {
-          const 返城 = p.locator('#passages a,#passages button').filter({ hasText: /提前结束本次出城|回到|返城|回城/ });
-          if (await 返城.count() > 0) { await 返城.first().click(); await p.waitForTimeout(1400); }
+          /* ★先点 **E9 完成路**的具名出口（`确认回城 · 用掉本次传送机会（E9）`）；★无它才退回「提前返程」路
+           *   —— ★两条路**只差「是否完成」**（`teleport.js` ③ vs ③b）⇒ ★判据须**知道点了哪条**（✗ 混着断）。 */
+          const E9口 = p.locator('#passages a,#passages button').filter({ hasText: /确认回城/ });
+          const 退口 = p.locator('#passages a,#passages button').filter({ hasText: /提前结束本次出城|回到|返城|回城/ });
+          if (await E9口.count() > 0) { 返城路 = 'E9'; await E9口.first().click(); }
+          else if (await 退口.count() > 0) { 返城路 = '提前'; await 退口.first().click(); }
+          if (返城路) await p.waitForTimeout(1400);
           await 清到达拍();
         }
         await p.waitForTimeout(800);
@@ -319,6 +365,46 @@ try {
           await 回.first().click(); await p.waitForTimeout(1200); await 清到达拍();
           console.log(`  ★返城后·回合${k}：段=${JSON.stringify(await 段())}｜出口=${JSON.stringify((await 段内()).slice(0, 12))}`);
         }
+          /* ── ★S8 ② 第五片：**① E9 结算「恰一次」**（故事自持键闸 ＋ 二次调用**零副作用**）──────────
+           *   判据形（✗ 只断「第一次成功」✓）：**二次调用须具名拒**（`RETURN_ALREADY_SETTLED` ✓）
+           *     ＋ **二次调用前后域 JSON 逐字同**（⇒ 「恰一次」的**实质**＝✗ 二次损毁 ✓）。 */
+          const 恰一次读数 = await p.evaluate(() => {
+            const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+            const 结 = B?.返程结算, 七 = B?.七名河;
+            if (!结 || typeof 结.返程事务 !== 'function') return { 略: '页内无 `返程结算.返程事务`' };
+            const 键 = 结.域键 ?? 七?.域键 ?? 'sevenNames';
+            const 域 = () => SugarCube.State.variables[键] ?? null;
+            const 域JSON = () => JSON.stringify(域() ?? null);
+            const d0 = 域JSON();
+            let 再 = null;
+            try { 再 = 结.返程事务({}); } catch (e) { return { 具名红: `返程事务() 二次抛错：${String(e?.message ?? e).slice(0, 120)}` }; }
+            const d1 = 域JSON();
+            const 本域 = 域() ?? {};
+            return { 已结: 本域.返程已结 ?? null, 机会实例: 本域.机会?.实例 ?? null, 态: 本域.态 ?? null,
+                     结果栏: 本域.返程结果?.栏 ? Object.keys(本域.返程结果.栏) : null,
+                     再, 二次后域同: d0 === d1 };
+          });
+          console.log(`  ★恰一次探针（E9 结算）：${JSON.stringify(恰一次读数)}`);
+          if (恰一次读数.略) 档.push(`  · 恰一次探针未跑：${恰一次读数.略}`);
+          if (恰一次读数.具名红) 档.push(`  · ${恰一次读数.具名红}`);
+          if (!恰一次读数.已结)
+            档.push('  · ★S8 ② ①恰一次：返城后 `返程已结` 须已写（✗ 空 ⇒ 结算没发生）');
+          if (恰一次读数.已结 && 恰一次读数.机会实例 && 恰一次读数.已结 !== 恰一次读数.机会实例)
+            档.push(`  · ★S8 ② ①恰一次：「返程已结」须 ＝ 本次实例（已结 ${JSON.stringify(恰一次读数.已结)} ≠ 实例 ${JSON.stringify(恰一次读数.机会实例)}）`);
+          if (返城路 === 'E9' && 恰一次读数.态 !== '完成')
+            档.push(`  · ★S8 ② ①恰一次：走 **E9 完成路** ⇒ 态须为「完成」（实得 ${JSON.stringify(恰一次读数.态)}）`);
+          if (返城路 === '提前' && 恰一次读数.态 === '完成')
+            档.push('  · ★S8 ② ①恰一次：走**提前返程路** ⇒ 态须**仍为进行中**（设计 §6「提前回城不算完成」✗ 被算成完成）');
+          if (返城路 && 恰一次读数.已结 !== 恰一次读数.机会实例)
+            档.push(`  · ★S8 ② ①恰一次：两条路**共用同一幂等键空间** ⇒ 已结须 ＝ 本次实例（路=${返城路}｜已结 ${JSON.stringify(恰一次读数.已结)} ≠ 实例 ${JSON.stringify(恰一次读数.机会实例)}）`);
+          if (!恰一次读数.结果栏 || !恰一次读数.结果栏.includes('消失'))
+            档.push(`  · ★S8 ② ①恰一次：「返程结果.栏」须在册（实得 ${JSON.stringify(恰一次读数.结果栏)}）`);
+          if (恰一次读数.再 && 恰一次读数.再.ok !== false)
+            档.push(`  · ★S8 ② ①恰一次：**二次**结算须**被拒**（✗ 成功 ⇒ 「恰一次」不成立；实得 ${JSON.stringify(恰一次读数.再)}）`);
+          if (恰一次读数.再 && 恰一次读数.再.code !== 'RETURN_ALREADY_SETTLED')
+            档.push(`  · ★S8 ② ①恰一次：二次拒绝的 code 须具名「RETURN_ALREADY_SETTLED」（实得 ${JSON.stringify(恰一次读数.再.code)}）`);
+          if (恰一次读数.二次后域同 !== true)
+            档.push('  · ★S8 ② ①恰一次：二次结算前后**域 JSON 须逐字同**（⇒ ✗ 二次损毁）');
       }
     const w = await 走一层(`L${lv}`);
     const r = await 账();
