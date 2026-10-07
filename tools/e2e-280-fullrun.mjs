@@ -287,11 +287,18 @@ try {
          *   ★优先点「**提前结束本次出城**」（唯一现成的返城口 ✓）；★若已消失 ⇒ 退回（主线自会处理 ✓）。 */
         /* ★走到 `E9`（出口）⇒ ★**触发「完成」** ✓（★E9 是 portal：`走(E9)` 只把它置为当前 ⇒ 还须 `完成()` ✓
          *   —— ★✗ 让 态 停在「进行中」✓；★那是**提前返程**才有的事 ✓）。 */
-        await p.evaluate(() => {
+        const 完成读数 = await p.evaluate(() => {
           const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
           const 七 = B?.七名河;
-          if (七 && 七.读().当前 === (七.读().出口 ?? 'E9') && typeof 七.完成 === 'function') { try { 七.完成(); } catch { /* ★已完成的重复调用：忽略 ✓ */ } }
+          if (!七) return { 略: '页内无七名河' };
+          const r0 = 七.读();
+          if (r0.当前 !== (r0.出口 ?? 'E9')) return { 略: `当前(${r0.当前}) ≠ 出口(${r0.出口})`, 态: r0.态 };
+          if (typeof 七.完成 !== 'function') return { 具名: '七名河没给「完成」的口' };
+          try { 七.完成(); return { 成: true, 态后: 七.读().态 }; }
+          catch (e) { return { 具名红: `完成() 抛错：${String(e?.message ?? e).slice(0, 120)}` }; }   // ★✗ 静默吞 ✓
         });
+        console.log(`  ★W09 完成()：${JSON.stringify(完成读数)}`);
+        if (完成读数.具名 || 完成读数.具名红) 档.push(`  · W09 完成() 出声：${JSON.stringify(完成读数)}`);
         await p.waitForTimeout(600);
         if (await 在W09()) {
           const 返城 = p.locator('#passages a,#passages button').filter({ hasText: /提前结束本次出城|回到|返城|回城/ });
@@ -299,6 +306,17 @@ try {
           await 清到达拍();
         }
         await p.waitForTimeout(800);
+        console.log(`  ★返城后：段=${JSON.stringify(await 段())}｜出口=${JSON.stringify((await 段内()).slice(0, 14))}`);
+        /* ★返城之后**回到城里**：★若当前段**没有向上类出口** ⇒ ★先点「回共炉，再作准备」（回到探索面 ✓）
+         *   ⇒ ★再让主线点「走向上行门」✓ —— ★实测：★第二次返城落在一个**只有「回共炉」**的面 ✓（✗ 探索面 ✓）。 */
+        for (let k = 0; k < 3; k++) {
+          const L = await 段内();
+          if (L.some(是移动项)) break;
+          const 回 = p.locator('#passages a,#passages button').filter({ hasText: /回共炉|再作准备|歇一歇|了解这座城/ });
+          if (await 回.count() === 0) break;
+          await 回.first().click(); await p.waitForTimeout(1200); await 清到达拍();
+          console.log(`  ★返城后·回合${k}：段=${JSON.stringify(await 段())}｜出口=${JSON.stringify((await 段内()).slice(0, 12))}`);
+        }
       }
     const w = await 走一层(`L${lv}`);
     const r = await 账();
