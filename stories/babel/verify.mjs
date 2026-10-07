@@ -5934,11 +5934,12 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		R.give('wood', 4);
 		const 售前 = JSON.stringify(L10.state?.() ?? null);
 		const 售 = L10.sell('wood', 4);
-		ok(售 === true || 售 === false, `★E① 回到 L10 后**售货面可达**（返 ${JSON.stringify(售)} —— ★可达性读数 ✓ ✗ 不断其经济语义 ✓）`);
 		const 购 = L10.buy('ration');
-		ok(购 === true || 购 === false, `★E② **补给面可达**（返 ${JSON.stringify(购)} ✓）`);
 		const 歇 = L10.rest?.();
-		ok(歇 === true || 歇 === false || 歇 === undefined, `★E③ **休息面可达**（返 ${JSON.stringify(歇)} ✓）`);
+		/* ★`#453` NIT **真落地**（首版我 `replace` 静默未命中 ✗ 却报了「已改」✗ ⇒ 本次**带 assert** ✓）：
+		 *   恒真断言（`售===true||售===false` 之类）**✗ 不得计入判据面** ✓ ⇒ 只印读数 ✓；
+		 *   本组真正承重的判据在 E④（**完成后教程路必关**）＋ C／D 各格 ✓。 */
+		console.log(`    （★E①②③ 读数：售货返 ${JSON.stringify(售)}／补给返 ${JSON.stringify(购)}／休息返 ${JSON.stringify(歇)} —— 可达性**读数** ✓ ✗ 不计入判据面 ✓）`);
 		const 城门 = (map.exits ?? []).filter((e) => e.from === 'L10-gate');
 		ok(城门.length >= 2, `★E④ **出城面在位**（L10-gate 出边 ≥2：W09（教程未完成）／L11（已完成）✓；实得 ${城门.length}）`);
 		/* ★本意＝做题「**教程路已关**」✓；★L11 那条还带**闸门条件**（`边可否通行` ✓）⇒ 本格只**印读数** ✗ 不断它 ✓。 */
@@ -5952,7 +5953,7 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
 	}
 	const 本组失败 = fails.length - 组前;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 73 组：${本组失败 === 0 ? '十五格全绿（C 十情境正反／D 部分转移＋容器读数／E 回 L10 真环境四面）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 73 组：${本组失败 === 0 ? '全绿 —— **21 条判据**（C 十情境正反／D 部分转移／E 回 L10 真环境；★E①②③ 为**读数** ✗ 不计入判据面 ✓）' : `★本组 ${本组失败} 处失败`}`);
 }
 
 printSummary();
