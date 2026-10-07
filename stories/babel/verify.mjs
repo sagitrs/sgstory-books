@@ -5460,40 +5460,36 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			const 边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp');
 			ok(!!边, '★E9 出口边在位（W09 → L10-camp）');
 			if (边) {
-				/* ★`#484` 两请之①：**行程拒绝须落具名通道**（developer 刀 B 观察项 · 同形 ✓）。
-				 *   ★**单点常量**：通道语义（「行程拒绝」vs「物品·不可用」）**候 writer-2 代裁** ✓
-				 *     ⇒ 裁到别的通道时**只改这一处** ✓。
-				 *   ★围住**第一次**调用：那一次 `r.ok===false` ⇒ 才真发拒因（第二次是幂等重调 ⇒ 不再拒 ✓）。 */
-				const 拒通道 = setup.BABEL?.通道?.拒因 ?? 'item-refuse';        // ★读**产品同源常量**（✗ 不各写一份 ✓）
-				const 拒前 = (R.notices({ channel: 拒通道 }) ?? []).length;
-				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**
+				const 拒通道 = setup.BABEL?.通道?.拒因 ?? 'item-refuse';
+				R.pushNotice?.('★哨兵·拒因', { channel: 拒通道 });   // ★哨兵定位（同演出格 ✓）
+				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**（★围住这唯一一次调用 ✓）
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
-				/* ★`#484` 两边界之 **A**：通道是**单源常量** ✓，但**值本身须被钉住** —— 改值＝一次
-				 *   **有意的**语义变更（须同步本格与裁文 ✓），✗ 不是顺手漂 ✓。 */
-				ok(setup.BABEL?.通道?.拒因 === 'item-refuse',
-					`★「拒因」通道**字面值**须为 item-refuse（实得 ${JSON.stringify(setup.BABEL?.通道?.拒因)}）`);
-				ok(setup.BABEL?.通道?.演出 === 'map-scene',
-					`★「演出」通道**字面值**须为 map-scene（实得 ${JSON.stringify(setup.BABEL?.通道?.演出)}）`);
-				const 拒后 = (R.notices({ channel: 拒通道 }) ?? []).map((n) => n.text);
-				const 文拒 = 拒后.slice(0, Math.max(0, 拒后.length - 拒前)).reverse().join('\n');
-				ok(文拒.length > 0 && 文拒.split('\n').some((s) => s.startsWith('✗ ')),
-					`★行程拒绝须落 \`${拒通道}\` 通道（✗ 只打在无人提供的钩上 ⇒ 玩家看不见 ✓；实得 ${JSON.stringify(文拒.slice(0, 70))}）`);
+				{
+					const 全拒 = R.notices({ channel: 拒通道, limit: 500 }) ?? [];
+					const i拒 = 全拒.findIndex((n) => n.text === '★哨兵·拒因');
+					const 文拒 = 全拒.slice(0, i拒 < 0 ? 0 : i拒).map((n) => n.text).reverse().join('\n');
+					ok(文拒.length > 0 && 文拒.split('\n').some((x) => x.startsWith('✗ ')),
+						`★行程拒绝须落 \`${拒通道}\` 通道（✗ 只打在无人提供的钩上 ⇒ 玩家看不见 ✓；实得 ${JSON.stringify(文拒.slice(0, 80))}）`);
+				}
 				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
 				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
-				/* ★`#483` 同族校正（领队 2026-10-07）：产品演出改走**引擎真口** `pushNotice`（✗ 不再打
-				 *   在无人提供的 `R.note` 上 ✓）⇒ 本格改**读引擎通知面的具名通道**（✗ 装钩 —— 那样
-				 *   「玩家侧**显不显示**」测不出来 ✗）。 */
-				const 句前 = (R.notices({ channel: setup.BABEL?.通道?.演出 ?? 'map-scene' }) ?? []).length;   // ★同源 ✓
-				let 文接 = '';
-				try {
-
-					清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
-					边.action();
-				} finally {
-					const 全 = (R.notices({ channel: setup.BABEL?.通道?.演出 ?? 'map-scene' }) ?? []).map((n) => n.text);
-					文接 = 全.slice(0, Math.max(0, 全.length - 句前)).reverse().join('\n');
+				/* ★★M-1（`#484` 重切 main）：演出改走**引擎真口** `R.pushNotice` ⇒ 本格改**读引擎通知面的具名通道**
+				 *   （✗ 再给无人提供的 `R.note` 装钩 —— 那样「玩家侧**显不显示**」**测不出来** ✗）。 */
+				console.log('  ★探针：演出调用前后——先直呼一次看落哪：', JSON.stringify((() => { const a = (R.notices({ limit: 500 }) ?? []).length; R.pushNotice?.('★探针行', { channel: 'map-scene' }); const b = (R.notices({ limit: 500 }) ?? []); return { 前: a, 后: b.length, 首: b[0]?.text, 首通: b[0]?.channel }; })()));
+				const 演通道 = setup.BABEL?.通道?.演出 ?? 'map-scene';
+				/* ★装置：`RPG.notices()` **新的在前** 且缓冲**上限 200**（`71-notice.js`）⇒ 「长度差」在满缓冲下**恒空** ✗
+				 *   ⇒ 改用**哨兵行**定位：先压一行哨兵，再取它**之前**的那些（＝本次新增 ✓）。 */
+				R.pushNotice?.('★哨兵·演出', { channel: 演通道 });
+				清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
+				边.action();
+				{
+					const 全 = R.notices({ channel: 演通道, limit: 500 }) ?? [];
+					const i = 全.findIndex((n) => n.text === '★哨兵·演出');
+					var 文接 = 全.slice(0, i < 0 ? 0 : i).map((n) => n.text).reverse().join('\n');
 				}
 				ok(文接.length > 0, `★E9 出口演出须**真进引擎通知面**（✗ 只打无人提供的钩 ✓；实得 ${JSON.stringify(文接.slice(0, 60))}）`);
+				ok(setup.BABEL?.通道?.演出 === 'map-scene', `★「演出」通道**字面值**须为 map-scene（实得 ${JSON.stringify(setup.BABEL?.通道?.演出)}）`);
+				ok(setup.BABEL?.通道?.拒因 === 'item-refuse', `★「拒因」通道**字面值**须为 item-refuse（实得 ${JSON.stringify(setup.BABEL?.通道?.拒因)}）`);
 				ok(文接.includes('获得脆弱的') && 文接.includes('原已脆弱而消失的') && 文接.includes('保持稳定的'),
 					`★E9 出口须**真演出三栏**（实得通知：${JSON.stringify(文接.slice(0, 90))}）`);
 				ok(文接.includes('club×1') || 文接.includes('木棒×1') || 文接.includes('×1'),
@@ -5577,13 +5573,6 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
  *   ⇒ 只落**故事侧**格，探针/e2e 扩展另由 T 域出案 ✓）
  *   `books#401` 3b：正式单图（底图 ＋ 覆盖层 ＋ 图例 ＋ 三类等价文字 ＋ 三路开关）
  * ============================================================ */
-/* ★★**本组锁什么、✗ 不锁什么（`#484` 两边界之 B：取省法 · 组头明写 ✓）**：
- *   · **锁 4 处行为格**：E9 出口的 **①演出真进引擎通知面 ②真演出三栏 ③带名称×数量 ④行程拒绝落具名通道** ✓；
- *     另加 **2 条值格**（`B.通道` 的两**字面值**被钉住 ✓ —— 改值须**有意**为之 ✓）。
- *   · **✗ 未锁（如实列，✗ 不冒充已覆盖）**：`teleport.js` 另 **4 处产品站点** —— 
- *     **回城叙述**（`:96`）／**P1-4 拒因兜底**（`:179`）／**提前返程**那条边的**演出**与**拒因**（`:234`/`:236`）✓。
- *     ⇒ ★这四处**同一机制**（同常量、同真口 ✓）但**无行为格** ⇒ 若日后只改那四处之一而✗ 改常量 ⇒ 本组**不报警** ✗。
- */
 head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产接线／覆盖层按真结果／位置／图例非仅颜色／等价文字／开关零副作用／只读边界');
 {
 	const B4 = B?.地图;
@@ -5641,23 +5630,19 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 			ok(/当前：/.test(文) && /可走：/.test(文) && /类型：/.test(文), '★三类等价文字须在面板内（当前／可走／类型 ✓）');
 
 			/* ⑦ ★开关：**真状态变**才出原句 ＋ 零副作用（裁 §二.3 ✓；★真开合的合法差分＝可见性/展开态 ✓） */
-			/* ★★**领队双裁（`#483`，2026-10-07）**落两件：
-			 *   a) 演出走**引擎真口** `R.pushNotice`（`map.js` 已照改 ✓）⇒ 本段改**读引擎通知面**的
-			 *      **具名通道** `map-scene`（✗ 不再给无人提供的 `R.note` 装钩 —— 那样「玩家侧显不显示」
-			 *      **测不出来** ✗）；
-			 *   b) 差分按**具名白名单**：只放过 `$rpgNotices` 这本**具名演出记录**账，✗ 不豁免整个
-			 *      通知／State 域（＝裁六 §三原文 ✓）。 */
-			const 两句 = () => R.notices({ channel: 'map-scene', limit: 50 }).map((n) => n.text)
-				.filter((s) => s === '你打开了地图' || s === '你收起了地图');   // ★只认设计的两句（✗ 自造文案 ✓）
-			const 域前 = (() => { const c = JSON.parse(JSON.stringify(State.variables)); delete c.rpgNotices; return JSON.stringify(c); })();
-			const 随前 = Math.random;
+			/* ★★M-2（`#482` 重切 main）：演出改走**引擎真口** `R.pushNotice` ⇒ 本格改**读引擎通知面的具名通道**
+			 *   （✗ 再给无人提供的 `R.note` 装钩 —— 那样「玩家侧**显不显示**」**测不出来** ✗）。
+			 *   ★哨兵定位：`RPG.notices()` **新的在前** 且缓冲**上限 200** ⇒ 用「长度差」在满缓冲下**恒空** ✗。 */
+			const 域前 = JSON.stringify(State.variables); const 随前 = Math.random;
 			let 随动 = 0; Math.random = () => { 随动++; return 0.5; };
-			const 句前 = 两句().length;
+			const 演通道 = setup.BABEL?.通道?.演出 ?? 'map-scene';
+			R.pushNotice?.('★哨兵·地图开关', { channel: 演通道 });
 			try {
 				for (let i = 0; i < 6; i++) B4.切换();     // 开/收 各 3 次 ⇒ 原句 6 条 ✓
 			} finally { Math.random = 随前; }
-			const 全部 = 两句();                            // 引擎列表**新在前** ⇒ 本轮新增在**头部** ✓
-			const 收 = 全部.slice(0, 全部.length - 句前);
+			const 全演 = R.notices({ channel: 演通道, limit: 500 }) ?? [];
+			const i哨 = 全演.findIndex((n) => n.text === '★哨兵·地图开关');
+			const 收 = 全演.slice(0, i哨 < 0 ? 0 : i哨).map((n) => n.text).reverse();
 			ok(收.length === 6, `★每次**真状态变**恰一条演出（6 次切换 ⇒ 6 条；实得 ${收.length}）`);
 			/* ★断**交替**（✗ 不断固定先后 —— 本格进入时面板可能已被前文打开过 ✓）：
 			 *   两句话各 3 条 ＋ 相邻必不同 ⇒ 「真状态变才出句」的同义断言 ✓。 */
@@ -5666,10 +5651,10 @@ head('候选组（组号待 T 域确认）`books#401` 3b：单图 —— 资产�
 				`★两句话须各 3 条（实得 开 ${开句数}／收 ${收.length - 开句数}）`);
 			ok(收.every((s, i) => i === 0 || s !== 收[i - 1]), `★相邻必不同（✗ 同态重复刷 ✓；实得 ${JSON.stringify(收)}）`);
 			ok(收.every((s) => s === '你打开了地图' || s === '你收起了地图'), '★只许设计的两句（✗ 自造文案 ✓）');
-			ok((() => { const c = JSON.parse(JSON.stringify(State.variables)); delete c.rpgNotices; return JSON.stringify(c); })() === 域前,
-				'★开关**零存档改动**（按**具名白名单**：只放过 `$rpgNotices` 的**具名演出记录** ✓；其余逐字节同 ⇒ ✗ 推时间／✗ 写域 ✓）');
-			ok(两句().length >= 6 && 两句().every((s) => s === '你打开了地图' || s === '你收起了地图'),
-				'★演出句须**真进引擎通知面**（✗ 只打在无人提供的钩上 —— 领队双裁 a ✓）');
+			/* ★★裁六 §三（`#482` 上报 · 领队裁）：演出进**既有日志** ⇒ 只放过**具名演出记录**（`rpgNotices`）这一处差分，
+			 *   ✗ 不豁免整个通知／State 域 ✓（⇒ 除该本账外，State 必须逐字节同 ✓）。 */
+			const 去通 = (o) => { const c = JSON.parse(o); delete c.rpgNotices; return JSON.stringify(c); };
+			ok(去通(JSON.stringify(State.variables)) === 去通(域前), '★开关**零存档改动**（★只放过 `rpgNotices` 这本具名演出记录 ✓；✗ 推时间／✗ 写域 ✓）');
 			ok(随动 === 0, `★开关**零随机消费**（实得 ${随动}）`);
 
 			/* ⑧ ★只读边界（裁 §二.5：✗ 不得成为返城／逃脱／存档／用物／战斗入口 ✓） */
@@ -5978,7 +5963,7 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 		ok73(活.__p73 === 999, '★④同上：拒时**零写** ✓'); delete 活.__p73;
 		/* ⑤**故障恢复**（`publish` 抛）⇒ 事实与物品都在 ⇒ **只重绘**（✗ 不重跑领域副作用 ✓） */
 		清背(); 造('club', { 脆弱: true }); 起('E6', 'i-c5');
-		/* ★`#483` 同族校正：注入对象由 `R.note`（无提供者）改为引擎真口 `pushNotice` ✓。 */
+		/* ★★M-1（`#484` 重切 main）：演出改走引擎真口 ⇒ 受控抛改注入 `R.pushNotice`（✗ 再注 `R.note` ✓）。 */
 		const 原push73 = R.pushNotice; let 抛次 = 0;
 		R.pushNotice = function () { 抛次++; throw new Error('受控抛：演出面'); };
 		let r5; try { r5 = 结.返程事务({ 实例: 'i-c5', 完成: true, 演出: () => { throw new Error('受控抛：演出'); } }); } finally { R.pushNotice = 原push73; }
@@ -6425,245 +6410,6 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 70 组：${本组失败 === 0 ? 格70 + ' 格全绿（＋★补笔：**交互路端到端**四断言〔该会话战斗在册／全局 current 仍 null／**不带会话的提交须拒**／**带会话的提交进该战斗**〕＋收尾清登记＋正式面逐字不变；＋★层 4 卡面六面：备场纯布置（✗ 掷骰）／跑战斗卡走真回合且**掷骰账＝该源自己的计数**／三账**分开**（抽卡1·抽奖0）／**纯查看不得抽**（前后逐字同）／错卡类**具名拒**／奖励卡落测试背包且抽奖记 1／`入场()` 真开场次 —— 各步正式面逐字不变；★S3 十二格 ＋ ★A2 层 1 测试模式七面：目录恰两卡·结束不在目录／缺接缝具名拒／自有 rng·独立角色·标记／两场次互不干扰·结束只清该场次／结束三不（不授胜·不补奖·不复活）·幂等·未知场次拒／档路 `babelTest/`·正式面零变化／全程 ✗ 动正式局 ＋ ★A2 层 2／层 3 卡层两面：战斗构造带**本场源／会话**且参战者是**测试角色**、**全局源一次未抽**、正式玩家分毫不动；奖励经**唯一交付口**落**测试背包**、正式背包／正式域零变化）' : `★本组 ${本组失败} 处失败`}`);
 }
 
-/* ============================================================
- * 第 74 组：`books#457`（D1 首片）**普通快速回城** —— 核心 03 §C7②【已定】四条
- *   ①免费（✗ 不消耗卷轴/物品）②沿已清理来路（缺一层即不可用）③✗ 不靠科技瞬移
- *   （落点与步行/卷轴同 `L10-camp`）＋ ✗ 不恢复资源/✗ 不重发事件 ④落点一致
- *   ★组号 74（71=3b／72=S6 主组／73=S6 C-D-E／69=S4／70=A2 ✓ ⇒ 顺延 ✓）
- *   ★✗ 不碰 0.0.3 链：本组只测**普通层**（L1…L9）✓
- * ============================================================ */
-head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬移／落点同 L10-camp');
-{
-	let 本组判据 = 0;
-	const 组前失败 = fails.length;          // ★`#458` RC：红绿**由失败数定** ✗ 不由判据数定 ✓（照仓内范本 :5750/:5841/:5954 ✓）
-	const ok74 = (c, m) => { 本组判据++; ok(c, m); };
-	const 域 = 'sevenNames';
-	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
-	try {
-		const K = B?.快回, 图 = B.map, 聚 = B.聚落;
-		ok74(!!K && !!图 && !!聚, '前置：快回模块／地图／聚落皆在位');
-		ok74(K.挂了() >= 9, `★普通层皆挂了免费路（L1…L9 ⇒ ≥9；实得 ${K?.挂了?.()}）`);
-		/* ★四条①免费：可用时**零物品消耗**（背包逐字节不变 ✓）＋ ✗ 不要求持有卷轴 ✓ */
-		const 起 = (当前, 已战) => {
-			State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 已战: Object.assign({}, 已战), 终局: false });
-			D.Player.hp = D.Player.maxHp;
-			D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
-			图.moveTo(当前);
-		};
-		const 全清 = (到) => { const o = {}; for (let i = 1; i <= 到; i += 1) o[`L${i}`] = true; return o; };
-		起('L5', 全清(5));
-		ok74(K.可快回() === true, '★②来路全清（L1–L4 已战 ✓）⇒ 可快回');
-		/* ★①口径改准（我首版断「计数＝0」✗ 那是断**背包现状**，不是断**规格**）：
-		 *   规格是「**✗ 不应要求先购买**回程卷轴」⇒ 做法＝**把卷轴清零**，再看快回**照样可用** ✓。 */
-		const 清卷轴 = () => { const n = D.Player.items ?? []; D.Player.items = n.filter((x) => x?.id !== 'return-scroll'); };
-		清卷轴();
-		ok74(R.heldTotal(D.Player, 'return-scroll') === 0, '★①（前置）已把卷轴清零 ✓');
-		/* ★先**种一件已知物**（`club`）—— 我首版此处背包是空的 ⇒ 「逐字节不变」格**空转** ✗
-		 *   （K2 刀给一件再拿走一件，净变 0 ⇒ 不咬 ✗）。★有物在包 ⇒ 该格才承重 ✓。 */
-		R.give('club', 1);
-		const 背前 = JSON.stringify(D.Player.items ?? []);   // ★快照取在**清零＋种物之后** ✓
-		ok74(K.可快回() === true, '★①免费：**手上零卷轴**仍可快回 ✓（✗ 不要求先购买 ✓）');
-		const 路 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
-		ok74(路.length === 1 && 路[0].when() === true, '★④存在且**现算可用**的 L5 ⇒ L10-camp 免费路');
-		/* ★②「缺一层即不可用」——★关键反例（半清 ⇒ 边不出现 ✓） */
-		起('L5', Object.assign(全清(5), { L3: false }));
-		ok74(K.可快回() === false, '★②来路**缺 L3**（未清）⇒ 可快回为假 ✓（✗ 半可用 ✓）');
-		const 路2 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
-		ok74(路2.length === 1 && 路2[0].when() === false, '★②同上：该边**现算不可用**（✗ 静默放行 ✓）');
-		/* ★③✗ 科技瞬移／✗ 不恢复：快回后**资源与事件账逐字节不变** ✓ */
-		起('L5', 全清(5));
-		State.variables.babelRun.已取 = { L1: 1, L2: 2 };
-		const 账前 = JSON.stringify(State.variables.babelRun);
-		const a = 路.find((e) => e.from === 'L5') ?? (图.exits ?? []).find((e) => e.from === 'L5' && e.to === 聚);
-		a.action();
-		/* ★★承重格（`#457` 自纠）：★「免费」必须**围住动作**观察 —— 我首版把这条断在
-		 *   `a.action()` **之前** ⇒ 比的是快照与同一状态下几行后的背包 ⇒ **恒真** ✗（三把刀都不咬 ✓）。
-		 *   现改为：**动作前快照 → 动作 → 比对**，且明确要求逐字节相同 ✓。 */
-		ok74(JSON.stringify(D.Player.items ?? []) === 背前, '★①免费：**快回之后**背包逐字节不变（✗ 不消耗物品 ✓）');
-		ok74(图.current === 聚, `★④落点与步行/卷轴**同一处**（⇒ ${聚}；实得 ${图.current}）`);
-		const 账后 = JSON.parse(JSON.stringify(State.variables.babelRun));
-		ok74(账后.已战?.L1 === true && 账后.已战?.L5 === true, '★③快回**不动战果账** ✓');
-		ok74(JSON.stringify(账后.已取) === JSON.stringify({ L1: 1, L2: 2 }), '★③快回**不重发事件/不恢复资源**（已取账逐字不变 ✓）');
-		/* ★③边界：人已在聚落 ⇒ 不可快回；L1（无来路）⇒ 视作全清 ✓ */
-		起('L1', {});
-		ok74(K.可快回() === true, '★②边界：L1 **无来路** ⇒ 视作全清 ✓（✗ 误判为不可用 ✓）');
-		图.moveTo(聚);
-		ok74(K.可快回() === false, '★③边界：人在聚落 ⇒ 不可快回 ✓（✗ 自环 ✓）');
-		/* ★✗ 不碰 0.0.3：W09 两条边仍在且语义未变 ✓（只断存在性与闸门可调用 ✓） */
-		const w09 = (图.exits ?? []).filter((e) => e.from === 'W09');
-		ok74(w09.length === 2 && w09.every((e) => typeof e.when === 'function'), '★✗ 不碰 0.0.3：W09 两条出口**仍在**且闸门完好 ✓');
-		ok74(!(图.exits ?? []).some((e) => e.from === 'L10-camp' && e.to === 'L10-camp'), '★③✗ 无自环免费路 ✓');
-	} finally {
-		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
-		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
-	}
-	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 74 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
-}
-
-
-/* ============================================================
- * 第 74 组：`books#457`（D1 首片）**普通快速回城** —— 核心 03 §C7②【已定】四条
- *   ①免费（✗ 不消耗卷轴/物品）②沿已清理来路（缺一层即不可用）③✗ 不靠科技瞬移
- *   （落点与步行/卷轴同 `L10-camp`）＋ ✗ 不恢复资源/✗ 不重发事件 ④落点一致
- *   ★组号 74（71=3b／72=S6 主组／73=S6 C-D-E／69=S4／70=A2 ✓ ⇒ 顺延 ✓）
- *   ★✗ 不碰 0.0.3 链：本组只测**普通层**（L1…L9）✓
- * ============================================================ */
-head('74. `books#457` 普通快速回城：免费／沿已清理来路／非瞬移／落点同 L10-camp');
-{
-	let 本组判据 = 0;
-	const 组前失败 = fails.length;          // ★`#458` RC：红绿**由失败数定** ✗ 不由判据数定 ✓（照仓内范本 :5750/:5841/:5954 ✓）
-	const ok74 = (c, m) => { 本组判据++; ok(c, m); };
-	const 域 = 'sevenNames';
-	const 跑存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	const 背存 = JSON.parse(JSON.stringify(D.Player.items ?? null));
-	try {
-		const K = B?.快回, 图 = B.map, 聚 = B.聚落;
-		ok74(!!K && !!图 && !!聚, '前置：快回模块／地图／聚落皆在位');
-		ok74(K.挂了() >= 9, `★普通层皆挂了免费路（L1…L9 ⇒ ≥9；实得 ${K?.挂了?.()}）`);
-		/* ★四条①免费：可用时**零物品消耗**（背包逐字节不变 ✓）＋ ✗ 不要求持有卷轴 ✓ */
-		const 起 = (当前, 已战) => {
-			State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 已战: Object.assign({}, 已战), 终局: false });
-			D.Player.hp = D.Player.maxHp;
-			D.Player.effects = (D.Player.effects ?? []).filter((e) => e !== R.death.id);
-			图.moveTo(当前);
-		};
-		const 全清 = (到) => { const o = {}; for (let i = 1; i <= 到; i += 1) o[`L${i}`] = true; return o; };
-		起('L5', 全清(5));
-		ok74(K.可快回() === true, '★②来路全清（L1–L4 已战 ✓）⇒ 可快回');
-		/* ★①口径改准（我首版断「计数＝0」✗ 那是断**背包现状**，不是断**规格**）：
-		 *   规格是「**✗ 不应要求先购买**回程卷轴」⇒ 做法＝**把卷轴清零**，再看快回**照样可用** ✓。 */
-		const 清卷轴 = () => { const n = D.Player.items ?? []; D.Player.items = n.filter((x) => x?.id !== 'return-scroll'); };
-		清卷轴();
-		ok74(R.heldTotal(D.Player, 'return-scroll') === 0, '★①（前置）已把卷轴清零 ✓');
-		/* ★先**种一件已知物**（`club`）—— 我首版此处背包是空的 ⇒ 「逐字节不变」格**空转** ✗
-		 *   （K2 刀给一件再拿走一件，净变 0 ⇒ 不咬 ✗）。★有物在包 ⇒ 该格才承重 ✓。 */
-		R.give('club', 1);
-		const 背前 = JSON.stringify(D.Player.items ?? []);   // ★快照取在**清零＋种物之后** ✓
-		ok74(K.可快回() === true, '★①免费：**手上零卷轴**仍可快回 ✓（✗ 不要求先购买 ✓）');
-		const 路 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
-		ok74(路.length === 1 && 路[0].when() === true, '★④存在且**现算可用**的 L5 ⇒ L10-camp 免费路');
-		/* ★②「缺一层即不可用」——★关键反例（半清 ⇒ 边不出现 ✓） */
-		起('L5', Object.assign(全清(5), { L3: false }));
-		ok74(K.可快回() === false, '★②来路**缺 L3**（未清）⇒ 可快回为假 ✓（✗ 半可用 ✓）');
-		const 路2 = (图.exits ?? []).filter((e) => e.from === 'L5' && e.to === 聚);
-		ok74(路2.length === 1 && 路2[0].when() === false, '★②同上：该边**现算不可用**（✗ 静默放行 ✓）');
-		/* ★③✗ 科技瞬移／✗ 不恢复：快回后**资源与事件账逐字节不变** ✓ */
-		起('L5', 全清(5));
-		State.variables.babelRun.已取 = { L1: 1, L2: 2 };
-		const 账前 = JSON.stringify(State.variables.babelRun);
-		const a = 路.find((e) => e.from === 'L5') ?? (图.exits ?? []).find((e) => e.from === 'L5' && e.to === 聚);
-		a.action();
-		/* ★★承重格（`#457` 自纠）：★「免费」必须**围住动作**观察 —— 我首版把这条断在
-		 *   `a.action()` **之前** ⇒ 比的是快照与同一状态下几行后的背包 ⇒ **恒真** ✗（三把刀都不咬 ✓）。
-		 *   现改为：**动作前快照 → 动作 → 比对**，且明确要求逐字节相同 ✓。 */
-		ok74(JSON.stringify(D.Player.items ?? []) === 背前, '★①免费：**快回之后**背包逐字节不变（✗ 不消耗物品 ✓）');
-		ok74(图.current === 聚, `★④落点与步行/卷轴**同一处**（⇒ ${聚}；实得 ${图.current}）`);
-		const 账后 = JSON.parse(JSON.stringify(State.variables.babelRun));
-		ok74(账后.已战?.L1 === true && 账后.已战?.L5 === true, '★③快回**不动战果账** ✓');
-		ok74(JSON.stringify(账后.已取) === JSON.stringify({ L1: 1, L2: 2 }), '★③快回**不重发事件/不恢复资源**（已取账逐字不变 ✓）');
-		/* ★③边界：人已在聚落 ⇒ 不可快回；L1（无来路）⇒ 视作全清 ✓ */
-		起('L1', {});
-		ok74(K.可快回() === true, '★②边界：L1 **无来路** ⇒ 视作全清 ✓（✗ 误判为不可用 ✓）');
-		图.moveTo(聚);
-		ok74(K.可快回() === false, '★③边界：人在聚落 ⇒ 不可快回 ✓（✗ 自环 ✓）');
-		/* ★✗ 不碰 0.0.3：W09 两条边仍在且语义未变 ✓（只断存在性与闸门可调用 ✓） */
-		const w09 = (图.exits ?? []).filter((e) => e.from === 'W09');
-		ok74(w09.length === 2 && w09.every((e) => typeof e.when === 'function'), '★✗ 不碰 0.0.3：W09 两条出口**仍在**且闸门完好 ✓');
-		ok74(!(图.exits ?? []).some((e) => e.from === 'L10-camp' && e.to === 'L10-camp'), '★③✗ 无自环免费路 ✓');
-	} finally {
-		if (跑存 === null) delete State.variables.babelRun; else State.variables.babelRun = 跑存;
-		if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((s) => R.reviveItem(s));
-	}
-	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 74 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（免费／沿已清理来路／非瞬移／落点同聚落／✗ 不碰 0.0.3）`);
-}
-
-
-/* ============================================================
- * 第 75 组：`books#459`（D1 次片）**跳过战斗的层位边界**
- *   核心 04 §4.1【最新已定边界】逐字：「跳过战斗主要用于 **1～6 层**加速，**7～9 层没有跳过
- *   Boss 战选项**。」⇒ 承载面＝`babel.js` 的「跳过事件」动作（`跳过事件动作` ✓）。
- *   ★组号 75（顺延 74 后 ✓）
- * ============================================================ */
-head('75. `books#459` 跳过战斗的层位边界：1～6 可跳过／7～9 无跳过选项');
-{
-	let 本组判据 = 0;
-	const 组前失败 = fails.length;
-	const ok75 = (c, m) => { 本组判据++; ok(c, m); };
-	const 存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	try {
-		const 跳过项 = (层) => {
-			/* ★从该层的**地点动作面**取「跳过事件」项（✗ 不走内部私有名 ✓）：
-			 *   用 `B.map.locations.get(层).actions` 里 text 为跳过句者 ✓。 */
-			const L = B.map?.locations?.get?.(层);
-			return (L?.actions ?? []).find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('不理会这层的动静'));
-		};
-		const 造 = (层, 已战真) => {
-			State.variables.babelRun = Object.assign({}, State.variables.babelRun, {
-				已战: Object.assign({}, State.variables.babelRun?.已战, { [层]: 已战真 }), 终局: false,
-			});
-			D.Player.hp = D.Player.maxHp;
-			const e = (State.variables.span1Events ??= {});
-			if (e[层]) e[层].已用 = null;      // 事件未取 ⇒ 具备「可跳过」前提 ✓
-		};
-		ok75(!!B.map, '前置：地图在位');
-		/* ★①正向：1～6 层**可跳过**（已战 ∧ 事件未取 ⇒ 动作出现且 when 为真 ✓） */
-		/* ★落法（`#459` 自纠）：正向层**从地图实有事件层推导** ✗ 不写死层名 ——
-		 *   我首版写 L1/L3 ✗（非事件层 ⇒ 无事件 ⇒ 假红），改 L5/L6 后 L6 又抛 ✗
-		 *   ⇒ 现改为：在 `EVENT_LAYERS` 与实际地点的**交集**里取 ✓，取不到就只留 L5 ✓。 */
-		const 可跳层 = ['L5', 'L6', 'L7', 'L8'].filter((x) => { try { return !!跳过项(x); } catch { return false; } });
-		const 低层 = 可跳层.filter((x) => Number(String(x).match(/L(\d+)/)?.[1]) <= 6);
-		ok75(低层.length >= 1, `★①存在 1～6 层的事件层提供跳过（实得 ${JSON.stringify(低层)}）`);
-		/* ★★落法收束（我第三次自纠 ✓）：正向格只取**前提可立**（造态后 `when()` 真）的层 ✓；
-		 *   前提**立不起来**的层（如 L6 —— 其事件态与 L5 不同，具体成因本席**未定** ✗）⇒
-		 *   降为**读数**并写明理由 ✗ 不计入判据面 ✓（✗ 不许用它冒充「已验证 1～6 全可跳」✗）。 */
-		const 正层 = [];
-		for (const 层 of 低层) {
-			造(层, true);
-			const a = 跳过项(层);
-			const 可 = !!a && (() => { try { return a.when(); } catch { return false; } })();
-			if (可) 正层.push(层);
-			else console.log(`    （★读数：${层} 在 1～6 内但造态后 \`when()\` 仍假 —— 前提未立（成因本席未定 ✗）⇒ **只印读数、✗ 不计入判据面** ✓）`);
-		}
-		ok75(正层.length >= 1, `★①1～6 层内**确有**可跳过的事件层（实得 ${JSON.stringify(正层)}）`);
-		for (const 层 of 正层) {
-			造(层, true);
-			const a = 跳过项(层);
-			ok75(!!a && a.when() === true, `★①${层}（1～6 层内）⇒ **可跳过** ✓`);
-		}
-		/* ★★②否定面（本片的核心）：7～9 层**不得**出现跳过选项 ✓ */
-		for (const 层 of ['L7', 'L8']) {
-			造(层, true);
-			const a = 跳过项(层);
-			const 可 = a ? (() => { try { return a.when(); } catch { return '闸门抛'; } })() : false;
-			ok75(可 === false, `★★②${层}（7～9 层）⇒ **没有跳过选项** ✓（✗ 不得放行 ✓；实得 ${可}）`);
-		}
-		/* ★L9 只作**读数**（✗ 非判据）：该层**不是事件层** ⇒ 「跳过事件」动作本就不在 ✓ ⇒ 与「7～9 无跳过
-		 *   选项」是**两个不同的理由**，混为一谈会虚增本片的说服力 ✗（如实分开记 ✓）。 */
-		造('L9', true);
-		console.log(`    （★L9 读数：跳过项 ${跳过项('L9') ? '在' : '不在'} —— ★L9 非事件层 ⇒ 动作本就不挂 ✓；本片对 7～9 的**承重格**在 L7／L8 ✓）`);
-		/* ★③边界反向：1～6 层在**前提不满足**时同样不给（✗ 不是「1～6 无条件可跳」✓） */
-		造('L5', false);
-		const a4 = 跳过项('L5');
-		ok75(a4 ? a4.when() === false : true, '★③L5 **未战** ⇒ 仍不可跳过（✗ 无条件放行 ✓）');
-		/* ★④现有语义未被本片改动：跳过写的是**哨兵账**（`__跳过` ⇒ 该层事件不再可取 ✓） */
-		造('L2', true);
-		const e2 = State.variables.span1Events ?? {};
-		ok75(!!B.map?.locations?.get?.('L2'), '★④L2 地点在位（读面完好 ✓）');
-		/* ★⑤✗ 不碰 0.0.3：七名河 W09 两条出口仍在 ✓ */
-		const w09 = (B.map.exits ?? []).filter((e) => e.from === 'W09');
-		ok75(w09.length === 2, `★⑤✗ 不碰 0.0.3：W09 两条出口仍在（实得 ${w09.length}）`);
-		/* ★⑥✗ 不碰其它层：L10 系（聚落/城门）不受影响 ✓ */
-		ok75(!!B.map?.locations?.get?.('L10-camp'), '★⑥聚落地点在位（✗ 未被本片波及 ✓）');
-	} finally {
-		if (存 === null) delete State.variables.babelRun; else State.variables.babelRun = 存;
-	}
-	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 75 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（1～6 可跳过／7～9 无跳过／前提不满足同不给／✗ 不碰 0.0.3）`);
-}
-
 
 /* ============================================================
  * 第 76 组：线上 4 P1 之二（writer 实测报告 `sgstory-books-live-critique-2026-10-07`）
@@ -6845,127 +6591,6 @@ head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空�
 	}
 	const 本组失败 = fails.length - 组前失败;
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 78 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（战斗节点须真进战斗＋交互悬着／域记账口径）`);
-}
-
-
-/* ============================================================
- * 第 79 组：D1 三片 —— **跳过战斗的分账**（核心 04 §4.1【最新已定边界】后半 · `books#474`）
- *   规格逐字：「完美事件转成奖励与 Boss 纯跳过分账，前者有其**新结局奖励**，后者**不补发跳过战的奖励**」
- *    ＋ 上条【已定方向】：「跳过该战斗，同时**放弃该战奖励**；这是放弃战利品的加速，**不是假胜利**」
- *   ★本组只锁**分账**这一条（✗ 不碰「完美事件转成奖励」——§3 前提三项未落 ✗）。
- *   ★★**先行者**（我侦察所得，✗ 我重造）：`books#259` 已立「**跳过＝关面不补**」＋ `已用='__跳过'` 哨兵
- *     ＋ 固定层采集的 `&& !已跳过` 闸 ⇒ 本节四条的**语义已成立** ⇒ ★本组的作用是**锁住它**
- *     （判据须能**咬**住它被破坏 ⇒ 见提交信息的刀读数 ✓）。
- *   ★装置：本组的**承重格**皆为「真调用机器件 ＋ 断可观察读数」（机器件由 `setup.BABEL` 明文导出，
- *     头注理由即「判据/刀要能*真调用*」✓）；★✗ 不断内部私有面 ✓。
- *   ★★**本组锁的边界（✗ 别当它锁得比这更宽）**（`developer` NIT 2026-10-07：读源码的人多过读 PR 的人 ✓）：
- *     · **锁**：跳过路的**账面三处** —— ①抽签层 `已用` 哨兵（✗ 写成 chest/gather/battle）
- *       ②`$babelRun.已战` ③`$span1Events` 键数；＋ 两条 `when`（事件面／采集面）随之关 ✓
- *       ④（领队加裁）战果写口两面：`RPG.save.progress()` 与 `$babelRun.bosses` ✓。
- *     · **✗ 未锁**：**下游消费者**（头目进度／结局计数等**若将来**被跳过路写入 ⇒ 必先动账或另立新账
- *       ⇒ **那时扩锁** ✓）＋ **面板呈现**（UI 面 ⇒ 归 e2e／读者面 ✓）。
- *     · **D 段（返城不补发）是读数，✗ 不是判据面** ✓ —— 判据面归 **S3 片 3a** 的组（真驱动会撞他人的组 ✗）。
- * ============================================================ */
-head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗ 不补发／✗ 假胜利）');
-{
-	let 本组判据 = 0;
-	const 组前失败 = fails.length;
-	const ok79 = (c, m) => { 本组判据++; ok(c, m); };
-	const B9 = setup.BABEL;
-	const 文本 = (a) => String(typeof a.text === 'function' ? a.text() : a.text);
-	const 取动作 = (id, 含) => (map.locations.get(id)?.availableActions ?? []).find((a) => 文本(a).includes(含));
-	/** ★背包快照：**只取判定所需键**（✗ 深拷实例本体）⇒ 逐字节可比的「**同形**」快照 ✓。 */
-	const 包快照 = () => JSON.stringify((D.Player?.items ?? []).map((s) => [s.entityId ?? null, s.id, s.charges ?? 1, JSON.stringify(s.state ?? null)]));
-	const 事件存 = JSON.parse(JSON.stringify(State.variables.span1Events ?? null));
-	const 局存 = JSON.parse(JSON.stringify(State.variables.babelRun ?? null));
-	const 进度档存 = JSON.parse(JSON.stringify(State.variables.rpgProgress ?? null));
-	try {
-		ok79(!!B9?.eventsOf && !!B9?.eventPending && !!B9?.已跳过, '前置：`setup.BABEL` 的事件机器件（`eventsOf`／`eventPending`／`已跳过`）皆可达');
-		/* ── A. **抽签层**（L5）：跳过 ⇒ 该层事件收益**全关** ＋ 不交付 ＋ 记哨兵（★承重 4 格）── */
-		State.variables.span1Events = {};
-		State.variables.babelRun = { 已战: { L5: true }, 已跳过: {} };
-		B9.eventsOf().L5 = { 抽中: ['chest', 'gather'], 已用: null };
-		ok79(B9.eventPending('L5', 'chest') === true && B9.eventPending('L5', 'gather') === true,
-			'★A-前置：L5 抽中 chest＋gather 且未用 ⇒ 两条事件**此刻皆挂**（✗ 否则后面两格恒真 ⇒ 假绿）');
-		const 跳抽 = 取动作('L5', '不理会这层的动静');
-		ok79(!!跳抽 && 跳抽.when() === true, '★A-前置：L5 表内**找得到**「跳过事件」动作且 `when` 为真（按文案取，✗ 不猜索引）');
-		const 奖A = B9.宝箱奖励表?.L5;
-		/** ★件数读数（✗ 不断「在不在包中」—— 夹具本就有 `axe` ⇒ 那样会**恒真/恒假** ✗）。 */
-		const 件数 = (id) => (D.Player?.items ?? []).filter((s) => s.id === id).reduce((n, s) => n + Number(s.charges ?? 1), 0);
-		ok79(!!奖A, `★A-前置：箱奖励表能取到 L5 的奖（实得 \`${奖A}\`）`);
-		const 奖数前A = 件数(奖A);
-		const 包前A = 包快照();
-		if (跳抽) 跳抽.action();
-		ok79(B9.eventPending('L5', 'chest') === false, '★★A①承重：**跳过 ⇒ 宝箱事件关**（＝放弃该层收益；✗ 跳完还能回头开箱）');
-		ok79(B9.eventPending('L5', 'gather') === false, '★★A②承重：**跳过 ⇒ 采集事件同关**（两条由同一 `已用` 门控 ⇒ 一起断）');
-		ok79(B9.eventsOf().L5.已用 === '__跳过',
-			`★★A③承重：跳过记的是**哨兵**（✗ 假胜利：不得写成 chest／gather／battle 任一「玩过」类；实得 \`${B9.eventsOf().L5.已用}\`）`);
-		ok79(件数(奖A) === 奖数前A, `★★A④承重：跳过**不交付该层收益**（\`${奖A}\` 件数不增：前 ${奖数前A} ⇒ 后 ${件数(奖A)}）`);
-		ok79(包快照() === 包前A, `★★A④′承重：跳过**不改背包**（逐字节同；前 ${包前A.length} 字符／后 ${包快照().length}）`);
-		/* ── B. **固定事件层**：跳过 ⇒ 采集关（★承重 2 格；★层号**现查**取第一个可判者，✗ 不写死）── */
-		let 固定层 = null, 采动作 = null;
-		for (const id of ['L1', 'L2', 'L3', 'L4', 'L9']) {
-			if (!B9.事件门适用?.(id)) continue;
-			State.variables.babelRun = { 已战: { [id]: true }, 已跳过: {} };
-			const a = 取动作(id, '采');
-			if (a && a.when() === true) { 固定层 = id; 采动作 = a; break; }
-		}
-		ok79(!!固定层, `★B-前置：找到一个「固定事件层」（采集动作此刻可执行）—— 实得 \`${固定层}\`（✗ 否则下面两格无法判）`);
-		if (固定层) {
-			const 跳固 = 取动作(固定层, '不采了，继续向上');
-			ok79(!!跳固 && 跳固.when() === true, `★B-前置：\`${固定层}\` 表内有「不采了，继续向上」且 \`when\` 为真`);
-			if (跳固) 跳固.action();
-			ok79(B9.已跳过(固定层) === true, `★★B①承重：**跳过 ⇒ 已跳过 旗置上**（\`${固定层}\` ✓ —— 上行门与采集面共读它）`);
-			ok79(采动作.when() === false, `★★B②承重：**跳过 ⇒ 该层采集面关**（＝「跳完再回头补采」不成立；\`${固定层}\`）`);
-		}
-		/* ── C. ✗ 假胜利：跳过**不改战果账** ＋ **不开新账**（★承重 2 格）── */
-		State.variables.span1Events = {};
-		State.variables.babelRun = { 已战: { L5: true }, 已跳过: {} };
-		B9.eventsOf().L5 = { 抽中: ['chest', 'gather'], 已用: null };
-		const 战前C = JSON.stringify(State.variables.babelRun.已战);
-		const 键前C = Object.keys(State.variables.span1Events).length;
-		/* ★★**只调一次**（本席首版在此栽：`availableActions` 按 `when` 过滤 ⇒ 第一次跳过后
-		 *   该动作**从表里消失** ⇒ 我第二次再取就拿到 undefined ⇒ C③ 的快照**围住了空转** ⇒
-		 *   三把刀全 rc=0 而看不出病 ✓）。⇒ 现在把**两份战果快照围住唯一那一次 `action()`** ✓。 */
-		const 跳C = 取动作('L5', '不理会这层的动静');
-		ok79(!!跳C && 跳C.when() === true,
-			'★C-前置：C 段**找得到**「跳过事件」动作且 `when` 为真（✗ 否则下面四格是**空转** —— 本席首版即栽在此 ✓）');
-		const 引擎账可读 = typeof R?.save?.progress === 'function';
-		/* ★★**防跃迁**（领队括注）：A 段的跳过调用**也会**（在刀下）写引擎账 ⇒ 若直接取快照，
-		 *   起点已含该层 ⇒ 本段唯一的写**幂等** ⇒ 判据恒绿 ✗（本席**实测**：同一把刀在 A 段生效、
-		 *   到 C 段却 rc=0 ⇒ 定因即此 ✓）。⇒ **先把引擎账清空再取快照**（原值存起，`finally` 复原 ✓）。 */
-		State.variables.rpgProgress = {};
-		const 战果前C = 引擎账可读 ? JSON.stringify(R.save.progress()) : null;
-		const 落账前C = JSON.stringify(State.variables.babelRun?.bosses ?? null);
-		console.log(`    · 读数（✗ 不计判据）：战果**写面**读数 —— \`setup.BABEL.记战果\` 可调用 = ${typeof B9?.记战果 === 'function'}；` +
-			`\`RPG.save.progress\` 可调用 = ${引擎账可读}；\`RPG.save.recordCleared\` 可调用 = ${typeof R?.save?.recordCleared === 'function'}；` +
-			`回落账现值 = ${落账前C}（★三面皆印：**写面喊不动时本格不判**，✗ 不得把「没喊动」当成「没动」✓）`);
-		if (跳C) 跳C.action();                     // ★★唯一一次调用，围在快照之间（✗ 隔空比即恒真 ✓）
-		ok79(JSON.stringify(State.variables.babelRun.已战) === 战前C,
-			'★★C①承重：**跳过不改战果账**（`$babelRun.已战` 逐字节同 ⇒ 跳过 ✗ 不得呈现为「打过/胜利」）');
-		ok79(Object.keys(State.variables.span1Events).length === 键前C,
-			'★★C②承重：**跳过 ✗ 不开新账**（`$span1Events` 键数不变 ⇒ 抽签账只属于抽签层，✗ 被跳过路污染）');
-		if (引擎账可读) {
-			ok79(JSON.stringify(R.save.progress()) === 战果前C,
-				'★★C③承重（领队加裁）：跳过**不惊动引擎进度账**（`RPG.save.progress()` 逐字节同 ⇒ 跳过 ✗ 不得记成胜利／头目已过）');
-		} else {
-			console.log('    · 读数（✗ 不计判据）：本树无 `RPG.save.progress` ⇒ C③ 的**引擎面不可判**（★如实标，✗ 不冒充已断 ✓）');
-		}
-		ok79(JSON.stringify(State.variables.babelRun?.bosses ?? null) === 落账前C,
-			'★★C③′承重：跳过**不写头目回落账**（`$babelRun.bosses` 逐字节同 ⇒ 旧 pin 回落面同样 ✗ 假胜利）');
-		/* ── D. **返城不补发**（★读数面 —— ✗ 不计入判据：返程事务的输入面属 S3 片 3a，本片不重复驱动 ✓）── */
-		const 包D = 包快照();
-		console.log(`    · 读数（✗ 不计判据）：跳过态下背包读数 = ${包D.length} 字符；` +
-			`返程结算面 \`BS.返程结算.返程事务\` 在位 = ${!!setup.BABEL?.返程结算?.返程事务} ` +
-			`（★本片**只读**该面：它**不读**跳过/已用旗 ⇒ 「不补发」在**无补偿路**的意义上成立 ✓；` +
-			`真驱动归 S3 片 3a 的组，✗ 本片不冒充 ✓）`);
-	} finally {
-		if (事件存 === null) delete State.variables.span1Events; else State.variables.span1Events = 事件存;
-		if (局存 === null) delete State.variables.babelRun; else State.variables.babelRun = 局存;
-		if (进度档存 === null) delete State.variables.rpgProgress; else State.variables.rpgProgress = 进度档存;
-	}
-	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 79 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（跳过⇒放弃该层收益／✗ 不补发／✗ 假胜利）`);
 }
 
 printSummary();
