@@ -232,7 +232,7 @@ try {
     }
     const 入口后 = { hp: SC.setup.DND3.Player.hp, 药: 药数() };
     const 末 = 七.读();
-    return { 入口前, 入口后, 可达, 走过, 越界, 轨迹, 当前: 末.当前, 态: 末.态, 路径: 末.路径, 出口: 末.出口 ?? null,
+    return { 入口前, 入口后, 可达, 走过, 越界, 轨迹, 当前: 末.当前, 态: 末.态, 路径: 末.路径, 出口: 末.出口 ?? null, 节点型: 末.节点?.type ?? null, 已处理: 末.已处理 ?? [],
       可走: 可走列(), 返程口键: 结 ? Object.keys(结) : null };
   });
   const 接手W09 = async () => {
@@ -240,6 +240,34 @@ try {
     for (let i = 0; i < 8; i++) {
       const r = await W09走一层到底();
       W09记录.push(r); 最后一 = r;
+    /* ── ★S8 ② 第五片：**② 的前置** —— ★在当前节点真选一次行动（★✗ 只选路 ✓）──────────────
+     *   ★我实读出来的因：W09 的**选路**（`走(E1)`）**✗ 写「结果」** ⇒ ★`已处理` 恒空 ✓
+     *     而 ★`reward` 节点的 **`options`**（`E1`：`重新系稳舟绳`／`观察船头水势`／… ✓）**是真行动** ✓
+     *     ⇒ ★点它 ⇒ 状态机掷检定·交付·**落结果** ⇒ ★`已处理` **非空** ✓ ⇒ ★② 那条才有牙 ✓
+     *   ★判据形：★**只在该节点是 `reward` 且尚未处理**时点一下 ✓（✗ 乱点 ✓）；★标签取**内容档在册**那几条 ✓。 */
+    try {
+      await 清到达拍();
+      const 前 = await p.evaluate(() => {
+        const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+        const r = B?.七名河?.读?.() ?? null;
+        return { 型: r?.节点?.type ?? null, 当前: r?.当前 ?? null, 已处理: r?.已处理 ?? [] };
+      });
+      if (r.节点型 === 'reward' && !(r.已处理 ?? []).includes(r.当前)) {
+        /* ★实测因（★我查到的一点）：★六路驱动**在页内直调状态机**（`七.走` ✓）⇒ ★**DOM 不会重绘** ✗
+         *   ⇒ ★页上仍是**上一段**的链接 ⇒ ★按标签点**点不到该节点的选项** ✓（★我实得「页上无在册选项」✓）
+         *   ★⇒ 改走**状态机自己的行动口**（`七.选行动(0)` ✓）—— ★这正是**行动槽**按钮调的那一个 ✓（★同一条码路 ✓）
+         *   ★判据形：★只在 `reward` 节点且**未处理**时叫一次 ✓（✗ 乱叫 ✓）；★结果**具名报出** ✓。 */
+        const 果 = await p.evaluate(() => {
+          const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+          const 七 = B?.七名河;
+          if (!七 || typeof 七.选行动 !== 'function') return { 略: '无选行动口' };
+          try { const rc = 七.选行动(0); return { rc: rc?.ok ?? null, code: rc?.code ?? null, 已处理: 七.读().已处理 ?? [], 当前: 七.读().当前 }; }
+          catch (e) { return { 具名红: String(e?.message ?? e).slice(0, 90) }; }
+        });
+        console.log(`  ★②前置·真选行动（reward ${r.当前}）：${JSON.stringify(果)}`);
+        if (果.具名红) 档.push(`  · ★S8 ② ②前置抛错：${果.具名红}`);
+      }} catch (e) { 档.push(`  · ★S8 ② ②前置失败（✗ 静默吞）：${String(e?.message ?? e).slice(0, 90)}`); }
+
       console.log(`  ★W09 相位[${i}]：态=${r.态}｜当前=${r.当前}｜可达=${JSON.stringify(r.可达)}｜走过=${JSON.stringify(r.走过)}｜越界=${JSON.stringify(r.越界)}｜路径=${JSON.stringify(r.路径)}`);
       if (r.态 !== '进行中' || r.可走.length === 0) break;
     }
