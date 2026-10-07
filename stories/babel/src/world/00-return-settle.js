@@ -81,7 +81,7 @@ const 分类 = (前) => ({
  * @param {{实例?: string|null, 演出?: ((栏:object)=>void)|null}} o
  * @returns {{ok:true, 栏:object, 实例:string, 边界:string} | {ok:false, code:string, why:string}}
  */
-const 返程事务 = ({ 实例 = null, 演出 = null } = {}) => {
+const 返程事务 = ({ 实例 = null, 演出 = null, 完成 = true } = {}) => {
 	const s = 读档();
 	if (!s) return { ok: false, code: 'SEVEN_NOT_STARTED', why: '七名河教程未在进行中' };
 	const 本次 = 实例 ?? s.机会?.实例 ?? null;
@@ -104,7 +104,10 @@ const 返程事务 = ({ 实例 = null, 演出 = null } = {}) => {
 		facts: s,
 		apply: (草稿) => {
 			草稿.机会 = Object.assign({}, 草稿.机会 ?? {}, { 用: true, 实例: 本次 });
-			草稿.态 = '完成';
+			/* ★S6 裁 B：**E9 出口**与**教程内合法提前返程**共用**同一事务 ＋ 同一幂等键空间** ✓；
+			 *   两者只差「是否完成」：E9 ⇒ 完成 ✓；提前 ⇒ **✗ 不完成**（设计 §6「提前回城不算完成」✓，
+			 *   且下次从 E0 进入**沿已选路线恢复** ✓ —— 位置与已处理事件都留着 ✓）。 */
+			if (完成) 草稿.态 = '完成';
 			草稿.返程已结 = 本次;
 			草稿.返程结果 = { 实例: 本次, 栏: { 消失: 栏.消失, 新增: 栏.新增, 稳定: 栏.稳定 } };
 		},
