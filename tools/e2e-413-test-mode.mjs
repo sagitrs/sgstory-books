@@ -174,16 +174,30 @@ const 正 = await p.evaluate(async () => {
 	const SC = globalThis.SugarCube;
 	const 正式前 = JSON.stringify(SC.State.variables[Object.keys(SC.State.variables).find((k) => /babel/i.test(k)) ?? ''] ?? null);
 	const 槽前 = JSON.stringify(Object.keys(SC.Save?.slots ?? {}));
-	/* ★异步在途：★补笔那条修守的就是这个 */
-	const 前 = B.运行.栈深();
-	await B.运行.在(B.运行.正式(), async () => { await new Promise((r) => setTimeout(r, 5)); return 1; });
-	const 后 = B.运行.栈深();
+	/* ★★异步在途**两点断**（引 developer 的修请 · 领队 取甲）：
+	 *   ① **在途时**（async fn 体内、第一个 await 之后）⇒ 上下文**仍置着** ⇒ 栈深**必须＝1** ✓
+	 *      —— ★摘掉 `在()` 里那支 thenable 分支后，代码落到下面的 `还原(); return r;`
+	 *        ⇒ 上下文在**第一个 `await` 之前**就被弹掉 ⇒ 此读数会是 **0** ✓（← 旧断言的盲区 ✓）
+	 *   ② **落定后**（await 返回后）⇒ 必须**归位 0** ✓（← 漏还原（泄漏）则此格红 ✓）
+	 *   ⇒ 两点合计：**过早还原**与**漏还原**两种病都咬 ✓ */
+	let 在途 = null;
+	await B.运行.在(B.运行.正式(), async () => {
+		await new Promise((r) => setTimeout(r, 5));
+		/* ★★① 必须在 **await 之后**读：
+		 *   读在 await **之前** ⇒ 读的是 `fn()` 的**同步段** ⇒ `还原()` 尚未执行 ⇒ **两形皆 1 ⇒ 恒真** ✗
+		 *     （★本席首版就踩了这个坑，靠 `在.toString()` 探针 ＋ 产物级刀才查出来 ✓）
+		 *   读在 await **之后** ⇒ 落在「异步尾」所在的那条路上 ⇒ 正确实现＝1 ✓，过早还原＝0 ⇒ **红** ✓ */
+		在途 = B.运行.栈深();
+		return 1;
+	});
+	const 后 = B.运行.栈深();          // ★② 落定后读 ⇒ **应归位 0** ✓
 	const 正式后 = JSON.stringify(SC.State.variables[Object.keys(SC.State.variables).find((k) => /babel/i.test(k)) ?? ''] ?? null);
 	const 槽后 = JSON.stringify(Object.keys(SC.Save?.slots ?? {}));
-	return { 栈前后: [前, 后], 正式同: 正式前 === 正式后, 槽同: 槽前 === 槽后, 槽: 槽前 };
+	return { 栈前后: [在途, 后], 正式同: 正式前 === 正式后, 槽同: 槽前 === 槽后, 槽: 槽前 };
 });
-console.log(`  ★运行.栈深：前=${正.栈前后[0]} ⇒ 异步后=${正.栈前后[1]}｜Save.slots=${正.槽}`);
-ok(正.栈前后[1] === 正.栈前后[0], `★**异步在途后 运行.栈深() 须归位**（前 ${正.栈前后[0]} ⇒ 后 ${正.栈前后[1]} —— 泄漏即红 ✓）`);
+	console.log(`  ★运行.栈深：**在途**=${正.栈前后[0]}（★须 1）⇒ **落定后**=${正.栈前后[1]}（★须 0）｜Save.slots=${正.槽}`);
+	ok(正.栈前后[0] === 1, `★**异步在途时** 运行.栈深() 须＝**1**（上下文仍置着 ⇒ 异步尾落**测试**域 ✗ 正式域；**过早还原即红**；实得 ${正.栈前后[0]}）`);
+	ok(正.栈前后[1] === 0, `★**异步落定后** 运行.栈深() 须归位＝**0**（**泄漏即红**；实得 ${正.栈前后[1]}）`);
 ok(正.正式同 === true, `★测试局全程 ⇒ **正式面（State.variables）逐字不变**（实得 ${正.正式同}）`);
 ok(正.槽同 === true, `★测试局全程 ⇒ **Save.slots 键集不变**（实得 ${正.槽同}）`);
 ok(页错.length === 0, `★全程不得有 pageerror（实得 ${JSON.stringify(页错)?.slice(0, 200)}）`);
