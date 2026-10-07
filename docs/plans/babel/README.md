@@ -2,7 +2,7 @@
 
 ## 先读什么
 
-本目录以《巴别之井》**v1.4 核心候选**为基础：战斗主导的剧情肉鸽，以真实第二次生命、永久风险和知情去留组织战斗与城镇生活。核心最初按[需求 #236](https://github.com/sagitrs/sgstory-books/issues/236)整理入库；现在另按[需求 #308](https://github.com/sagitrs/sgstory-books/issues/308)收录依附核心的 L10 最简玩法候选。两次文档整理都不修改游戏／引擎。
+本目录以《巴别之井》**v1.4 核心候选**为基础：战斗主导的剧情肉鸽，以真实第二次生命、永久风险和知情去留组织战斗与城镇生活。核心最初按[需求 #236](https://github.com/sagitrs/sgstory-books/issues/236)整理入库；现在另按[需求 #308](https://github.com/sagitrs/sgstory-books/issues/308)收录依附核心的 L10 最简玩法候选。现再按[#411文档子交付](https://github.com/sagitrs/sgstory-books/issues/411#issuecomment-6028630020)收录普通远征经济与重复成长，明确0.0.3边界。这些文档整理均不修改游戏/引擎。
 
 “核心”表示重要度，不表示所有建议已获批准。作者明确裁定、继承裁定、作者提案、工作建议、待定问题与已实现状态必须区分；文档合入也不代表整体冻结或功能验收。
 
@@ -16,6 +16,9 @@
 | [core/01-world-and-premise.md](core/01-world-and-premise.md) | C1 真实生命与身份；C2 官方谎言、招募目的与隐藏历史 |
 | [core/02-life-body-and-choice.md](core/02-life-body-and-choice.md) | C3 永久死亡与存活退路；C4 机械永生与同意；C5 归属与知情去留 |
 | [core/03-cities-and-adventure.md](core/03-cities-and-adventure.md) | C6 两好两坏的四城对照；C7 探索供给与普通返程 |
+| [core/04-expedition-economy-and-progression.md](core/04-expedition-economy-and-progression.md) | C7普通远征经济、三段九层与重复探索；方向、暂定参数、待定和建议分列 |
+| [core/expedition-author-decisions-2026-10-06.md](core/expedition-author-decisions-2026-10-06.md) | 普通远征作者逐字节录及替代关系，不以归档冻结参数 |
+| [core/expedition-value-reference.md](core/expedition-value-reference.md) | SRD目录价与原创局部拟合，不是商店/通量或平衡验收 |
 | [core/sources-and-status.md](core/sources-and-status.md) | 所用 v1.3 裁定摘录、后续作者原文、继承／替代关系和未决边界 |
 
 具体地图原理、日期参数、人物和服务数值仍须按各自状态处理。下方收录 L10 城内与首次出城的表现方案，不预建四城完整细案，也不因未迁入就删除其中已经确定的规范。
@@ -35,6 +38,8 @@ L10 服务表、贡献口径、门槛和具体奴役事件未逐项确认。本�
 ## 首次出城教程候选
 
 按[需求 #393](https://github.com/sagitrs/sgstory-books/issues/393)收录[七名河固定教程](optional/tutorial-seven-names/README.md)：E0–E9固定事件、真实检定、正常死亡、一次返城及脆弱结算、地图和验收计划。附内容目录与原创插图供评审，不接游戏、引擎pin或存档；20世界、普通地图生成和进阶系统不属于此文档交付。通用引擎能力另见[sgstory #2021](https://github.com/sagitrs/sgstory/issues/2021)。
+
+**首版范围：**[0.0.3边界](optional/tutorial-seven-names/v0.0.3-boundary.md)以完整七名河为目标，同步S1/S3/S4/S7/S8公开后裁，不因新普通远征方案追加功能。普通相对九层、教学L1～9和E0～E9固定节点分开；不重做既有L10或固定L19。疲劳、30金币物资、通量、软负重、全物兑换、完美隐藏选项与反抗军留后续设计，不作七名河新的发布前置。
 
 ## 系统附录与早期文档
 
