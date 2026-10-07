@@ -194,6 +194,46 @@ try {
   const 段内 = () => p.evaluate(() => [...document.querySelectorAll('#passages a,#passages button')].map((e) => (e.textContent ?? '').trim()).filter(Boolean));
   const 点 = async (t) => { const l = p.locator('#passages a,#passages button').filter({ hasText: t }).first();
     if (!await l.count()) return false; await l.click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(800); return true; };
+  /* ── ★S8 ②（`books#402`）：**W09 相位 · 页内驱动**（★接在**主线中途** ✓）──────────────
+   * ★实测因（决定性那条）：★主线在 L10 出城后**就落在 W09** ✓，旧工具认不出它的选项
+   *   （★段＝「探索」，段内＝「左：奖励·岸边系绳（推荐）」「右：奖励·失落水图」「提前结束本次出城…」✓）
+   *   ⇒ ★旧工具判「**无出口**」收场 ✗ ⇒ ★**这就是 `fullrun` 在现 main 上红的原因** ✓（★与本次改动无关 ✓）。
+   * ★照 `writer-2` 终裁：★乙／甲基准 ✓｜★**✗ 在 W09 入口暗补**（✗ 补血／✗ 清负面／✗ 刷药）✓｜★「六路互斥」须「**六路都可达**」✓。
+   * ★只用**故事自己的口**（`SugarCube.setup.BABEL.七名河` ✓）。 */
+  const W09记录 = [];
+  const 在W09 = () => p.evaluate(() => {
+    const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+    return !!(B?.七名河 && B.七名河.读?.().态 === '进行中');
+  });
+  const W09走一层到底 = () => p.evaluate(() => {
+    const SC = SugarCube, B = SC.setup.BABEL, 七 = B.七名河, 结 = B.返程结算;
+    const 药数 = () => (SC.State.variables.inventory ?? []).filter((x) => /herb|bandage|poultice/.test(String(x?.id ?? ''))).reduce((a, x) => a + Number(x?.charges ?? 0), 0);
+    const 入口前 = { hp: SC.setup.DND3.Player.hp, 药: 药数() };
+    /* ★取「本节点可走」：★用 **`读().可走`** ✓（★`七.可走()` 这个口在本上下文里返回**空** ✗ —— 实测 ✓） */
+    const 可走列 = () => { try { return [...new Set(七.读().可走 ?? [])]; } catch { return []; } };
+    const 走支 = (支) => { if (typeof 七.走 === 'function') return 七.走(支); if (typeof 七.选行动 === 'function') return 七.选行动(支); throw new Error('七名河没给「走」的口'); };
+    const 可达 = 可走列();
+    const 走过 = []; const 越界 = []; const 轨迹 = [];
+    for (const 支 of 可达) {
+      try { 走支(支); 走过.push(支); } catch (e) { 越界.push({ 支, 因: String(e?.message ?? e).slice(0, 60) }); continue; }
+      轨迹.push(JSON.parse(JSON.stringify(七.读())));
+    }
+    const 入口后 = { hp: SC.setup.DND3.Player.hp, 药: 药数() };
+    const 末 = 七.读();
+    return { 入口前, 入口后, 可达, 走过, 越界, 轨迹, 当前: 末.当前, 态: 末.态, 路径: 末.路径, 出口: 末.出口 ?? null,
+      可走: 可走列(), 返程口键: 结 ? Object.keys(结) : null };
+  });
+  const 接手W09 = async () => {
+    let 最后一 = null;
+    for (let i = 0; i < 8; i++) {
+      const r = await W09走一层到底();
+      W09记录.push(r); 最后一 = r;
+      console.log(`  ★W09 相位[${i}]：态=${r.态}｜当前=${r.当前}｜可达=${JSON.stringify(r.可达)}｜走过=${JSON.stringify(r.走过)}｜越界=${JSON.stringify(r.越界)}｜路径=${JSON.stringify(r.路径)}`);
+      if (r.态 !== '进行中' || r.可走.length === 0) break;
+    }
+    return 最后一;
+  };
+
   const 清到达拍 = async () => { const l = p.locator('.choice-box button').filter({ hasText: /^（到达）/ });
     if (!await l.count()) return false; await l.first().click({ timeout: 4000 }).catch(() => {}); await p.waitForTimeout(650); return true; };
   /** ★打一场：**引擎自己的交互口**（✗ 逐轮点 DOM —— 那条路我实测打不动） */
@@ -239,6 +279,27 @@ try {
   let 终点 = false;
   for (let lv = 1; lv <= 26; lv++) {
     const r0 = await 账();
+      /* ★S8 ②：★已进 W09（首次出城）⇒ ★先把它走完再继续上行 ✓
+       *   ★✗ 记入 `逐跳` —— W09 是**独立区域**、不记层号 ✓ ⇒ ★「逐跳单调」的**来源**由此保住 ✓ */
+      if (await 在W09()) {
+        await 接手W09();
+        /* ★走到 `E9`（出口）之后：★**点返城把这一局收掉** ✓ —— ✗ 让主线继续在 W09 里打转 ✓
+         *   ★优先点「**提前结束本次出城**」（唯一现成的返城口 ✓）；★若已消失 ⇒ 退回（主线自会处理 ✓）。 */
+        /* ★走到 `E9`（出口）⇒ ★**触发「完成」** ✓（★E9 是 portal：`走(E9)` 只把它置为当前 ⇒ 还须 `完成()` ✓
+         *   —— ★✗ 让 态 停在「进行中」✓；★那是**提前返程**才有的事 ✓）。 */
+        await p.evaluate(() => {
+          const B = (typeof SugarCube !== 'undefined') ? SugarCube.setup.BABEL : null;
+          const 七 = B?.七名河;
+          if (七 && 七.读().当前 === (七.读().出口 ?? 'E9') && typeof 七.完成 === 'function') { try { 七.完成(); } catch { /* ★已完成的重复调用：忽略 ✓ */ } }
+        });
+        await p.waitForTimeout(600);
+        if (await 在W09()) {
+          const 返城 = p.locator('#passages a,#passages button').filter({ hasText: /提前结束本次出城|回到|返城|回城/ });
+          if (await 返城.count() > 0) { await 返城.first().click(); await p.waitForTimeout(1400); }
+          await 清到达拍();
+        }
+        await p.waitForTimeout(800);
+      }
     const w = await 走一层(`L${lv}`);
     const r = await 账();
     if (w.终点口) { await 点('看看这一局爬了些什么'); await p.waitForTimeout(1200); 终点 = true; 逐跳.push({ 跳: lv, 段: await 段(), deepest: r?.deepest, kills: r?.kills, 已跳过: Object.keys(r?.已跳过 ?? {}).length }); break; }
@@ -254,11 +315,18 @@ try {
    * ★本片先做**接口探测**（★读数 ⇒ `console.log` 印出 ✓）—— ★✗ 猜接口名 ✓；
    *   ★下一片据此接线：出城 ⇒ 记入口状态 ⇒ 走六路 ⇒ E9 结算恰一次 ⇒ 重访不重掷 ⇒ 死亡支 ✓。 */
   const W09接口 = await p.evaluate(() => {
-    const B = (typeof setup !== 'undefined' && setup.BABEL) || null;
-    if (!B) return { 装置错: '页内没有 setup.BABEL' };
-    return { 有七名河: !!B.七名河, 有返程结算: !!B.返程结算, 有地图: !!B.地图, 聚落: B.聚落 ?? null,
-      七名河键: B.七名河 ? Object.keys(B.七名河) : null, 返程键: B.返程结算 ? Object.keys(B.返程结算) : null,
-      地图键: B.地图 ? Object.keys(B.地图) : null };
+    /* ★取法：★`SugarCube.setup.BABEL` ✓（✗ 裸 `setup` —— 它是 SugarCube 内部名 ⇒ 全局取不到 ✓；承本档 `:201` 既有取法 ✓） */
+    const SC = (typeof SugarCube !== 'undefined') ? SugarCube : null;
+    const B = SC?.setup?.BABEL ?? null;
+    if (!B) return { 装置错: '页内取不到 SugarCube.setup.BABEL' };
+    const 七 = B.七名河 ?? null, 结 = B.返程结算 ?? null;
+    return { 有七名河: !!七, 有返程结算: !!结, 有地图: !!B.地图, 聚落: B.聚落 ?? null,
+      段: SC?.State?.passage ?? null,
+      出口: [...document.querySelectorAll('#passages a,#passages button')].map((e) => (e.textContent ?? '').trim()).filter(Boolean),
+      七名河键: 七 ? Object.keys(七) : null, 返程键: 结 ? Object.keys(结) : null,
+      七名河读: (() => { try { return JSON.parse(JSON.stringify(七.读?.() ?? null)); } catch (e) { return 'throw:' + String(e.message).slice(0, 60); } })(),
+      地图点: (() => { try { return [...(B.地图?.点 ?? B.map?.locations?.keys?.() ?? [])]; } catch { return null; } })(),
+    };
   });
   console.log(`  ★W09 相位·接口探测：${JSON.stringify(W09接口)}`);
 
@@ -270,6 +338,15 @@ try {
   ok(终账?.deepest === 'L20', `① 终点 deepest 须＝L20：实得 ${JSON.stringify(终账?.deepest)}`);
   const 层号 = 逐跳.map((x) => Number(String(x.deepest ?? 'L0').replace('L', '')) || 0);
   ok(层号.every((n, i) => i === 0 || n >= 层号[i - 1]), `① 逐跳层号须**单调不降**：${JSON.stringify(层号)}`);
+    /* ★S8 ②（`books#402`）：★★**「逐跳单调」的来源须在格内钉死** ✗ 只在注释里说 ✓
+     *   ★判据：★①真进过 W09（记录 > 0 且每层可达非空 ✓）★②`逐跳.deepest` **一律形如 `L<n>`**（★W09 不记层号 ✓）。 */
+    /* ★放宽：★`E9`（出口）**本就无可走** ✓ ⇒ 只要求「**入口层可达 ≥ 2**」（★＝真进了七名河、且真有分岔 ✓）
+     *   ＋ ★`走过` 非空（★真走过支 ✓）＋ ★`越界` 全空（★没有走不动就跳过的支 ✓）。 */
+    ok(W09记录.length > 0 && W09记录.some((x) => x.可达.length >= 2)
+      && W09记录.some((x) => x.走过.length > 0) && W09记录.every((x) => x.越界.length === 0),
+      `★② W09 相位须真被接手并走通：记录 ${W09记录.length} 次｜入口层可达=${JSON.stringify(W09记录.map((x) => x.可达.length))}｜走过合计=${W09记录.reduce((a, x) => a + x.走过.length, 0)}｜越界累计=${W09记录.reduce((a, x) => a + x.越界.length, 0)}（须 0）`);
+    ok(逐跳.every((x) => /^L\d+$/.test(String(x.deepest ?? ''))),
+      `★★「逐跳单调」的来源：★W09 **不记层号** ✓（逐跳 deepest 一律形如 \`L<n>\`：${JSON.stringify(逐跳.map((x) => x.deepest))}）`);
   const 已战 = Object.values(终账?.已战 ?? {}).filter(Boolean).length;
   ok(已战 > 0 && 终账?.kills === 已战, `② 战斗真打（一条命一场）：kills=${终账?.kills}｜已战=${已战}`);
   ok(/最深处：\s*L20/.test(终文) && /击败的挡路者：\s*\d+/.test(终文), `③ 终点正文须含本局读数（最深处／击败的挡路者）`);
