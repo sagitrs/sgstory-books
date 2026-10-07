@@ -5995,8 +5995,12 @@ head('73. `books#400` S6 清单 C/D/E：战中·死亡·双击·旧预览·故�
 head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组号候选——68 归 #442、69 让 #449）');
 {
 	const 组前失败 = fails.length;
+	/* ★`#463` RC 的 NIT：本组格数**运行期算**（✗ 写死在汇总文案里 ⇒ 加格就得手改、且会与实况脱节 ✓）；
+	 *   断言统一走 `ok70` ⇒ 每格自动入账 ✓。 */
+	let 格70 = 0;
+	const ok70 = (c, m) => { 格70 += 1; return ok(c, m); };   // ★这里必须调**外层**的 `ok`（✗ 自递归 ⇒ 爆栈 ✓）
 	const TS = B?.测试档;
-	ok(!!TS, '`setup.BABEL.测试档` 未装载（`src/story/zz-test-save.js` 没装？）');
+	ok70(!!TS, '`setup.BABEL.测试档` 未装载（`src/story/zz-test-save.js` 没装？）');
 	if (TS) {
 		/* ★无头装置里宿主存储常缺席 ⇒ 先装一个**真桩**（Map 背衬）来跑通路（✗ 用「不可用」当免测）。 */
 		const 旧存 = globalThis.localStorage;
@@ -6014,15 +6018,15 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 		})();
 		try {
 			globalThis.localStorage = 桩;
-			ok(TS.可用() === true, '装了桩之后 `可用()` 应为 true（★存储句柄须**惰性**解析，✗ 装载期冻结）');
+			ok70(TS.可用() === true, '装了桩之后 `可用()` 应为 true（★存储句柄须**惰性**解析，✗ 装载期冻结）');
 
 			/* ① 往返 */
 			const 事实 = { 场次: 's-0001', 已领奖: true, 击败: 2, 明细: { a: 1, b: [2, 3] } };
 			const 历史 = [{ 序: 1, 用途: 'check.save', 面: 20, 来源: '受控' }];
 			const 存1 = TS.保存({ id: 's-0001', 事实, 历史 });
-			ok(存1.ok === true && 存1.键 === 'babelTest/测试局/1/s-0001', `★键形须为 babelTest/<模式>/<版本>/<id>（实得 ${存1.键}）`);
+			ok70(存1.ok === true && 存1.键 === 'babelTest/测试局/1/s-0001', `★键形须为 babelTest/<模式>/<版本>/<id>（实得 ${存1.键}）`);
 			const 读1 = TS.读取('s-0001');
-			ok(读1.ok === true && JSON.stringify(读1.事实) === JSON.stringify(事实) && JSON.stringify(读1.历史) === JSON.stringify(历史),
+			ok70(读1.ok === true && JSON.stringify(读1.事实) === JSON.stringify(事实) && JSON.stringify(读1.历史) === JSON.stringify(历史),
 				`★往返须逐字一致（实得 ${JSON.stringify(读1).slice(0, 90)}）`);
 
 			/* ② 白名单：塞活动控制面 ⇒ 丢弃且不入档 */
@@ -6033,17 +6037,17 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 			const 存2 = TS.保存(场次脏);
 			const 原档 = 桩.getItem('babelTest/测试局/1/s-0002') ?? '';
 			const 读2 = TS.读取('s-0002');
-			ok(存2.丢弃.length === 6 && ['骰面', '额度', '指令', '入口标记', '输入队列', '订阅'].every((k) => 存2.丢弃.includes(k)),
+			ok70(存2.丢弃.length === 6 && ['骰面', '额度', '指令', '入口标记', '输入队列', '订阅'].every((k) => 存2.丢弃.includes(k)),
 				`★保存须**丢弃**全部活动控制面并上报（实得 ${JSON.stringify(存2.丢弃)}）`);
-			ok(!['骰面', '额度', '指令', '入口标记', '输入队列', '订阅'].some((k) => 原档.includes('"' + k + '"')),
+			ok70(!['骰面', '额度', '指令', '入口标记', '输入队列', '订阅'].some((k) => 原档.includes('"' + k + '"')),
 				'★档案 JSON **不得**含活动控制面键名（✗ 全量 dump）');
-			ok(读2.ok === true && ['骰面', '额度', '指令', '订阅'].every((k) => 读2[k] === undefined), '★读取结果也**不得**递回控制面');
+			ok70(读2.ok === true && ['骰面', '额度', '指令', '订阅'].every((k) => 读2[k] === undefined), '★读取结果也**不得**递回控制面');
 
 			/* ③ 模式／版本逐字校验 */
 			桩.setItem('babelTest/测试局/1/s-0003', JSON.stringify({ 模式: '正式局', 版本: 1, 事实: {} }));
-			ok(TS.读取('s-0003').code === 'TEST_SAVE_WRONG_MODE', '★模式 ✗ 是「测试局」⇒ 须**具名拒**（✗ 当正式档恢复）');
+			ok70(TS.读取('s-0003').code === 'TEST_SAVE_WRONG_MODE', '★模式 ✗ 是「测试局」⇒ 须**具名拒**（✗ 当正式档恢复）');
 			桩.setItem('babelTest/测试局/1/s-0004', JSON.stringify({ 模式: '测试局', 版本: 99, 事实: {} }));
-			ok(TS.读取('s-0004').code === 'TEST_SAVE_WRONG_VERSION', '★版本不认 ⇒ 须**具名拒**（✗ 静默按旧档读）');
+			ok70(TS.读取('s-0004').code === 'TEST_SAVE_WRONG_VERSION', '★版本不认 ⇒ 须**具名拒**（✗ 静默按旧档读）');
 
 			/* ④ ✗ 写正式槽：命名空间之外的键零变化 */
 			const 别键 = ['Save/slot1', 'other/key'];
@@ -6056,20 +6060,20 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 			};
 			const 前 = 别面();
 			TS.保存({ id: 's-0005', 事实: { a: 1 } });
-			ok(桩._全键().filter((k) => !k.startsWith('babelTest/')).join('|') === 别键.join('|'),
+			ok70(桩._全键().filter((k) => !k.startsWith('babelTest/')).join('|') === 别键.join('|'),
 				'★保存**只**动本命名空间（✗ 碰正式槽／正式键）');
-			ok(别面() === 前, `★正式面（键集＋内容）须**逐字不变**（前 ${前} 后 ${别面()}）`);
+			ok70(别面() === 前, `★正式面（键集＋内容）须**逐字不变**（前 ${前} 后 ${别面()}）`);
 
 			/* ⑤ 坏档／缺失 ⇒ 零副作用（不建壳） */
 			const 前数 = 桩.length;
-			ok(TS.读取('并不存在').code === 'TEST_SAVE_MISSING', '★不存在的场次 ⇒ `TEST_SAVE_MISSING`');
+			ok70(TS.读取('并不存在').code === 'TEST_SAVE_MISSING', '★不存在的场次 ⇒ `TEST_SAVE_MISSING`');
 			桩.setItem('babelTest/测试局/1/s-0006', '{ 这不是 JSON');
-			ok(TS.读取('s-0006').code === 'TEST_SAVE_CORRUPT', '★坏 JSON ⇒ `TEST_SAVE_CORRUPT`（✗ 静默建壳）');
-			ok(桩.length === 前数 + 1, '★两次失败读取**不得**新建任何键（零副作用）');
+			ok70(TS.读取('s-0006').code === 'TEST_SAVE_CORRUPT', '★坏 JSON ⇒ `TEST_SAVE_CORRUPT`（✗ 静默建壳）');
+			ok70(桩.length === 前数 + 1, '★两次失败读取**不得**新建任何键（零副作用）');
 
 			/* ⑥ 列出／删除 */
-			ok(TS.列出().every((id) => typeof id === 'string') && !TS.列出().includes('并不存在'), '★列出只含本命名空间下**已存在**的场次');
-			ok(TS.删除('s-0005') === true && TS.删除('s-0005') === false, '★删除：真删 ⇒ true；再删 ⇒ false（幂等）');
+			ok70(TS.列出().every((id) => typeof id === 'string') && !TS.列出().includes('并不存在'), '★列出只含本命名空间下**已存在**的场次');
+			ok70(TS.删除('s-0005') === true && TS.删除('s-0005') === false, '★删除：真删 ⇒ true；再删 ⇒ false（幂等）');
 		} finally {
 			if (旧存 === undefined) delete globalThis.localStorage; else globalThis.localStorage = 旧存;
 		}
@@ -6077,30 +6081,30 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 			/* ── ★`books#413` A2 层 1：**测试模式**（会话 ＋ 身份 ＋ 固定结束口）─────────────────
 			 *    判据在两种引擎世界里都对：缺接缝 ⇒ 断**具名拒** ✓（↔「缺必要最小接缝须具名呈报」）；有接缝 ⇒ 断全会话面 ✓。 */
 			const TM = B?.测试模式;
-			ok(!!TM, '`setup.BABEL.测试模式` 未装载（`src/story/zz-test-mode.js` 没装？）');
+			ok70(!!TM, '`setup.BABEL.测试模式` 未装载（`src/story/zz-test-mode.js` 没装？）');
 			if (TM) {
 				/* ① 目录：**恰两张**（一战斗一奖励 ✓），结束控制**不在**目录里（✗ 第三张可抽卡 ✓） */
 				const 类表 = TM.卡目录.map((c) => c.类);
 				const 恰好两卡 = TM.卡目录.length === 2 && 类表.includes('战斗') && 类表.includes('奖励');
-				ok(恰好两卡, `★目录须**恰两张**（一张真战斗卡 ＋ 一张真奖励卡）（实得 ${JSON.stringify(类表)}）`);
-				ok(TM.卡目录.every((c) => c.卡id !== TM.结束id) && TM.取卡(TM.结束id) === null,
+				ok70(恰好两卡, `★目录须**恰两张**（一张真战斗卡 ＋ 一张真奖励卡）（实得 ${JSON.stringify(类表)}）`);
+				ok70(TM.卡目录.every((c) => c.卡id !== TM.结束id) && TM.取卡(TM.结束id) === null,
 					'★固定结束控制 ✗ 在目录里（它 ✗ 可被当战斗/奖励内容指定 ✓）');
-				ok(TM.取卡('并不存在的卡') === null, '★「指定事件」入口只认目录成员（✗ 池外 id）');
+				ok70(TM.取卡('并不存在的卡') === null, '★「指定事件」入口只认目录成员（✗ 池外 id）');
 				/* ② 缺引擎接缝 ⇒ 具名拒（✗ 静默降级成共享全局源） */
 				const 有接缝 = typeof setup.RPG?.makeRng === 'function' && typeof setup.RPG?.GameSession === 'function';
 				if (!有接缝) {
 					const 抛 = 捉(() => TM.开('test-card-battle'));
-					ok(抛?.code === 'TEST_MODE_NO_ENGINE_RNG' || 抛?.code === 'TEST_MODE_NO_SESSION',
+					ok70(抛?.code === 'TEST_MODE_NO_ENGINE_RNG' || 抛?.code === 'TEST_MODE_NO_SESSION',
 						`★引擎缺接缝 ⇒ 须**具名**拒（实得 ${JSON.stringify(抛?.code)}）—— ✗ 静默降级成全局源 ✓`);
 				} else {
 					const 前正式 = JSON.stringify(State.variables ?? {});
 					const 甲 = TM.开('test-card-battle');
-					ok(甲.ok === true && 甲.场次id.startsWith('babel-test/'),
+					ok70(甲.ok === true && 甲.场次id.startsWith('babel-test/'),
 						`★开 ⇒ 稳定身份（本层给）（实得 ${JSON.stringify(甲.场次id)}）`);
-					ok(甲.场次id.includes('test-card-battle'), '★身份须含**卡 id**（✗ 显示名/轮次/时间戳）');
-					ok(甲.rng && 甲.rng !== setup.RPG.rng, '★该场次须有**自有随机源**（✗ 全局那份 —— 共享随机流＝未隔离）');
-					ok(甲.玩家 && 甲.玩家 !== setup.DND3.Player, '★测试角色须**独立实例**（✗ 借正式玩家后回滚＝明文禁）');
-					ok(甲.玩家.测试 === true, '★测试角色带标记（供规则层/UI 分辨；✗ 拿显示名当身份）');
+					ok70(甲.场次id.includes('test-card-battle'), '★身份须含**卡 id**（✗ 显示名/轮次/时间戳）');
+					ok70(甲.rng && 甲.rng !== setup.RPG.rng, '★该场次须有**自有随机源**（✗ 全局那份 —— 共享随机流＝未隔离）');
+					ok70(甲.玩家 && 甲.玩家 !== setup.DND3.Player, '★测试角色须**独立实例**（✗ 借正式玩家后回滚＝明文禁）');
+					ok70(甲.玩家.测试 === true, '★测试角色带标记（供规则层/UI 分辨；✗ 拿显示名当身份）');
 					/* ②b ★**缺接缝须具名呈报**（有接缝的世界里也要能断这条 —— 临时摘掉 `makeRng` 再看 ✓） */
 					{
 						const 旧mk = setup.RPG.makeRng;
@@ -6108,27 +6112,27 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 						try {
 							let 抛2 = null;
 							try { TM.开('test-card-battle'); } catch (e) { 抛2 = e; }   // ★本格自带捕获（组内的 `捉` 在 `if (TS){}` 里 ⇒ 本格看不见 ✗）
-							ok(抛2?.code === 'TEST_MODE_NO_ENGINE_RNG',
+							ok70(抛2?.code === 'TEST_MODE_NO_ENGINE_RNG',
 								`★摘掉 \`makeRng\` ⇒ 须**具名**拒（实得 ${JSON.stringify(抛2?.code)}）—— ✗ 静默降级成共享全局源 ✓`);
 						} finally { setup.RPG.makeRng = 旧mk; }
 					}
 					/* ③ 两场次互不干扰 ＋ 结束只清**它自己**那张 */
 					const 乙 = TM.开('test-card-reward');
-					ok(TM.列表().length === 2, `★两张卡 ⇒ 两个场次（实得 ${TM.列表().length}）`);
-					ok(乙.场次id !== 甲.场次id, '★两场次身份须**互不相同**（同 id ⇒ 会互相覆盖）');
+					ok70(TM.列表().length === 2, `★两张卡 ⇒ 两个场次（实得 ${TM.列表().length}）`);
+					ok70(乙.场次id !== 甲.场次id, '★两场次身份须**互不相同**（同 id ⇒ 会互相覆盖）');
 					const 结甲 = TM.结束(甲.场次id);
-					ok(结甲.ok === true && 结甲.id === TM.结束id && 结甲.名 === TM.结束名,
+					ok70(结甲.ok === true && 结甲.id === TM.结束id && 结甲.名 === TM.结束名,
 						'★结束控制须报**内部 id** 与**显示名**（二者描述同一个控制 ✓）');
-					ok(TM.取(甲.场次id) === null && TM.取(乙.场次id) !== null,
+					ok70(TM.取(甲.场次id) === null && TM.取(乙.场次id) !== null,
 						'★结束只销毁**该**场次（✗ 清别的会话 ✓ —— 承 A2 §二「只清所属」）');
-					ok(结甲.不授胜 === true && 结甲.不补奖 === true && 结甲.不复活 === true,
+					ok70(结甲.不授胜 === true && 结甲.不补奖 === true && 结甲.不复活 === true,
 						'★结束 ⇒ ✗ 授胜／✗ 补奖／✗ 复活（②裁）');
-					ok(TM.结束(甲.场次id).已结束 === true, '★重复结束 ⇒ 幂等（✗ 二次副作用）');
-					ok(TM.结束('并不存在的场次').code === 'TEST_MODE_NO_SESSION_HANDLE',
+					ok70(TM.结束(甲.场次id).已结束 === true, '★重复结束 ⇒ 幂等（✗ 二次副作用）');
+					ok70(TM.结束('并不存在的场次').code === 'TEST_MODE_NO_SESSION_HANDLE',
 						'★未知场次 ⇒ 具名拒（✗ 静默当已结束）');
 					/* ④ 档路：走 `babelTest/`（✗ 碰正式槽）—— 会话的 persist 端口即接在它上面 ✓ */
 					const 存 = 乙.会话?.ports?.persist;
-					ok(!!存 && typeof 存.save === 'function', '★会话须带自己的 `persist` 端口（✗ 取默认端口 ⇒ 落正式 `Save.slots`）');
+					ok70(!!存 && typeof 存.save === 'function', '★会话须带自己的 `persist` 端口（✗ 取默认端口 ⇒ 落正式 `Save.slots`）');
 					if (存) {
 						/* ★本格自带桩（组内那个 `桩` 在 `if (TS){}` 里 ⇒ 本格看不见 ✗） */
 						const 旧存2 = globalThis.localStorage;
@@ -6144,19 +6148,19 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 							const 面 = () => JSON.stringify([...m2.entries()].filter(([k]) => !k.startsWith('babelTest/')).sort());
 							const 正式前 = 面();
 							存.save({ 事实: { 卡: 'test-card-reward' }, 历史: [] });
-							ok(面() === 正式前, '★测试档保存 ⇒ **正式面零变化**（✗ 写正式键 ✓）');
-							ok([...m2.keys()].some((k) => k.startsWith('babelTest/')), '★须落在 `babelTest/` 命名空间下 ✓');
+							ok70(面() === 正式前, '★测试档保存 ⇒ **正式面零变化**（✗ 写正式键 ✓）');
+							ok70([...m2.keys()].some((k) => k.startsWith('babelTest/')), '★须落在 `babelTest/` 命名空间下 ✓');
 						} finally { if (旧存2 === undefined) delete globalThis.localStorage; else globalThis.localStorage = 旧存2; }
 					}
 					TM.结束(乙.场次id);
-					ok(TM.列表().length === 0, '★收尾：两个场次皆结束 ⇒ 列表空');
-					ok(JSON.stringify(State.variables ?? {}) === 前正式, '★全程 ✗ 动正式局一个字节（前后像：正式面 ✓）');
+					ok70(TM.列表().length === 0, '★收尾：两个场次皆结束 ⇒ 列表空');
+					ok70(JSON.stringify(State.variables ?? {}) === 前正式, '★全程 ✗ 动正式局一个字节（前后像：正式面 ✓）');
 				}
 			}
 			/* ── ★`books#413` A2 **卡层（层 2）**：战斗构造按**运行上下文**取「玩家／源／会话」──────────────
 			 *    判据面＝**隔离**：测试局跑真战斗 ⇒ ✗ 动正式玩家、✗ 动全局随机源、战斗归属在该会话 ✓。 */
 			const 运 = B?.运行, SB2 = B?.七名河战斗;
-			ok(!!运 && !!SB2, '`setup.BABEL.运行`／`七名河战斗` 未装载（A2 卡层的两处接缝）');
+			ok70(!!运 && !!SB2, '`setup.BABEL.运行`／`七名河战斗` 未装载（A2 卡层的两处接缝）');
 			if (运 && SB2 && TM && typeof setup.RPG?.makeRng === 'function') {
 				const 甲2 = TM.开('test-card-battle');
 				const 正式玩家 = setup.DND3.Player;
@@ -6172,15 +6176,15 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 				try {
 					const 节点 = { id: 'test-node', type: 'battle', enemy: { srd_base: 'Crocodile', count: 1 }, victory_loot: {} };
 					await 运.在(甲2.上下文, () => SB2.跑一场(节点, { interactive: false }));
-					ok(!!抓到, '★卡层的战斗须**真构造**（✗ 没走到 ⇒ 本格空转）');
+					ok70(!!抓到, '★卡层的战斗须**真构造**（✗ 没走到 ⇒ 本格空转）');
 					const opts = 抓到?.[4] ?? null;
-					ok(!!opts && opts.源 === 甲2.rng, '★战斗构造须带**本场自己的源**（✗ 走全局 ⇒ 测试局与正式局共享随机流）');
-					ok(!!opts && opts.会话 === 甲2.场次id, '★须带**场次 id**（战斗归属 ⇒ `currentOf(会话)`／`submitBattleAction(…, 会话)`）');
-					ok(抓到?.[1]?.[0] === 甲2.玩家 && 甲2.玩家 !== 正式玩家,
+					ok70(!!opts && opts.源 === 甲2.rng, '★战斗构造须带**本场自己的源**（✗ 走全局 ⇒ 测试局与正式局共享随机流）');
+					ok70(!!opts && opts.会话 === 甲2.场次id, '★须带**场次 id**（战斗归属 ⇒ `currentOf(会话)`／`submitBattleAction(…, 会话)`）');
+					ok70(抓到?.[1]?.[0] === 甲2.玩家 && 甲2.玩家 !== 正式玩家,
 						'★参战者须是**测试角色**（✗ 借正式玩家后回滚 ＝ 明文禁）');
-					ok(全局抽 === 0, `★测试局跑完 ⇒ **全局随机源一次都没抽**（实得 ${全局抽}）`);
-					ok(setup.DND3.Player?.hp === 正式hp, '★同理：正式玩家分毫不动（前后像：正式面 ✓）');
-					ok(setup.BABEL.战果?.({ foes: [], player: 甲2.玩家, 战斗: null }) !== 'victory' || true,
+					ok70(全局抽 === 0, `★测试局跑完 ⇒ **全局随机源一次都没抽**（实得 ${全局抽}）`);
+					ok70(setup.DND3.Player?.hp === 正式hp, '★同理：正式玩家分毫不动（前后像：正式面 ✓）');
+					ok70(setup.BABEL.战果?.({ foes: [], player: 甲2.玩家, 战斗: null }) !== 'victory' || true,
 						'（读数：战果面照旧可调 —— 本格 ✗ 判战果 ✓）');
 				} finally { setup.RPG.Battle = 旧B2; setup.RPG.rng._impl = 旧全局impl; TM.结束(甲2.场次id); }
 			}
@@ -6192,7 +6196,7 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 				const 内容 = setup.BABEL_CONTENT?.七名河内容 ?? {};
 				const 映射 = 内容.物品映射 ?? {};
 				const 候选 = Object.keys(映射)[0] ?? null;
-				ok(!!候选, '★内容档的 `物品映射` 须非空（否则本格空转）');
+				ok70(!!候选, '★内容档的 `物品映射` 须非空（否则本格空转）');
 				if (候选) {
 					甲3.会话.commit({ 事实: { 态: '进行中', 当前: 内容.入口, 结果: {}, 机会: { 用: false, 实例: 'test' }, 路径: [] } });
 					甲3.玩家.items = [];                                        // 测试背包：空 ⇒ 交付后须有件 ✓
@@ -6201,18 +6205,18 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 					const 旧正式hp3 = setup.DND3.Player?.hp ?? null;
 					try {
 						const 件 = 运.在(甲3.上下文, () => S7b.交付({ [候选]: 1 }));
-						ok(Array.isArray(件) && 件.length === 1 && 件[0][0] === 映射[候选],
+						ok70(Array.isArray(件) && 件.length === 1 && 件[0][0] === 映射[候选],
 							`★交付须报**已发件**（真 id）（实得 ${JSON.stringify(件)}）`);
-						ok(甲3.玩家.items.some((x) => x && x.id === 映射[候选]),
+						ok70(甲3.玩家.items.some((x) => x && x.id === 映射[候选]),
 							'★奖励须落**测试背包**（✗ 正式背包 —— `RPG.give` 恒投 `State.variables.inventory`）');
-						ok(JSON.stringify(State.variables.inventory ?? null) === 旧正式背包,
+						ok70(JSON.stringify(State.variables.inventory ?? null) === 旧正式背包,
 							'★**正式背包零变化**（前后像：正式面 ✓）');
-						ok(JSON.stringify(State.variables.sevenNames ?? null) === 旧正式域,
+						ok70(JSON.stringify(State.variables.sevenNames ?? null) === 旧正式域,
 							'★**正式域零变化**（✗ 测试局写正式 `sevenNames`）');
-						ok(setup.DND3.Player?.hp === 旧正式hp3, '★正式玩家仍分毫不动 ✓');
+						ok70(setup.DND3.Player?.hp === 旧正式hp3, '★正式玩家仍分毫不动 ✓');
 						/* 域读写也须落**会话自己的账**（✗ 正式域）：测试上下文里读档 ⇒ 会话事实 ✓ */
 						const 域读 = 运.在(甲3.上下文, () => S7b.读档());
-						ok(!!域读 && 域读.态 === '进行中' && 域读 !== State.variables.sevenNames,
+						ok70(!!域读 && 域读.态 === '进行中' && 域读 !== State.variables.sevenNames,
 							'★测试上下文的 `读档()` 须是**该会话的域**（✗ 正式域）');
 					} finally { TM.结束(甲3.场次id); }
 				}
@@ -6220,7 +6224,7 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 			/* ── ★`books#413` A2 **层 4 卡面**：`测试卡.备场/跑战斗卡/跑奖励卡/纯查看/账目/入场` ───────────
 			 *    判据面：真规则真结算 ✓｜**三类分别记账** ✓｜**纯查看不得抽** ✓｜正式面零变化 ✓。 */
 			const TK = B?.测试卡;
-			ok(!!TK, '`setup.BABEL.测试卡` 未装载（`src/story/zz-test-cards.js` 没装？）');
+			ok70(!!TK, '`setup.BABEL.测试卡` 未装载（`src/story/zz-test-cards.js` 没装？）');
 			if (TK && TM && typeof setup.RPG?.makeRng === 'function') {
 				const 正式面 = () => JSON.stringify({
 					背包: State.variables.inventory ?? null,
@@ -6231,41 +6235,41 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 				const 战 = TM.开('test-card-battle');
 				const 正式0 = 正式面();
 				const 备 = TK.备场(战.场次id);
-				ok(备.ok === true && 备.域?.态 === '进行中', `★备场须给**合法七名河域**（实得 ${JSON.stringify(备.域?.态)}）`);
-				ok(战.玩家.items.length >= 2, `★战斗卡须**给装**（实得 ${战.玩家.items.length} 件）—— 空手也能打，但目录给装是本层约定 ✓`);
-				ok((战.rng.计数 ?? 0) === 0, '★备场**✗ 掷任何骰**（纯布置 ⇒ 随机源计数须仍为 0）');
+				ok70(备.ok === true && 备.域?.态 === '进行中', `★备场须给**合法七名河域**（实得 ${JSON.stringify(备.域?.态)}）`);
+				ok70(战.玩家.items.length >= 2, `★战斗卡须**给装**（实得 ${战.玩家.items.length} 件）—— 空手也能打，但目录给装是本层约定 ✓`);
+				ok70((战.rng.计数 ?? 0) === 0, '★备场**✗ 掷任何骰**（纯布置 ⇒ 随机源计数须仍为 0）');
 				/* ② 跑战斗卡：真规则真结算 ＋ 掷骰账来自**该源自己的计数** */
 				const 打 = await TK.跑战斗卡(战.场次id, { interactive: false });
-				ok(打.ok === true && !!打.果, '★跑战斗卡须走**真**回合（`战斗行动`）并回结果面');
-				ok((打.掷骰 ?? 0) > 0, `★「掷骰」账须＝**该源自己的计数**差（实得 ${打.掷骰}）`);
-				ok(打.账?.抽卡 === 1 && 打.账?.抽奖 === 0, `★三账**分开**：跑一张战斗卡 ⇒ 抽卡 1／抽奖 0（实得 ${JSON.stringify(打.账)}）`);
+				ok70(打.ok === true && !!打.果, '★跑战斗卡须走**真**回合（`战斗行动`）并回结果面');
+				ok70((打.掷骰 ?? 0) > 0, `★「掷骰」账须＝**该源自己的计数**差（实得 ${打.掷骰}）`);
+				ok70(打.账?.抽卡 === 1 && 打.账?.抽奖 === 0, `★三账**分开**：跑一张战斗卡 ⇒ 抽卡 1／抽奖 0（实得 ${JSON.stringify(打.账)}）`);
 				const 目 = TK.账目(战.场次id);
-				ok(目.掷骰 === (战.rng.计数 ?? 0) && 目.掷骰 > 0, '★`账目()` 的「掷骰」须读**该会话源**的计数（✗ 自数第二套 ✓）');
-				ok(正式面() === 正式0, '★跑完一张卡 ⇒ **正式面（背包／域／hp）逐字不变** ✓');
+				ok70(目.掷骰 === (战.rng.计数 ?? 0) && 目.掷骰 > 0, '★`账目()` 的「掷骰」须读**该会话源**的计数（✗ 自数第二套 ✓）');
+				ok70(正式面() === 正式0, '★跑完一张卡 ⇒ **正式面（背包／域／hp）逐字不变** ✓');
 				/* ③ 纯查看：**不得抽**（计数分毫不变 ✓） */
 				const 查看前 = JSON.stringify(TK.账目(战.场次id)) + '|' + 战.玩家.items.length;
 				const 看 = TK.纯查看(战.场次id);
-				ok(看.ok === true, '★`纯查看` 须可读');
-				ok(JSON.stringify(TK.账目(战.场次id)) + '|' + 战.玩家.items.length === 查看前,
+				ok70(看.ok === true, '★`纯查看` 须可读');
+				ok70(JSON.stringify(TK.账目(战.场次id)) + '|' + 战.玩家.items.length === 查看前,
 					'★**纯查看不得抽奖／建实例／结算**（前后账目与背包须逐字同 ✓）');
 				/* ④ 错卡类 ⇒ 具名拒（✗ 静默跑错规则） */
 				const 奖 = TM.开('test-card-reward');
-				ok(TK.跑战斗卡(奖.场次id)?.then === undefined || true, '（异步面：下条以 sync 拒论）');
-				ok((await TK.跑战斗卡(奖.场次id))?.code === 'TEST_CARD_WRONG_KIND',
+				ok70(TK.跑战斗卡(奖.场次id)?.then === undefined || true, '（异步面：下条以 sync 拒论）');
+				ok70((await TK.跑战斗卡(奖.场次id))?.code === 'TEST_CARD_WRONG_KIND',
 					'★用战斗卡跑「奖励」卡 ⇒ 须**具名拒**（✗ 静默跑错规则 ✓）');
 				/* ⑤ 跑奖励卡：唯一交付口 ⇒ 测试背包 ＋ 抽奖 1 */
 				const 正式1 = 正式面();
 				await TK.备场(奖.场次id);
 				const 奖果 = TK.跑奖励卡(奖.场次id);
-				ok(奖果.ok === true && (奖果.交付?.length ?? 0) >= 1, `★奖励卡须真交付（实得 ${JSON.stringify(奖果.交付)}）`);
-				ok(奖果.账?.抽奖 === 1, `★「抽奖」账须记一笔（实得 ${JSON.stringify(奖果.账)}）`);
-				ok(奖.玩家.items.length >= 1, '★奖励须落**测试背包** ✓');
-				ok(正式面() === 正式1, '★奖励卡跑完 ⇒ **正式面逐字不变** ✓');
+				ok70(奖果.ok === true && (奖果.交付?.length ?? 0) >= 1, `★奖励卡须真交付（实得 ${JSON.stringify(奖果.交付)}）`);
+				ok70(奖果.账?.抽奖 === 1, `★「抽奖」账须记一笔（实得 ${JSON.stringify(奖果.账)}）`);
+				ok70(奖.玩家.items.length >= 1, '★奖励须落**测试背包** ✓');
+				ok70(正式面() === 正式1, '★奖励卡跑完 ⇒ **正式面逐字不变** ✓');
 				/* ⑥ 入场（开始菜单入口）：开一张卡 ⇒ 报读数 ⇒ ✗ 动正式局 */
 				const 正式2 = 正式面();
 				const 入 = await TK.入场();
-				ok(入.ok === true && 入.场次id?.startsWith('babel-test/'), '★`入场()` 须真开场次（✗ 占位 ✓）');
-				ok(正式面() === 正式2, '★`入场()` 全程 ⇒ **正式面逐字不变** ✓');
+				ok70(入.ok === true && 入.场次id?.startsWith('babel-test/'), '★`入场()` 须真开场次（✗ 占位 ✓）');
+				ok70(正式面() === 正式2, '★`入场()` 全程 ⇒ **正式面逐字不变** ✓');
 				TM.结束(战.场次id); TM.结束(奖.场次id); TM.结束(入.场次id);
 			}
 			/* ── ★`books#413` A2 **补笔**：**交互路端到端** —— `submitBattleAction(…, 会话)` 的判据 ────────────
@@ -6288,32 +6292,59 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 					跑 = 运.在(场3.上下文, () => SB2.战斗行动(0, { interactive: true }));   // 交互路：停在与玩家交互处 ✓
 					/* ★先看这条路**有没有真在途**（✗ 早早被拒 ⇒ 登记永远不会发生 ⇒ 上一条断言会「冤枉」引擎 ✗） */
 					const 先 = await Promise.race([跑.then((v) => ({ 已回: v })), new Promise((r) => setTimeout(() => r(null), 120))]);
-					ok(先 == null, `★交互路须**真在途**（✗ 已回 ⇒ 本格无从判 —— 读数 ${JSON.stringify(先?.已回)?.slice(0, 160)}）`);
+					ok70(先 == null, `★交互路须**真在途**（✗ 已回 ⇒ 本格无从判 —— 读数 ${JSON.stringify(先?.已回)?.slice(0, 160)}）`);
 					for (let w = 0; w < 8 && setup.RPG.Battle.currentOf(场3.场次id) == null; w++) {
 						await new Promise((r) => setTimeout(r, 5));                          // 让战斗**登记**（异步起手 ⇒ 轮询到在册为止 ✓）
 					}
-					ok(setup.RPG.Battle.currentOf(场3.场次id) != null,
+					ok70(setup.RPG.Battle.currentOf(场3.场次id) != null,
 						'★运行期：该会话的当前战斗须在册（`currentOf(会话)`）—— ✗ 在册 ⇒ 外部提交无处可去 ✓'
 						+ `（读数：在册表键=${JSON.stringify([...setup.RPG.Battle.按会话.keys()])}｜全局 current=${setup.RPG.Battle.current ? '有' : 'null'}）`);
-					ok(setup.RPG.Battle.current === null, '★全局 `current` 须仍为 null（✗ 被测试局顶掉 ✓）');
+					ok70(setup.RPG.Battle.current === null, '★全局 `current` 须仍为 null（✗ 被测试局顶掉 ✓）');
 					const 无会话 = setup.RPG.submitBattleAction({ item: 'club' });
-					ok(无会话?.ok === false, `★**不带会话**的提交 ⇒ 须**拒**（实得 ${JSON.stringify(无会话)?.slice(0, 60)}）—— ✗ 塞进测试局 ✓`);
+					ok70(无会话?.ok === false, `★**不带会话**的提交 ⇒ 须**拒**（实得 ${JSON.stringify(无会话)?.slice(0, 60)}）—— ✗ 塞进测试局 ✓`);
 					const 有会话 = setup.RPG.submitBattleAction({ item: 'club' }, null, 场3.场次id);
-					ok(有会话?.ok !== false, `★**带会话**的提交须进**该**战斗（实得 ${JSON.stringify(有会话)?.slice(0, 90)}）`);
+					ok70(有会话?.ok !== false, `★**带会话**的提交须进**该**战斗（实得 ${JSON.stringify(有会话)?.slice(0, 90)}）`);
 					/* ★放行：后续选择一律 `skip` ⇒ 战斗有限收敛 ✓ */
 					场3.玩家.choice = async () => 'skip';
 					if (等提交I) 等提交I('skip');
 					await 跑;
-					ok(setup.RPG.Battle.currentOf(场3.场次id) === null, '★跑完 ⇒ 该会话的战斗登记须**清掉**（✗ 留过期引用 ✓）');
-					ok(正式面I() === 旧I, '★交互路全程（含外部提交）⇒ **正式面逐字不变** ✓');
+					ok70(setup.RPG.Battle.currentOf(场3.场次id) === null, '★跑完 ⇒ 该会话的战斗登记须**清掉**（✗ 留过期引用 ✓）');
+					ok70(正式面I() === 旧I, '★交互路全程（含外部提交）⇒ **正式面逐字不变** ✓');
 				} finally {
 					场3.玩家.choice = 旧ch;
 					if (跑) { try { await 跑; } catch { /* 收尾失败不断本格判据 ✓ */ } }
 					TM.结束(场3.场次id);
 				}
 			}
+			/* ── ★`#463` RC 补格：**异步还原**（`运行.在()` 的 thenable 分支）── developer 刀证：删回同步仍全绿 ⇒ 补此格
+			 *    刀义：把 `在()` 改回「只罩同步」⇒ 本格须**红**（上下文在**第一个 `await` 处被弹掉** ✓）。 */
+			if (运 && TM && typeof setup.RPG?.makeRng === 'function') {
+				const 场4 = TM.开('test-card-reward');
+				const 旧域4 = JSON.stringify(State.variables.sevenNames ?? null);
+				const 旧背4 = JSON.stringify(State.variables.inventory ?? null);
+				let 跨await = null, 尾写 = null;
+				try {
+					await 运.在(场4.上下文, async () => {
+						await new Promise((res) => setTimeout(res, 1));          // ★跨一次 await
+						跨await = (运.取() === 场4.上下文);                        // ①结构面：上下文须**仍在**
+						/* ②行为面：**异步尾的写**须落**该会话**（✗ 走正式上下文 ⇒ 漏进正式域 ✓） */
+						尾写 = 运.取()?.会话?.commit?.({ 事实: { 态: '进行中', 跨await标记: true } }) ?? null;
+						await new Promise((res) => setTimeout(res, 1));
+						return 运.取() === 场4.上下文;                            // ③再跨一次 await，仍须在
+					});
+					ok70(跨await === true,
+						'★跨 `await` 后 `取()` 须**仍是该上下文**（✗ 在第一个 await 处被弹掉 ⇒ 战斗的**异步尾**跑在正式上下文里 ✓）');
+					ok70(场4.会话._facts?.事实?.跨await标记 === true,
+						'★**异步尾的写**须落**该会话的域**（实得标记＝'
+						+ `${JSON.stringify(场4.会话._facts?.事实?.跨await标记)} —— ✗ 上下文被弹掉 ⇒ 写落到别处 ✓）`);
+					ok70(JSON.stringify(State.variables.sevenNames ?? null) === 旧域4,
+						'★异步尾期间**正式域零变化**（✗ 测试局的写漏进正式域 ＝ 本笔要防的隐蔽通道 ✓）');
+					ok70(JSON.stringify(State.variables.inventory ?? null) === 旧背4, '★异步尾期间**正式背包零变化** ✓');
+					ok70(运.栈深() === 0, '★跑完 ⇒ 上下文栈须**还原到 0**（✗ 泄漏 ⇒ 后续调用者以为自己在测试上下文里 ✓）');
+				} finally { TM.结束(场4.场次id); }
+			}
 	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 70 组：${本组失败 === 0 ? '三十二格全绿（＋★补笔：**交互路端到端**四断言〔该会话战斗在册／全局 current 仍 null／**不带会话的提交须拒**／**带会话的提交进该战斗**〕＋收尾清登记＋正式面逐字不变；＋★层 4 卡面六面：备场纯布置（✗ 掷骰）／跑战斗卡走真回合且**掷骰账＝该源自己的计数**／三账**分开**（抽卡1·抽奖0）／**纯查看不得抽**（前后逐字同）／错卡类**具名拒**／奖励卡落测试背包且抽奖记 1／`入场()` 真开场次 —— 各步正式面逐字不变；★S3 十二格 ＋ ★A2 层 1 测试模式七面：目录恰两卡·结束不在目录／缺接缝具名拒／自有 rng·独立角色·标记／两场次互不干扰·结束只清该场次／结束三不（不授胜·不补奖·不复活）·幂等·未知场次拒／档路 `babelTest/`·正式面零变化／全程 ✗ 动正式局 ＋ ★A2 层 2／层 3 卡层两面：战斗构造带**本场源／会话**且参战者是**测试角色**、**全局源一次未抽**、正式玩家分毫不动；奖励经**唯一交付口**落**测试背包**、正式背包／正式域零变化）' : `★本组 ${本组失败} 处失败`}`);
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 70 组：${本组失败 === 0 ? 格70 + ' 格全绿（＋★补笔：**交互路端到端**四断言〔该会话战斗在册／全局 current 仍 null／**不带会话的提交须拒**／**带会话的提交进该战斗**〕＋收尾清登记＋正式面逐字不变；＋★层 4 卡面六面：备场纯布置（✗ 掷骰）／跑战斗卡走真回合且**掷骰账＝该源自己的计数**／三账**分开**（抽卡1·抽奖0）／**纯查看不得抽**（前后逐字同）／错卡类**具名拒**／奖励卡落测试背包且抽奖记 1／`入场()` 真开场次 —— 各步正式面逐字不变；★S3 十二格 ＋ ★A2 层 1 测试模式七面：目录恰两卡·结束不在目录／缺接缝具名拒／自有 rng·独立角色·标记／两场次互不干扰·结束只清该场次／结束三不（不授胜·不补奖·不复活）·幂等·未知场次拒／档路 `babelTest/`·正式面零变化／全程 ✗ 动正式局 ＋ ★A2 层 2／层 3 卡层两面：战斗构造带**本场源／会话**且参战者是**测试角色**、**全局源一次未抽**、正式玩家分毫不动；奖励经**唯一交付口**落**测试背包**、正式背包／正式域零变化）' : `★本组 ${本组失败} 处失败`}`);
 }
 
 printSummary();
