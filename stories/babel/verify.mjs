@@ -6620,4 +6620,129 @@ head('75. `books#459` 跳过战斗的层位边界：1～6 可跳过／7～9 无�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 75 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（1～6 可跳过／7～9 无跳过／前提不满足同不给／✗ 不碰 0.0.3）`);
 }
 
+
+/* ============================================================
+ * 第 76 组：线上 4 P1 之二（writer 实测报告 `sgstory-books-live-critique-2026-10-07`）
+ *   P1-1 原始 CSS 裸漏到玩家页面（地图样式落在 `:: StoryCaption` ⇒ 当正文印出 ✗）
+ *   P1-3 快存写出记录，但**无载入口**（`B.快读` 早已存在 ⇒ 缺的是 UI 入口 ✗）
+ *   ★组号 76（顺延 75 后 ✓）
+ * ============================================================ */
+head('76. 线上 P1 之二：地图 CSS 归位样式表／快存可载入（入口＋判据同源）');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok76 = (c, m) => { 本组判据++; ok(c, m); };
+	const 槽存 = (() => { try { return JSON.stringify(R.save?.slots?.get?.(B.槽位?.快存) ?? null); } catch { return null; } })();
+	try {
+		/* ── P1-1：地图样式必须在**样式表**里，✗ 不得出现在会渲染的段（`StoryCaption`）──
+		 *   ★判法（✗ 不看源 ✓）：读**产物 HTML**，断 `.mapbar {` 只出现在 `<style>` 块内 ✓。 */
+		/* ★harness 是 **ESM** ✓ ⇒ 直接用**已导入**的 `fs`／`path`／`process` ✗ 不用 `require`
+		 *   （我首版写了 `require(...)` ⇒ 「Cannot determine intended module format」崩 ✗ —— 自纠 ✓）。 */
+		const 产物 = path.join(process.cwd(), 'stories/babel/babel-trial.html');
+		const 有产物 = fs.existsSync(产物);
+		ok76(有产物, '★前置：产物存在（✗ 无产物则本组不作数 ✓）');
+		if (有产物) {
+			const h = fs.readFileSync(产物, 'utf8');
+			const 样式表 = [...h.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+			const 总 = (h.match(/\.mapbar \{/g) ?? []).length;
+			const 表内 = (样式表.match(/\.mapbar \{/g) ?? []).length;
+			ok76(总 >= 1, `★P1-1：产物里确有地图样式（实得 ${总} 处）`);
+			ok76(总 === 表内, `★P1-1：地图样式**全部**在 \`<style>\` 内（✗ 裸漏到正文 ✓；表内 ${表内}／总 ${总}）`);
+			/* ★★承重否定面（★真靶）：产物是**编译后**的 Twine ⇒ **没有 `:: ` 段标记** ✗
+			 *   （我首版按 `::` 正则找段体 ⇒ **永不匹配 ⇒ 该格恒真** ✗，刀不咬 ✗）。
+			 *   真靶＝`<tw-passagedata name="StoryCaption">` **元素体** ✓ —— 那正是会被渲染的段 ✓。 */
+			const m = /<tw-passagedata[^>]*name="StoryCaption"[^>]*>([\s\S]*?)<\/tw-passagedata>/.exec(h);
+			ok76(!!m, '★P1-1：产物里**找得到** `StoryCaption` 段元素（✗ 找不到则本格不敢当真 ✓）');
+			const 段体 = m ? m[1] : '';
+			ok76(!段体.includes('.mapbar {'), '★★P1-1：`StoryCaption` 段元素体**不含**地图 CSS（真靶·裸漏源 ✓）');
+		}
+		/* ── P1-3：快存 ⇒ 该槽**有档**（与 `快读` 同源判据 ✓）；✗ 无档时不得显示载入口 ── */
+		ok76(typeof B.快存有位 === 'function', '★P1-3：`B.快存有位` 读面在位（UI 的显示判据 ✓）');
+		ok76(typeof B.快读 === 'function', '★P1-3：`B.快读`（载入动作）在位 ✓');
+		/* ★行为面：先造「无档」⇒ 有为假；真快存一次 ⇒ 有为真 ✓（★同源判据的证据 ✓） */
+		const 家 = B.槽位?.快存;
+		ok76(Number.isInteger(家), `★P1-3：快存槽号已定义（实得 ${家}）`);
+		const 清前 = B.快存有位(家);
+		ok76(typeof 清前 === 'boolean', `★P1-3：判据返回布尔（实得 ${typeof 清前}）`);
+		/* ★★承重形（✗ 不许条件跳过 —— 我首版把「快存之后须有位」放进 `if (可存)` ⇒ 该分支没跑
+		 *   ⇒ **格被跳过** ✗ 刀不咬 ✓）。现＝①**无条件**经宿主造一次档（`Save.slots.save` ✓）
+		 *   ②断「读面 ⇄ 宿主 `has` **逐值一致**」✓ —— ★K2 刀（读面恒假）于此**必红** ✓。 */
+		const 宿主 = R.save?.slots;
+		let 造 = '宿主无 save API';
+		if (宿主 && typeof 宿主.save === 'function') { try { 宿主.save(家); 造 = 'ok'; } catch (e) { 造 = `抛：${e?.message ?? e}`; } }
+		else if (typeof B.快存 === 'function') { const w = B.快存(家); 造 = `B.快存 ⇒ ${JSON.stringify(w)}`; }
+		console.log(`    （★P1-3 读数：造档途径=${造}｜宿主 has(${家})=${(typeof 宿主?.has === 'function') ? 宿主.has(家) : '（无 has）'}）`);
+		if (typeof 宿主?.has === 'function') {
+			ok76(B.快存有位(家) === (宿主.has(家) === true),
+				`★P1-3：读面须与宿主 \`has\` **逐值一致**（读面 ${B.快存有位(家)}／宿主 ${宿主.has(家)}）`);
+		} else {
+			console.log('    （★P1-3 读数：宿主无 `has` ⇒ 本格不作数 ✗ 如实记 ✓）');
+		}
+		/* ★UI 面：页脚**确有**载入链（✗ 只在文档里 ✓） */
+		const twee = path.join(process.cwd(), 'stories/babel/src/ui/ui.twee');
+		const 源 = fs.existsSync(twee) ? fs.readFileSync(twee, 'utf8') : '';
+		ok76(/<<link "载入快存">>/.test(源) && /BABEL\.快读\(\)/.test(源), '★P1-3：页脚**确有**「载入快存」链（且走 `快读` ✓）');
+		ok76(/<<if setup\.BABEL\.快存有位\(\)>>/.test(源), '★P1-3：该链**受 快存有位 门控**（✗ 无档也显示 ✓）');
+	} finally {
+		if (槽存 !== null) { try { const o = JSON.parse(槽存); if (o && R.save?.slots?.set) { /* ★尽力复原（✗ 吞） */ } } catch (e) { /* ✗ 吞 */ } }
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 76 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（地图 CSS 归位样式表／快存可载入）`);
+}
+
+/* ── 第 77 组（本笔自带格）：版本自报／存档槽名（地点·关键进度·时间）／空方向提示＋窄屏地图溢出 ──
+ * 断什么（皆**产物／行为面**，✗ 读源码字面）：①名含真实层数＋**注入时间**＋战前仍以 `·战前` 结尾；
+ *   ②教程进行中 ⇒ 名里带**关键进度**段；③未处理遭遇 ⇒ W09 正文**明说**「先处理当前遭遇」，已处理 ⇒ 不出现（负向）；
+ *   ④产物样式表 `.map-wrap`／`.map-art` 皆有 `max-width: 100%`（窄屏 405px ＞ 390px 视口不再撑破）。
+ * 刀（记在提交信息）：删提示那行 ⇒ ③ 红；删 CSS 那行（重建）⇒ ④ 红；摘进度段 ⇒ ② 红。
+ */
+head('77. 发布批三件：存档槽名（地点·关键进度·时间）／空方向提示／窄屏地图溢出');
+{
+	let 判77 = 0;
+	const ok77 = (c, m) => { 判77 += 1; return ok(c, m); };
+	const 组前失败 = fails.length;
+	const B = setup.BABEL;
+	map.moveTo('L9');
+	const t = new Date(2026, 9, 7, 8, 45);
+	const 名 = B.存档名({ 时: t });
+	ok77(名.includes('L9'), `★存档名没带真实层数（实得 ${名}）`);
+	ok77(名.includes('10-07 08:45'), `★存档名没带**时间**段（实得 ${名}）`);
+	const 战前名 = B.存档名({ 战前: true, 时: t });
+	ok77(战前名.endsWith('·战前'), '★战前保底名**不再以 `·战前` 结尾**（既有格的口径要保住 ✓）');
+	console.log(`  ① 命名：普通=${名}｜战前=${战前名}`);
+	const S7 = B.七名河;
+	if (S7) {
+		const 态存 = JSON.stringify(State.variables.sevenNames ?? null);
+		try {
+			S7.开始?.();
+			const 中 = B.存档名({ 时: t });
+			ok77(/七名河·/.test(中), `★教程进行中时名里没带**关键进度**段（实得 ${中}）`);
+		} finally { try { if (态存 !== 'null') State.variables.sevenNames = JSON.parse(态存); } catch (e) { /* ✗ 吞 */ } }
+	}
+	const W09 = B.map.locations.get('W09');
+	ok77(!!W09 && typeof W09.desc === 'function', '★前提：拿得到 W09 地点与其 `desc()`（✗ 拿不到则本组不敢当真 ✓）');
+	if (W09) {
+		const 态存 = JSON.stringify(State.variables.sevenNames ?? null);
+		try {
+			State.variables.sevenNames = Object.assign({}, State.variables.sevenNames, { 已开始: true, 当前: 'E6', 已处理: [] });
+			const 未处理文 = String(W09.desc());
+			ok77(未处理文.includes('先处理当前遭遇'), `★未处理遭遇 ⇒ 正文须**明说**该做什么（实得 ${JSON.stringify(未处理文.slice(0, 110))}）`);
+			/* ★`已处理` 由**结果表的键**派生（`00-seven-names.js` 的读面 ✓）⇒ 要「已处理」就写结果键 ✓ */
+			State.variables.sevenNames = Object.assign({}, State.variables.sevenNames, { 结果: Object.assign({}, State.variables.sevenNames?.结果, { E6: { 成败: '胜', 文本: '（装置）' } }) });
+			ok77(!String(W09.desc()).includes('先处理当前遭遇'), '★已处理遭遇 ⇒ **不该**再提示「先处理」（负向 ✓）');
+		} finally { try { if (态存 !== 'null') State.variables.sevenNames = JSON.parse(态存); } catch (e) { /* ✗ 吞 */ } }
+	}
+	const 产物 = path.join(process.cwd(), 'stories/babel/babel-trial.html');
+	ok77(fs.existsSync(产物), '★前提：产物存在（✗ 无产物则本组不作数 ✓）');
+	if (fs.existsSync(产物)) {
+		const h = fs.readFileSync(产物, 'utf8');
+		const 样式表 = [...h.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+		const 块 = (sel) => (new RegExp('\\' + sel + '[^{]*\\{([^}]*)\\}').exec(样式表)?.[1] ?? '');
+		ok77(/max-width:\s*100%/.test(块('.map-wrap')), `★产物 \`.map-wrap\` 缺 \`max-width: 100%\`（窄屏 405px ＞ 390px 视口撑破 ✓；实得 ${JSON.stringify(块('.map-wrap').slice(0, 70))}）`);
+		ok77(/max-width:\s*100%/.test(块('.map-art')), '★产物 `.map-art` 缺 `max-width: 100%` ✓');
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 77 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${判77} 条判据**（存档槽名／空方向提示／窄屏地图）｜组内判据 ${判77}`);
+}
+
 printSummary();
