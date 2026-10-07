@@ -111,8 +111,18 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 			if (!n || n.type === 'portal' || r.已处理.includes(r.当前)) return [];
 			return n.options ?? [];
 		};
-		/** 本节点此刻**可走方向**（★静态边表是权威 ✓ —— 取 `节点导航`（门向已补 ✓））。 */
-		const 可方向 = () => 七.读().导航 ?? [];
+		/** 本节点此刻**可走方向**（★静态边表是权威 ✓）。
+		 *   ★★**导航闸**（writer-2 终答 `6034021342` 乙精化 ✓）：E3/E5/E6/E7 的**正常前进**须**消费该节点
+		 *   真实已提交的处理结果** —— 正式战斗**胜利** ✓ 或既有属性**脱离检定成功** ✓（「已处理 ⇝ ✗ 须胜」✓）。
+		 *   ⇒ 判据**派生自既有的逐节点结果**（`已处理` ＝ `$sevenNames.结果` 的键 ✓；两路都写它 ✓）
+		 *     ⇒ ★**✗ 不另存第二真值** ✓（裁文明令 ✓）。★传送门不受此闸 ✓；★**提前返城不是「前进」** ⇒ 亦不受 ✓。 */
+		const 可方向 = () => {
+			const r = 七.读();
+			const n = r.节点;
+			if (!n || n.type === 'portal') return r.导航 ?? [];          // ★门／已走过处照旧 ✓
+			if (!(r.已处理 ?? []).includes(r.当前)) return [];          // ★★未提交结果 ⇒ **不给前进**（✗ 静默放行 ✓）
+			return r.导航 ?? [];
+		};
 
 		/* ① 教程地点（**独立区域**：id `W09` ✓ 与 `L` 系层号不混 ✓；desc/actions 皆**函数** ⇒ 随状态现算 ✓） */
 		const 河岸 = new R.Location({
@@ -137,9 +147,25 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 					when: () => !七.读().已开始, action: () => 七.开始(),
 				}),
 				/* 三个选项槽（★text 亦为函数 ⇒ 随节点变 ✓；when 现算 ⇒ 已处理即收起 ✓） */
+				/* ★线上 P1-4：**战斗节点的「应战」原为静默空转** ✗ —— 状态机对 `type==='battle'` 具名拒
+				 *   （`00-seven-names.js:200` `SEVEN_IS_BATTLE`）且拒值被丢 ⇒ 页面无可见变化 ✓。
+				 *   修：战斗节点走**战斗入口**（`BS.七名河战斗.战斗行动(i,{interactive:true})` ✓）＋ 拒因
+				 *   **可读兜底**（✗ 无声 ✓，照报告 §4「不能执行时应明确解释」✓）。 */
 				...[0, 1, 2].map((i) => B.只给活人({
 					text: () => 可选项()[i]?.label ?? '',
-					when: () => !!可选项()[i], action: () => 七.选行动(i),
+					when: () => !!可选项()[i],
+					action: () => {
+						const 是战斗 = 七.读().节点?.type === 'battle';
+						const 门 = B.七名河战斗;
+						let r;
+						try {
+							r = 是战斗
+								? ((typeof 门?.战斗行动 === 'function') ? 门.战斗行动(i, { interactive: true }) : { ok: false, why: '战斗入口未装载（`01-seven-names-battle.js` 缺席）' })
+								: 七.选行动(i);
+						} catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
+						if (r && r.ok === false) { R.note?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`); return false; }
+						return true;
+					},
 				})),
 				/* 两个方向槽（左／右＝内容档的 direction ✓） */
 				...[0, 1].map((j) => B.只给活人({
