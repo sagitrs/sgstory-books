@@ -5464,7 +5464,7 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				 *   ★**单点常量**：通道语义（「行程拒绝」vs「物品·不可用」）**候 writer-2 代裁** ✓
 				 *     ⇒ 裁到别的通道时**只改这一处** ✓。
 				 *   ★围住**第一次**调用：那一次 `r.ok===false` ⇒ 才真发拒因（第二次是幂等重调 ⇒ 不再拒 ✓）。 */
-				const 拒通道 = 'item-refuse';
+				const 拒通道 = setup.BABEL?.通道?.拒因 ?? 'item-refuse';        // ★读**产品同源常量**（✗ 不各写一份 ✓）
 				const 拒前 = (R.notices({ channel: 拒通道 }) ?? []).length;
 				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
@@ -5477,14 +5477,14 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				/* ★`#483` 同族校正（领队 2026-10-07）：产品演出改走**引擎真口** `pushNotice`（✗ 不再打
 				 *   在无人提供的 `R.note` 上 ✓）⇒ 本格改**读引擎通知面的具名通道**（✗ 装钩 —— 那样
 				 *   「玩家侧**显不显示**」测不出来 ✗）。 */
-				const 句前 = (R.notices({ channel: 'map-scene' }) ?? []).length;
+				const 句前 = (R.notices({ channel: setup.BABEL?.通道?.演出 ?? 'map-scene' }) ?? []).length;   // ★同源 ✓
 				let 文接 = '';
 				try {
 
 					清背(); 造('club', { 脆弱: true }); 造('iron-ore'); 起档('i-9b');
 					边.action();
 				} finally {
-					const 全 = (R.notices({ channel: 'map-scene' }) ?? []).map((n) => n.text);
+					const 全 = (R.notices({ channel: setup.BABEL?.通道?.演出 ?? 'map-scene' }) ?? []).map((n) => n.text);
 					文接 = 全.slice(0, Math.max(0, 全.length - 句前)).reverse().join('\n');
 				}
 				ok(文接.length > 0, `★E9 出口演出须**真进引擎通知面**（✗ 只打无人提供的钩 ✓；实得 ${JSON.stringify(文接.slice(0, 60))}）`);
