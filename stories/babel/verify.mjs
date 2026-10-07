@@ -6378,4 +6378,74 @@ head('70. `books#413`（A2·S3）：测试档命名空间 `babelTest/`（★组�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 70 组：${本组失败 === 0 ? 格70 + ' 格全绿（＋★补笔：**交互路端到端**四断言〔该会话战斗在册／全局 current 仍 null／**不带会话的提交须拒**／**带会话的提交进该战斗**〕＋收尾清登记＋正式面逐字不变；＋★层 4 卡面六面：备场纯布置（✗ 掷骰）／跑战斗卡走真回合且**掷骰账＝该源自己的计数**／三账**分开**（抽卡1·抽奖0）／**纯查看不得抽**（前后逐字同）／错卡类**具名拒**／奖励卡落测试背包且抽奖记 1／`入场()` 真开场次 —— 各步正式面逐字不变；★S3 十二格 ＋ ★A2 层 1 测试模式七面：目录恰两卡·结束不在目录／缺接缝具名拒／自有 rng·独立角色·标记／两场次互不干扰·结束只清该场次／结束三不（不授胜·不补奖·不复活）·幂等·未知场次拒／档路 `babelTest/`·正式面零变化／全程 ✗ 动正式局 ＋ ★A2 层 2／层 3 卡层两面：战斗构造带**本场源／会话**且参战者是**测试角色**、**全局源一次未抽**、正式玩家分毫不动；奖励经**唯一交付口**落**测试背包**、正式背包／正式域零变化）' : `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ============================================================
+ * 第 76 组：线上 4 P1 之二（writer 实测报告 `sgstory-books-live-critique-2026-10-07`）
+ *   P1-1 原始 CSS 裸漏到玩家页面（地图样式落在 `:: StoryCaption` ⇒ 当正文印出 ✗）
+ *   P1-3 快存写出记录，但**无载入口**（`B.快读` 早已存在 ⇒ 缺的是 UI 入口 ✗）
+ *   ★组号 76（顺延 75 后 ✓）
+ * ============================================================ */
+head('76. 线上 P1 之二：地图 CSS 归位样式表／快存可载入（入口＋判据同源）');
+{
+	let 本组判据 = 0;
+	const 组前失败 = fails.length;
+	const ok76 = (c, m) => { 本组判据++; ok(c, m); };
+	const 槽存 = (() => { try { return JSON.stringify(R.save?.slots?.get?.(B.槽位?.快存) ?? null); } catch { return null; } })();
+	try {
+		/* ── P1-1：地图样式必须在**样式表**里，✗ 不得出现在会渲染的段（`StoryCaption`）──
+		 *   ★判法（✗ 不看源 ✓）：读**产物 HTML**，断 `.mapbar {` 只出现在 `<style>` 块内 ✓。 */
+		/* ★harness 是 **ESM** ✓ ⇒ 直接用**已导入**的 `fs`／`path`／`process` ✗ 不用 `require`
+		 *   （我首版写了 `require(...)` ⇒ 「Cannot determine intended module format」崩 ✗ —— 自纠 ✓）。 */
+		const 产物 = path.join(process.cwd(), 'stories/babel/babel-trial.html');
+		const 有产物 = fs.existsSync(产物);
+		ok76(有产物, '★前置：产物存在（✗ 无产物则本组不作数 ✓）');
+		if (有产物) {
+			const h = fs.readFileSync(产物, 'utf8');
+			const 样式表 = [...h.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+			const 总 = (h.match(/\.mapbar \{/g) ?? []).length;
+			const 表内 = (样式表.match(/\.mapbar \{/g) ?? []).length;
+			ok76(总 >= 1, `★P1-1：产物里确有地图样式（实得 ${总} 处）`);
+			ok76(总 === 表内, `★P1-1：地图样式**全部**在 \`<style>\` 内（✗ 裸漏到正文 ✓；表内 ${表内}／总 ${总}）`);
+			/* ★★承重否定面（★真靶）：产物是**编译后**的 Twine ⇒ **没有 `:: ` 段标记** ✗
+			 *   （我首版按 `::` 正则找段体 ⇒ **永不匹配 ⇒ 该格恒真** ✗，刀不咬 ✗）。
+			 *   真靶＝`<tw-passagedata name="StoryCaption">` **元素体** ✓ —— 那正是会被渲染的段 ✓。 */
+			const m = /<tw-passagedata[^>]*name="StoryCaption"[^>]*>([\s\S]*?)<\/tw-passagedata>/.exec(h);
+			ok76(!!m, '★P1-1：产物里**找得到** `StoryCaption` 段元素（✗ 找不到则本格不敢当真 ✓）');
+			const 段体 = m ? m[1] : '';
+			ok76(!段体.includes('.mapbar {'), '★★P1-1：`StoryCaption` 段元素体**不含**地图 CSS（真靶·裸漏源 ✓）');
+		}
+		/* ── P1-3：快存 ⇒ 该槽**有档**（与 `快读` 同源判据 ✓）；✗ 无档时不得显示载入口 ── */
+		ok76(typeof B.快存有位 === 'function', '★P1-3：`B.快存有位` 读面在位（UI 的显示判据 ✓）');
+		ok76(typeof B.快读 === 'function', '★P1-3：`B.快读`（载入动作）在位 ✓');
+		/* ★行为面：先造「无档」⇒ 有为假；真快存一次 ⇒ 有为真 ✓（★同源判据的证据 ✓） */
+		const 家 = B.槽位?.快存;
+		ok76(Number.isInteger(家), `★P1-3：快存槽号已定义（实得 ${家}）`);
+		const 清前 = B.快存有位(家);
+		ok76(typeof 清前 === 'boolean', `★P1-3：判据返回布尔（实得 ${typeof 清前}）`);
+		/* ★★承重形（✗ 不许条件跳过 —— 我首版把「快存之后须有位」放进 `if (可存)` ⇒ 该分支没跑
+		 *   ⇒ **格被跳过** ✗ 刀不咬 ✓）。现＝①**无条件**经宿主造一次档（`Save.slots.save` ✓）
+		 *   ②断「读面 ⇄ 宿主 `has` **逐值一致**」✓ —— ★K2 刀（读面恒假）于此**必红** ✓。 */
+		const 宿主 = R.save?.slots;
+		let 造 = '宿主无 save API';
+		if (宿主 && typeof 宿主.save === 'function') { try { 宿主.save(家); 造 = 'ok'; } catch (e) { 造 = `抛：${e?.message ?? e}`; } }
+		else if (typeof B.快存 === 'function') { const w = B.快存(家); 造 = `B.快存 ⇒ ${JSON.stringify(w)}`; }
+		console.log(`    （★P1-3 读数：造档途径=${造}｜宿主 has(${家})=${(typeof 宿主?.has === 'function') ? 宿主.has(家) : '（无 has）'}）`);
+		if (typeof 宿主?.has === 'function') {
+			ok76(B.快存有位(家) === (宿主.has(家) === true),
+				`★P1-3：读面须与宿主 \`has\` **逐值一致**（读面 ${B.快存有位(家)}／宿主 ${宿主.has(家)}）`);
+		} else {
+			console.log('    （★P1-3 读数：宿主无 `has` ⇒ 本格不作数 ✗ 如实记 ✓）');
+		}
+		/* ★UI 面：页脚**确有**载入链（✗ 只在文档里 ✓） */
+		const twee = path.join(process.cwd(), 'stories/babel/src/ui/ui.twee');
+		const 源 = fs.existsSync(twee) ? fs.readFileSync(twee, 'utf8') : '';
+		ok76(/<<link "载入快存">>/.test(源) && /BABEL\.快读\(\)/.test(源), '★P1-3：页脚**确有**「载入快存」链（且走 `快读` ✓）');
+		ok76(/<<if setup\.BABEL\.快存有位\(\)>>/.test(源), '★P1-3：该链**受 快存有位 门控**（✗ 无档也显示 ✓）');
+	} finally {
+		if (槽存 !== null) { try { const o = JSON.parse(槽存); if (o && R.save?.slots?.set) { /* ★尽力复原（✗ 吞） */ } } catch (e) { /* ✗ 吞 */ } }
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 76 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（地图 CSS 归位样式表／快存可载入）`);
+}
+
 printSummary();

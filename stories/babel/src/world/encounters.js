@@ -332,6 +332,17 @@ setup.BABEL.页脚快存 = () => {
 	return r;
 };
 
+/* ★线上 P1-3（writer 实测 · `sgstory-books-live-critique-2026-10-07`）：**快存写出了记录，
+ *   但存档菜单无法载入它**（「无快读口」✗）。★本函数＝**唯一的「快存槽有没有档」判据**，
+ *   供 UI 决定要不要显示「载入快存」入口 ⇒ ★与 `快读` **同源**（同用 `has`，✗ 不各写一份 ✓）。
+ *   ★为何必须 `has`：真宿主的 `isEmpty(i)` **一旦有过任何写入**就对**所有号**返回假（空槽亦然）
+ *   ⇒ 拿它当空否判据会把空槽当有档（`#183` 调查所得 ✓）。`has` 缺席才退回 `isEmpty`（明知不可靠）✓。 */
+setup.BABEL.快存有位 = (slot = 槽位.快存) => {
+	const S = 宿主槽();
+	if (typeof S?.has === 'function') return S.has(slot) === true;
+	if (typeof S?.isEmpty === 'function') return S.isEmpty(slot) !== true;   // ★更老的宿主：不可靠，故仅作回落 ✓
+	return false;
+};
 setup.BABEL.快读 = (slot = 槽位.快存) => {
 	const S = 宿主槽();
 	if (typeof S?.load !== 'function' || typeof S.isEmpty !== 'function') {
