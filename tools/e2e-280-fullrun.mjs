@@ -311,7 +311,9 @@ try {
          *   ⇒ ★再让主线点「走向上行门」✓ —— ★实测：★第二次返城落在一个**只有「回共炉」**的面 ✓（✗ 探索面 ✓）。 */
         for (let k = 0; k < 3; k++) {
           const L = await 段内();
-          if (L.some(是移动项)) break;
+          /* ★判据（★实测得来）：★「**向上类**出口」才算回到正路 ✗ 泛 `是移动项` ✓
+           *   —— ★因为 `穿过单向门，走进七名河（首次出城教程）` **也**是移动项 ✗，★但它会**再回 W09** ✓。 */
+          if (L.some((x) => /^走向上行门|^向上|^前进|^去第/.test(x))) break;
           const 回 = p.locator('#passages a,#passages button').filter({ hasText: /回共炉|再作准备|歇一歇|了解这座城/ });
           if (await 回.count() === 0) break;
           await 回.first().click(); await p.waitForTimeout(1200); await 清到达拍();
