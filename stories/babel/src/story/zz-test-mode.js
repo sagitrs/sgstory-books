@@ -97,6 +97,10 @@
 		const C = setup.RPG.Character;
 		const 玩家 = new C({
 			name: '测试者',
+			/* ★`properties: ['player']` —— **交互通路**的成文前提（引擎的回合问的是 `attacker.choice`）：
+			 *   ✗ 带它 ⇒ 本角色会被当 **AI 行动者**走在自动环里 ⇒ 玩家侧**永远不被问**、`submitBattleAction`
+			 *   也无处可去（实测：交互路一开就自己跑到 `战果: down` ✗ —— 外部提交的端到端格正是这样抓到的 ✓）。 */
+			properties: ['player'],
 			hp: 12, maxHp: 12, bab: 1,
 			stats: setup.DND3?.stats?.({ str: 12, dex: 12, con: 12, int: 10, wis: 10, cha: 10, ac: 10 }) ?? {},
 			items: [],
