@@ -396,14 +396,16 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 				 *   ★修政（领队 2026-10-08 裁）：**允许战中读档**（玩家正当 ✓）⇒ 在本回调**一并清生命周期**；
 				 *     保存资格**随还原后的 `State` 复原**（存档门读 `战中` ✓ ⇒ ✗ 另立一份判据 ✓）。
 				 *   ★**清两面**（同 `#491` 的「非 `State` 面」口径 ✓）：故事侧**模块旗** ＋ 引擎侧**登记面** ✓。 */
-				try { setup.BABEL.战中 = false; } catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
+				/* ★引擎侧**走公开口**（✗ 由本仓直写引擎内部面 ✓ —— 领队 2026-10-08「**乙·引擎收编**」裁 ✓）：
+				 *   `RPG.Battle.cancel(reason)`（`sgstory#2053` ✓，本 pin `6bcad3e7` 起在位 ✓）——
+				 *   它清 `current`／本局按会话登记 ＋ 记 `RPG.Battle.弃局 = {reason, 有局}` ✓（幂等 ✓ 无局无害 ✓ ✗ 抛 ✓）。
+				 *   ★能力探测（同本档 `refreshPanels?.` 之旨 ✓）：旧 pin 上该口不存在 ⇒ **静默跳过**并明账 ✓（✗ 崩 ✓）。 */
 				try {
 					const 战 = setup?.RPG?.Battle;
-					if (战) {
-						战.current = null;
-						if (战.按会话 && typeof 战.按会话.clear === 'function') 战.按会话.clear();
-					}
-				} catch (e) { /* 同上 */ }
+					if (typeof 战?.cancel === 'function') 战.cancel('读档离开战斗');
+					else console.warn('[BABEL] 引擎无 `Battle.cancel`（旧 pin）⇒ 弃局登记面未清（明账，✗ 静默当已清）');
+				} catch (e) { /* 无宿主（无头自检）⇒ 略；口自身 ✗ 抛（契约 ✓），此处只兜装置 ✓ */ }
+				try { setup.BABEL.战中 = false; } catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
 				try { SugarCube.Engine.show(); } catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
 			},
 			(e) => { R.perform(`✗ 读档失败：${e?.message ?? e}`); },

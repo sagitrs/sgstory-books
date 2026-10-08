@@ -6739,7 +6739,7 @@ head('83. 线上 P1 · `books#402` ③：战中快读 ⇒ **清战斗生命周�
 			load: () => new Promise((res, rej) => { 解83 = res; 拒83 = rej; }) };
 		SugarCube.Save = { slots: 桩表 };
 		SugarCube.Engine.show = () => {};
-		const 假斗 = { 假: true };
+		const 假斗 = { 假: true, 会话: 't-83' };   // ★夹具须带会话键：`cancel` 只删**本局**在该键下的登记 ✓（我第一版漏 ⇒ 按会话面清不掉 ✗ 是**夹具**不准 ✗ 不是契约错 ✓）
 		/* ② 前置：把「战中」两面**都立起来**（✗ 否则下面的判据是恒真式 ✓） */
 		B83.战中 = true;
 		if (R?.Battle) { R.Battle.current = 假斗; R.Battle.按会话?.set?.('t-83', 假斗); }
@@ -6750,8 +6750,10 @@ head('83. 线上 P1 · `books#402` ③：战中快读 ⇒ **清战斗生命周�
 		解83?.(true);
 		for (let w = 0; w < 200 && B83.战中 === true; w++) await new Promise((r) => setTimeout(r, 2));
 		ok83(B83.战中 === false, `★★③承重：载入成功后 **B.战中 须为 false**（✗ 回城正文＋战限制混合态 ⇒ 快存标禁／战中提示／存档 disabled；实得 ${B83.战中}）`);
-		ok83(R?.Battle?.current == null, `★★③承重：引擎**登记面 current 须清**（实得 ${JSON.stringify(R?.Battle?.current)}）`);
+		ok83(R?.Battle?.current == null, `★★③承重：引擎**登记面 current 须清**（走 Battle.cancel ✓；实得 ${JSON.stringify(R?.Battle?.current)}）`);
 		ok83(!(R?.Battle?.按会话?.size > 0), `★★③承重：按会话登记面须清（实得 ${R?.Battle?.按会话?.size}）`);
+		ok83(R?.Battle?.弃局?.reason === '读档离开战斗' && R?.Battle?.弃局?.有局 === true,
+			`★★③承重：须留**可读的弃局态**（\弃局 = {reason, 有局}\ ✓ ⇒ UI 可判「本场是弃局而非战终」；实得 ${JSON.stringify(R?.Battle?.弃局)}）`);
 		/* ④ 反向：载入**失败** ⇒ **✗ 清**（失败＝没换世界 ⇒ 战还在打 ✓） */
 		B83.战中 = true; if (R?.Battle) R.Battle.current = 假斗;
 		拒83?.(new Error('坏档83'));
