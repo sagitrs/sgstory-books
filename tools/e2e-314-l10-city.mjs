@@ -191,7 +191,7 @@ try {
 	await check('真实槽保存资格和双袋', 'S.Save.slots.save(5,"L10 寄存夹具"); return S.Save.slots.has(5);');
 	const beforeReload = loads; await send('Page.reload'); await wait(() => loads > beforeReload, '实际页面刷新'); await atPassage('探索');
 	await check('页面刷新恢复城市域与原件寄存', 'return V.babelL10.sold===80&&V.babelL10.resident&&V.babelL10Storage[0].charges===6&&P.items.filter(s=>s.id==="pick").length===1;');
-	await click('走向上行门'); await click('穿过单向门');
+	await click('走向上行门'); await click('走进七名河');
 	await wait(() => evaluate('return B.map.current==="L11";'), '证后正常上行');
 	const beforeReturn = await evaluate('return JSON.stringify({sold:V.babelL10.sold,storage:V.babelL10Storage,events:V.span1Events,arc:V.span1Arc});');
 	await click('回城卷轴'); await wait(() => evaluate('return B.map.current==="L10-camp"&&B.手上有("return-scroll")===0;'), '付费卷轴返程与扣次');
@@ -214,11 +214,11 @@ try {
 	await check('真实旧形往返只补缺，不追贡献／清农田／改原背包', `return V.babelL10.sold===0&&V.babelL10.resident===false&&Array.isArray(V.babelL10Storage)&&V.babelL10Storage.length===0&&V.span1Farms===1&&JSON.stringify(P.items)===${JSON.stringify(legacyInventory)};`);
 	const legacyFarm = await evaluate('return {farms:V.span1Farms,harvests:V.span1Harvests??0,rations:R.heldTotal(P,"ration")??0,otherItems:JSON.stringify(P.items.filter(s=>s.id!=="ration")),city:JSON.stringify(V.babelL10),storage:JSON.stringify(V.babelL10Storage),time:B.时间账()};');
 	await click('前往第 10 层 · Ration House'); await atPassage('探索');
-	await check('真实旧档有田，证前兼容收尾菜单可见', 'const host=document.querySelector("#passages .passage:last-of-type"); return V.span1Farms===1&&!V.babelL10.resident&&[...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获旧档已有农田"));');
-	await click('收获旧档已有农田');
+	await check('真实旧档有田，证前兼容收尾菜单可见', 'const host=document.querySelector("#passages .passage:last-of-type"); return V.span1Farms===1&&!V.babelL10.resident&&[...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获已有农田"));');
+	await click('收获已有农田');
 	await wait(() => evaluate('return V.span1Farms===0;'), '旧田收空');
 	await check('真实点击收尾向玩家投粮，不改资格／其他原件', `const x=${JSON.stringify(legacyFarm)}; return V.span1Farms===0&&V.span1Harvests===x.harvests+x.farms&&(R.heldTotal(P,"ration")??0)===x.rations+x.farms&&JSON.stringify(P.items.filter(s=>s.id!=="ration"))===x.otherItems&&JSON.stringify(V.babelL10)===x.city&&JSON.stringify(V.babelL10Storage)===x.storage&&B.时间账()===x.time;`);
-	await check('旧田收完菜单隐藏，重复收获拒绝且不增粮', 'const host=document.querySelector("#passages .passage:last-of-type"),before=JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()}); return ![...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获旧档已有农田"))&&R.harvest(P)===false&&JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()})===before;');
+	await check('旧田收完菜单隐藏，重复收获拒绝且不增粮', 'const host=document.querySelector("#passages .passage:last-of-type"),before=JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()}); return ![...host.querySelectorAll("a,button")].some(x=>x.textContent.trim().startsWith("收获已有农田"))&&R.harvest(P)===false&&JSON.stringify({inventory:P.items,farms:V.span1Farms,harvests:V.span1Harvests,city:V.babelL10,storage:V.babelL10Storage,time:B.时间账()})===before;');
 	await evaluate('return (async()=>{ await S.Save.slots.load(5); S.Engine.show(); })();'); await atPassage('探索');
 	await click('谈论正式留居'); await atPassage('L10 留居'); await click('考虑正式留居'); await atPassage('L10 留居确认');
 	await click('最终确认：留在共炉'); await atPassage('留在共炉');

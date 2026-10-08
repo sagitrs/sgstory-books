@@ -246,7 +246,7 @@ const build = () => {
 		'证前可出售常见资源、买回城卷轴；证后开放稳定补给。装备、药品、口粮转卖不计贡献，店里不卖本店计贡献的原料。', [
 		{ text: '出售资源（目录与价格均为候选）', action: () => visit('sale') },
 		{ text: '购买补给／回城卷轴', action: () => visit('supply') },
-		{ text: '收获旧档已有农田（兼容收尾，不计资格）', when: () => D.farmCount() > 0,
+		{ text: '收获已有农田（不计资格）', when: () => D.farmCount() > 0,
 			action: () => R.harvest(D.Player) },
 	]);
 	add(locations.workshop, '第 10 层 · Ember Workshop（余烬工坊）',

@@ -35,7 +35,7 @@ head('L10 最简城市：交易、资格、服务、迁移与独立终局');
 		ok(Object.keys(C.cfg.sell).every((id) => !Object.hasOwn(C.cfg.buy, id)), '卖同类原料可循环刷贡献');
 
 		reset(C.locations.ration);
-		const farmLabel = '收获旧档已有农田（兼容收尾，不计资格）';
+		const farmLabel = '收获已有农田（不计资格）';
 		const farmLocation = map.locations.get(C.locations.ration);
 		const farmVisible = () => farmLocation.availableActions.some((a) => a.text === farmLabel);
 		const farmAction = farmLocation.actions.find((a) => a.text === farmLabel);

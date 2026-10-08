@@ -123,7 +123,7 @@ map.addLocation(new R.Location({
 		 *   **无视返回值**无条件印「你换下旧的…」⇒ 玩家同时看到两句相反的话。修法＝文案与**实际结果同源**：
 		 *   读 `equippedIn('shield')`（返回**对象** ⇒ 比 `.id`）⇒ 印「换成了」或「收进背包（槽被占）」✓ */
 		{ text: '拿一面小圆盾（AC +1）', when: () => !R.has('buckler'), action: () => { R.give('buckler'); R.equip('buckler'); if (RPG.equippedIn('shield')?.id === 'buckler') R.perform('你把小圆盾扣在左臂上。'); } },
-		{ text: '换一面重木盾（AC +2，代价更沉）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); if (RPG.equippedIn('shield')?.id === 'heavy-wooden-shield') R.perform('你换下旧的，扛起一面重木盾。'); } },
+		{ text: '换重木盾（AC +2，更重）', when: () => !R.has('heavy-wooden-shield'), action: () => { R.give('heavy-wooden-shield'); R.equip('heavy-wooden-shield'); if (RPG.equippedIn('shield')?.id === 'heavy-wooden-shield') R.perform('你换下旧的，扛起一面重木盾。'); } },
 	].map(setup.BABEL.只给活人),
 }));
 map.addLocation(new R.Location({

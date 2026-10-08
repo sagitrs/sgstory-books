@@ -180,7 +180,7 @@ try {
 			const active = page.locator('#passages .passage:not(.passage-out)');
 			const click = async text => { await active.getByText(text, { exact: true }).click(); inputs.push(text); };
 			for (const text of ['战斗教学', '站起来，活动一下手脚', '（到达）第 1 层 · 苏醒之地 —— 继续',
-				'拾起地上的长剑', '遭遇（往上走之前，先看有什么挡路）', '迎战']) await click(text);
+				'拾起地上的长剑', '遭遇（先看有什么挡路）', '迎战']) await click(text);
 			let won = false;
 			for (let i = 0; i < 4; i++) {
 				await click('用已装备长剑攻击');
@@ -194,7 +194,7 @@ try {
 					error.setup = true; throw error;
 				}
 			for (const text of ['收下', '继续探索', '采集（碎石堆｜一次采净 6 件）', '向上，去第 2 层',
-				'（到达）第 2 层 · 倒木坡 —— 继续', '遭遇（往上走之前，先看有什么挡路）', '迎战', '空手打击']) await click(text);
+				'（到达）第 2 层 · 倒木坡 —— 继续', '遭遇（先看有什么挡路）', '迎战', '空手打击']) await click(text);
 			await active.getByText('精英·獾（敌方）', { exact: true }).waitFor();
 			entry.prerequisite = await page.evaluate(() => ({ position: SugarCube.setup.BABEL.map.current,
 				combatBody: document.body.classList.contains('战中'), run: SugarCube.State.variables.babelRun }));

@@ -286,10 +286,10 @@ const 采集形 = /^采集|采集（|一次采净|翻找|找采集点/;
 const 真打一场 = async (s, { 保留注入 = false } = {}) => {
 	/* ★★★★②-1 追平（`#342`）：进层后**首屏第一项**就是**到达停**那一拍 ——
 	 *   实测 `playPassage(探索)` 后 `.choice-box` ＝
-	 *   `["（到达）第 1 层 · 苏醒之地 —— 继续","拾起地上的长剑","遭遇（往上走之前，先看有什么挡路）"]`
+	 *   `["（到达）第 1 层 · 苏醒之地 —— 继续","拾起地上的长剑","遭遇（先看有什么挡路）"]`
 	 *   ⇒ ★先点掉它（幂等账 ⇒ 每层只此一次）✓ ✗ 不点 ⇒ 模态压在选项面之上。 */
 	await 清到达拍(s);
-	if (!choiceButtons(s).some((t) => /遭遇（往上走之前/.test(t))) return false;
+	if (!choiceButtons(s).some((t) => /遭遇（先看有什么挡路/.test(t))) return false;
 	/* ★★★⑩ 同族：**「拾起」本身就把剑装备上了**（`equipped: true`）；★**再点一下武器名＝卸装** ✗。
 	 *   ⑩（`itemsInBag`）后菜单**只留在手上的武器** ⇒ ★**没装备 ⇒ 只剩空手 ⇒ 打不赢 ⇒ 阶段永远清不掉**（本席实测）。 */
 	/* ★领队预告那条：战斗掷骰会把上一臂的 `setSequence([...])` **抽干** ✗（引擎明说不静默回退真随机）。
@@ -311,7 +311,7 @@ const 真打一场 = async (s, { 保留注入 = false } = {}) => {
 	if (choiceButtons(s).some((t) => /^拾起/.test(t))) {
 		await driveButton(s, /^拾起/, { read: () => choiceButtons(s).join('|') });
 	}
-	await driveButton(s, /遭遇（往上走之前/, { read: choiceButtons, expectNavigate: '遭遇战' });
+	await driveButton(s, /遭遇（先看有什么挡路/, { read: choiceButtons, expectNavigate: '遭遇战' });
 	/* ★★★★②-2 追平（`#342`，本席**实测定案**）：`:: 遭遇战` 的两条入口（「迎战」／「查看」）是 `<<link>>`
 	 *   ⇒ ★落成 `#passages` 里的 `<a class="link-internal macro-link">`，**✗ 不是 `.choice-box button`**
 	 *     （实测：到达 `遭遇战` 段落时 `.choice-box` 数 ＝ **0**、`choiceButtons` ＝ `[]`）。
@@ -535,9 +535,9 @@ const 清阶段再向上 = async (s, re, 上限 = 6, { 留到达拍 = false, 至
 	 *   必须**停在未战层上读**，✗ 不能被本函数尾段那一场「真打」先把层打成已战。
 	 *   ⇒ 新增 `不打到达层`（面 M 那臂用）。★与 `留到达拍` **同族但不同因**：
 	 *     前者只因「尾段这一场」而存在；后者同时还要保住那一拍（②-1 的臂用）。 */
-	if (!留到达拍 && !不打到达层 && choiceButtons(s).some((t) => /基础遭遇|遭遇（往上走之前/.test(t))) {
+	if (!留到达拍 && !不打到达层 && choiceButtons(s).some((t) => /基础遭遇|遭遇（先看有什么挡路/.test(t))) {
 		await 稳打一场(s);
-		const 仍在 = choiceButtons(s).some((t) => /基础遭遇|遭遇（往上走之前/.test(t));
+		const 仍在 = choiceButtons(s).some((t) => /基础遭遇|遭遇（先看有什么挡路/.test(t));
 		if (仍在) {
 			/* ★抽签锁定的「第二场」在基础战之外 ⇒ 再打一场 ✓ */
 			await 稳打一场(s);
@@ -1037,7 +1037,7 @@ if (has('--selftest')) {
 	const 事件按钮 = (x) => choiceButtons(x).filter((t) => /打开墙角的箱子|^采集（|再打一场/.test(t));
 	const L5账 = s.SC.State.variables.span1Events?.L5 ?? null;
 	const M抽 = L5账?.抽中 ?? null;
-	const M遭 = () => choiceButtons(s).some((t) => t.includes('遭遇（往上走之前'));
+	const M遭 = () => choiceButtons(s).some((t) => t.includes('遭遇（先看有什么挡路'));
 	ok(JSON.stringify(M抽) === JSON.stringify(['battle', 'chest']),
 		`★面 M：注入随机源后 L5 的抽中与手算不符（手算 ['battle','chest']；实得 ${JSON.stringify(M抽)}）`);
 	/* ── M-a：**未战层**（fresh）── */
@@ -1173,9 +1173,9 @@ if (has('--selftest')) {
 	 * 两向＝把同一读数放到**非头目层 L8** 作对照（那里两条都在）—— ✗ 只断「只有一条」
 	 *   （那可能是出口整体坏了、或地图没画出来）。⚠ 本面只走 L8↔L9，L10+ 的衔接面不动。 */
 	/* ⚠ 顿号别写进正则：本仓的出口文案用**全角逗号**（`向上，去第 9 层`），首版写成 `向上\u3001` ⇒ 漏读（本席实测撞到）。 */
-	const 出口按钮 = (x) => choiceButtons(x).filter((t2) => /^(前进|向上|向下)|钻进光里|退回第|走进那道光/.test(t2));
+	const 出口按钮 = (x) => choiceButtons(x).filter((t2) => /^(前进|向上|向下)|第 10 层|退回第|走进那道光/.test(t2));
 	/* ★★★`#342`（**dev-10 现行契约 spec · 领队转达 2026-10-05**）—— 本席先前误读成「产品冲突」，✗ 不是：
-	 *   ① `moveTo('L9')` ＝ **战场**：未胜 ⇒ **0 条**；已过 ⇒ **恰 1 条「前进（钻进光里·第10层）」**
+	 *   ① `moveTo('L9')` ＝ **战场**：未胜 ⇒ **0 条**；已过 ⇒ **恰 1 条「前进（第 10 层）」**
 	 *   ② `moveTo('L9-camp')` ＝ **准备区**：**恒恰 1 条「走进那道光」**（✗ 回 L8 ＝ 裁 2 摘）
 	 *   ③ ★本档原先的 `进层读(s,'L9')` 走的**入层口**是 `L9 → L9-camp`（`入层口('L9')` ＝ `'L9-camp'`）
 	 *      ⇒ 实际读到的是**准备区** ⇒ ★**读数没错、期望旧**（「走进那道光」那一条正是准备区的）。
@@ -1198,7 +1198,7 @@ if (has('--selftest')) {
 	await 进层读(s, 'L8');
 	const O8 = 出口按钮(s);
 	ok(O8.length === 1, `★面 O：对照层 L8 的出口不是 **1** 条（${JSON.stringify(O8)}）⇒ 出口面本身坏了，本面读数不成立`);
-	/* ── ① 战场（`moveTo('L9')`）：未胜 0 条 ⇒ 已过恰 1 条「前进（钻进光里·第10层）」── */
+	/* ── ① 战场（`moveTo('L9')`）：未胜 0 条 ⇒ 已过恰 1 条「前进（第 10 层）」── */
 	清L9过();
 	s.SC.setup.RPG.rng.setSequence([0.99, 0.99, 0.99]);       // 抽签两格 + 危害一格（皆非命中）
 	try { s.SC.setup.BABEL.map.moveTo('L9'); } catch (e) { /* ✗ 吞 */ }
@@ -1209,7 +1209,7 @@ if (has('--selftest')) {
 	await playPassage(s, '探索'); await tick(250);
 	const O战已胜 = 出口按钮(s);
 	ok(O战未胜.length === 0, `★面 O·战场：未过头目时 L9 **一条出口都不出**（实得 ${JSON.stringify(O战未胜)}）—— 硬门失守`);
-	ok(O战已胜.length === 1 && /前进/.test(O战已胜[0] ?? ''), `★面 O·战场：已过头目后须**恰 1 条「前进（钻进光里·第10层）」**（实得 ${JSON.stringify(O战已胜)}）`
+	ok(O战已胜.length === 1 && /前进/.test(O战已胜[0] ?? ''), `★面 O·战场：已过头目后须**恰 1 条「前进（第 10 层）」**（实得 ${JSON.stringify(O战已胜)}）`
 		+ `；★该屏**全部可点** ＝ ${S(choiceButtons(s))}｜已战账 ＝ ${读已战(s)}`);
 	清L9过();
 	/* ── ② 准备区（`moveTo('L9-camp')`）：恒恰 1 条「走进那道光」── */
