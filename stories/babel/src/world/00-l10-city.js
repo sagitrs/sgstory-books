@@ -88,11 +88,24 @@ const clinic = () => {
 	const p = D.Player;
 	if (p.hp >= p.maxHp) return reject('HP 已满，不收这笔恢复费；创伤另行诊疗。');
 	if (!pay(cfg.clinicPrice)) return reject('钱不足；未收费、未治疗。');
-	p.heal(cfg.clinicHeal); // 候选城市照护效果；不是复活，也不是 SRD 的稳定伤者规则。
+	/* ★`books#200` P0 同族（`books#402` 修派）：**文案取实回值**（✗ 名义 `cfg.clinicHeal`）——
+	 *   `Character#heal(n)` 返回**真增量**（引擎 `src/core/20-character.js`：`min(maxHp, hp+n) - hp`）
+	 *   ⇒ 近满被上限夹过时（差 2 点满 ⇒ 实回 2 而名义 4）印名义就是**假读数**。
+	 *   ⚠ 满血已在**上一行**被拒 ⇒ 此处实回 ≥ 1（✗ 不会出现「恢复 0」的文案）。 */
+	const 实回 = p.heal(cfg.clinicHeal); // 候选城市照护效果；不是复活，也不是 SRD 的稳定伤者规则。
 	time(cfg.careMinutes);
-	R.perform(`接受活人照护，HP 恢复 ${cfg.clinicHeal}（不超过上限）；创伤、结构缺失和机械损坏不因此消失。`);
+	R.perform(`接受活人照护，HP 恢复 ${实回}（不超过上限）；创伤、结构缺失和机械损坏不因此消失。`);
 	refresh();
 	return true;
+};
+/** **医所动作的标签**：其 N 同样取**实回预计** `min(clinicHeal, maxHp - hp)`（✗ 名义 —— 同一类的假读数）。
+ *  满血 ⇒ 标「当前已满」（✗ 仍印 4：那与「点了会治 4 点」同形）。 */
+const 活人照护 = () => {
+	const p = D.Player;
+	const 可回 = Math.min(cfg.clinicHeal, Math.max(0, Number(p.maxHp ?? 0) - Number(p.hp ?? 0)));
+	return 可回 > 0
+		? `活人照护：恢复 ${可回} HP（${cfg.clinicPrice} 枚；候选）`
+		: `活人照护（当前已满；${cfg.clinicPrice} 枚；候选）`;
 };
 const trauma = (id) => {
 	if (!permit(locations.infirmary, true) || !D.Traumas[id] || !D.Player.contains(id)) return false;
@@ -244,7 +257,7 @@ const build = () => {
 	add(locations.infirmary, '第 10 层 · Lamplight Infirmary（灯下医所）',
 		'照护活人，不复活真死者。HP 恢复、选定创伤、缺肢与机械损坏是不同问题；求医与付钱不代表同意改变身体或交出自由。证前可在共炉保底休整。', [
 		{ text: '询问治疗边界', action: () => R.perform('共炉保底休整不收费。居民诊疗需要付费；创伤按各自治疗 DC 检定，失败保留。医院不能恢复已死亡的你，也不因贫困强制卖身。') },
-		{ text: () => `活人照护：恢复 ${cfg.clinicHeal} HP（${cfg.clinicPrice} 枚；候选）`, when: resident, action: clinic },
+		{ text: () => 活人照护(), when: resident, action: clinic },
 		{ text: () => `选一条创伤诊疗（${cfg.traumaPrice} 枚／次；成功不保证；候选）`, traumaCare: true, when: resident,
 			action: () => visit('trauma') },
 	]);
