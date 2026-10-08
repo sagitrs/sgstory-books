@@ -31,7 +31,13 @@ try {
 	ok(空(槽号.手动), '★导航凭空写进了手动槽 5 号');
 	/* ② 整备点自动写落 4 号（点真按钮 ⇒ 走真动作） */
 	B.map.moveTo('L8'); await playPassage(s, '探索'); await new Promise((r) => setTimeout(r, 200));
-	const 钮 = [...s.doc.querySelectorAll('button')].find((e) => /泡进温泉/.test(e.textContent));
+	/* ★★修（T 面 · 本笔记）：★到位后**先清「（到达）」那一拍** ✓ ——
+	 *   ★因（我实读出来）：★`moveTo('L8')` 之后落在**到达拍**上（段内只有 `["快存","（到达）第 8 层 · 盐霜壁 —— 继续","打开地图"]` ✓）
+	 *     ⇒ ★**温泉动作尚未挂出** ✗ ⇒ ★旧形只查 `button` 且**✗ 清到达拍** ⇒ ★**恒红**（`★L8 找不到温泉按钮（界面变了？）` ✓）
+	 *   ★此形与**本席其余臂同**（`清到达拍` ✓）⇒ ★**是**装置陈旧**，✗ 产品缺陷** ✓（★我实测：补这一脚 ⇒ **rc=0** ✓）。 */
+	const 到 = [...s.doc.querySelectorAll('#passages button, #passages a')].find((e) => /^（到达）/.test((e.textContent || '').trim()));
+	if (到) { 到.click(); await new Promise((r) => setTimeout(r, 300)); }
+	const 钮 = [...s.doc.querySelectorAll('#passages button, #passages a')].find((e) => /泡进温泉/.test(e.textContent));
 	ok(钮 != null, '★L8 找不到温泉按钮（界面变了？）');
 	钮?.click(); await new Promise((r) => setTimeout(r, 300));
 	ok(!空(槽号.战前保底), '★点温泉后 4 号仍空 ⇒ 整备点自动写没落');
