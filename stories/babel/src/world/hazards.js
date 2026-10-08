@@ -35,7 +35,9 @@ const eventsOf = () => (State.variables.span1Events ??= {});
  *  ⚠ 自 miss 也封闭之后，**任何一次结算都会建键**（三态）⇒ 上述次序从「命中才咬」变成**无条件承重**。 */
 const 危害账 = (layerId) => (eventsOf()[layerId] ??= {});
 /** 本层本局是否已结算过（**只读**，✗ 建键）；命中与 miss **皆算已遇**。 */
-const 已遇 = (layerId) => eventsOf()[layerId]?.危害 != null;
+/* ★只读 ✓：本函数自己那行注就写着「读一律用 `?.`，✗ 掷前造键」⇒ 照办（✗ 经会建键的 `eventsOf()`）
+ *   —— `books#536` ⑦（终裁 §四）✓。 */
+const 已遇 = (layerId) => State.variables.span1Events?.[layerId]?.危害 != null;
 /** 该层是否配了危害（不在表内 ⇒ 无危害）。 */
 const 有危害 = (layerId) => 危害表[layerId] != null;
 
