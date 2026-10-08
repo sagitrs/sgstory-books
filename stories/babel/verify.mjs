@@ -6593,6 +6593,7 @@ head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 78 组：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${本组判据} 条判据**（战斗节点须真进战斗＋交互悬着／域记账口径）`);
 }
 
+head('80. 线上 P1 · `books#402` ②：W09 战斗结账 ⇒ 段落层重画（✗ 停在开战前的选项）');
 {
 	const 组前失败 = fails.length;
 	let 本组判据 = 0;
@@ -6672,71 +6673,6 @@ head('78. 线上 P1-4：战斗节点「应战」须真进战斗（✗ 静默空�
 			? `全绿 —— **${本组判据} 条判据**（结账⇒重画／未胜⇒不重画／不越权／交付后刷页脚）`
 			: `★本组 ${本组失败} 处失败`}`);
 	}
-}
-
-/* ── 81. 线上 P1 · `books#402` ①：**快读 ⇒ 段落层重画**（✗ 只还原 State）──────────────────
- *
- * 病（writer-2 线上实测 128–130 · 2026-10-08）：在回访后的 W09 E0 点页脚「载入快存」⇒ 等 4 秒
- *   仍显示 W09 正文／位置；「收起地图」后页脚变成了快存里的「共炉／盾未装」✓ 而**正文动作仍停在
- *   W09 E0** ✗ ⇒ 两径分裂。
- * 根因（定因到 file:line）：SugarCube `vendor/format.js` 的 `unmarshal()` 只做 `onLoadHandlers`
- *   ＋ `State.unmarshalForSave()` —— **✗ 不调 `Engine.play`／`Engine.show`**；侧栏存档面板那条路
- *   **自己有** `.then(Engine.show)`，而故事侧 `setup.BABEL.快读()`（`world/encounters.js`）原
- *   **丢了 `S.load` 的 promise** ⇒ State 还原了、段落层与页脚都停在**载入前**那一屏。
- * 修：载入成功后走**统一收尾**：`Engine.show()`（体＝`Engine.play(State.passage, true)`，与面板那条
- *   同一条引擎口）⇒ 重画本屏；其 `:passagedisplay` 收口再刷面板（位置／装备／库存一同跟上）。
- * 断什么（★真值：宿主槽桩（有档 · `load` 回 promise）＋ 桩 `Engine.show` 计次）：
- *   ① 前置：有档 ⇒ `快读` 接受且真读了该槽；
- *   ② **promise 未 resolve ⇒ ✗ 已重画**（异步契约）；
- *   ③ **resolve ⇒ 恰重画一次**（★承重）；
- *   ④ **拒 ⇒ ✗ 重画 ＋ 可读出声**（✗ 静默丢失败）。
- * 刀（记在提交信息）：摸掉 `快读` 的 `.then(Engine.show)` ⇒ ③ 红（并连带 ④ 的「出声」半边）。
- * ★明账：本笔**不新加**刷面板调用 —— 页脚那一半由 `Engine.show()` 的 `:passagedisplay` 收口驱动
- *   （既有格⑲已守），故本组只断**段落层**那半；两半各在真浏览器上实证（PR 读数）。
- */
-head('81. 线上 P1 · `books#402` ①：快读 ⇒ 段落层重画（✗ 只还原 State）');
-{
-	const 组前失败 = fails.length;
-	let 本组判据 = 0;
-	const ok81 = (c, m) => { 本组判据++; ok(c, m); };
-	const B81 = setup.BABEL;
-	const 旧Save = SugarCube.Save, 旧Show = SugarCube.Engine.show, 原Perform = R.perform;
-	try {
-		ok81(typeof B81?.快读 === 'function' && !!B81?.槽位, '前置：`快读`／`槽位` 在位');
-		/* ── 真值桩：宿主槽（有档 · load 回 promise）＋ 桩 Engine.show 计次 ── */
-		const 载过 = []; let 解 = null, 拒 = null;
-		SugarCube.Save = { slots: {
-			has: () => true, isEmpty: () => false, get: () => ({}),
-			load: (i) => { 载过.push(i); return new Promise((res, rej) => { 解 = res; 拒 = rej; }); },
-		} };
-		let show次 = 0;
-		SugarCube.Engine.show = () => { show次++; };
-		const 言 = [];
-		R.perform = (x) => { 言.push(String(x)); };
-		/* ── ②③ 成功路 ── */
-		const 接 = B81.快读(B81.槽位.快存);
-		ok81(接 === true, '★前置：有档 ⇒ 快读须接受');
-		ok81(载过.length === 1 && 载过[0] === B81.槽位.快存, `★前置：真读了快存槽（实得 ${JSON.stringify(载过)}）`);
-		ok81(show次 === 0, `★②promise 未 resolve ⇒ **不得**已重画（异步契约；实得 ${show次}）`);
-		解?.(true);
-		for (let w = 0; w < 200 && show次 === 0; w++) await new Promise((r) => setTimeout(r, 2));
-		ok81(show次 === 1, `★★③承重：载入成功后须**重画本屏**（Engine.show —— 与侧栏存档面板同一条引擎口；✗ 只还原 State ⇒ 屏上停旧）实得 ${show次} 次`);
-		/* ── ④ 失败路：✗ 重画 ＋ 可读出声 ── */
-		show次 = 0; 言.length = 0;
-		B81.快读(B81.槽位.快存);
-		拒?.(new Error('坏档'));
-		for (let w = 0; w < 200 && 言.length === 0; w++) await new Promise((r) => setTimeout(r, 2));
-		ok81(show次 === 0, `★④反向：载入失败 ⇒ **✗ 重画**（实得 ${show次}）`);
-		ok81(言.some((x) => /读档失败/.test(x)), `★④反向：载入失败须**可读出声**（✗ 静默丢失败；实得 ${JSON.stringify(言)}）`);
-	} finally {
-		R.perform = 原Perform;
-		if (旧Save === undefined) delete SugarCube.Save; else SugarCube.Save = 旧Save;
-		SugarCube.Engine.show = 旧Show;
-	}
-	const 本组失败 = fails.length - 组前失败;
-	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 81 组：${本组失败 === 0
-		? `全绿 —— **${本组判据} 条判据**（载入成功⇒恰重画一次／未 resolve 前不重画／失败⇒不重画＋出声）`
-		: `★本组 ${本组失败} 处失败`}`);
 }
 
 printSummary();
