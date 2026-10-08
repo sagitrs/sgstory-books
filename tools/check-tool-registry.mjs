@@ -51,6 +51,7 @@ export const 豁免 = Object.freeze({
   'e2e-280-fullrun.mjs': '整局单跑（约 4 分钟）★**候议**是否进夜窗（`#295` 池 B 首笔批明示「候议」）',
   'e2e-280-firstload.mjs': '冒烟候选之外（jsdom 面另有 `e2e-harness` 产物级冒烟）⇒ 候下一批接线',
   'e2e-280-heal-feedback.mjs': '同上（候下一批接线）',
+  'e2e-471-w09-settle-redraw.mjs': '同上（候下一批接线）—— `books#471` 第 2 项：**自然路**断「结账后重绘」，须真 Chromium ⇒ 同 `e2e-280-*` 族一并接',
   'e2e-280-battle-bag.mjs': '同上（候下一批接线）',
   'e2e-280-narrow-sticky.mjs': '同上（窄屏面；候下一批接线）',
   'check-refs-recheck.mjs': '**独立复算器**（第二双眼睛）：与 `check-refs` 对账用，✗ 不是门本身（候接线或留人工）',
