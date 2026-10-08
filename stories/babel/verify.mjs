@@ -7616,7 +7616,10 @@ head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终�
 	const ok87 = (c, m) => { 本组判据++; ok(c, m); };
 	const B = setup.BABEL;
 	const 有 = () => Object.prototype.hasOwnProperty.call(State.variables, 'span1Events');
-	const 存 = State.variables.span1Events;
+	/* ★**整本快照**（照 `#491` 定式 ✓）：本组的**正控**会真跑一次 `ensureDraw` ⇒ 那是**会提交事务的动作**
+	 *   ⇒ 它除 `span1Events` 外还可能改到 `babelRun`／`span1Arc` 等面 ✗ ⇒ ★只复原单键**盖不住** ✓
+	 *   （本席实测：只复 `span1Events` ⇒ 后续**第 84 组**连带 6 处红 ✗ ⇒ 即本笔口径自身的反例 ✓）。 */
+	const 全存 = JSON.parse(JSON.stringify(State.variables ?? {}));
 	try {
 		/* ① 【正控】写面**应当**会建键（否则下面两条是恒真式 ✓） */
 		delete State.variables.span1Events;
@@ -7639,7 +7642,9 @@ head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终�
 			+ ` ⇒ 已遇=${typeof 危害面?.已遇}／危害结算=${typeof 危害面?.危害结算}`
 			+ ` ⇒ ${typeof 危害面?.已遇 === 'function' ? '（可达 ⇒ 该面另由 ①/② 覆盖 ✓）' : '★面不可达 ⇒ 本项不入判据面'}`);
 	} finally {
-		if (存 === undefined) delete State.variables.span1Events; else State.variables.span1Events = 存;
+		/* ★删多补少（整本复原 ✓）：✗ 只写回 span1Events ✓ */
+		for (const k of Object.keys(State.variables)) if (!(k in 全存)) delete State.variables[k];
+		for (const [k, v] of Object.entries(全存)) State.variables[k] = v;
 	}
 	const 本组失败 = fails.length - 组前失败;
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 87 组：${本组失败 === 0 ? `全绿 —— **${本组判据} 条判据**（写面建键〔正控〕／读面不建键）` : `★本组 ${本组失败} 处失败`}`);
