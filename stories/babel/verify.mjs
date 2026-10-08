@@ -7126,5 +7126,144 @@ head('81. 线上 P1 · `books#402` ①：快读 ⇒ 段落层重画（✗ 只还
 		: `★本组 ${本组失败} 处失败`}`);
 }
 
+/* ── 82. `books#456` 预备：普通远征「价值参照」参数化（数据 ＋ 纯函数 ＋ 三条纪律）──────────
+ *
+ * 规格（SSOT）：`docs/plans/babel/core/expedition-value-reference.md`（PR #454 合 288f62c）＝
+ *   §1 SRD 目录锚点（gp）＋ §2 原创单效果局部线性拟合**候选**（`V_effect = a·n + c`，六族）。
+ * 本笔（领队裁 a · G6＝books 故事侧）只落**数据 ＋ 纯函数 ＋ 判据**：✗ 接商店／✗ 接通量／✗ 改既有价。
+ * 断什么（★尺＝**独立字面量**，✗ 从被测数据反推）：
+ *   ① 在位 ＋ 自陈「非已平衡」＋ 零接线声明；
+ *   ② 锚点**逐行＝规格**（13 单价 ＋ 4 加价；币种 gp）；
+ *   ③ 拟合**逐族＝规格**（六族的 范围／a／c／锚点）；
+ *   ④ 规格 §2 的**例值**（武器增强 +1/2/3、能力值 +2/4/6；按铜币取整比）；
+ *   ⑤ `n=0 ⇒ 0`（六族各一次）；
+ *   ⑥ **越界拒**（武器增强 n=4／能力值 n=1 ⇒ `V_OUT_OF_RANGE`；✗ 外推、✗ 负值）；
+ *   ⑦ **无负截距**（六族在其最小允许 n 上值 > 0）；
+ *   ⑧ 未知族／坏 n ⇒ 具名拒；
+ *   ⑨ `V_目录件` **引用 `stats.cost`**（同源）＋**既有 cost 逐件不变**（抽 6 件对独立字面量）；
+ *   ⑩ **缺口账**（含 sleepless-grasp／resources／bandage／herb-poultice／coin；不含有 cost 者）；
+ *   ⑪ **币种声明账**（非缺省币种的例外须**恰一处**且带声明；缺省 gp 须**带依据**）；
+ *   ⑫ **币种不换算**（rain-diadem 的 V 币种＝旧硬币；跨币种相加 ⇒ `V_CURRENCY_MISMATCH`）；
+ *   ⑬ **四口分离**（rain-diadem：V.值=100 ∧ R.可售=false ∧ P/R 未定 ≠ 0 ∧ w=1 ⇒「不可售 ≠ 价值零」）；
+ *   ⑭ `V_原创件`（sword 15 ＋ 武器增强+1 ⇒ 1348.33；明细两项；越界效果 ⇒ 拒）。
+ * 刀（记在提交信息）：① 改一处 `a` ⇒ ③/④ 红；② 拆范围检查（外推）⇒ ⑥ 红；
+ *   ③ 放行跨币种 ⇒ ⑫ 红；④ 让 `n=0` 走公式 ⇒ ⑤ 红（负值）。
+ */
+head('82. `books#456` 预备：普通远征「价值参照」参数化（数据＋纯函数＋三条纪律）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok82 = (c, m) => { 本组判据++; ok(c, m); };
+	const V = B?.价值参照;
+	ok82(!!V, '前置：`setup.BABEL.价值参照` 不在位（`world/expedition-value.js` 没被装载？）');
+	if (!V) {
+		console.log(`  ✗ 第 82 组：前置缺 ⇒ 本组不继续（判据 ${本组判据} 条）`);
+	} else {
+		try {
+			/* ① 自陈 */
+			ok82(V.非已平衡 === true, '★①规格自陈「非已平衡」须落成数据（✗ 靠注释）');
+			ok82(V.零接线 === true, '★①「✗ 接商店／✗ 接通量／✗ 改既有价」须落成数据');
+			/* ② 锚点逐行（独立字面量） */
+			const 单价期 = { 匕首: 2, 短剑: 10, 长剑: 15, 巨剑: 50, 皮甲: 10, 镶钉皮甲: 25, 链甲衫: 100,
+				链甲: 150, 胸甲: 200, 半身甲: 600, 全身甲: 1500, 重木盾: 7, 重钢盾: 20 };
+			for (const [k, v] of Object.entries(单价期)) ok82(V.锚点?.单价?.[k] === v, `★②锚点 \`${k}\` 应为 ${v}（实得 ${JSON.stringify(V.锚点?.单价?.[k])}）`);
+			ok82(Object.keys(V.锚点?.单价 ?? {}).length === Object.keys(单价期).length, '★②锚点单价条数应恰为 13（✗ 多/少一行即口径变）');
+			ok82(V.锚点?.币种 === 'gp', `★②锚点币种应为 gp（实得 ${JSON.stringify(V.锚点?.币种)}）`);
+			ok82(V.锚点?.加价?.精制单头武器?.值 === 300 && V.锚点?.加价?.精制甲盾?.值 === 150, '★②精制定额应 300／150');
+			ok82(V.锚点?.加价?.魔法武器增强n?.形 === '平方' && V.锚点?.加价?.魔法武器增强n?.系数 === 2000, '★②魔法武器增强应「平方・2000」');
+			ok82(V.锚点?.加价?.魔法甲盾增强n?.形 === '平方' && V.锚点?.加价?.魔法甲盾增强n?.系数 === 1000, '★②魔法甲盾增强应「平方・1000」');
+			/* ③ 拟合逐族 */
+			const 族期 = {
+				武器增强: { 范围: [1, 2, 3], a: [8000, 1], c: [-20000, 3], 锚点: '2000n²' },
+				甲盾增强AC: { 范围: [1, 2, 3], a: [4000, 1], c: [-10000, 3], 锚点: '1000n²' },
+				偏斜或自然护甲增强: { 范围: [1, 2, 3], a: [8000, 1], c: [-20000, 3], 锚点: '2000n²' },
+				单项能力值增强: { 范围: [2, 4, 6], a: [8000, 1], c: [-40000, 3], 锚点: '1000n²' },
+				全豁免抗力加值: { 范围: [1, 2, 3], a: [4000, 1], c: [-10000, 3], 锚点: '1000n²' },
+				单项技能表现加值: { 范围: [1, 2, 3], a: [400, 1], c: [-1000, 3], 锚点: '100n²' },
+			};
+			for (const [族, 期] of Object.entries(族期)) {
+				const 实 = V.拟合?.族?.[族];
+				if (!实) { ok82(false, `★③拟合缺族 \`${族}\``); continue; }
+				ok82(JSON.stringify([...实.范围]) === JSON.stringify(期.范围), `★③\`${族}\` 范围应 ${JSON.stringify(期.范围)}（实得 ${JSON.stringify([...实.范围])}）`);
+				ok82(JSON.stringify([...实.a]) === JSON.stringify(期.a) && JSON.stringify([...实.c]) === JSON.stringify(期.c),
+					`★③\`${族}\` 的 a／c 应 ${JSON.stringify(期.a)}／${JSON.stringify(期.c)}（实得 ${JSON.stringify([...实.a])}／${JSON.stringify([...实.c])}）`);
+				ok82(实.锚点 === 期.锚点, `★③\`${族}\` 锚点应 ${期.锚点}（实得 ${JSON.stringify(实.锚点)}）`);
+			}
+			/* ④ 例值（规格 §2 逐字） */
+			for (const [族, ns, 期值] of [['武器增强', [1, 2, 3], [1333.33, 9333.33, 17333.33]],
+				['单项能力值增强', [2, 4, 6], [2666.67, 18666.67, 34666.67]]]) {
+				ns.forEach((n, i) => {
+					const r = V.V_效果(族, n);
+					ok82(r?.ok === true && V.取整(r.值) === 期值[i], `★④\`${族}\` n=${n} 应 ${期值[i]}（实得 ${JSON.stringify(r?.ok ? V.取整(r.值) : r)}）`);
+				});
+			}
+			/* ⑤ n=0 ⇒ 0 */
+			for (const 族 of Object.keys(族期)) {
+				const r = V.V_效果(族, 0);
+				ok82(r?.ok === true && r.值 === 0, `★⑤\`${族}\` n=0 须恰 0（实得 ${JSON.stringify(r)}）`);
+			}
+			/* ⑥ 越界拒绝 */
+			const 越1 = V.V_效果('武器增强', 4), 越2 = V.V_效果('单项能力值增强', 1);
+			ok82(越1?.ok === false && 越1.code === 'V_OUT_OF_RANGE', `★⑥武器增强 n=4 须越界拒（实得 ${JSON.stringify(越1)}）`);
+			ok82(越2?.ok === false && 越2.code === 'V_OUT_OF_RANGE', `★⑥能力值 n=1 须越界拒（✗ 取负截距；实得 ${JSON.stringify(越2)}）`);
+			/* ⑦ 无负截距 */
+			for (const [族, 期] of Object.entries(族期)) {
+				const r = V.V_效果(族, 期.范围[0]);
+				ok82(r?.ok === true && r.值 > 0, `★⑦\`${族}\` 最小允许 n=${期.范围[0]} 须 > 0（✗ 负截距；实得 ${JSON.stringify(r)}）`);
+			}
+			/* ⑧ 未知族／坏 n */
+			ok82(V.V_效果('不存在的族', 1)?.code === 'V_UNKNOWN_FAMILY', '★⑧未知族须具名拒');
+			ok82(V.V_效果('武器增强', -1)?.code === 'V_BAD_N' && V.V_效果('武器增强', 1.5)?.code === 'V_BAD_N', '★⑧坏 n 须具名拒');
+			/* ⑨ 引用 stats.cost ＋ 既有 cost 逐件不变 */
+			const 目1 = V.V_目录件('sword'), 目2 = V.V_目录件('mail'), 目3 = V.V_目录件('rain-diadem');
+			ok82(目1?.ok === true && 目1.值 === 15 && 目1.币种 === 'gp', `★⑨sword 的 V 须引用 cost=15／gp（实得 ${JSON.stringify(目1)}）`);
+			ok82(目2?.ok === true && 目2.值 === 100, `★⑨mail 的 V 须 100（实得 ${JSON.stringify(目2)}）`);
+			ok82(目3?.ok === true && 目3.值 === 100 && 目3.币种 === '旧硬币', `★⑨⑫rain-diadem 的 V 须 100／**旧硬币**（实得 ${JSON.stringify(目3)}）`);
+			for (const [id, 期] of [['sword', 15], ['mail', 100], ['scale-mail', 50], ['short-bow', 30], ['club', 0], ['sword-quenched', 40]]) {
+				let 实价 = null;
+				try { 实价 = R.createItem(id)?.stats?.cost ?? null; } catch (e) { 实价 = '『抛』' + e.message; }
+				ok82(实价 === 期, `★⑨既有 \`${id}\` 的 stats.cost 须逐字不变＝${期}（实得 ${JSON.stringify(实价)}）`);
+			}
+			/* ⑩ 缺口账 */
+			const 缺 = V.缺口();
+			ok82(Array.isArray(缺) && 缺.length > 0, `★⑩缺口账须非空（实得 ${JSON.stringify(缺)}）`);
+			for (const id of ['sleepless-grasp', 'rock', 'wood', 'bandage', 'herb-poultice', 'coin']) {
+				ok82(缺?.includes(id), `★⑩缺口账须含 \`${id}\`（有注册、无 cost）`);
+			}
+			for (const id of ['sword', 'mail', 'rain-diadem']) {
+				ok82(!缺?.includes(id), `★⑩缺口账**不得**含 \`${id}\`（它有 cost ⇒ 不是缺口）`);
+			}
+			/* ⑪ 币种声明账（例外集可审；✗ 靠缺省默坐） */
+			const 币账 = V.币种声明账();
+			ok82(Array.isArray(币账) && 币账.length === 1 && 币账[0]?.id === 'rain-diadem' && 币账[0]?.币种 === '旧硬币',
+				`★⑪非缺省币种的例外须**恰一处**且为 rain-diadem／旧硬币（实得 ${JSON.stringify(币账)}）—— ★新增非 gp 件须同笔补声明并改本格`);
+			ok82(V.币种缺省 === 'gp' && typeof V.币种缺省依据 === 'string' && V.币种缺省依据.length > 0,
+				'★⑪缺省币种须＝gp 且**带依据**（✗ 无依据地默认 —— 那等于替作者裁未决 #4）');
+			console.log(`    · 读数（✗ 不计判据）：\`sword-quenched\`（故事侧自造、有 cost 40、无声明）的 V 币种＝${JSON.stringify(V.V_目录件('sword-quenched')?.币种)}（★缺省值，不声称已逐件鉴币 —— 引擎件 stats 不带包标记，见模块头注残余）`);
+			/* ⑫ 币种不换算 */
+			const 混 = V.V_原创件('rain-diadem', [{ 族: '武器增强', n: 1 }]);
+			ok82(混?.ok === false && 混.code === 'V_CURRENCY_MISMATCH', `★⑫跨币种相加须具名拒（实得 ${JSON.stringify(混)}）`);
+			/* ⑬ 四口分离 */
+			const 口 = V.四口('rain-diadem');
+			ok82(口?.V?.值 === 100 && 口.V.币种 === '旧硬币', `★⑬四口：V 须 100／旧硬币（实得 ${JSON.stringify(口?.V)}）`);
+			ok82(口?.R?.可售 === false, `★⑬四口：R 须「不可售」（实得 ${JSON.stringify(口?.R)}）`);
+			ok82(口?.P?.未定 === true && !('值' in (口.P ?? {})), `★⑬四口：P 须**未定**（✗ 返 0 —— 「未定」与「零」须不同形；实得 ${JSON.stringify(口?.P)}）`);
+			ok82(口?.w === 1, `★⑬四口：w 须 1（实得 ${JSON.stringify(口?.w)}）`);
+			/* ⑭ V_原创件 */
+			const 件 = V.V_原创件('sword', [{ 族: '武器增强', n: 1 }]);
+			ok82(件?.ok === true && 件.值 === 1348.33, `★⑭15 ＋ 4000/3 须末尾取整为 1348.33（实得 ${JSON.stringify(件?.ok ? 件.值 : 件)}）`);
+			ok82(件?.明细?.length === 2, `★⑭明细须两项（基底＋效果；实得 ${JSON.stringify(件?.明细)}）`);
+			const 件越 = V.V_原创件('sword', [{ 族: '武器增强', n: 4 }]);
+			ok82(件越?.ok === false && /V_OUT_OF_RANGE$/.test(件越.code), `★⑭越界效果须具名拒（实得 ${JSON.stringify(件越)}）`);
+		} catch (e) {
+			ok82(false, `★本组内部抛错：${e?.message ?? e} —— 上列判据可能未跑完`);
+		}
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 82 组：${本组失败 === 0
+		? `全绿 —— **${本组判据} 条判据**（锚点逐行／拟合逐族／例值／n=0／越界拒／无负截距／引用 cost／缺口账／币种账／不换算／四口分离／整件估值）`
+		: `★本组 ${本组失败} 处失败`}`);
+}
+
 
 printSummary();
