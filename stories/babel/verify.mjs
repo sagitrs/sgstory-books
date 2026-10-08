@@ -5464,6 +5464,93 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				R.pushNotice?.('★哨兵·拒因', { channel: 拒通道 });   // ★哨兵定位（同演出格 ✓）
 				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**（★围住这唯一一次调用 ✓）
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
+				/* ★★**存-复原**（本仓律条 ✓）：本段会改**域／`$babelRun`／背包／当前地图位**（四处 ✓）
+				 *   ⇒ 全段包在快照与复原之间（✗ 否则后面的组被污染 ✗ —— 本席首版即栽在此：第 70／72／73 组
+				 *   连带变红 ✓）。 */
+				/* ★★**整本复原**（本段真调两个出口的 `action()` ⇒ **事务提交**会写到**任意** State 键
+				 *   ⇒ 逐键复原**盖不住** ✗ —— 本席实测：第 70／72／73 组连带变红（「W09 出边可用数恰 1」等 ✓）。
+				 *   ⇒ 取**整本 `State.variables` 快照**（含 `rpgNotices` ✓）并在 `finally` 里**删多补少** ✓。 */
+				const 全存4 = JSON.parse(JSON.stringify(State.variables ?? {}));
+				/* ★dev-9 诊断探针（临时候删 ✓）：非 `State` 面的前像 */
+				/* ★★**非 `State` 面也要复原**（★`#484` 补笔实测 · dev-9 诊断 ✓）：本段 ② 会真调
+				 *   出口的 `action()` ⇒ **开战** ⇒ 置 `B.战中`（**模块旗** ✗ 不属 `State` ✗）＋ 引擎全局
+				 *   `RPG.Battle.current`（官方战斗登记 ✓）⇒ ★只复原 `State` **刷不回**它们 ✗
+				 *   （实测：探针打出「未回位的面＝['战中']」✓ 连带第 70／73 组六条红 ✓）。
+				 *   ★教训：**凡判据真调会提交事务的动作 ⇒ 假定它写到任意一层**（`State` 之外也在内 ✓）。 */
+				const 战中前4 = (typeof B !== 'undefined' && B) ? (B.战中 ?? null) : null;
+				const 斗前4 = (R?.Battle) ? (R.Battle.current ?? null) : null;
+				const 会话键前4 = (R?.Battle?.按会话) ? [...R.Battle.按会话.keys()] : [];
+				const 位存4 = map.current;
+				/* ★★**Player 面不属 `State.variables`** ✗（`setup.DND3.Player` 是模块对象 ✓）——
+				 *   本段 `清背()/造()` 会动**背包** ⇒ 必须单独快照/复原 ✗（本席实测：漏它 ⇒ 第 70／72／73 组
+				 *   连带变红「W09 出边可用数恰 1」✓；整本 State 复原**盖不住** ✓）。 */
+				const 背存4 = JSON.parse(JSON.stringify(D?.Player?.items ?? null));
+				const 血存4 = D?.Player ? { hp: D.Player.hp, maxHp: D.Player.maxHp } : null;
+				try {
+				/* ══ ★`#484` 领队裁（2026-10-07）：**提前返程一路补行为格**，并把另两处产品站点一并锁上
+				 *   ⇒ 4 站点全覆盖后撤组头边界句 ✓。★四处**同一形**（真调用 ＋ 读引擎通知面具名通道 ✓）。 */
+				const 通道名 = (k) => setup.BABEL?.通道?.[k] ?? (k === '拒因' ? 'item-refuse' : 'map-scene');
+				const 采 = (ch, fn) => {
+					const 前 = (R.notices({ channel: 通道名(ch) }) ?? []).length;
+					let 果; try { 果 = fn(); } finally { /* 动作在 try 内 ⇒ 采样在 finally ⇒ 必到 ✓ */ }
+					const 全 = (R.notices({ channel: 通道名(ch) }) ?? []).map((n) => n.text);
+					return { 果, 文: 全.slice(0, Math.max(0, 全.length - 前)).reverse().join('\n') };
+				};
+				const 聚落边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp' && String(e.text ?? '').includes('提前结束本次出城'));
+				ok(!!聚落边, '★提前返程边在位（W09 → 聚落）');
+				if (聚落边) {
+					/* ③ **提前返程 · 拒因**：先用**已结实例**（与 E9 同一幂等键空间 ✓）⇒ 应拒 ⇒ 拒因落 item-refuse */
+					State.variables[域] = Object.assign({}, State.variables[域], { 态: '进行中', 当前: 'E6', 机会: { 用: false, 实例: 'i-9b' }, 返程已结: 'i-9b' });
+					const 拒2 = 采('拒因', () => 聚落边.action());
+					ok(拒2.果 === false && 拒2.文.split('\n').some((s) => s.startsWith('✗ ')),
+						`★提前返程**拒因**须落具名通道（实得 ${JSON.stringify(拒2.文.slice(0, 70))}；果=${JSON.stringify(拒2.果)}）`);
+					/* ④ **提前返程 · 演出**：换**新实例** ⇒ 应成功 ⇒ 三栏演出落 map-scene */
+					清背(); 造('club', { 脆弱: true });
+					State.variables[域] = Object.assign({}, State.variables[域], { 态: '进行中', 当前: 'E6', 机会: { 用: false, 实例: 'i-9c' }, 返程已结: null });
+					const 演2 = 采('演出', () => 聚落边.action());
+					ok(演2.文.includes('获得脆弱的') && 演2.文.includes('原已脆弱而消失的') && 演2.文.includes('保持稳定的'),
+						`★提前返程**演出**须真演出三栏（实得通知：${JSON.stringify(演2.文.slice(0, 90))}）`);
+				}
+				/* ① **回城叙述**：★dev 尖上此站**无基底**（D1 的免费快回那片在 `merge: main ⇒ dev` 被整档换掉、**恢复中** ✓）⇒ ✗ 本笔**不并**这一站 ✓（✗ 造基底 —— 那是 D1 恢复的事 ✓）。 */
+				/* ② **P1-4 拒因兜底**（七名河动作 `r.ok===false` 分支 ⇒ 通知落 拒因通道 ✓）
+				 *   ★触发＝**重复调用同一动作**：首调消费该事件 ⇒ 再调状态机具名拒 ✓（裁 1「先战斗→再判定事件」的形 ✓）。 */
+				{
+					/* ★**夹具须前置**：动作表按 `when` 过滤 ⇒ 先设好七名河态**再**取动作 ✓
+					 *   （本席首版先取后设 ⇒ 取不到「应战」✗ —— 照组 78 的夹具形 ✓）。 */
+					State.variables[域] = { 态: '进行中', 当前: 'E6', 结果: {}, 机会: { 用: false, 实例: 'i-p14' }, 路径: ['E0'] };
+					if (D?.Player) { D.Player.hp = D.Player.maxHp; }
+					State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
+					const W09 = map.locations.get('W09');
+					const 应战 = (W09?.availableActions ?? []).find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('应战'));
+					ok(!!应战, '★七名河「应战」动作在位');
+					if (应战) {
+						const 一 = 采('拒因', () => 应战.action());
+						采('拒因', () => 应战.action());                      // ★第二次 ⇒ 状态机具名拒
+						const 全拒 = (R.notices({ channel: 通道名('拒因') }) ?? []).map((n) => n.text).filter((s) => s.startsWith('✗ '));
+						ok(全拒.length >= 1, `★P1-4 拒因兜底须落具名通道（实得 ${JSON.stringify(全拒.slice(0, 2))}）`);
+					}
+				}
+				} finally {
+					for (const k of Object.keys(State.variables)) if (!(k in 全存4)) delete State.variables[k];   // ★删「多」
+					for (const [k, val] of Object.entries(全存4)) State.variables[k] = JSON.parse(JSON.stringify(val));  // ★补「少」
+					/* ★**直接回写**（✗ 不走 `moveTo` —— 那会触发入场副作用 ✓）： */
+					try { map.current = 位存4; } catch { try { map.moveTo(位存4); } catch { /* 无图时忽略 ✓ */ } }
+					try {
+						if (D?.Player) {
+							if (背存4 === null) delete D.Player.items; else D.Player.items = 背存4.map((s) => R.reviveItem(s));
+							if (血存4) { D.Player.hp = 血存4.hp; D.Player.maxHp = 血存4.maxHp; }
+						}
+					} catch { /* ✗ 吞：复原失败不掩盖主判据 ✓ */ }
+					/* ★**非 `State` 面复原**（见本段前言的实测 ✓）：模块旗 `B.战中` ＋ 引擎战斗登记面 ✓ */
+					try { if (typeof B !== 'undefined' && B) B.战中 = 战中前4; } catch { /* ✗ 吞：复原失败不掩盖主判据 ✓ */ }
+					try {
+						if (R?.Battle) {
+							R.Battle.current = 斗前4;   // ★本 harness 的引擎别名是 `R`（`verify.mjs:245` ✓）—— ✗ `RB` ✗（我第一版写错 ⇒ 守卫静默跳过 ⇒ 红照旧 ✗）
+							if (R.Battle.按会话) for (const k of R.Battle.按会话.keys()) if (!会话键前4.includes(k)) R.Battle.按会话.delete(k);
+						}
+					} catch { /* ✗ 吞（同上 ✓） */ }
+
+				}
 				{
 					const 全拒 = R.notices({ channel: 拒通道, limit: 500 }) ?? [];
 					const i拒 = 全拒.findIndex((n) => n.text === '★哨兵·拒因');
