@@ -40,6 +40,8 @@
   ★ ① 那一路的形曾随 `books#280` ⑩（道具收敛到页脚背包）**变过** ⇒ 老形恒红；`#517` 定因后改点 `ui/bag.js` 的 `.rpg-bag-submit`（见 `tools/README.md` §11）。
   命令形 `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>`；
   退出码 `0` 过／`1` 红／`2` **装置错**（缺浏览器或产物 ⇒ ✗ 不当判据红）。★本件**暂未接 CI**（仓内工具，体例同 `rehearse-workflow.py`）。
+- [`e2e-471-w09-settle-redraw.mjs`](tools/e2e-471-w09-settle-redraw.mjs) 是 `books#471` 第 2 项（**结账后重绘**）的**自然路**真浏览器臂：由正常 UI 走到 W09-E4 点「请教两处水灵」⇒ 断**同一屏**出现「结算行 → 摘要行」（＝`desc()` 新分支真被重绘 ✓），并核桌面 1440×1000 与 390×844 的换行/不截断；`--selftest` 一刀（拆「结账后重进段落」⇒ 该面必红）。命令形 `PW_DIR=<含 playwright 的目录> CHROME_BIN=<exe> node tools/e2e-471-w09-settle-redraw.mjs --books "$PWD" --engine <精确 pin 检出>`；退出码 `0` 过／`1` 红／`2` **装置错**。★本件**暂未接 CI**（与 `e2e-280-*` 真浏览器族同批候接线）。
+
 - [`check-premerge.mjs`](tools/check-premerge.mjs) 是**合前检查器**（把 `tools/README.md` 附三从文字变成可跑件）：
   ① 基座同尖（`merge-base(声明基, 票头) === 声明基`；★声明基＝`--base`／CI 的 `GITHUB_BASE_REF`／缺省 `origin/main`）② 回退行 0（对**声明基**的 3-dot `--numstat` 无「只删不加」的档）
   ③ 给了 `--prior` 再算 `patch-id`（逐字同 ⇒ 纯 rebase ⇒ 先前读数沿用）。命令形 `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>]`；
