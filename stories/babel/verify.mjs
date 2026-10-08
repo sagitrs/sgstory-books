@@ -7628,10 +7628,16 @@ head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终�
 		let 抛 = null; try { B.eventPending?.('L1', 'battle'); } catch (e) { 抛 = e; }
 		ok87(!抛, `★★②承重：读面调用不得抛（实得 ${抛?.message ?? ''}）`);
 		ok87(!有(), '★★②承重：读一次（`eventPending`）⇒ `span1Events` **仍不存在**（✗ 建键＝看一眼就改 State）');
-		/* ③ ★承重：`已遇`（hazards 的只读面）同款 */
-		delete State.variables.span1Events;
-		let 抛3 = null; try { setup.BABEL?.危害?.已遇?.('L1'); } catch (e) { 抛3 = e; }
-		ok87(!有(), '★★③承重：`已遇`（只读）读一次后 `span1Events` 仍不存在 ✓（若取不到该面 ⇒ 本条退化为恒真 ⇒ 另由 ①/② 承担）');
+		/* ③ ★**读数**（✗ 计入判据面 ✓）：`已遇`（hazards 的只读面）**在 harness 里取不到** ✗ ——
+		 *   实测（探针）：`setup.BABEL.危害` 的键**只有** `["危害表","触发格"]` ⇒ `已遇`／`危害结算`
+		 *   皆 `undefined` ✗ ⇒ ★即 **harness 载入的 `hazards.js` 是旧版**（旧版导出表就只这两项）✓
+		 *   ⇒ ★本面在此**不可判** ✗ ⇒ 照口径**标为读数**、✗ 冒充判据格 ✓（恒真因＝**面不可达** ✓）。
+		 *   ★另记（✗ 本笔范围 ✓）：这属**harness 装载面**的独立缺陷 ⇒ 已具名于本笔 PR 描述与回铃 ✓。
+		 *   ⚠ 本档**✗ 再用 `?.` 静默跳过** ✓（那正是本席首版假绿之因 ✓）。 */
+		const 危害面 = setup.BABEL?.危害 ?? null;
+		console.log(`  · ③【读数·✗ 判据】setup.BABEL.危害 键=${JSON.stringify(Object.keys(危害面 ?? {}))}`
+			+ ` ⇒ 已遇=${typeof 危害面?.已遇}／危害结算=${typeof 危害面?.危害结算}`
+			+ ` ⇒ ${typeof 危害面?.已遇 === 'function' ? '（可达 ⇒ 该面另由 ①/② 覆盖 ✓）' : '★面不可达 ⇒ 本项不入判据面'}`);
 	} finally {
 		if (存 === undefined) delete State.variables.span1Events; else State.variables.span1Events = 存;
 	}
