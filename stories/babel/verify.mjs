@@ -5702,7 +5702,10 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			const 面9 = JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON()));
 			const r9 = 结.返程事务({ 实例: 'i-6' });
 			ok(r9.ok === false && /RETURN_ALREADY_SETTLED/.test(r9.code ?? ''), `★重复请求须**具名拒**（实得 ${r9.code ?? '（无）'}）`);
-			ok(/近窗去重/.test(r9.why ?? ''), `★且须来自**引擎账**（✗ 不是故事标记先拦 ✓；实得 why=${JSON.stringify((r9.why ?? '').slice(0, 60))}）`);
+			/* ★`books#535` D2（writer-2 裁文 `6065943550`）：柄从**给玩家读的 why** 换成**人话** ⇒ 本格的**辨句**随之改
+			 *   —— 引擎支（`:161`）独有的那句「**物品改动已恢复到尝试前**」（故事标记支 `:90` 只说「不再重复损毁物品」✓）
+			 *   ⇒ 仍是**同一业务不变量**（拒来自**引擎账**、✗ 不是故事标记先拦 ✓），✗ 未放宽为任意串 ✓。 */
+			ok(/物品改动已恢复到尝试前/.test(r9.why ?? ''), `★且须来自**引擎账**（✗ 不是故事标记先拦 ✓；实得 why=${JSON.stringify((r9.why ?? '').slice(0, 60))}）`);
 			ok(JSON.stringify((D.Player.items ?? []).map((x) => x.toJSON())) === 面9, '★同上：**物品面零变化**（`publish` ✗ 再跑 ✓）');
 			/* 前像二次确认：直接在**引擎面**上证（本模块内部 preview→commit 一气呵成 ⇒ ✗ 无法从外面塞陈旧票 ✓） */
 			const 域活 = State.variables[域];   // ★活块（模块内 `读档` 未导出 ✓）
