@@ -7,7 +7,14 @@ import {createRequire} from 'node:module';
 const E=process.env.ENGINE, books=process.cwd();
 const out=[]; const 判=(n,ok,note)=>out.push(`${ok?'✓':'✗'} ${n}${note?'   ← '+note:''}`);
 const pin=JSON.parse(fs.readFileSync(path.join(books,'.github/engine-ref.json'),'utf8')).ref;
-const VER=`v0.0.1·${pin.slice(0,8)}`;
+/* ★版本标签的**单一出处**（`books#471`-⑤ triage 为据 · T 域小笔）：
+ *   · 旧形把 `v0.0.1` **写死** ⇒ 本档自建的产物永远带**旧串** ⇒ 「版本自报」那一格判的**不是现役线**（`#471`-⑤：
+ *     `VER` 自 pin 派生 · 对「版本自报」**不承重**）。
+ *   · 现形：**缺省跟现役发布线**（`0.0.3-alpha` ✓），并允许 `VER` 环境变量**直传覆盖**（CI／演练可传 ✓）。
+ *   · 与 CI 同源对照：`.github/workflows/babel-tests.yml` 的 `VER=v0.0.3·$(cut -c1-8 <<<"$ref")`（`trial.yml` 同形 ✓）
+ *     —— ⚠ 那两处是**发布线标签**（无 `-alpha` 字面 ✓）；★若日后统一字面 ⇒ 改**那两处**或改这里的缺省串 ⇒ ✗ 别再多点写死 ✓。 */
+const VER=process.env.VER ?? `v0.0.3-alpha·${pin.slice(0,8)}`;
+const VER前缀=VER.split('·')[0];      // ★渲染位那格只断**前缀**（✗ 不把细粒度串写死两遍 ✓）
 const storyDir=path.join(books,'stories','babel');
 /* ★★本件**自建**产物（✗ 读磁盘上遗留的 `babel-trial.html`）——它以 pin 派生的 `VER` 为参，
  *   故旧产物必与**新 pin** 不符 ⇒ 会得**假红**（我 2026-10-02 在 `#142` pin 升版上踩此：
@@ -27,7 +34,7 @@ try{w.SugarCube.Engine.runUserInit()}catch(e){}; try{w.SugarCube.Engine.start()}
 try{w.SugarCube.Engine.play(w.SugarCube.Config.passages.start)}catch(e){}; try{w.SugarCube.UIBar.start()}catch(e){}
 await new Promise(r=>setTimeout(r,600));
 const cap=w.document.querySelector('#story-caption')?.textContent?.trim()||'';
-判('D9-2 版本标识**真渲染**（#story-caption 含版本）', cap.includes(VER)||/版本\s*v0\.0\.1/.test(cap), JSON.stringify(cap));
+判('D9-2 版本标识**真渲染**（#story-caption 含版本）', cap.includes(VER)||cap.includes(VER前缀), JSON.stringify(cap));
 /* ② 逐字节可复现（同 pin 同参两次构建） */
 /* ★`--out` 是**相对 story 目录**（实测）⇒ 两次构建写两个名，再比 sha1 */
 const sha=(f)=>execFileSync('sha1sum',[f],{encoding:'utf8'}).split(' ')[0];
