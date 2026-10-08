@@ -178,7 +178,9 @@ const 可预知 = (layerId) => {
 	const target = 预报可选[layerId];
 	if (!target) return false;                    // L8 等：无下一层抽签 ⇒ 不出（死选项）
 	if (预报类(target) != null) return false;    // 本层已选过（每层一次，✗ 可改）
-	if (eventsOf()[target]) return false;         // ★目标层已抽定（回边可达）⇒ 再选是死选项
+	/* ★`books#536` ⑦（终裁 §四）：**只读探法** —— 本面是 `when`（守卫）路径，✗ 经 `eventsOf()`
+	 *   （它会 `??=` 建键 ⇒ 看一眼就改 State ✗）；照本档 `读进度`（:1189）同款 ✓。 */
+	if (State.variables.span1Events?.[target]) return false;         // ★目标层已抽定（回边可达）⇒ 再选是死选项
 	const P = DND3.Player;
 	return typeof P?.contains === 'function' && P.contains('precognition');
 };
@@ -233,7 +235,8 @@ const markUsed = (layerId, kind) => {
 };
 /** 守卫读数：该层抽中 `kind` 且**尚未用过任何一类**（✗ 在此抽签——见 `eventsOf` 的说明）。 */
 const eventPending = (layerId, kind) => {
-	const e = eventsOf()[layerId];
+	/* ★同上：**守卫读数只读** —— ✗ 建键（`??=` 是写路径的事 ✓） */
+	const e = State.variables.span1Events?.[layerId];
 	return !!e && 本层已战(layerId) && e.已用 === null && e.抽中.includes(kind);
 };
 

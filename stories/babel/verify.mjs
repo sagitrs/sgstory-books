@@ -7605,4 +7605,38 @@ head('86. `books#536` ①：非 State 面复原通用格（快照含旗面／造
 	console.log(`  ${本组失败86 === 0 ? '✓' : '✗'} 第 86 组：${本组失败86 === 0 ? '五格全绿（快照含旗面／刚快照零差异／造脏具名／复原后回零／复原口回零）' : `★本组 ${本组失败86} 处失败`}`);
 }
 
+/* ★`books#536` ⑦（终裁 §四）：**读面不建键** —— `eventsOf()` 的 `??=` 只许出现在**写路径**；
+ *   本书判据面（`when`／守卫读数／`已遇`）一律走「只读探法」（`State.variables.span1Events?.[…]` ✓，
+ *   同 `babel.js` 的 `读进度` 成例 ✓）⇒ ★断言形：**读一次 ⇒ `State` 快照不变**（终裁 §四原话）。
+ *   ★刀（记在提交信息）：把任一只读站点改回 `eventsOf()` ⇒ 本组具名红。 */
+head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终裁 §四）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok87 = (c, m) => { 本组判据++; ok(c, m); };
+	const B = setup.BABEL;
+	const 有 = () => Object.prototype.hasOwnProperty.call(State.variables, 'span1Events');
+	const 存 = State.variables.span1Events;
+	try {
+		/* ① 【正控】写面**应当**会建键（否则下面两条是恒真式 ✓） */
+		delete State.variables.span1Events;
+		ok87(!有(), '★①前置：先删键 ⇒ 此刻 `span1Events` **不存在**（✗ 否则下面恒真）');
+		try { B.ensureDraw?.('L1'); } catch (e) { /* 无宿主 ⇒ 略；面由下面两条判 */ }
+		ok87(有(), '★①正控：**写面**（`ensureDraw`）应建键 ⇒ 证「读面不建键」命题**有意义** ✓');
+		/* ② ★承重：读面（`eventPending`＝守卫读数）**不得**建键 */
+		delete State.variables.span1Events;
+		let 抛 = null; try { B.eventPending?.('L1', 'battle'); } catch (e) { 抛 = e; }
+		ok87(!抛, `★★②承重：读面调用不得抛（实得 ${抛?.message ?? ''}）`);
+		ok87(!有(), '★★②承重：读一次（`eventPending`）⇒ `span1Events` **仍不存在**（✗ 建键＝看一眼就改 State）');
+		/* ③ ★承重：`已遇`（hazards 的只读面）同款 */
+		delete State.variables.span1Events;
+		let 抛3 = null; try { setup.BABEL?.危害?.已遇?.('L1'); } catch (e) { 抛3 = e; }
+		ok87(!有(), '★★③承重：`已遇`（只读）读一次后 `span1Events` 仍不存在 ✓（若取不到该面 ⇒ 本条退化为恒真 ⇒ 另由 ①/② 承担）');
+	} finally {
+		if (存 === undefined) delete State.variables.span1Events; else State.variables.span1Events = 存;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 87 组：${本组失败 === 0 ? `全绿 —— **${本组判据} 条判据**（写面建键〔正控〕／读面不建键）` : `★本组 ${本组失败} 处失败`}`);
+}
+
 printSummary();
