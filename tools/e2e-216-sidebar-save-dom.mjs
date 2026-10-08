@@ -20,6 +20,11 @@
  *     `<button id="saves-delete-N" class="delete" disabled aria-disabled="true" …>`
  *   · **战中**（`setup.BABEL.战中 = true`）⇒ `save` 按钮 **disabled**；派发 click ⇒ **不落档** ✓
  *   · **战后** ⇒ `disabled` 撤掉 ⇒ 派发 click ⇒ **真落档**（`desc` 由宿主自动给，实测「回合 2」）✓
+ *   ★★**槽号必须是「玩家自己能写」的槽**（`books#402` 装置陈旧修 · 2026-10-08）：
+ *     `sgstory#1938` 保留槽特性把 `setup.BABEL.槽位` 里**除「手动」外**的槽（快存 3／战前 4）在**对话框
+ *     DOM** 上**永久禁用**并吞点击（引擎 `40-saves-reserved.js`／`45-saves-dom.js`）⇒ 拿保留槽当本臂
+ *     ①／② 的靶会 ①**假绿**（保留槽本就不落档）②战后**恒红**（不因战中解除而复可写）。
+ *     ⇒ ①／② 取 `槽位.手动`（一处源）；③ 只走 `Save.slots` 的**程序口** ⇒ 照旧用 4。
  *
  * 用法：
  *     node tools/e2e-216-sidebar-save-dom.mjs --engine <引擎检出>
@@ -41,6 +46,15 @@ async function 判(env) {
 	const s = await boot(env);
 	const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, D = SC.setup.DND3;
 	const 槽 = SC.Save.slots;
+	/* ★★本臂用的**写槽**须是**玩家自己能写**的槽 ⇒ 读故事侧一处源 `槽位.手动`（✗ 写死）。
+	 *   装置陈旧的根（2026-10-08 定因）：`sgstory#1938` 保留槽特性（引擎
+	 *   `src/host/sugarcube/40-saves-reserved.js` 决策层 ＋ `45-saves-dom.js` 渲染后处理）把 `槽位` 表里
+	 *   **除「手动」外**的槽（＝快存 3／战前保底 4）在**对话框 DOM** 上**永久禁用**并**捕获阶段吞掉点击**。
+	 *   ⇒ 拿保留槽当「战中门」的正控会出两病：①**假绿**（保留槽本就不落档，拆掉战中门仍绿）
+	 *     ②战后**恒红**（保留槽不因战中解除而复可写）。⇒ ①／② 改用 `槽位.手动`。
+	 *   ★③（残影）照旧用 4：它只走 `Save.slots` 的**程序口**（`槽.save/load`），不经对话框 DOM ⇒ 保留面不挡。 */
+	const 码 = (B?.槽位?.手动 ?? 5);
+	ok(Number.isInteger(码), `★一处源：故事侧 \`槽位\` 里取不到手动槽号（实得 ${S(B?.槽位)}）`);
 	const 面板 = () => (s.doc.querySelector('[data-panel="enemy"]')?.textContent ?? '').trim();
 	const 开面 = async () => { SC.UI.saves(); await new Promise((r) => setTimeout(r, 200)); };
 	const 按钮 = (n) => s.doc.querySelector(`#saves-save-${n}`);
@@ -49,35 +63,36 @@ async function 判(env) {
 		await new Promise((r) => setTimeout(r, 250));
 	};
 	const 读数 = {};
+	读数.码 = 码;
 
 	/* ===== ① 战中：按钮**不可点** ＋ 派发 click 也**不落档**（✗ 静默成功） ===== */
 	B.战中 = true;
 	await 开面();
-	const b3 = 按钮(3);
+	const b3 = 按钮(码);
 	读数.战中按钮 = { 存在: !!b3, disabled: b3?.disabled ?? null, aria: b3?.getAttribute('aria-disabled') ?? null };
-	ok(!!b3, '★【①侧栏】战中 `UI.saves()` 里**找不到**槽 3 的存档按钮（宿主面的门没接到真 UI 上）');
+	ok(!!b3, `★【①侧栏】战中 \`UI.saves()\` 里**找不到**槽 ${码} 的存档按钮（宿主面的门没接到真 UI 上）`);
 	ok(读数.战中按钮.disabled === true, `★【①侧栏】战中存档按钮**仍可点**（实得 ${S(读数.战中按钮)}）—— 玩家点它就能把半截状态存下去`);
 	ok(读数.战中按钮.aria === 'true', `★【①侧栏】战中存档按钮缺 \`aria-disabled\`（无障碍面：读屏用户仍以为可点）（实得 ${S(读数.战中按钮.aria)}）`);
 	await 点(b3);
-	读数.战中点击后 = { has: 槽.has(3), 档: 槽.get(3) === null ? null : '（有档）' };
+	读数.战中点击后 = { has: 槽.has(码), 档: 槽.get(码) === null ? null : '（有档）' };
 	ok(读数.战中点击后.has === false, `★【①侧栏】战中点按钮**真落档了**（实得 has=${S(读数.战中点击后.has)}）—— 这就是 F-01 那条半截状态`);
 
 	/* ===== ② 战后**正控**：不得一律禁用 ⇒ 同一按钮须恢复可点且真落档 ===== */
 	B.战中 = false;
-	/* ★先把槽 3 清干净：① 那一面在**坏实现**下会真落档 ⇒ 若不清，② 的「落档了吗」就被 ① 的
+	/* ★先把该槽清干净：① 那一面在**坏实现**下会真落档 ⇒ 若不清，② 的「落档了吗」就被 ① 的
 	 *   副作用污染（本席首版实测：刀①一下，② 也红 ⇒ 两面**不隔离** ✗）。清槽 ⇒ ② 自成一面 ✓。 */
-	if (typeof 槽.delete === 'function' && 槽.has(3)) 槽.delete(3);
+	if (typeof 槽.delete === 'function' && 槽.has(码)) 槽.delete(码);
 	await 开面();
-	const b3b = 按钮(3);
+	const b3b = 按钮(码);
 	读数.战后按钮 = { disabled: b3b?.disabled ?? null, aria: b3b?.getAttribute('aria-disabled') ?? null };
 	/* ⚠ 「没禁用」的判据写成 `disabled !== true`（✗ `=== false`）：宿主在**没装门**时该属性可能是
 	 *   缺席（`null`）⇒ 那是「未禁用」✓，`=== false` 会把它误判成红（本席首版正是这样越界的 ✗）。 */
 	ok(读数.战后按钮.disabled !== true, `★【②正控】战后按钮**仍被禁用**（实得 ${S(读数.战后按钮)}）—— 那说明「禁」清不掉，✗ 不是门禁而是坏死`);
-	ok(槽.has(3) === false, `★【②正控】前置没铺成：清槽后槽 3 仍有档（实得 ${S(槽.has(3))}）`);
-	const 前 = 槽.has(3);
+	ok(槽.has(码) === false, `★【②正控】前置没铺成：清槽后槽 ${码} 仍有档（实得 ${S(槽.has(码))}）`);
+	const 前 = 槽.has(码);
 	await 点(b3b);
-	读数.战后点击后 = { has: 槽.has(3), desc: 槽.get(3)?.desc ?? null };
-	ok(槽.has(3) === true && 前 === false, `★【②正控】战后点按钮**没落档**（实得 ${S(读数.战后点击后)}）—— 「恢复可点」不能只是没 disabled`);
+	读数.战后点击后 = { has: 槽.has(码), desc: 槽.get(码)?.desc ?? null };
+	ok(槽.has(码) === true && 前 === false, `★【②正控】战后点按钮**没落档**（实得 ${S(读数.战后点击后)}）—— 「恢复可点」不能只是没 disabled`);
 	ok(typeof 读数.战后点击后.desc === 'string' && 读数.战后点击后.desc !== '',
 		`★【②正控】真落档了但**描述为空**（实得 ${S(读数.战后点击后.desc)}）—— 玩家回头认不出这是哪一档`);
 
@@ -118,8 +133,8 @@ const main = async () => {
 
 	if (!自检) {
 		const { fails, 读数 } = await 判(env);
-		console.log(`  ①侧栏：战中按钮＝${S(读数.战中按钮)}｜派发 click 后 has(3)＝${S(读数.战中点击后.has)}`);
-		console.log(`  ②正控：战后按钮＝${S(读数.战后按钮)}｜点击后 has(3)＝${S(读数.战后点击后.has)} desc＝${S(读数.战后点击后.desc)}`);
+		console.log(`  ①侧栏：战中按钮＝${S(读数.战中按钮)}｜派发 click 后 has(${读数.码})＝${S(读数.战中点击后.has)}`);
+		console.log(`  ②正控：战后按钮＝${S(读数.战后按钮)}｜点击后 has(${读数.码})＝${S(读数.战后点击后.has)} desc＝${S(读数.战后点击后.desc)}`);
 		console.log(`  ③残影：读档前＝${S(读数.读档前面板)}｜真读档后＝${S(读数.读档后面板) || '（空）'}｜新场顶上＝${S(读数.新场面板)}`);
 		for (const f of fails) console.log(`  ✗ ${f}`);
 		console.log(fails.length === 0 ? '  ✓ 侧栏真 DOM 判据通过（战中真禁点·点了也不落档 · 战后恢复且真落档 · 读档后无残影·新场顶得上）'
