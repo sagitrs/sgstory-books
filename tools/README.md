@@ -11,7 +11,7 @@
 | 路径 | 一句话用途 |
 |---|---|
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
-| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；`--selftest` 合成例 7 例） |
+| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；`--selftest` 自检 15 断言） |
 | `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
 | `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
 | `tools/e2e-161-restart.mjs` | `:enginerestart` 处理器族的真浏览器臂（真 jQuery 下真触发 · 两向＋缺席闸＋`--knife`）|
@@ -308,7 +308,7 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | 项 | 内容 |
 |---|---|
 | **清单** | `tools/check-premerge.mjs` —— 落 `tools/README.md` **附三（合前检查）** 那两条：★**①基座同尖**（`merge-base(现main,票头) === 现main`）★**②回退行 0**（对现 main 的 `--numstat` 里没有「只删不加」的档）；★给了 `--base` 再算 **③patch-id**（逐字同 ⇒ 纯 rebase ⇒ 读数沿用）。 |
-| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--main origin/main] [--base <旧头>] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。 |
+| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>] [--main origin/main] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。★**`--base`＝声明基**（三面都判它 ✓；缺省取 `GITHUB_BASE_REF` ⇒ 再缺省 `--main`／`origin/main` ✓）；★③patch-id 的**旧头**＝**`--prior`**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。★**为何**：新分流（main＝阻塞修复专线／dev＝开发线）下 dev 线的笔**本就不该与 main 同尖** ✗ ⇒ 拿 main 当基会常报「落后」✗（**常态 ✗ 缺陷** ✓；`books#505` ✓）。 |
 | **期望读数** | 开头打印**明账**（patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；纯改名/二进制档请人眼过）。末行 `⇒ ★通过（…）` 或 `⇒ ★判据红 N 条`。退出码 `0` 全绿／`1` 判据红（★逐条具名：哪个档只删不加／patch-id 不同）／`2` **装置错**（✗ 不当判据红：不在 git 仓／取不到 main 或票头）。 |
 | **设立理由** | `books#296`／`#303`／`#305`／`#310` 那四笔「看着干净、合了会坏」的票换来的：★基座落后 ⇒ 对现 main 的 diff 带**回退行** ⇒ 合入抹掉别的笔刚合的东西；★`mergeable_state=clean` **看不出来**这一类。`#315` 先把口径写进 README（附三）＋ 给出实例；本件把口径做成**可跑件**——★README 是"人读过才会跑"，本器是"跑不跑由机器说话"。 |
 | **自检（`--selftest`·合成例 7 例）** | `K1` 落后头 ⇒ ① 判红（**门能红**）｜`K2`/`K3` 同尖干净头 ⇒ ① 绿 ＋ ② 回退行 0（**门不滥红**）｜`K4` 同尖但只删不加 ⇒ ② **检出该档**（② 有牙）｜`K5` 纯 rebase ⇒ patch-id 逐字同｜`K6` 内容有变 ⇒ patch-id 不同｜`K7` 不存在的仓 ⇒ **标为装置错**（✗ 不当判据红）。★自检与主流程**共用同一判据函数**（`检查一`/`检查二`），✗ 不是另写一套。 |
