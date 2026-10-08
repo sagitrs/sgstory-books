@@ -89,7 +89,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 			if (层 === null) continue;
 			地图.addPath({
 				from: id, to: 聚落,
-				text: '沿已清理来路走回共炉（免费；✗ 不另买卷轴）',
+				text: '沿已清理来路走回共炉（免费；不另买卷轴）',
 				when: () => 可快回() && 层号(地图.current) === 层,
 				action: () => { B.map.moveTo(聚落); R.pushNotice?.('你沿来路走回共炉。路上的事还是那些事，资源没多也没少。', { channel: 演出通道 }); },   // ★①站：最后一处 `R.note` ⇒ 真口（✗ 那个钩在任何一侧都无人提供 ✓）
 			});
@@ -195,7 +195,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 						 *   ⚠ 拒因仍走**可读兜底**（✗ 无声 —— 照报告 §4「不能执行时应明确解释」）。 */
 						if (七.读().节点?.type === 'battle') {
 							if (typeof 门?.战斗行动 !== 'function') {
-								R.pushNotice?.('✗ 战斗入口未装载（`01-seven-names-battle.js` 缺席）', { channel: 拒通道 });
+								R.pushNotice?.('战斗入口暂不可用（战斗模块未装载）', { channel: 拒通道 });
 								return false;
 							}
 							const id = 七.读().当前;

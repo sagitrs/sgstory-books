@@ -140,7 +140,7 @@ Object.assign(l10nStrings, {
 	saveErrorDisallowed: "当前不允许保存。",
 	warningNoSaves: "本会话缺少存档所需的能力，存档已停用。",
 	warningNoStorage: "可用的存储接口都不可用（可能是第三方 cookie 被禁用）。本会话无法存档。",
-	warningNoWebStorage: "浏览器不支持网页存储 ⇒ 本次{textIdentity}以降级方式运行，无法存档。",
+	warningNoWebStorage: "浏览器不支持网页存储，本次{textIdentity}以降级方式运行，无法存档。",
 	warningDegraded: "本{textIdentity}缺少部分能力，以降级方式运行（存档等功能可能不可用）。"
 });
 
