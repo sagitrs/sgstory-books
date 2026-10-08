@@ -95,6 +95,10 @@
 		let 件 = [];
 		try { 件 = S7.交付(node.victory_loot ?? {}); }
 		catch (e) { S7.收回(件); return { ok: false, code: 'SEVEN_CAPACITY', why: `散货交付失败，已撤回（${e?.message ?? e}）` }; }
+		/* ★`books#402` ②：散货**入包之后**立刻刷一次页脚 —— `跑一场()` 的收尾刷新发生在**本函数之前**
+		 *   （交付还没发生）⇒ 页脚会漏掉战后散货（writer-2 线上实测：真胜后页脚无铜矿，须开地图才补上）。
+		 *   与故事侧 `fight()` 的「结算后立即刷面板」同一收口（`encounters.js` 的 `#211` F-04）✓。 */
+		R.refreshPanels?.();
 		return { ok: true, 交付: 件 };
 	};
 
