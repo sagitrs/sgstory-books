@@ -7,7 +7,7 @@
  *   ② **回退行 0**：对现 main 的 `--numstat` 里，**没有「只删不加」（新增 0 行）的档**。
  *      ★口径＝**3-dot（对 merge-base）**；★**基座落后时**建议再**干跑合并**核一次，
  *        ✗ **不可**用 **2-dot** 两树直比（含 main 自己的推进 ⇒ 会误读成「回退行」）。
- *   ③ （给了 `--base` 才算）**patch-id**：纯 rebase ⇒ 同改动集在不同基座上的指纹**逐字同**
+ *   ③ （给了 `--prior` 才算）**patch-id**：纯 rebase ⇒ 同改动集在不同基座上的指纹**逐字同**
  *      ⇒ ★先前核过的读数**沿用不重跑**；不同 ⇒ 内容有变 ⇒ 该核的全核。
  *
  * ## 一处源（✗ 不写死）
@@ -26,7 +26,9 @@
  *     在同一判据下可能形态不同（`numstat` 对二进制印 `-`）⇒ ★那类档请人眼看一眼，✗ 别只信本器。
  *
  * 用法：
- *   node tools/check-premerge.mjs --head <票头> [--main origin/main] [--base <旧头>] [--repo <仓>]
+ *   node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>] [--main origin/main] [--repo <仓>]
+ *   ★`--base`（**声明基**）＝本器**三面一律对它判**的那个基 ✓；缺省＝`GITHUB_BASE_REF`（CI 的 PR 声明 base ✓）⇒ 再缺省 `--main`／`origin/main` ✓（**输出会明写判的是哪个 base** ✓）。
+ *   ★`--prior`＝③patch-id 的**旧头**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。
  *   node tools/check-premerge.mjs --selftest
  */
 import { execFileSync } from 'node:child_process';
@@ -87,37 +89,53 @@ function 跑头注() {
 	console.log('  ★明账：patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；纯改名/二进制档请人眼过。');
 }
 
+/** ★`#505`：**声明基**的解析（纯函数 ⇒ `--selftest` 与主流程**共用同一判据** ✓）。
+ *   顺序：`--base`（显式 ✓）⇒ `GITHUB_BASE_REF`（CI 的 PR 声明 base ✓）⇒ 缺省 `--main`／`origin/main` ✓（**明账** ✓）。 */
+export function 解析声明基({ 显式 = null, 环境基 = null, 缺省 = 'origin/main' } = {}) {
+	if (显式) return { ref: 显式, 源: '--base（显式）' };
+	if (环境基) return { ref: `origin/${环境基}`, 源: 'GITHUB_BASE_REF（CI 的 PR 声明 base）' };
+	return { ref: 缺省, 源: '缺省 `--main`／`origin/main`（★✗ 给 --base、✗ 非 PR 事件 ⇒ 明账）' };
+}
+
 function 主流程() {
 	if (has('--selftest')) return 自检();
 	跑头注();
 	const repo = path.resolve(arg('--repo', process.cwd()));
-	const main = arg('--main', 'origin/main');
 	const head = arg('--head');
 	if (!head) { console.error('✗ 装置错：缺 --head <票头>（用法见档头）'); process.exit(2); }
+	/* ★★`#505`（2026-10-08 · 领队令）：**按「声明 base」判**（✗ 写死 main ✓）——
+	 *   新分流（main＝0.0.3 阻塞修复专线／dev＝全速开发线 ✓）下，**dev 线的笔本就不该与 main 同尖** ✗
+	 *   ⇒ 拿 main 当基会常报「基座落后」✗（**那是常态 ✗ 缺陷** ✓）。
+	 *   ⇒ 三面一律对**声明基**判 ✓，并把**判的是哪个 base**明写出来（✗ 让人猜 ✓）。 */
+	const 声明基 = 解析声明基({ 显式: arg('--base'), 环境基: process.env.GITHUB_BASE_REF, 缺省: arg('--main', 'origin/main') });
+	let main = 声明基.ref;
 	try { git(repo, 'rev-parse', '--git-dir'); }
 	catch { console.error(`✗ 装置错：${repo} 不是 git 仓`); process.exit(2); }
 	let r1; try { r1 = 检查一(repo, main, head); }
 	catch (e) { console.error(`✗ 装置错（✗ 不当判据红）：${e.message}\n   ⇒ 核 --main／--head／--repo 是否指对`); process.exit(2); }
 	const 红 = [];
-	console.log(`  ① 基座同尖：merge-base=${r1.MB.slice(0, 8)}｜main=${r1.MAIN.slice(0, 8)} ⇒ ${r1.同尖 ? '✓ 同尖' : '✗ 落后'}`);
-	if (!r1.同尖) 红.push(`✗ ① 基座落后现 main（merge-base ${r1.MB.slice(0, 8)} ≠ main ${r1.MAIN.slice(0, 8)}）—— ★先 rebase，再谈内容`);
+	/* ★明写「判的是哪个 base」+ 它的 sha（✗ 让人猜 ✓） */
+	let 基sha = '?'; try { 基sha = git(repo, 'rev-parse', '--short', 声明基.ref).trim(); } catch (e) { /* 取不到 ⇒ 下面装置错会拦 ✓ */ }
+	console.log(`  ★判基：${声明基.ref}@${基sha}（源：${声明基.源}）`);
+	console.log(`  ① 基座同尖（对**声明基**）：merge-base=${r1.MB.slice(0, 8)}｜基=${r1.MAIN.slice(0, 8)} ⇒ ${r1.同尖 ? '✓ 同尖' : '✗ 落后'}`);
+	if (!r1.同尖) 红.push(`✗ ① 基座落后**声明基** ${声明基.ref}（merge-base ${r1.MB.slice(0, 8)} ≠ 基 ${r1.MAIN.slice(0, 8)}）—— ★先把声明基并进来（rebase／merge）再谈内容`);
 	if (!r1.同尖) {
 		let 落后 = NaN;
 		try { 落后 = Number(git(repo, 'rev-list', '--count', `${r1.MB}..${r1.MAIN}`).trim()); } catch (e) { /* ✗ 吞：取不到就不写档数 ✓ */ }
 		const 提示 = 落后提示(r1.MB, r1.MAIN, 落后);
 		if (提示) console.log(提示);
 	}
-	console.log(`  ② 回退行：对现 main 的 diff 共 ${r1.行数} 档｜★只删不加 = ${r1.回退.length} 档`);
+	console.log(`  ② 回退行（对**声明基**的 3-dot）：共 ${r1.行数} 档｜★只删不加 = ${r1.回退.length} 档`);
 	for (const p of r1.回退.slice(0, 12)) console.log(`      ✗ ${p}`);
 	if (r1.回退.length) 红.push(`✗ ② 有 ${r1.回退.length} 个档「只删不加」⇒ 合入会抹掉别的笔刚合的内容`);
-	const base = arg('--base');
+	const base = arg('--prior');
 	if (base) {
 		let r2; try { r2 = 检查二(repo, base, head, main); }
-		catch (e) { console.error(`✗ 装置错：--base 核不动（${e.message}）`); process.exit(2); }
+		catch (e) { console.error(`✗ 装置错：--prior 核不动（${e.message}）`); process.exit(2); }
 		const 同 = r2.旧 === r2.新;
 		console.log(`  ③ patch-id：旧=${r2.旧.slice(0, 16)}…｜新=${r2.新.slice(0, 16)}… ⇒ ${同 ? '✓ 纯 rebase（读数沿用）' : '✗ 内容有变（读数须重跑）'}`);
 		if (!同) 红.push('✗ ③ patch-id 不同 ⇒ ✗ 不只是换基座，内容面须重核');
-	} else console.log('  ③ patch-id：✗ 未给 --base ⇒ 本面不判（明账）');
+	} else console.log(`  ③ patch-id：✗ 未给 --prior ⇒ 本面不判（明账）`);
 	if (红.length) { console.log(''); for (const l of 红) console.log(`  ${l}`); console.log(`  ⇒ ★判据红 ${红.length} 条`); process.exit(1); }
 	console.log(`  ⇒ ★通过（①同尖 ✓｜②回退行 0 ✓${base ? '｜③纯 rebase ✓' : ''}）`); process.exit(0);
 }
@@ -169,6 +187,23 @@ function 自检() {
 	写(D, 'feat.txt', 'f 改了\n'); 提(D, '再改内容');
 	const r5 = 检查二(D, 旧头, 'feat', 'main');
 	断言('K6 内容有变 ⇒ patch-id 不同（✗ 沿用）', r5.旧 !== r5.新, JSON.stringify(r5));
+	/* ★★`#505`（附四加固）：**声明 base 判**两刀 ——
+	 *   K10：**解析顺序**（纯函数三向 ✓）：显式 ⇒ `GITHUB_BASE_REF` ⇒ 缺省（★缺省**明账** ✓）。
+	 *   K11：★**同一个头**在「对 dev 判」下**绿**、在「对 main 判」下**红** ⇒ 证「改判基」**真改了判否** ✓（✗ 只换行字 ✓）。 */
+	const K10a = 解析声明基({ 显式: 'origin/dev', 环境基: 'main', 缺省: 'origin/main' });
+	const K10b = 解析声明基({ 环境基: 'dev', 缺省: 'origin/main' });
+	const K10c = 解析声明基({ 缺省: 'origin/main' });
+	断言('K10a 显式 `--base` 优先（压过 CI 环境变量）', K10a.ref === 'origin/dev' && /显式/.test(K10a.源), JSON.stringify(K10a));
+	断言('K10b 无显式 ⇒ 用 `GITHUB_BASE_REF`（CI 的 PR 声明 base）', K10b.ref === 'origin/dev' && /GITHUB_BASE_REF/.test(K10b.源), JSON.stringify(K10b));
+	断言('K10c 两者皆无 ⇒ 缺省 `origin/main` 且**明账**', K10c.ref === 'origin/main' && /明账/.test(K10c.源), JSON.stringify(K10c));
+	const E = 新仓('e'); 写(E, 'x.txt', '1\n'); 提(E, 'base');   // ★新仓已 `-b main` ⇒ ✗ 再 `branch main`（那会 E128 ✗，我第一版即栽此 ✓）
+	跑(E, 'branch', '-q', 'dev');
+	跑(E, 'checkout', '-q', 'dev'); 写(E, 'd.txt', 'd\n'); 提(E, 'dev 线一笔');
+	跑(E, 'checkout', '-q', 'main'); 写(E, 'm.txt', 'm\n'); 提(E, 'main 线又前进一笔');
+	跑(E, 'checkout', '-q', 'dev'); 跑(E, 'branch', '-q', 'feat'); 跑(E, 'checkout', '-q', 'feat'); 写(E, 'f.txt', 'f\n'); 提(E, 'feat：自 dev 开的一笔');
+	const 对dev = 检查一(E, 'dev', 'feat'), 对main = 检查一(E, 'main', 'feat');
+	断言('K11a 同一头「对 dev（声明基）判」⇒ ① 绿', 对dev.同尖 === true, JSON.stringify({ 同尖: 对dev.同尖 }));
+	断言('K11b 同一头「对 main 判」⇒ ① 红（★旧形即误报「落后」✗）', 对main.同尖 === false, JSON.stringify({ 同尖: 对main.同尖 }));
 	// ── 例 6：装置错可分（✗ 不是判据红）──
 	let 装置错 = false; try { git(path.join(T, '不存在'), 'rev-parse', 'HEAD'); } catch (e) { 装置错 = e.装置错 === true; }
 	断言('K7 不存在的仓 ⇒ 标为装置错（✗ 不当判据红）', 装置错, String(装置错));

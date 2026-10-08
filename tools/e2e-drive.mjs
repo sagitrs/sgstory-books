@@ -852,8 +852,11 @@ if (has('--selftest')) {
 	 *   （落值照夹 `maxHp`，但**返回名义量**、满血也不拒）⇒ 面 T 的三条臂应红。 */
 	{
 		const R = s.SC.setup.RPG, D = s.SC.setup.DND3, P = D.Player, V = s.SC.State.variables;
-		const 屏 = () => (s.doc.body.textContent ?? '').replace(/\s+/g, ' ');
-		const 屏上数 = () => { const m = [...屏().matchAll(/受到了(\d+)点治疗/g)]; return m.length ? Number(m[m.length - 1][1]) : null; };
+		/* ★读法同主面 T（★只读 `[data-panel="notice"]` 的**首条**匹配 ⇒ 最新那条 ✓；理由见主面 T 的注释）。 */
+		const 屏上数 = () => {
+			const t = (s.doc.querySelector('[data-panel="notice"]')?.textContent ?? '').replace(/\s+/g, ' ');
+			const m = t.match(/受到了(\d+)点治疗/); return m ? Number(m[1]) : null;
+		};
 		const 件数 = (id) => V.inventory.filter((x) => x.id === id).reduce((a, x) => a + (x.charges ?? 1), 0);
 		const 真 = D.applyHeal;
 		/* 刀形＝`books#200` 之前的 `used()`：**印名义量**（落值仍被夹） */
@@ -1335,14 +1338,22 @@ if (has('--selftest')) {
 	{
 		const R = s.SC.setup.RPG, D = s.SC.setup.DND3, P = D.Player;
 		const V = s.SC.State.variables;
-		const 屏 = () => (s.doc.body.textContent ?? '').replace(/\s+/g, ' ');
-		/** 屏上**最后一条**「受到了N点治疗」的 N（无则 null）—— 对账读**屏上的数**，✗ 源码字符串。 */
+		/* ★★**读法修**（`books#402` 陪跑 · dev-10 实证 · 2026-10-08）：★此前读 `document.body.textContent`
+		 *   ＝**错**，有两处非产品来源（★产品清白 ✓，是本臂读错 ✓）：
+		 *     ①★`<script>` **源本**也在 `body.textContent` 里 ⇒ ★引擎／道具档的**注释**逐字写着旧病灶
+		 *        （『满血印「受到2点治疗」』✓）⇒ ★正则把**源码字符串**当读数收走 ✗；
+		 *     ②★通知面是 ★**新在前** ⇒ ★取「**最后一条**」命中的是**最旧**那条（上一档的读数 ✗）。
+		 *   ⇒ ★现形：★只读 ★**`[data-panel="notice"]`**（★玩家真看见的那一面 ✓），且取**首条**匹配
+		 *     （★新在前 ⇒ 首条＝最新 ✓；★某条不含该串时**继续**匹配 ⇒ 满血那档仍读到**上一条** ✓）。
+		 *   ⚠ ★该面板**不在** ⇒ ★**具名**红（✗ 静默回落 `body` ✗ —— 那种回落正是本条的病根 ✓）。 */
+		const 通知面 = () => (s.doc.querySelector('[data-panel="notice"]')?.textContent ?? '').replace(/\s+/g, ' ');
+		const 有通知面 = () => s.doc.querySelector('[data-panel="notice"]') != null;
 		const 屏上数 = () => {
-			const m = [...屏().matchAll(/受到了(\d+)点治疗/g)];
-			return m.length ? Number(m[m.length - 1][1]) : null;
+			const m = 通知面().match(/受到了(\d+)点治疗/);
+			return m ? Number(m[1]) : null;
 		};
 		const 件数 = (id) => V.inventory.filter((x) => x.id === id).reduce((a, x) => a + (x.charges ?? 1), 0);
-		const 出声数 = () => (屏().match(/伤已无碍/g) ?? []).length;
+		const 出声数 = () => (通知面().match(/伤已无碍/g) ?? []).length;
 		/** 一档：铺血量 ⇒ **点背包栏那件**（真 DOM）⇒ 读「实回／件数／屏上数／出声」。 */
 		const 一档 = async (id, hp) => {
 			V.inventory.length = 0;
@@ -1360,6 +1371,7 @@ if (has('--selftest')) {
 				数: 屏上数(), 新数: 屏上数() !== 前数, 出新声: 出声数() - 前出声,
 			};
 		};
+		ok(有通知面(), '★前件：须有 `[data-panel="notice"]`（★本面的读数只认它 —— ✗ 无则下面的数全是 null ✗）');
 		const 半 = await 一档('herb-poultice', P.maxHp - 3);     // 件 2 ⇒ 实回 2（未触顶）
 		const 近满 = await 一档('herb-poultice', P.maxHp - 1);   // ★名义 2 被夹 ⇒ 实回 1
 		const 满 = await 一档('herb-poultice', P.maxHp);         // ★满血 ⇒ 拒绝

@@ -14,7 +14,7 @@
       ],
       "断言": {
         "逻辑": "map.current 逐跳 L20-settlement → L20-gate；且 L20-gate 无出边（越层动作面为空）",
-        "渲染": "location 面板文本随跳变（`.statusbar [data-panel=\"location\"]`，`books/stories/babel/src/ui/ui.twee:18`（`location`））：「城墙根」→ 石门（地点名实指 `src/dnd/dnd3/scenes/span2-hub.js:84`（`L20-settlement`）／`:110`）；该面板**刷新计数**每跳 +1"
+        "渲染": "location 面板文本随跳变（`.statusbar [data-panel=\"location\"]`，`books/stories/babel/src/ui/ui.twee:20`（`location`））：「城墙根」→ 石门（地点名实指 `src/dnd/dnd3/scenes/span2-hub.js:84`（`L20-settlement`）／`:110`）；该面板**刷新计数**每跳 +1"
       },
       "锚": [
         "books#70",
@@ -41,7 +41,7 @@
       "动作": [],
       "断言": {
         "逻辑": "chain-shirt **仍解析到 dnd-5e 包**（dnd3 的 scale-mail 不抢占同名 id）—— 装备/查看两向都指向各自包",
-        "渲染": "背包里两条**道具链接**各自成行，其**文本分别取自各自包的条目名**：`.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:18`（`inventory-links`） ＋ `src/core/70-ui.js:57`（`RPG.refuse`）；两向都能点（✗ 一处被同名件吞掉）"
+        "渲染": "背包里两条**道具链接**各自成行，其**文本分别取自各自包的条目名**：`.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:20`（`inventory-links`） ＋ `src/core/70-ui.js:57`（`RPG.refuse`）；两向都能点（✗ 一处被同名件吞掉）"
       },
       "锚": [
         "#1743"
@@ -102,7 +102,7 @@
       ],
       "断言": {
         "逻辑": "RPG.stockOf(c,'iron-ore') **直读 character.stats**，往返不变（✗ 镜像/缓存）",
-        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:70`（`RPG.itemRejectText`） 才带 `×N`；`.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:18`（`inventory-links`） ＋ `src/core/70-ui.js:85`（`RPG.itemLink`）））；往返后**逐字不变**"
+        "渲染": "背包行随消耗变化：`iron-message` 行**消失**、`iron-ore` 行数量形 `×N` 变（`src/core/70-ui.js:70`（`RPG.itemRejectText`） 才带 `×N`；`.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:20`（`inventory-links`） ＋ `src/core/70-ui.js:85`（`RPG.itemLink`）））；往返后**逐字不变**"
       },
       "锚": [
         "#1782",
@@ -129,7 +129,7 @@
       ],
       "断言": {
         "逻辑": "三条各进对应 key 通道；过滤器 all↔key 切换只改可见集，**缓冲（含有界被挡行）不变**",
-        "渲染": "`.noticebar`（`books/stories/babel/src/ui/ui.twee:20`（`noticebar`），`data-panel=\"notice\"`）活行随过滤器显隐；`a.rpg-notice-toggle` 切 all↔key；`.rpg-notice-box` 里**被挡行仍在缓冲**（切回 all 能看见）"
+        "渲染": "`.noticebar`（`books/stories/babel/src/ui/ui.twee:22`（`noticebar`），`data-panel=\"notice\"`）活行随过滤器显隐；`a.rpg-notice-toggle` 切 all↔key；`.rpg-notice-box` 里**被挡行仍在缓冲**（切回 all 能看见）"
       },
       "锚": [
         "#1802"
@@ -150,7 +150,7 @@
       "动作": [],
       "断言": {
         "逻辑": "点击走 `itemAction`（真实动作）⇒ 状态按该条目动作表变",
-        "渲染": "渲染出的每个道具链接**文本 == 该条目的 `inventoryLabel` 文本**（同一渲染源 `src/core/70-ui.js:94`（`RPG.inventoryLinks`））；点 `.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:18`（`inventory-links`） ＋ `src/core/70-ui.js:38`（`RPG.itemClick`）） 触发该条目动作（活行断言，✗ 读源码）"
+        "渲染": "渲染出的每个道具链接**文本 == 该条目的 `inventoryLabel` 文本**（同一渲染源 `src/core/70-ui.js:94`（`RPG.inventoryLinks`））；点 `.inventory-links a[data-item]`（`books/stories/babel/src/ui/ui.twee:20`（`inventory-links`） ＋ `src/core/70-ui.js:38`（`RPG.itemClick`）） 触发该条目动作（活行断言，✗ 读源码）"
       },
       "锚": [
         "#1799"
@@ -174,7 +174,7 @@
       "动作": [],
       "断言": {
         "逻辑": "拾取/使用只重绘**受影响**的面板 —— 其余面板**渲染计数不变**；未注册面板 id ⇒ 出声（✗ 静默）",
-        "渲染": "`.statusbar [data-panel=\"<名>\"]`（`books/stories/babel/src/ui/ui.twee:16`（`statusbar`）；五名 hp／location／trauma／inventory／notice）**词边界**匹配（✗ `.statusbarX` 变体漏判）；活行随刷新更新"
+        "渲染": "`.statusbar [data-panel=\"<名>\"]`（`books/stories/babel/src/ui/ui.twee:18`（`statusbar`）；五名 hp／location／trauma／inventory／notice）**词边界**匹配（✗ `.statusbarX` 变体漏判）；活行随刷新更新"
       },
       "锚": [
         "#1815"
@@ -251,7 +251,7 @@
       "动作": [],
       "断言": {
         "逻辑": "RPG.gather 返回 applied|rejected（采集点须先在背包 ⇒ 不在 ⇒ rejected）；RPG.harvest 收完清 span1Farms",
-        "渲染": "地图动作「**采集（<采集点标签>｜一次采净 <N> 件）**」读取地点节点余量（`books/stories/babel/src/world/babel.js:497`（`基础采集动作`））；其 `when`（`books/stories/babel/src/world/babel.js:519`（`本层已战`））同时要求余量大于 0、`本层已战`、`!已跳过`。采空后该动作**不再出现**；节点属于地点，不要求先把点位道具放进玩家背包（活行断言 = 动作的出现/消失，✗ 自造「已采」标注）"
+        "渲染": "地图动作「**采集（<采集点标签>｜一次采净 <N> 件）**」读取地点节点余量（`books/stories/babel/src/world/babel.js:507`（`基础采集动作`））；其 `when`（`books/stories/babel/src/world/babel.js:529`（`本层已战`））同时要求余量大于 0、`本层已战`、`!已跳过`。采空后该动作**不再出现**；节点属于地点，不要求先把点位道具放进玩家背包（活行断言 = 动作的出现/消失，✗ 自造「已采」标注）"
       },
       "锚": [
         "#1746",

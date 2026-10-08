@@ -36,7 +36,8 @@
 - [`check-refs-recheck.mjs`](tools/check-refs-recheck.mjs) 是引用核的独立复算器，既是同名判据的第二实现，也做独立清点。它枚举整份清单，而不使用被核对象的字段白名单，因此对账差集就是覆盖缺口。命令是 `node tools/check-refs-recheck.mjs --engine <引擎检出@pin> --compare`。
 - [`e2e-drive.mjs`](tools/e2e-drive.mjs) 是真产物驾驶层，通过 `import` 上一件的 `boot()` 工作。它读档往返，涉及 `Save.slots` 与 `Engine.show`，也做自环就地重绘与正文行读数。命令是 `node tools/e2e-drive.mjs --engine <引擎检出@pin>`。加上 `--require <面>` 可以把明账面升为硬判。
 - [`e2e-280-heal-feedback.mjs`](tools/e2e-280-heal-feedback.mjs) 是 `books#280` ⑨（治疗反馈 ＋ 页脚 HP 随用刷新）的**真浏览器臂**：
-  三路（战斗面板／背包战外／背包战中提交）各断【文本 `HP X → Y`】与【页脚 DOM 真变】，`--selftest` 双刀。
+  三路（战中页脚背包／背包战外／背包战中提交）各断【文本 `HP X → Y`】与【页脚 DOM 真变】，`--selftest` 双刀。
+  ★ ① 那一路的形曾随 `books#280` ⑩（道具收敛到页脚背包）**变过** ⇒ 老形恒红；`#517` 定因后改点 `ui/bag.js` 的 `.rpg-bag-submit`（见 `tools/README.md` §11）。
   命令形 `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>`；
   退出码 `0` 过／`1` 红／`2` **装置错**（缺浏览器或产物 ⇒ ✗ 不当判据红）。★本件**暂未接 CI**（仓内工具，体例同 `rehearse-workflow.py`）。
 - [`check-premerge.mjs`](tools/check-premerge.mjs) 是**合前检查器**（把 `tools/README.md` 附三从文字变成可跑件）：

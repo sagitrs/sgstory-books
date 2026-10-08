@@ -98,13 +98,17 @@ jobs:
           #   不一致 ⇒ rc=1 具名红；不是 git 树／缺 pin 文件 ⇒ rc=2 环境错（都✗ 不静默跳过）。
           node tools/check-engine-pin.mjs --engine "$GITHUB_WORKSPACE/engine"
 
-      - name: ★机读基线表（形状与「未判具名」· 0.0.2 门测用）
+      - name: ★机读基线表（形状与「未判具名」· 0.0.2 门测 ＋ **0.0.3 现役**）
         working-directory: books
         run: |
           set -euo pipefail
           # 守的是「可判性」：每行字段齐、结论取值合法、**未判必须具名**（✗ 留空＝静默跳过）。
           # ★发布口径另有 `--release`（有 `阻塞` 即红）：留到零阻塞判定那一步再上。
           node tools/check-baseline.mjs
+          # ★★现役档也须核（`books#402` · 0.0.3）：★裸调用只会核**老档 0.0.2** ✗
+          #   ⇒ ★若 CI 只跑上一行 ⇒ **验了旧档、却以为验了现役** ✓（本仓实况：0.0.3 是本轮验收的现役档 ✓）
+          #   ★故**显式**再核一次（缺省行为**不动** ⇒ 老调用形零回归 ✓）。
+          node tools/check-baseline.mjs --file docs/playtest/baseline-0.0.3.json
 
       - name: 核检出面（打印实际被验的树；✗ 让人以为验了 pin）
         working-directory: engine

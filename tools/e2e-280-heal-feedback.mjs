@@ -1,11 +1,18 @@
 /* 巴别之井 · 真 DOM 臂（`books#280` ⑨：治疗反馈「HP X → Y」＋ 页脚 HP 面板随用刷新）
  *
  * ## 断什么（三路同口径 —— 票面 ⑨ 的验收）
- *   ① 战斗面板的选单｜② 背包**战外**使用（`.rpg-item-link`）｜③ 背包**战中提交**（`sgstory#2003`）
+ *   ① 战斗内·**页脚背包**提交（`ui/bag.js` 的 `.rpg-bag-submit` ⇒ `RPG.submitBattleAction`）｜
+ *   ② 背包**战外**使用（`.rpg-item-link`）｜③ 背包**战中提交**（`sgstory#2003` 的引擎口）
  *   每路各断两件：
  *     · **【文本】** 使用反馈里出现 `HP X → Y`，且 X/Y 是**真值**（−10 起 ⇒ +5）；
  *     · **【页脚】** `.statusbar [data-panel="hp"]` 的 DOM 文本**由 X 变成 Y**（✗ 只断「函数被调过」——
  *       那是装置级读数；本档要的是**页脚真变**）。
+ *
+ * ★★**臂 ① 的形已随 `books#280` ⑩ 更正**（`books#517` 的定因，`dev-10` 2026-10-08）：
+ *   本臂**原形**点的是**战斗选单里的 `quick:` 项**；而 ⑩「战斗菜单只留战斗行动（道具收敛到
+ *   **页脚背包一处**）」之后，选单里**没有** `quick:` 项 ⇒ 老形回落 `opts[0]`＝**空手打击**
+ *   ⇒ 0 治疗 ⇒ 【文本】【页脚】两条**恒红**（✗ 产品缺陷；同一根因也是 `#364` 那次「臂① 两红」）。
+ *   ⇒ 现形改点**战中的页脚背包可点件**（⑮「战中的页脚背包须可提交」那条**真实玩家路**）✓。
  *
  * ## 为什么三路都要断（而不是只断一路）
  *   三路最终都走引擎的 `RPG.act` ⇒ 都发 `item:used`（勘察结论，见 `#280` ⑨ 的落点锚评论）——
@@ -76,22 +83,32 @@ async function 判(env) {
 		if (链) { 链.click(); await new Promise((r) => setTimeout(r, 30)); 断一路('战外使用', 血前); }
 	}
 
-	/* ── 臂 ① 战斗面板：由「玩家」在引擎的交互回合里点选那一件（走 act ⇒ 与另两路同账）── */
+	/* ── 臂 ① 战斗内：**页脚背包**那条真实入口（`books#280` ⑩／⑮ 之后的形）──────────────
+	 *   ★装置陈旧定因（`books#517`；`dev-10` 2026-10-08）：老形点**战斗选单的 `quick:` 项**，
+	 *     而 ⑩ 之后选单里**没有**该项 ⇒ 回落 `opts[0]`＝空手打击 ⇒ 两红恒红（✗ 产品）。
+	 *   ⇒ 改点 `ui/bag.js` 的 `.rpg-bag-submit`（⇒ `RPG.submitBattleAction` ⇒ **本回合行动**）。
+	 *   ⚠ 战中态按 `跑一场()／fight()` 的**同形**置（`setup.BABEL.战中 = true` ＋ `refreshPanels()`）——
+	 *     否则 `ui/bag.js` 的能力门不放行 ⇒ 渲染不出可点件 ⇒ 本臂取不到样本。 */
 	{
 		const 血前 = await 备();
-		const 原 = D.Player.choice;
-		D.Player.choice = (opts) => {
-			const q = (opts ?? []).find((o) => String(o.value).startsWith('quick:'));
-			return Promise.resolve(q ? q.value : String((opts ?? [{}])[0].value));
-		};
+		const 原 = D.Player.choice, 原战 = SC.setup.BABEL?.战中;
+		const 悬 = [];
+		SC.setup.BABEL.战中 = true;
+		R.refreshPanels();
+		D.Player.choice = () => new Promise((res) => { 悬.push(() => res('skip')); });
 		try {
-			await Promise.race([
-				new (R.Battle)(1, [D.Player], [造敌()], true).execute(),
-				new Promise((r) => setTimeout(r, 2000)),
-			]);
-		} finally { if (原 === undefined) delete D.Player.choice; else D.Player.choice = 原; }
+			const p = new (R.Battle)(1, [D.Player], [造敌()], true).execute();
+			await new Promise((r) => setTimeout(r, 0));                 // 让循环跑到「等玩家」那一问
+			const 链 = s.doc.querySelector('.rpg-bag-submit[data-bag-submit="bandage"]');
+			ok(!!链, '★【装置】战中页脚背包里找不到绷带的可点件（`.rpg-bag-submit`）——⑩／⑮ 之后那条真实入口');
+			链?.click();                                                // ★唯一动作：页脚背包那一按
+			await Promise.race([p, new Promise((r) => setTimeout(() => { 悬.forEach((f) => f()); r(); }, 2000))]);
+		} finally {
+			if (原 === undefined) delete D.Player.choice; else D.Player.choice = 原;
+			if (原战 === undefined) delete SC.setup.BABEL.战中; else SC.setup.BABEL.战中 = 原战;
+		}
 		await new Promise((r) => setTimeout(r, 30));
-		断一路('战斗面板', 血前);
+		断一路('战中·页脚背包', 血前);
 	}
 
 	/* ── 臂 ③ 战中提交：`RPG.submitBattleAction` ⇒ 战斗循环取作本回合行动（`sgstory#2003`）── */

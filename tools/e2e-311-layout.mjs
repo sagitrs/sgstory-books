@@ -162,11 +162,23 @@ try {
 	catch (error) { error.setup = true; throw error; }
 	if (combatRedraw) {
 		const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-		const entry = { mode: 'normal-L2-stopped-combat', inputs: [], swordActionBound: 4 }; report.cases.push(entry);
+		const entry = { mode: 'normal-L2-stopped-combat', inputs: [], swordActionBound: 4, scenarioAttempts: 0 }; report.cases.push(entry);
 		try {
-			const page = await context.newPage(); await page.goto(`http://127.0.0.1:${server.address().port}/candidate.html`);
+			/* ★本模式场景**依赖战况随机**：旧形「**四剑之内**须拿到首个胜场，否则 `SCENARIO_UNREACHED`」
+			 *   实测 **~1/6 跑落空** ✗（该红**是装置面**、✗ 产品红 ✓ —— 它有意把「跑不出场景」与「产品红」分两码 ✓，
+			 *   但代价是**该模式 ✗ 能当稳定性证据** ✓）⇒ 修：**整场场景有界重试**（缺省 3 试、每试**新开一页** ✓）；
+			 *   ★场景守卫**具名保留**（三试尽墨 ⇒ 仍 `rc=2 ＋ SCENARIO_UNREACHED` ✓）★只是不再「一击定生死」 ✓；
+			 *   ★并记 `entry.scenarioAttempts`（第几试成 ✓）⇒ **该台稳定性可观测** ✓。
+			 *   ⚠ 只重试**场景搭建**；**判据本身一次不重试** ✓（✗ 把红试成绿 ✓）。 */
+			const 试数 = 3;
+			for (let 试 = 1; 试 <= 试数; 试++) {
+				entry.scenarioAttempts = 试;
+				const inputs = [];
+				let page = null;      /* ★须在 try 外声明：`const` 在 try 块里，finally ✗ 看不见（我第三版就栽在这 ✓）*/
+				try {
+			page = await context.newPage(); await page.goto(`http://127.0.0.1:${server.address().port}/candidate.html`);
 			const active = page.locator('#passages .passage:not(.passage-out)');
-			const click = async text => { await active.getByText(text, { exact: true }).click(); entry.inputs.push(text); };
+			const click = async text => { await active.getByText(text, { exact: true }).click(); inputs.push(text); };
 			for (const text of ['战斗教学', '站起来，活动一下手脚', '（到达）第 1 层 · 苏醒之地 —— 继续',
 				'拾起地上的长剑', '遭遇（往上走之前，先看有什么挡路）', '迎战']) await click(text);
 			let won = false;
@@ -176,7 +188,11 @@ try {
 					.some(b => ['收下', '用已装备长剑攻击'].includes(b.textContent.trim())), null, { timeout: 15000 });
 				if (await active.getByText('收下', { exact: true }).count()) { won = true; break; }
 			}
-			if (!won) { const error = Error('SCENARIO_UNREACHED: no first victory within four sword actions; no reroll'); error.setup = true; throw error; }
+				if (!won) {
+					if (试 < 试数) { await page.close(); continue; }
+					const error = Error(`SCENARIO_UNREACHED: no first victory within four sword actions; no reroll（已重试 ${试数} 试）`);
+					error.setup = true; throw error;
+				}
 			for (const text of ['收下', '继续探索', '采集（碎石堆｜一次采净 6 件）', '向上，去第 2 层',
 				'（到达）第 2 层 · 倒木坡 —— 继续', '遭遇（往上走之前，先看有什么挡路）', '迎战', '空手打击']) await click(text);
 			await active.getByText('精英·獾（敌方）', { exact: true }).waitFor();
@@ -185,7 +201,11 @@ try {
 			if (entry.prerequisite.position !== 'L2' || !entry.prerequisite.combatBody) throw Error('L2_COMBAT_PREREQUISITE');
 			entry.decoration = await decorationAudit(page);
 			entry.decoration.scope = 'normal L2 stopped combat; named image fault and full-panel redraw, not a CSS-class battle simulation';
-			if (entry.decoration.failures.length) rc = 1;
+				if (entry.decoration.failures.length) rc = 1;
+				entry.inputs = inputs;      /* ★只记**成的那一试**的驱动链 ✓ */
+				} finally { await page.close(); }
+				break;                       /* ★场景搭成 ⇒ 退出重试 ✓ */
+			}   /* ← 重试循环末尾 */
 		} finally { await context.close(); }
 	}
 	if (mapAsset) {

@@ -11,7 +11,7 @@
 | 路径 | 一句话用途 |
 |---|---|
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
-| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；`--selftest` 合成例 7 例） |
+| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；`--selftest` 自检 15 断言） |
 | `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
 | `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
 | `tools/e2e-161-restart.mjs` | `:enginerestart` 处理器族的真浏览器臂（真 jQuery 下真触发 · 两向＋缺席闸＋`--knife`）|
@@ -30,9 +30,10 @@
 | `tools/e2e-209-host-save.mjs` | `books#209` 宿主存档门禁的真宿主臂（战中禁存／战后委托／读档后面板归零） |
 | `tools/e2e-413-test-mode.mjs` | ★`books#413`（A2）**测试模式端到端真浏览器臂**：入场→两卡真跑（战斗／奖励两个场次）→骰三账→纯查看（✗ 抽）→结束口（三不／幂等／只清该场次）→**真 `reload()` 验 `babelTest/` 跨刷新**→正控（正式面逐字不变＋异步后 `运行.栈深()` 归位）。**27 条判据**；两把刀各咬段（摘 `localStorage` 真写 ⇒ ⑥ 三红；摘 `在()` 异步还原 ⇒ ⑦ 一红）。★跑法：`CHROME=<chrome> LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-413-test-mode.mjs <babel-trial.html 绝对路径>`（★`playwright` 须可解析 ⇒ 本席用 `~/tmp` 侧的 `node_modules` 符号链接） |
 | `tools/e2e-210-reserved-slots.mjs` | `books#257` 保留槽四臂（动作层 ✗ 执行层 · 保护该在动作层） |
-| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源） |
+| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源）；★臂 B2（`books#402` 附账）断「**战中未重渲段落**时也须已换形」——真实开战只 `refreshPanels()`、✗ 重渲段落 |
 | `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
 | `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
+| `tools/e2e-136-l2-load-reprint.mjs` | ★`books#136` F4「**载入后场景头须重印**」的**真浏览器单臂甲**（`#497` 判据的独立旁证）：三条前件（页脚「快存」→「载入快存」链须出／摘头须**用同一读数函数**断真摘掉／链须在文档）＋甲；★自证**只到前件级**（「唯一变量级」刀两试未成立·档头具名）；`rc=2`＝环境错 |
 | `tools/e2e-280-playtest.mjs` | 操作者试玩批的真浏览器臂（L1 面**九臂**（★臂名跳号无 ⑥·以实跑 `通过 9` 为准）：遭遇每层一次两向 · 采净一行 · 上行门三臂 · 低层页脚只读 · 宝箱缺席闸 · P1-3 跳过关面 · **奖励结算停确认（②-4·缺席闸）**） |
 | `tools/e2e-280-battle-bag.mjs` | ★**战中从页脚背包用道具的动态面**（`#280` ⑧/⑩）：**点得动**（真 `click()`）· 真治疗 · 真扣次数 · 真耗回合 —— ★**判「鼠标落不落得上」，判不了的人家别拿它当证据** |
 | `tools/e2e-280-heal-feedback.mjs` | `books#280` ⑨ 治疗反馈「HP X → Y」＋页脚 HP 面板随用刷新的**真 DOM 臂**（三路各断【文本】与【页脚真变】）＋ 双刀（文本面／页脚面各咬一次） |
@@ -182,8 +183,11 @@
 - **期望读数**：`三路（文本 ＋ 页脚真变）全过`；引擎没有 `submitBattleAction` 时第三路明印「待判」；
   自检两刀各红在自己那一面（文本面／页脚面）。退出码 `0` 全过、`1` 有红、`2` 环境错。
 - **设立理由**：⑨ 的病是「用了药却看不出 HP 变了」⇒ 只断「函数被调过」是装置级读数，
-  必须断**页脚 DOM 真的变**；而三路（战斗面板／战外／战中提交）各要证一次 —— 主张是「一处钩子覆盖三路」，
+  必须断**页脚 DOM 真的变**；而三路（战中·页脚背包／战外／战中提交 API）各要证一次 —— 主张是「一处钩子覆盖三路」，
   主张就得三路各证，任一路将来绕开 `RPG.act`，这一路要红。
+- **① 那一路的形变过（`books#517` 定因，`dev-10` 2026-10-08）**：`books#280` ⑩ 把道具收敛到**页脚背包一处**
+  ⇒ 战斗选单里**没有**道具项了，而本臂 ① 原形点的是选单里那个 `quick:` 项（缺则回落空手打击）
+  ⇒ 两红**恒红**（✗ 产品）。现形改点**战中页脚背包**的可点件（`.rpg-bag-submit` ⇒ `RPG.submitBattleAction`）。
 
 ## 附一：本目录的边界
 
@@ -304,7 +308,7 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | 项 | 内容 |
 |---|---|
 | **清单** | `tools/check-premerge.mjs` —— 落 `tools/README.md` **附三（合前检查）** 那两条：★**①基座同尖**（`merge-base(现main,票头) === 现main`）★**②回退行 0**（对现 main 的 `--numstat` 里没有「只删不加」的档）；★给了 `--base` 再算 **③patch-id**（逐字同 ⇒ 纯 rebase ⇒ 读数沿用）。 |
-| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--main origin/main] [--base <旧头>] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。 |
+| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>] [--main origin/main] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。★**`--base`＝声明基**（三面都判它 ✓；缺省取 `GITHUB_BASE_REF` ⇒ 再缺省 `--main`／`origin/main` ✓）；★③patch-id 的**旧头**＝**`--prior`**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。★**为何**：新分流（main＝阻塞修复专线／dev＝开发线）下 dev 线的笔**本就不该与 main 同尖** ✗ ⇒ 拿 main 当基会常报「落后」✗（**常态 ✗ 缺陷** ✓；`books#505` ✓）。 |
 | **期望读数** | 开头打印**明账**（patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；纯改名/二进制档请人眼过）。末行 `⇒ ★通过（…）` 或 `⇒ ★判据红 N 条`。退出码 `0` 全绿／`1` 判据红（★逐条具名：哪个档只删不加／patch-id 不同）／`2` **装置错**（✗ 不当判据红：不在 git 仓／取不到 main 或票头）。 |
 | **设立理由** | `books#296`／`#303`／`#305`／`#310` 那四笔「看着干净、合了会坏」的票换来的：★基座落后 ⇒ 对现 main 的 diff 带**回退行** ⇒ 合入抹掉别的笔刚合的东西；★`mergeable_state=clean` **看不出来**这一类。`#315` 先把口径写进 README（附三）＋ 给出实例；本件把口径做成**可跑件**——★README 是"人读过才会跑"，本器是"跑不跑由机器说话"。 |
 | **自检（`--selftest`·合成例 7 例）** | `K1` 落后头 ⇒ ① 判红（**门能红**）｜`K2`/`K3` 同尖干净头 ⇒ ① 绿 ＋ ② 回退行 0（**门不滥红**）｜`K4` 同尖但只删不加 ⇒ ② **检出该档**（② 有牙）｜`K5` 纯 rebase ⇒ patch-id 逐字同｜`K6` 内容有变 ⇒ patch-id 不同｜`K7` 不存在的仓 ⇒ **标为装置错**（✗ 不当判据红）。★自检与主流程**共用同一判据函数**（`检查一`/`检查二`），✗ 不是另写一套。 |
@@ -419,6 +423,7 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 - **清单**：完整产物、两个独立 Chromium context。720×500／DPR2 的侧栏必须展开，正文左缘须不小于侧栏右缘；390×844／DPR1／模拟触控下，人物不与切换按钮相交，fixed HUD 在首屏且标题在其下；两臂均无横向溢出。再以具名 DOM-only `body.战中` CSS 夹具检查隐藏侧栏不留下占位、标题在 fixed HUD 下；不设置游戏的「战中」标志、不模拟战斗或门禁。
 - **战中正文独立复算**：在同一完整 pin／产物前置下，执行 `PW_DIR=<playwright 目录> CHROME_BIN=<Chrome> timeout 90 node tools/e2e-311-layout.mjs --books "$PWD" --engine <完整 pin 检出> --combat-redraw`。这与 `--selftest` 分开：一个 fresh context，真实链接从 L1 取剑、首胜、确认、采净至 L2，停在空手目标选择后，分别记录图片故障和首次全量重绘。首战最多四次用剑；未胜则具名 rc2、该场景未覆盖，不重开／重抽。全量正文若变则 rc1 并保留前后序列及面板文本，不能拿初入 L1 绿或 repeat 绿代它。
 - **固定命令**：先按声明 pin 重建产物，再执行 `PW_DIR=<含 node_modules/playwright 的目录> CHROME_BIN=<Chrome 可执行文件> timeout 60 node tools/e2e-311-layout.mjs --books "$PWD" --engine <完整 pin 检出>`；追加 `--selftest` 跑四刀。若浏览器缺系统库，以本席私有 `LD_LIBRARY_PATH` 补齐；临时目录用本席 `~/tmp`，不全局安装。
+- **★场景自愈（2026-10-08 · T 面笔）**：`--combat-redraw` 的场景**依赖战况随机**（旧形「**四剑之内**须拿到首个胜场」实测**约 1/6～1/19 跑落空** ⇒ 报 `SCENARIO_UNREACHED` ✗ —— ★**是装置面、✗ 产品红**，但该台**✗ 能当稳定性证据** ✓）⇒ 现形：**整场场景有界重试**（缺省 **3 试**、每试**新开一页** ✓）；★**只重试场景搭建**，**判据一次不重试** ✓；三试尽墨 ⇒ 仍 `rc: 2 ＋ SCENARIO_UNREACHED（已重试 3 试）` ✓。★JSON 里多一个 `scenarioAttempts`（**第几试成** ✓）⇒ 该台的稳定性**可观测** ✓（**1** ＝ 一次即成 ✓）。
 - **期望读数**：JSON `cases` 恰两臂、`initialFailures: []`、`decoration.failures: []`、`rc: 0`；图片故障与全量重绘各自输出正文／所测源不变读数，不能以一格通过代另一格。自检须分别具名 `ZOOM_SIDEBAR_OVERLAP`／`NARROW_PORTRAIT_OVERLAP`；两个视口的战期 CSS 刀各须具名 `COMBAT_HIDDEN_SIDEBAR_SPACE`／`COMBAT_HUD_TITLE`。每刀恢复后 `restoredFailures: []`，退出战期 CSS 夹具后所测源／存档不变。产品／断言 rc1；缺参数、精确 pin 错配、缺产物／Playwright／浏览器等装置错 rc2；不以缺席计绿。
 - **设立理由**：只查 CSS 文本或 jsdom 看不见真正遮挡。四刀只临时覆写 CSS，以同一几何判词核前件、故障与恢复；不改文件、不给装备、不跳段落、不抽随机、不存档。
 - **边界与 CI 引用面**：720×500 是实际桌面 200% 缩放观察所对应的 **CSS 视口模型**，本工具不操作浏览器工具栏缩放；390×844 不是物理手机。通过真实「战斗教学」链接进入 L1 后量几何；另分别记录八份源的 `Image.decode()`／尺寸、具名坏图的原生失败隐藏与正文／所测源不变、初入 L1 全量刷新前后的非空文本节点序列。八份源解码不等于八张 live 图。初入 L1 通过也**不消解历史战中首次正文红**，不判长 HUD、字体、完整 WCAG 或历史首红的成因。这是本地独立入口，未修改 `.github/workflows/**`；既有 `babel-tests.yml` 仍调用 `verify.mjs` 第62格，不声称 CI 已调用本工具。
