@@ -25,6 +25,7 @@
  *   `--knife`：把绑定的处理器**换成空函数**再跑 ⇒ 必须红（证明本臂判得了 ⇒ 刀）
  */
 import fs from 'node:fs';
+import process from 'node:process';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -33,6 +34,12 @@ const has = (f) => argv.includes(f);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const B = path.resolve(arg('--books', process.cwd()));
 const 产物 = path.resolve(arg('--art', path.join(B, 'stories/babel/babel-trial.html')));
+/* ★产物新鲜度守卫（`tools/bundle-fresh.mjs` 共享件）：本臂只认预构建产物 ⇒
+ *   陈旧 ⇒ 读的是上一版源码（读数看着对、量的不是当前树）⇒ 具名红退出。 */
+{ const { 断产物新鲜 } = await import('./bundle-fresh.mjs');
+  try { 断产物新鲜({ 产物: 产物, 引擎根: process.env.ENGINE ?? process.env.E, 仓根: process.cwd() }); }
+  catch (e) { console.error(String(e?.message ?? e)); process.exit(2); } }
+
 const 刀 = has('--knife');
 const PW = process.env.PW_DIR || path.join(process.env.HOME, 'tmp/pw');
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME, '.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');

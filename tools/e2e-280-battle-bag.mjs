@@ -29,6 +29,7 @@
  *   0 = 全绿；1 = 有红（逐条具名）；2 = 装置错（引擎根／产物／浏览器，具名 ✗ 不当判据红）
  */
 import fs from 'node:fs';
+import process from 'node:process';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
@@ -37,6 +38,12 @@ const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const B = path.resolve(arg('--books', process.cwd()));
 const 产物 = path.resolve(arg('--art', path.join(B, 'stories/babel/babel-trial.html')));
+/* ★产物新鲜度守卫（`tools/bundle-fresh.mjs` 共享件）：本臂只认预构建产物 ⇒
+ *   陈旧 ⇒ 读的是上一版源码（读数看着对、量的不是当前树）⇒ 具名红退出。 */
+{ const { 断产物新鲜 } = await import('./bundle-fresh.mjs');
+  try { 断产物新鲜({ 产物: 产物, 引擎根: process.env.ENGINE ?? process.env.E, 仓根: process.cwd() }); }
+  catch (e) { console.error(String(e?.message ?? e)); process.exit(2); } }
+
 const PW = process.env.PW_DIR || path.join(process.env.HOME, 'tmp/pw');   // ★本席自备（✗ 不指别的席位 home —— 守边界；同 `#323` 族修法）
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME, '.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');
 

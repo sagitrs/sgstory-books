@@ -47,6 +47,12 @@ const argv = process.argv.slice(2);
 const argOf = (k, d = null) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
 
 const 产物 = path.resolve(argOf("--product", path.join("stories", "babel", "babel-trial.html")));
+/* ★产物新鲜度守卫（`tools/bundle-fresh.mjs` 共享件）：本臂只认预构建产物 ⇒
+ *   陈旧 ⇒ 读的是上一版源码（读数看着对、量的不是当前树）⇒ 具名红退出。 */
+{ const { 断产物新鲜 } = await import('./bundle-fresh.mjs');
+  try { 断产物新鲜({ 产物: 产物, 引擎根: process.env.ENGINE ?? process.env.E, 仓根: process.cwd() }); }
+  catch (e) { console.error(String(e?.message ?? e)); process.exit(2); } }
+
 const 标签 = argOf("--tag", "运行");
 const 留档 = argv.includes("--keep-profile");
 const CHROME = process.env.CHROME ?? path.join(process.env.HOME, ".cache/ms-playwright/chromium-1243/chrome-linux64/chrome");
