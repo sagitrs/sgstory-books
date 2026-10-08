@@ -112,7 +112,7 @@ RB.bagHTML = () => {
 	}
 	const 行 = 条目.map((e) => RB.bagItemHTML(e)).join('');
 	const 提示 = !战中 ? '' : (战中可提交()
-		? '<div class="rpg-hint">战斗中：点道具名即用掉它 —— 那会**占用本回合**。</div>'
+		? '<div class="rpg-hint">战斗中：点道具名即用掉它 —— 那会占用本回合。</div>'
 		: '<div class="rpg-hint">战斗中：请在战斗面板里使用道具——那会占用本回合。</div>');
 	return `<details class="rpg-bag"><summary>${标题}</summary>${提示}`
 		+ `<ul class="rpg-bag-list">${行}</ul></details>`;
