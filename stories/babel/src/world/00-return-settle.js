@@ -85,12 +85,12 @@ const 返程事务 = ({ 实例 = null, 演出 = null, 完成 = true } = {}) => {
 	const s = 读档();
 	if (!s) return { ok: false, code: 'SEVEN_NOT_STARTED', why: '七名河教程未在进行中' };
 	const 本次 = 实例 ?? s.机会?.实例 ?? null;
-	if (!本次) return { ok: false, code: 'RETURN_NO_INSTANCE', why: '本次返程没有实例号 ⇒ ✗ 无法幂等' };
+	if (!本次) return { ok: false, code: 'RETURN_NO_INSTANCE', why: '无法识别这次返程，本次未执行' };
 	/* ★长程幂等（故事自持键 ✓）；与引擎**近窗**去重并存 ✓（边界见上 ✓）。 */
-	if (s.返程已结 === 本次) return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: `本次返程（${本次}）已结算（✗ 再损毁）` };
+	if (s.返程已结 === 本次) return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '本次返程已结算，不再重复损毁物品' };
 	const 边 = R.commitBoundary;
 	if (typeof 边?.preview !== 'function' || typeof 边?.commit !== 'function') {
-		return { ok: false, code: 'RETURN_NO_ENGINE', why: '引擎缺 `RPG.commitBoundary`（本笔声明 pin 起应有）' };
+		return { ok: false, code: 'RETURN_NO_ENGINE', why: '返程结算暂不可用，本次未执行' };
 	}
 
 	/* 计划：分类只看**传送前**状态 ✓；按**实体** ✓（✗ 按同款 id ✓）。 */
@@ -158,7 +158,7 @@ const 返程事务 = ({ 实例 = null, 演出 = null, 完成 = true } = {}) => {
 	});
 	if (结算.status === 'settled' && 结算.reused) {
 		复原物品();
-		return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '引擎账上该请求已提交（近窗去重 ✓），物品面已复原' };
+		return { ok: false, code: 'RETURN_ALREADY_SETTLED', why: '本次返程已结算，不再重复处理；这次尝试的物品改动已恢复到尝试前。' };
 	}
 	if (结算.status !== 'applied') {
 		复原物品();
@@ -173,7 +173,7 @@ const 返程事务 = ({ 实例 = null, 演出 = null, 完成 = true } = {}) => {
  *  裁文（`writer-2` 四裁 `6018346663` 第 3 项）**不批准**「付费旧卷轴也执行脆弱结算」⇒ 例外**已冻结** ✓。
  *  此口的意义＝**显式可审** ✗ 不靠「挂在别处没写」✓：返回**具名 code**，判据据它断 ✓。 */
 const 旧卷轴返程 = () => ({ ok: true, code: 'RETURN_SCROLL_EXEMPT', 未损毁: true,
-	why: '旧卷轴例外已冻结（✗ 执行脆弱损毁 ✓），按同一实现出具名回执' });
+	why: '本次卷轴返程不进行脆弱结算。' });
 
 /** ★设计原句（裁 §三：**保留**）：传送结算的演出首句 ✓。 */
 const 演出句 = '跨越位面的波动使你以外的存在变得模糊，只有强大的存在才能在传送中保持自我。';

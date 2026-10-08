@@ -43,14 +43,14 @@
 	const 卡目录 = Object.freeze([
 		Object.freeze({
 			卡id: 'test-card-battle', 类: '战斗', 显示名: '测试·战斗卡',
-			说明: '一组固定敌人 ⇒ 走**正式**战斗规则与结算（✗ 另造战斗数学）',
+			说明: '一组固定敌人，走正式战斗规则与结算（不另造战斗数学）',
 			/* ★①裁「内容由接线提案具名」：点**内容档里已有的真战斗节点**（`E3` ⇒ 鳄鱼×1 ✓），
 			 *   ✗ 自造敌人表（那会变成第二套内容 ✓）。 */
 			节点: 'E3', 敌组: Object.freeze(['Crocodile']),
 		}),
 		Object.freeze({
 			卡id: 'test-card-reward', 类: '奖励', 显示名: '测试·奖励卡',
-			说明: '一次固定交付 ⇒ 走**正式**唯一交付口（✗ 另造奖励/掉落数学；✗ 经旧随机口）',
+			说明: '一次固定交付，走正式唯一交付口（不另造奖励/掉落数学，不经过旧随机口）',
 			/* ★交付形＝**候选 id ⇒ 件数**（`00-seven-names-content.js` 的 `物品映射` 口径 ✓）
 			 *   —— 候选须在映射表里（✗ 自造 id ⇒ 交付口会静默跳过 ✓）。 */
 			交付: Object.freeze({ bandage: 1 }),
@@ -73,11 +73,11 @@
 	const 接缝 = () => {
 		if (typeof setup.RPG?.makeRng !== 'function') {
 			throw 拒('TEST_MODE_NO_ENGINE_RNG',
-				'引擎缺 `RPG.makeRng`（`sgstory#2043` 的按会话随机源接缝）⇒ 测试局**无法**拥有自己的随机源，'
-				+ '本模式**拒绝**以共享全局源开场（那会把「未隔离」伪装成「跑通了」✗）');
+				'引擎缺 `RPG.makeRng`（`sgstory#2043` 的按会话随机源接缝），测试局无法拥有自己的随机源，'
+				+ '本模式拒绝以共享全局源开场（那会把「未隔离」伪装成「跑通了」）');
 		}
 		if (typeof setup.RPG?.GameSession !== 'function') {
-			throw 拒('TEST_MODE_NO_SESSION', '引擎缺 `RPG.GameSession` ⇒ 测试局无法拥有独立会话 ✓');
+			throw 拒('TEST_MODE_NO_SESSION', '引擎缺 `RPG.GameSession`，测试局无法拥有独立会话');
 		}
 	};
 
