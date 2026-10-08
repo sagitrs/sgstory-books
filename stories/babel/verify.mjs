@@ -6731,11 +6731,20 @@ head('76. 线上 P1 之二：地图 CSS 归位样式表／快存可载入（入�
 		} else {
 			console.log('    （★P1-3 读数：宿主无 `has` ⇒ 本格不作数 ✗ 如实记 ✓）');
 		}
-		/* ★UI 面：页脚**确有**载入链（✗ 只在文档里 ✓） */
-		const twee = path.join(process.cwd(), 'stories/babel/src/ui/ui.twee');
-		const 源 = fs.existsSync(twee) ? fs.readFileSync(twee, 'utf8') : '';
-		ok76(/<<link "载入快存">>/.test(源) && /BABEL\.快读\(\)/.test(源), '★P1-3：页脚**确有**「载入快存」链（且走 `快读` ✓）');
-		ok76(/<<if setup\.BABEL\.快存有位\(\)>>/.test(源), '★P1-3：该链**受 快存有位 门控**（✗ 无档也显示 ✓）');
+		/* ★UI 面：页脚**确有**载入链（✗ 只在文档里 ✓）
+		 *   ★`books#402` 附账修（`dev-10` 2026-10-08）：本格的**源**由 `ui/ui.twee` 换成
+		 *     `ui/panels.js` 的 `footer-save` 渲染函数 —— ★页脚那一格收成**面板**（twee 只留宿主骨架）：
+		 *     老形（twee 的 `<<if>>` ＋ `<<link>>`）只随**段落重渲**换形，而真实开战**不重渲段落**
+		 *     （只 `战中 = true` ＋ `refreshPanels()`）⇒ 战中页脚会留着**可点链**（裁 4 要的是「可见但不可点」）。
+		 *   ⚠ 形（可点链／战中禁用 span／点不落档）的**行为面**由 `tools/e2e-259-footer-save.mjs`
+		 *     的臂 B（重渲态）与臂 B2（**未重渲态**）断 ✓ —— 本格只管「源里确有这两件」这一面。 */
+		const 页脚源 = path.join(process.cwd(), 'stories/babel/src/ui/panels.js');
+		const 源 = fs.existsSync(页脚源) ? fs.readFileSync(页脚源, 'utf8') : '';
+		const 渲染块 = (源.match(/registerPanel\('footer-save'[\s\S]*?\n\}\);/u) ?? [''])[0];
+		const 绑定块 = (源.match(/jQuery\(document\)\.on\('click', '\.rpg-footersave-load'[\s\S]*?\}\);/u) ?? [''])[0];
+		ok76(/rpg-footersave-load/.test(渲染块) && /快读/.test(绑定块),
+			'★P1-3：页脚**确有**「载入快存」链（且走 `快读` ✓）');
+		ok76(/快存有位/.test(渲染块), '★P1-3：该链**受 快存有位 门控**（✗ 无档也显示 ✓）');
 	} finally {
 		if (槽存 !== null) { try { const o = JSON.parse(槽存); if (o && R.save?.slots?.set) { /* ★尽力复原（✗ 吞） */ } } catch (e) { /* ✗ 吞 */ } }
 	}

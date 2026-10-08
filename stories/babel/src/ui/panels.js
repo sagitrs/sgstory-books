@@ -86,6 +86,36 @@ R.registerPanel('inventory', {
 		return setup.RPG.inventoryLinks();
 	},
 });
+/* ★`books#259` 裁 4（`books#402` 附账定因 · `dev-10` 2026-10-08）：**页脚快存格** 收成面板 ——
+ *   形（可点链 ／ 战中禁用 span ／ 有档时的「载入快存」）由本渲染函数给，✗ 不再由 twee 的 `<<if>>` 给。
+ *   ⚠ 病灶：twee 那形只在**段落重渲**时变，而真实开战**不重渲段落**（`01-seven-names-battle.js:60-62`
+ *     与 `encounters.js:462-470` 都只是「`战中 = true` ＋ `refreshPanels()`」）⇒ 战中页脚会留着
+ *     **可点链**（裁 4 要的是「可见但不可点」；点击被 `页脚快存()` 拒并出声 ＝ 功能安全，但 affordance 违约）。
+ *   ⇒ 收成面板后，开战那一下刷新就换形 ✓（与 `inventory` 面同法：**换面即不产生可点件** —— 不必再写
+ *     一份「点了会怎样」的逻辑）。
+ *   ⚠ 可用性判据**仍只有一处源**：`setup.BABEL.页脚可存()`（与 `快存` 同源）—— 本格✗ 不另立判据。
+ *   ⚠ 判据在 `tools/e2e-259-footer-save.mjs` 的臂 B（重渲态）与臂 B2（**未重渲态**，即本条报的那面）。 */
+R.registerPanel('footer-save', {
+	name: '页脚快存',
+	host: '.footersave[data-footer="save"][data-panel="footer-save"]',
+	render: () => {
+		const B = setup.BABEL;
+		const 快存面 = B?.['页脚可存']?.() === true
+			? '<a class="rpg-footersave-save" role="button">快存</a>'
+			: '<span class="footersave-off" title="战斗中不能存档">快存（战斗中不可用）</span>';
+		const 载入面 = B?.['快存有位']?.() === true
+			? '<a class="rpg-footersave-load" role="button">载入快存</a>'
+			: '';
+		return 快存面 + 载入面;
+	},
+});
+/* 点击绑定（幂等：只绑一次）—— 与 `ui/bag.js` 同法：**类选择器 ＋ 委托** ⇒ 宿主重绘不会丢处理器。
+ *   ⚠ 动作用**故事侧那两个既有口**（✗ 不在这里重写存档逻辑 —— 那会是「同一件事的第二处」）。
+ *   ⚠ 只有 `页脚可存()` 放行时才会渲染出可点件 ⇒ 禁用 span 不可点（**根本不产生**处理器落点）。 */
+if (typeof jQuery === 'function') {
+	jQuery(document).on('click', '.rpg-footersave-save', (ev) => { ev.preventDefault(); setup.BABEL?.['页脚快存']?.(); });
+	jQuery(document).on('click', '.rpg-footersave-load', (ev) => { ev.preventDefault(); setup.BABEL?.['快读']?.(); });
+}
 /* 通知面板：能力来自 B4（`#1798`）⇒ **能力探测**注册（该面未落地时这一格留空，✗ 报错） */
 if (typeof R.noticeToggleHTML === 'function') {
 	R.registerPanel('notice', {
