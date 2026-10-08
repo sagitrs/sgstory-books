@@ -299,6 +299,34 @@ export function 段内可点(session) {
 		.filter((el) => (el.textContent ?? '').trim() !== '');
 }
 
+/** ★**非导航链**（`books#402` 陪跑 · 2026-10-08）——**开面板／写档／弹通知**那类段内可点项：
+ *   它们**点了 ✗ 不换段**（`<<link>>` 的 handler 不调 `Engine.play`）⇒ 与「段内可点 ⇒ 必导航」
+ *   的旧假设**冲突** ⇒ `clickPassage` 的兜底会挑到它 ⇒ 抛「点了但段落未变」✗。
+ *
+ *   ★**病灶实证**（我本机复现，与 `e2e-window` 的 `--selftest` 同步）：★`开始` 段上，
+ *     `段内可点()[0]` ＝ **`开发测试模式（测试局）`** ✗ ⇒ harness 自检 **rc=1**：
+ *     `★点了 （段内链「开发测试模式（测试局）」…）但段落**未变**（仍 "开始"）` ✓。
+ *     ★代价：★`e2e-window` 那一步一红 ⇒ **后续 e2e 步全被 skip** ⇒ **nightly 照不出任何场景** ✓。
+ *
+ *   ★**名单**（**一处源** ✓；★每条都写**为什么**它不导航 ✓）：
+ *     · `开发测试模式（测试局）` —— 开**测试模式**面板（改测试台状态 ✗ 不换段）
+ *     · `打开地图`               —— 开**图区**面板（`map.js` 的开关动作）
+ *     · `快存`                   —— **写档**（`页脚快存`），✗ 换段
+ *     · `通知：`                 —— 开**通知**面板（档位切换，✗ 换段）
+ *   ⚠ **边界**：★这是**具名名单** ⇒ ★故事**新增**面板链时须**同笔同刷** ✓
+ *     （★根治＝**故事侧**给面板链加标记，如 `data-panel` ⇒ ★那属**产品面**，本席在此只记建议 ✓）。 */
+export const 非导航链名单 = Object.freeze(['开发测试模式（测试局）', '打开地图', '快存', '通知：']);
+
+/** ★**判一件是不是非导航链**（纯函数 ⇒ 刀可直喂 ✓）。 */
+export const 是非导航链 = (el) => {
+	const t = (el?.textContent ?? '').trim();
+	return 非导航链名单.some((k) => t === k || t.startsWith(k));
+};
+
+/** ★**挑段内链**（纯函数 · ✗ 依赖 DOM ⇒ 刀可直喂，照 E2「抽纯函数，✗ 埋 `main()`」✓）：
+ *   取**第一条**不属「非导航链」的候选 ✓；若**全**是面板链 ⇒ 返回 `null`（由调用方**具名抛** ✓）。 */
+export const 挑段内链 = (els) => (els ?? []).find((el) => !是非导航链(el)) ?? null;
+
 /**
  * ★点一个故事链接，**并断言导航真的发生**。
  *   ✗ 不返回 void —— 那会让调用方**对着过期 DOM 判**（本族最危险的形：不抛错、不改状态 ⇒
@@ -328,7 +356,9 @@ export async function clickPassage(session, { to = null, mechanism = 'click' } =
 	 *   ✗ 不假装知道目标名 —— 而「点的动作真导航了」正是本件存在的核心理由 ✓。 */
 	let 是段内链 = false;
 	if (!el && to == null) {
-		el = 段内可点(session)[0] ?? null;
+		/* ★`books#402` 陪跑修（2026-10-08）：✗ 再取 `[0]` —— 首项可能是**面板链**（点它 ✗ 换段 ⇒ 必抛 ✓）。
+		 *   ⇒ 用 `挑段内链`（纯函数 ✓）取**第一条非面板**候选 ✓；全为面板链 ⇒ 走下面的具名抛 ✓。 */
+		el = 挑段内链(段内可点(session));
 		if (el) { 是段内链 = true; want = `（段内链「${(el.textContent ?? '').trim().slice(0, 20)}」·目标由故事决定）`; }
 	}
 	if (!el) {
@@ -538,6 +568,20 @@ if (import.meta.filename === process.argv[1]) {
 			K.push([good.n === 2, 'K13b 好形：`身上的铁器：2 件` ⇒ 读出 2', `n=${good.n}`]);
 			K.push([undef.n === null, 'K13b ★`[undefined]` 形（`#141` 第二轮真形）⇒ 须报「不是数字」', `n=${undef.n}`]);
 			K.push([missing.n === null, 'K13b 该行缺失 ⇒ 须报「不是数字」（✗ 静默 0 ＝ 把「没渲染」读成「0 件」）', `n=${missing.n}`]);
+		/* ★K14（`books#402` 陪跑修的自证刀 · 2026-10-08）：**两向**证明「挑段内链」判得了。
+		 *   ★(甲) 面板链**被跳过**（✗ 挑到 ⇒ 必抛「段落未变」）；★(乙) **非**面板链仍被挑中；
+		 *   ★(丙) 全为面板链 ⇒ 返回 `null`（由调用方具名抛 ⇒ ✗ 静默挑一个去点）。 */
+		{
+			const 假 = (t) => ({ textContent: t });
+			const 混 = [假('开发测试模式（测试局）'), 假('打开地图'), 假('战斗教学'), 假('跳过教学')];
+			const 全 = [假('快存'), 假('通知：全部（3）')];
+			const 甲 = 挑段内链(混);
+			const 乙 = 挑段内链(混)?.textContent;
+			const 丙 = 挑段内链(全);
+			K.push([甲 && 甲.textContent === '战斗教学', 'K14甲 面板链须被**跳过**（首项 `开发测试模式（测试局）` ✗ 挑它 ⇒ 必抛「段落未变」）', `挑到 = ${JSON.stringify(甲?.textContent)}`]);
+			K.push([乙 === '战斗教学', 'K14乙 **非**面板链仍须被挑中（✗ 一律跳过 ⇒ 段内链这一支会失效）', `挑到 = ${JSON.stringify(乙)}`]);
+			K.push([丙 === null, 'K14丙 **全**为面板链 ⇒ 须返回 `null`（由调用方**具名抛** ⇒ ✗ 静默挑一个去点）', `返回 = ${JSON.stringify(丙)}`]);
+		}
 			K.push([nonnum.n === null, 'K13b 非阿拉伯数字 ⇒ 须报「不是数字」（✗ 只判存在性即可被非数值蒙混）', `n=${nonnum.n}`]);
 		}
 		await expectThrow('K3 找不到目标链接 ⇒ 须抛（✗ 静默用别的链接顶上）',
@@ -614,8 +658,12 @@ if (import.meta.filename === process.argv[1]) {
 	/* 出口可点性（P0-2 族）：当前段有可点故事链接 ⇒ 点它并断言**导航发生** */
 	try {
 		const links = storyLinks(s).map((x) => x.getAttribute('data-passage'));
-		console.log(`  可点故事链接：${JSON.stringify(links)}`);
-		if (links.length === 0) fails.push('当前段无任何可点故事链接（出口面判据失效 ⇒ 须复核该段是否本该有出口）');
+		/* ★`books#402` 陪跑修（2026-10-08）：**出口面须把「段内链」也算进去** ——
+		 *   本产物开局的 `开始` 段**一个 `data-passage` 链都没有** ✗（出口全是 `<<link>>` 形 ⇒ 段内可点 ✓）
+		 *   ⇒ 旧形（只看 `storyLinks`）**恒红** ✗。★但**✗ 放宽带**：★只有「两**种**都空」才算出口面失效 ✓。 */
+		const 段内出 = 段内可点(s).filter((x) => !是非导航链(x));
+		console.log(`  可点故事链接：${JSON.stringify(links)}｜段内可点（非面板）：${JSON.stringify(段内出.map((x) => (x.textContent ?? '').trim().slice(0, 16)))}`);
+		if (links.length === 0 && 段内出.length === 0) fails.push('当前段既有 `data-passage` 链、又无段内非面板链（出口面判据失效 ⇒ 须复核该段是否本该有出口）');
 		else {
 			const from = currentPassage(s);
 			const to = await clickPassage(s);
