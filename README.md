@@ -41,7 +41,7 @@
   命令形 `LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-280-heal-feedback.mjs --engine <引擎检出>`；
   退出码 `0` 过／`1` 红／`2` **装置错**（缺浏览器或产物 ⇒ ✗ 不当判据红）。★本件**暂未接 CI**（仓内工具，体例同 `rehearse-workflow.py`）。
 - [`check-premerge.mjs`](tools/check-premerge.mjs) 是**合前检查器**（把 `tools/README.md` 附三从文字变成可跑件）：
-  ① 基座同尖（`merge-base(现 main, 票头) === 现 main`）② 回退行 0（对现 main 的 `--numstat` 无「只删不加」的档）
-  ③ 给了 `--base` 再算 `patch-id`（逐字同 ⇒ 纯 rebase ⇒ 先前读数沿用）。命令形 `node tools/check-premerge.mjs --head <票头> [--base <旧头>]`；
-  `--selftest` 合成例 7 例（真 `git init` 仓）；退出码 `0` 全绿（**打印两条读数**）／`1` 判据红（具名）／`2` 装置错。
+  ① 基座同尖（`merge-base(声明基, 票头) === 声明基`；★声明基＝`--base`／CI 的 `GITHUB_BASE_REF`／缺省 `origin/main`）② 回退行 0（对**声明基**的 3-dot `--numstat` 无「只删不加」的档）
+  ③ 给了 `--prior` 再算 `patch-id`（逐字同 ⇒ 纯 rebase ⇒ 先前读数沿用）。命令形 `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>]`；
+  `--selftest` 合成例 15 例（真 `git init` 仓；含 K10 声明基解析／K11 同一头换判基 ⇒ 绿红分野两刀）；退出码 `0` 全绿（**打印两条读数**）／`1` 判据红（具名）／`2` 装置错。
   ★明账：patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；**纯改名／二进制**档请人眼看。
