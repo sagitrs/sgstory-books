@@ -713,6 +713,30 @@ const makeLayerLocation = (L) => new R.Location({
 
 for (const L of LAYERS) map.addLocation(makeLayerLocation(L));
 
+/* ★`books#416`（B2）：**课程层保证** ＋ 「当前位置」落账（一个口，✗ 各处自写）。
+ *   ① 判据面按 `State.variables.位置` 断「L1–L4 在统一地图框架内**可寻址**」⇒ 每次 `moveTo` 都落一份；
+ *      ⚠ 引擎的 `WorldMap.current` 是访问器、落的是另一个键（`mapCurrent`）⇒ 本键是故事面按判据补的**只读投影**。
+ *   ② 票面「必要装备保证」：进入**课程层（L1–L4）**即保证基础装备 —— 走既有 `乙保证()`（真 `R.give`），
+ *      ✗ 不由按钮直接写完成、✗ 不在文案里说「获得」。
+ */
+const 课程层 = Object.freeze(['L1', 'L2', 'L3', 'L4']);
+{
+	const 原moveTo = map.moveTo.bind(map);
+	map.moveTo = (id) => {
+		const 果 = 原moveTo(id);
+		State.variables.位置 = id;
+		/* ★**本局只发一次**（语义＝「必要装备保证」：进课程层时保底 —— ✗ 每次移动都塞一遍 ✗）。
+		 *   ⚠ 为何必须限次：既有格 `verify.mjs` 的「徒手打晕」臂在 `inventory = []` 后调 `moveTo('L2')`，
+		 *     此处若无条件发装备 ⇒ 该臂变成「手持盾剑 ⇒ 打死而非打晕」⇒ kills／绷带两条**假红**（本席实测）。 */
+		if (课程层.includes(id) && State.variables.babelRun?.课程保证 !== true) {
+			State.variables.babelRun = State.variables.babelRun ?? {};
+			State.variables.babelRun.课程保证 = true;
+			setup.BABEL.乙保证?.();
+		}
+		return 果;
+	};
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
  * ★`books#201` **乙笔：旅程装备保证**（操作者裁定 2026-10-03「方向＝乙」）
  *
@@ -1282,6 +1306,14 @@ setup.BABEL.保存域键 = 保存域键;   // ★`#1902`：审计面按此表逐
  *   挂上去的动才与地图动作受**同一道**闸门（`#176` 终局后 hub 不给动作的判据据此成立）。 */
 setup.BABEL.只给活人 = 只给活人;
 setup.BABEL.乙保证 = 乙保证;          // ★`books#201` 乙：判据可**真调用**（✗ 只能静态核）
+/* ★`books#416`（B2）票面第③条：**战中存档禁用须有运行旗**（✗ 只在文案里说）。
+ *   取**实时**判定（访问器 ⇒ 读的时候才求值，✗ 不冻结成常量 ✗ 也不做假旗）：
+ *   `BABEL.战中`（故事面既有旗）∨ 引擎侧有进行中的战斗（`RPG.Battle.current`）。
+ */
+Object.defineProperty(setup.BABEL, '存档禁用', {
+	enumerable: true,
+	get: () => setup.BABEL?.战中 === true || setup.RPG?.Battle?.current != null,
+});
 setup.BABEL.是头目战场 = 是头目战场;  // ★`books#201`：`fight()`（跑分器走的真路）据此在该层发保证装备
 R.registerScene(makeExploreScene());
 
