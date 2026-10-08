@@ -6960,4 +6960,83 @@ head('79. D1 三片·跳过战斗的分账：跳过 ⇒ 放弃该层收益（✗
 }
 
 
+/* ── 80. 线上 P1 · `books#402` ②：W09 战斗**结账 ⇒ 段落层重画**（✗ 停在开战前那一屏）─────────
+ *
+ * 病（`writer-2` 线上实测 089–093 · 2026-10-08）：W09 的 E6 真打赢后，屏幕**停在开战前的选项**上 ——
+ *   「继续：稀有奖励·听雨之冠」不出现、旧「应战，辨清水灵／绕过逆流退开」残留；页脚库存也不含战后
+ *   散货（须再点一次旧「应战」或开关地图才刷）。
+ * 根因（定因到 file:line）：战斗走**地图动作**（`teleport.js` 的三选项槽 ⇒ `七名河战斗.战斗行动`），
+ *   而 `战斗行动` 是 **async** 且**调用方不 await**（引擎的 `act.action()` 也不 await）⇒ 战斗刚起手，
+ *   `#renderLocation` 就按**开战前**的态重画了一次；战斗跑完时那一屏早已画定 ⇒ 没有第二次重画。
+ * 修：战斗分支在 promise 收尾后，若该节点**已结账**（`读().已处理` 含它 ⇒ 胜 或 成功脱离）
+ *   ⇒ `Engine.play('探索')` 重进段落（与 `fight()` 的出口同路）⇒ 场景按现态重画选项。
+ * 断什么（★真值：桩 `D.Player.choice` 驱动战斗 ＋ 桩 `Engine.play` 记跳段；✗ 不读源码文本）：
+ *   ① 前置：E6 上找得到「应战」槽，且此刻**未**结账；
+ *   ② **胜（结账）⇒ 重画**：`Engine.play('探索')` 被调用（★承重格）；
+ *   ③ **未胜（僵持）⇒ ✗ 重画**：不打断「再来一次」的现场（★反向格，防「一律重画」的过修）；
+ *   ④ **不越权**：重画录里**只有**「探索」（✗ 顺带跳别的段落）。
+ * 刀（记在提交信息）：把 `SugarCube.Engine.play('探索')` 那一行摘掉 ⇒ ② 红；改成「无条件重画」⇒ ③ 红。
+ */
+head('80. 线上 P1 · `books#402` ②：W09 战斗结账 ⇒ 段落层重画（✗ 停在开战前的选项）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok80 = (c, m) => { 本组判据++; ok(c, m); };
+	const 域 = 'sevenNames';
+	const 档存 = JSON.parse(JSON.stringify(State.variables[域] ?? null));
+	const 背存 = JSON.parse(JSON.stringify(State.variables.inventory ?? null));
+	try {
+		const S7 = B?.七名河, 图 = B.map, S7B = B?.七名河战斗;
+		ok80(!!S7 && !!图 && !!S7B, '前置：七名河／地图／战斗入口皆在位');
+		const W09 = 图?.locations?.get?.('W09');
+		const 找应战 = () => (W09?.actions ?? []).find((a) => {
+			try { const t = typeof a.text === 'function' ? a.text() : a.text; return String(t ?? '').includes('应战'); } catch { return false; }
+		});
+		const 造态 = () => {
+			State.variables[域] = { 态: '进行中', 当前: 'E6', 结果: {}, 机会: { 用: false, 实例: 'i-402b' }, 路径: ['E0'] };
+			D.Player.hp = D.Player.maxHp;
+		};
+		/** ★等战斗收场：`跑一场` 同步置 `BS.战中 = true` ⇒ 轮询到它回假，再等一拍让 promise 的收尾跑完。 */
+		const 等战斗收场 = async (上限 = 600) => {
+			for (let w = 0; w < 上限 && B.战中 !== true; w++) await new Promise((r) => setTimeout(r, 2));
+			for (let w = 0; w < 上限 && B.战中 === true; w++) await new Promise((r) => setTimeout(r, 2));
+			await new Promise((r) => setTimeout(r, 30));
+		};
+		const 原Choice = D.Player.choice, 原果 = B.战果, 原Play = SugarCube.Engine.play;
+		try {
+			D.Player.choice = async () => 'skip';            // 战斗有限收敛（同 70 格的手法）
+			/* ── ② 胜（结账）⇒ 重画 ── */
+			造态();                                      // ★先造态再取槽：槽文案随节点现算（✗ 反了会取不到）
+			const 槽 = 找应战();
+			ok80(!!槽, '前置：E6 上找得到「应战」槽（按文案取，✗ 不猜索引）');
+			const play录 = [];
+			SugarCube.Engine.play = (v) => { play录.push(String(v)); };
+			ok80(!(S7.读().已处理 ?? []).includes('E6'), '★①前置：E6 此刻**未**结账（✗ 否则下面两格恒真）');
+			B.战果 = () => 'victory';
+			if (槽) 槽.action();
+			await 等战斗收场();
+			ok80(S7.读().已处理.includes('E6'), '★②前置：本场真结账（`已处理` 含 E6）—— ✗ 结账未发生 ⇒ 重画命题无从判');
+			ok80(play录.includes('探索'), `★★②承重：结账后须**重进「探索」段落**（段落层重画 ⇒ 继续入口出现）；Engine.play 录＝${JSON.stringify(play录)}`);
+			ok80(play录.every((p) => p === '探索'), `★④重画不得顺带跳别的段落（录＝${JSON.stringify(play录)}）`);
+			/* ── ③ 未胜（僵持）⇒ ✗ 重画 ── */
+			造态(); play录.length = 0;
+			B.战果 = () => 'stalemate';
+			if (槽) 槽.action();
+			await 等战斗收场();
+			ok80(!S7.读().已处理.includes('E6'), '★③前置：僵持**未**结账（✗ 否则本格与 ② 同义）');
+			ok80(play录.length === 0, `★★③反向：未胜（僵持）⇒ **✗ 重画**（防「一律重画」过修；录＝${JSON.stringify(play录)}）`);
+		} finally {
+			D.Player.choice = 原Choice; B.战果 = 原果; SugarCube.Engine.play = 原Play;
+			State.variables[域] = 档存 ?? undefined;
+			State.variables.inventory = 背存 ?? [];
+		}
+	} finally {
+		const 本组失败 = fails.length - 组前失败;
+		console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 80 组：${本组失败 === 0
+			? `全绿 —— **${本组判据} 条判据**（结账⇒重画／未胜⇒不重画／不越权）`
+			: `★本组 ${本组失败} 处失败`}`);
+	}
+}
+
+
 printSummary();

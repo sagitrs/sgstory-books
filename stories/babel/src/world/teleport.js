@@ -159,14 +159,47 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 					text: () => 可选项()[i]?.label ?? '',
 					when: () => !!可选项()[i],
 					action: () => {
-						const 是战斗 = 七.读().节点?.type === 'battle';
 						const 门 = B.七名河战斗;
+						/* ★`books#402` ②（`writer-2` 线上实测 089–093）：**战斗节点须等战斗收场后再重画这一屏**。
+						 *
+						 *   病灶：本处原**不 await** 战斗入口（且引擎的 `act.action()` 也不 await）⇒ 战斗刚起手，
+						 *     `#renderLocation` 就按**开战前**的态重画了一次；战斗随后在后台跑完，而那一屏早已画定
+						 *     ⇒ 屏幕永远停在旧选项：①「继续：稀有奖励·听雨之冠」不出现（须再点旧「应战」或开关地图才刷）；
+						 *     ② 页脚库存也不含战后散货（面板最后一次刷新在交付**之前**）。
+						 *   修：等战斗 promise 收尾，若该节点**已结账**（`读().已处理` 含它 ⇒ 胜 或 成功脱离）
+						 *     ⇒ `Engine.play('探索')` **重进段落**（与 `fight()` 的出口同一条路）⇒ 场景按**现态**
+						 *     重画选项，继续入口随之出现、库存同步。
+						 *   ⚠ **结账才重画**：僵持／击晕（未胜 ⇒ `结果` 未写）仍停在原地、可再来一次 —— 重画既不改
+						 *     可选项，又会冲掉「再打一次」的现场 ⇒ 不重画（死亡另有终端路，亦不在此重画）。
+						 *   ⚠ 重画必须是**异步**的：本回调跑在 `#renderLocation` 的渲染流程内，同步 `Engine.play`
+						 *     是 SugarCube 禁形「渲染中嵌套 play」（`books#280` ②-1 已实证会吞屏）⇒ 只在 promise 的
+						 *     收尾里调 ✓。
+						 *   ⚠ 拒因仍走**可读兜底**（✗ 无声 —— 照报告 §4「不能执行时应明确解释」）。 */
+						if (七.读().节点?.type === 'battle') {
+							if (typeof 门?.战斗行动 !== 'function') {
+								R.pushNotice?.('✗ 战斗入口未装载（`01-seven-names-battle.js` 缺席）', { channel: 拒通道 });
+								return false;
+							}
+							const id = 七.读().当前;
+							let p;
+							try { p = 门.战斗行动(i, { interactive: true }); }
+							catch (e) { R.pushNotice?.(`✗ 行动抛错：${e?.message ?? e}`, { channel: 拒通道 }); return false; }
+							Promise.resolve(p).then((r) => {
+								if (r && r.ok === false) R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 拒通道 });
+							}).catch((e) => {
+								R.pushNotice?.(`✗ 战斗行动出错：${e?.message ?? e}`, { channel: 拒通道 });
+							}).finally(() => {
+								/* ★「已处理」是**唯一**判据（与导航闸同源 ⇒ ✗ 不另存第二真值）：结账 ⇒ 新方向出现 ⇒ 该重画。 */
+								try {
+									if (!(七.读().已处理 ?? []).includes(id)) return;
+									SugarCube.Engine.play('探索');
+								} catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
+							});
+							return true;
+						}
 						let r;
-						try {
-							r = 是战斗
-								? ((typeof 门?.战斗行动 === 'function') ? 门.战斗行动(i, { interactive: true }) : { ok: false, why: '战斗入口未装载（`01-seven-names-battle.js` 缺席）' })
-								: 七.选行动(i);
-						} catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
+						try { r = 七.选行动(i); }
+						catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
 						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 拒通道 }); return false; }
 						return true;
 					},
