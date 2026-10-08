@@ -5460,8 +5460,10 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 			const 边 = (map.exits ?? []).find((e) => e.from === 'W09' && e.to === 'L10-camp');
 			ok(!!边, '★E9 出口边在位（W09 → L10-camp）');
 			if (边) {
-				const 拒通道 = setup.BABEL?.通道?.拒因 ?? 'item-refuse';
-				R.pushNotice?.('★哨兵·拒因', { channel: 拒通道 });   // ★哨兵定位（同演出格 ✓）
+				/* ★`books#483/#484` 甲案：本段 E9 那一手现在落**行程**通道（`travel-refuse`）⇒ 哨兵与采样都用它 ✓
+				 *   （✗ 不删原 `拒因` 覆盖 —— 战斗/物品面仍走 `item-refuse`，下面的「应战」格继续采它 ✓）。 */
+				const 行程拒通道 = setup.BABEL?.通道?.行程拒因 ?? 'travel-refuse';
+				R.pushNotice?.('★哨兵·行程拒因', { channel: 行程拒通道 });   // ★哨兵定位（同演出格 ✓）
 				const 拒 = 边.action();                       // 该实例已结 ⇒ 应**返回 false**（★围住这唯一一次调用 ✓）
 				ok(拒 === false, `★拒时 `+"`action()`"+` 须返回 **false**（实得 ${JSON.stringify(拒)}）⇒ ✗ 返回 {ok:false} 挡不住移动`);
 				/* ★★**存-复原**（本仓律条 ✓）：本段会改**域／`$babelRun`／背包／当前地图位**（四处 ✓）
@@ -5501,9 +5503,10 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				if (聚落边) {
 					/* ③ **提前返程 · 拒因**：先用**已结实例**（与 E9 同一幂等键空间 ✓）⇒ 应拒 ⇒ 拒因落 item-refuse */
 					State.variables[域] = Object.assign({}, State.variables[域], { 态: '进行中', 当前: 'E6', 机会: { 用: false, 实例: 'i-9b' }, 返程已结: 'i-9b' });
-					const 拒2 = 采('拒因', () => 聚落边.action());
+					/* ★甲案拆分采样：**行程**拒因走 `travel-refuse`（原采 `拒因`＝物品类 ✓ 本格即为拆分点之一）✓ */
+					const 拒2 = 采('行程拒因', () => 聚落边.action());
 					ok(拒2.果 === false && 拒2.文.split('\n').some((s) => s.startsWith('✗ ')),
-						`★提前返程**拒因**须落具名通道（实得 ${JSON.stringify(拒2.文.slice(0, 70))}；果=${JSON.stringify(拒2.果)}）`);
+						`★提前返程**拒因**须落具名通道（甲案＝\`travel-refuse\` ✓；实得 ${JSON.stringify(拒2.文.slice(0, 70))}；果=${JSON.stringify(拒2.果)}）`);
 					/* ④ **提前返程 · 演出**：换**新实例** ⇒ 应成功 ⇒ 三栏演出落 map-scene */
 					清背(); 造('club', { 脆弱: true });
 					State.variables[域] = Object.assign({}, State.variables[域], { 态: '进行中', 当前: 'E6', 机会: { 用: false, 实例: 'i-9c' }, 返程已结: null });
@@ -5535,11 +5538,19 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 					const 应战 = (W09?.availableActions ?? []).find((a) => String(typeof a.text === 'function' ? a.text() : a.text).includes('应战'));
 					ok(!!应战, '★七名河「应战」动作在位');
 					if (应战) {
+						/* ★甲案：本格**不纳入** —— 「应战」走**战斗入口/异步结果/异常兜底**四处（`teleport.js` 里那四处）
+						 *   ⇒ 仍落 `item-refuse` ✓（✗ 不因共享常量自动改类 ✓，裁文第 1 条末句）。 */
 						const 一 = 采('拒因', () => 应战.action());
 						采('拒因', () => 应战.action());                      // ★第二次 ⇒ 状态机具名拒
+						/* ★★`books#483/#484` 甲案实施中**本席实测**（探针，见 PR 描述）：本格的拒因走**战斗分支**的
+						 *   `Promise.resolve(p).then(...)`（`teleport.js` 那个 `if` 里）⇒ **异步入账** ✗
+						 *   ⇒ 同步断言会读到空。旧形之所以绿是在**借**前几格的 `✗ ` 行（本席把前几格拆去行程类后，
+						 *   本格当场变 `[]` ✗ —— 即原断言**通过的理由不对** ✓）。
+						 *   ⚠ 本格**仍属 `item-refuse`**（战斗面 ✓，✗ 不纳入甲案三处）⇒ 覆盖**不删**，只把它
+						 *     改成断**它自己**那一手：先让微任务跑完，再读**本格新增**（哨兵窗 ✗ 此处用长度窗）✓。 */
+						await new Promise((r) => setTimeout(r, 0));                  // ★让 `.then` 入账跑完（同上文「门内 `.then`」之例 ✓）
 						const 全拒 = (R.notices({ channel: 通道名('拒因') }) ?? []).map((n) => n.text).filter((s) => s.startsWith('✗ '));
-						ok(全拒.length >= 1, `★P1-4 拒因兜底须落具名通道（实得 ${JSON.stringify(全拒.slice(0, 2))}）`);
-					}
+						ok(全拒.length >= 1, `★P1-4 拒因兜底须落具名通道（本格＝**战斗面** ⇒ 仍须落 item-refuse ✓；实得 ${JSON.stringify(全拒.slice(0, 2))}）`);					}
 				}
 				} finally {
 					for (const k of Object.keys(State.variables)) if (!(k in 全存4)) delete State.variables[k];   // ★删「多」
@@ -5563,11 +5574,11 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 
 				}
 				{
-					const 全拒 = R.notices({ channel: 拒通道, limit: 500 }) ?? [];
-					const i拒 = 全拒.findIndex((n) => n.text === '★哨兵·拒因');
+					const 全拒 = R.notices({ channel: 行程拒通道, limit: 500 }) ?? [];
+					const i拒 = 全拒.findIndex((n) => n.text === '★哨兵·行程拒因');
 					const 文拒 = 全拒.slice(0, i拒 < 0 ? 0 : i拒).map((n) => n.text).reverse().join('\n');
 					ok(文拒.length > 0 && 文拒.split('\n').some((x) => x.startsWith('✗ ')),
-						`★行程拒绝须落 \`${拒通道}\` 通道（✗ 只打在无人提供的钩上 ⇒ 玩家看不见 ✓；实得 ${JSON.stringify(文拒.slice(0, 80))}）`);
+						`★行程拒绝须落 \`${行程拒通道}\` 通道（甲案：拒因与物品分开 ✓；实得 ${JSON.stringify(文拒.slice(0, 80))}）`);
 				}
 				/* ★自纠补格（K9 不咬逼出来的）：**出口是否真把三栏演出来** —— 原判据只验 `演出()` 函数本身 ✗
 				 *   ⇒ 接线被换掉也不会红 ✗ ⇒ 此处给 `R.note` 装**收集器**，调出口 `action` ⇒ 断**真文案** ✓。 */
@@ -5588,6 +5599,7 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 				ok(文接.length > 0, `★E9 出口演出须**真进引擎通知面**（✗ 只打无人提供的钩 ✓；实得 ${JSON.stringify(文接.slice(0, 60))}）`);
 				ok(setup.BABEL?.通道?.演出 === 'map-scene', `★「演出」通道**字面值**须为 map-scene（实得 ${JSON.stringify(setup.BABEL?.通道?.演出)}）`);
 				ok(setup.BABEL?.通道?.拒因 === 'item-refuse', `★「拒因」通道**字面值**须为 item-refuse（实得 ${JSON.stringify(setup.BABEL?.通道?.拒因)}）`);
+				ok(setup.BABEL?.通道?.行程拒因 === 'travel-refuse', `★「行程拒因」通道**字面值**须为 travel-refuse（甲案具名常量单源；实得 ${JSON.stringify(setup.BABEL?.通道?.行程拒因)}）`);
 				ok(文接.includes('获得脆弱的') && 文接.includes('原已脆弱而消失的') && 文接.includes('保持稳定的'),
 					`★E9 出口须**真演出三栏**（实得通知：${JSON.stringify(文接.slice(0, 90))}）`);
 				ok(文接.includes('club×1') || 文接.includes('木棒×1') || 文接.includes('×1'),

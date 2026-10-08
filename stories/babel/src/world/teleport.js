@@ -6,7 +6,14 @@ const DND3 = setup.DND3, R = setup.RPG, B = setup.BABEL;
 
 /* ★★M-1（`#484` 重切 main）：**通道单源常量** —— 演出与拒因的通道名只在此处定义 ✓（判据侧同读 `B.通道` ✓）。 */
 const 拒通道 = 'item-refuse', 演出通道 = 'map-scene';
-B.通道 = Object.freeze({ 拒因: 拒通道, 演出: 演出通道 });
+/* ★`books#483/#484` 甲案（writer-2 代裁 `6064297345`）：**行程/探索的拒因**自成一类 ——
+ *   引擎侧已注册 `travel-refuse`（「行程·拒绝」·`key`；引擎 PR 同批）⇒ 故事侧以**具名常量单源**消费它，
+ *   产品与判据只读这一处（✗ 不各写一份字面量 ✓）。
+ *   ★**本笔纳入**（三处）：非战遭遇「行动」拒（下面 `:~203`）／E9 返程事务拒（`:~242`）／提前返程事务拒（`:~260`）。
+ *   ★**本笔不纳入**（四处 · 保持原路由 `item-refuse`）：战斗入口未装载（`:~180`）／战斗行动抛错（`:~186`）／
+ *     战斗行动 `r.ok===false`（`:~188`）／战斗行动异常兜底（`:~190`）—— 它们属**战斗**面，✗ 不因共享常量自动改类 ✓。 */
+const 行程拒通道 = 'travel-refuse';
+B.通道 = Object.freeze({ 拒因: 拒通道, 演出: 演出通道, 行程拒因: 行程拒通道 });
 const 聚落 = 'L10-camp', 卷轴 = 'return-scroll';
 B.聚落 = 聚落;
 B.回城卷轴 = 卷轴;
@@ -200,7 +207,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 						let r;
 						try { r = 七.选行动(i); }
 						catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
-						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 拒通道 }); return false; }
+						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 行程拒通道 }); return false; }
 						return true;
 					},
 				})),
@@ -239,7 +246,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例,
 					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 演出通道 }) });
 				if (!r) return true;                       // （✗ 无结算模块时不动旧行为 ✓）
-				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 拒通道 }); return false; }
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 行程拒通道 }); return false; }
 				return true;
 			},
 		}));
@@ -257,7 +264,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				const r = B.返程结算?.返程事务?.({ 实例: 七.读().机会.实例, 完成: false,
 					演出: (栏) => R.pushNotice?.(B.返程结算.演出(栏), { channel: 演出通道 }) });
 				if (!r) return true;
-				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 拒通道 }); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
+				if (!r.ok) { R.pushNotice?.(`✗ ${r.why}`, { channel: 行程拒通道 }); return false; }   // ★拒 ⇒ 真挡移动（同 ③ ✓）
 				return true;
 			},
 		}));
