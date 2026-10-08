@@ -6675,4 +6675,49 @@ head('80. 线上 P1 · `books#402` ②：W09 战斗结账 ⇒ 段落层重画（
 	}
 }
 
+head('81. 线上 P1 · `books#402` ①：快读 ⇒ 段落层重画（✗ 只还原 State）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok81 = (c, m) => { 本组判据++; ok(c, m); };
+	const B81 = setup.BABEL;
+	const 旧Save = SugarCube.Save, 旧Show = SugarCube.Engine.show, 原Perform = R.perform;
+	try {
+		ok81(typeof B81?.快读 === 'function' && !!B81?.槽位, '前置：`快读`／`槽位` 在位');
+		/* ── 真值桩：宿主槽（有档 · load 回 promise）＋ 桩 Engine.show 计次 ── */
+		const 载过 = []; let 解 = null, 拒 = null;
+		SugarCube.Save = { slots: {
+			has: () => true, isEmpty: () => false, get: () => ({}),
+			load: (i) => { 载过.push(i); return new Promise((res, rej) => { 解 = res; 拒 = rej; }); },
+		} };
+		let show次 = 0;
+		SugarCube.Engine.show = () => { show次++; };
+		const 言 = [];
+		R.perform = (x) => { 言.push(String(x)); };
+		/* ── ②③ 成功路 ── */
+		const 接 = B81.快读(B81.槽位.快存);
+		ok81(接 === true, '★前置：有档 ⇒ 快读须接受');
+		ok81(载过.length === 1 && 载过[0] === B81.槽位.快存, `★前置：真读了快存槽（实得 ${JSON.stringify(载过)}）`);
+		ok81(show次 === 0, `★②promise 未 resolve ⇒ **不得**已重画（异步契约；实得 ${show次}）`);
+		解?.(true);
+		for (let w = 0; w < 200 && show次 === 0; w++) await new Promise((r) => setTimeout(r, 2));
+		ok81(show次 === 1, `★★③承重：载入成功后须**重画本屏**（Engine.show —— 与侧栏存档面板同一条引擎口；✗ 只还原 State ⇒ 屏上停旧）实得 ${show次} 次`);
+		/* ── ④ 失败路：✗ 重画 ＋ 可读出声 ── */
+		show次 = 0; 言.length = 0;
+		B81.快读(B81.槽位.快存);
+		拒?.(new Error('坏档'));
+		for (let w = 0; w < 200 && 言.length === 0; w++) await new Promise((r) => setTimeout(r, 2));
+		ok81(show次 === 0, `★④反向：载入失败 ⇒ **✗ 重画**（实得 ${show次}）`);
+		ok81(言.some((x) => /读档失败/.test(x)), `★④反向：载入失败须**可读出声**（✗ 静默丢失败；实得 ${JSON.stringify(言)}）`);
+	} finally {
+		R.perform = 原Perform;
+		if (旧Save === undefined) delete SugarCube.Save; else SugarCube.Save = 旧Save;
+		SugarCube.Engine.show = 旧Show;
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 81 组：${本组失败 === 0
+		? `全绿 —— **${本组判据} 条判据**（载入成功⇒恰重画一次／未 resolve 前不重画／失败⇒不重画＋出声）`
+		: `★本组 ${本组失败} 处失败`}`);
+}
+
 printSummary();
