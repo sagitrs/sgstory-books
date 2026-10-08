@@ -126,7 +126,7 @@ if (has('--counter')) {
   const 烘 = (标) => {
     /* ★烘到**临时路径**（✗ 不许覆盖 --art：`--counter` 只读，✗ 不得改动真产物 ✓）*/
     const 临 = path.join(process.env.TMPDIR || '/tmp', `kills-counter-${标}.html`);
-    const log = execSync(`python3 ${path.join(ENG, 'build.py')} ${path.join(B, 'stories/babel')} --out ${临} --version v0.0.1·counter 2>&1 || true`, { encoding: 'utf8', maxBuffer: 1 << 28 });
+    const log = execSync(`python3 ${path.join(ENG, 'build.py')} ${path.join(B, 'stories/babel')} --out ${临} --version v0.0.3·counter 2>&1 || true`, { encoding: 'utf8', maxBuffer: 1 << 28 });
     const 线 = log.split('\n').filter((l) => /只装|全装|packs/.test(l)).slice(-2).join(' ⏎ ');
     console.log(`  · ${标}｜声明=${(JSON.parse(原).packs ? JSON.stringify(JSON.parse(原).packs) : '(无)')}｜产物字节=${fs.statSync(临).size}｜${线}`);
   };

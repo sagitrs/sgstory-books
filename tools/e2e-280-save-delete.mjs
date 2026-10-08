@@ -99,7 +99,7 @@ if (has('--selftest')) {
 
 /* ============ 主流程（真浏览器，照本席探针形 ✓）============ */
 if (!fs.existsSync(产物)) {
-  console.error(`✗ 环境错（产物不在）：${产物}\n  ★先构建：python3 <引擎>/build.py "<books>/stories/babel" --out "<该绝对路径>" --version v0.0.1·<短sha>`);
+  console.error(`✗ 环境错（产物不在）：${产物}\n  ★先构建：python3 <引擎>/build.py "<books>/stories/babel" --out "<该绝对路径>" --version v0.0.3·<短sha>`);
   process.exit(2);
 }
 const { chromium } = createRequire(path.join(PW, 'noop.js'))('playwright');
