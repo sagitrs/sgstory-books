@@ -84,7 +84,7 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 				from: id, to: 聚落,
 				text: '沿已清理来路走回共炉（免费；✗ 不另买卷轴）',
 				when: () => 可快回() && 层号(地图.current) === 层,
-				action: () => { B.map.moveTo(聚落); R.note?.('你沿来路走回共炉。路上的事还是那些事，资源没多也没少。'); },
+				action: () => { B.map.moveTo(聚落); R.pushNotice?.('你沿来路走回共炉。路上的事还是那些事，资源没多也没少。', { channel: 演出通道 }); },   // ★①站：最后一处 `R.note` ⇒ 真口（✗ 那个钩在任何一侧都无人提供 ✓）
 			});
 			挂了几条 += 1;
 		}
