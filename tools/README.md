@@ -30,7 +30,7 @@
 | `tools/e2e-209-host-save.mjs` | `books#209` 宿主存档门禁的真宿主臂（战中禁存／战后委托／读档后面板归零） |
 | `tools/e2e-413-test-mode.mjs` | ★`books#413`（A2）**测试模式端到端真浏览器臂**：入场→两卡真跑（战斗／奖励两个场次）→骰三账→纯查看（✗ 抽）→结束口（三不／幂等／只清该场次）→**真 `reload()` 验 `babelTest/` 跨刷新**→正控（正式面逐字不变＋异步后 `运行.栈深()` 归位）。**27 条判据**；两把刀各咬段（摘 `localStorage` 真写 ⇒ ⑥ 三红；摘 `在()` 异步还原 ⇒ ⑦ 一红）。★跑法：`CHROME=<chrome> LD_LIBRARY_PATH=~/.cache/sgstory-chrome-deps/usr/lib/x86_64-linux-gnu node tools/e2e-413-test-mode.mjs <babel-trial.html 绝对路径>`（★`playwright` 须可解析 ⇒ 本席用 `~/tmp` 侧的 `node_modules` 符号链接） |
 | `tools/e2e-210-reserved-slots.mjs` | `books#257` 保留槽四臂（动作层 ✗ 执行层 · 保护该在动作层） |
-| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源） |
+| `tools/e2e-259-footer-save.mjs` | `books#259` 裁 4 页脚快存的**真 DOM 臂**（可存能写／战中可见不可点且不落档／与 `可存` 同源）；★臂 B2（`books#402` 附账）断「**战中未重渲段落**时也须已换形」——真实开战只 `refreshPanels()`、✗ 重渲段落 |
 | `tools/e2e-1763-panels.mjs` | `books#1763` 布局壳（panelDomains 按域刷新；退出码 `2`＝环境错） |
 | `tools/e2e-178-slots.mjs` | `books#178` 三槽存档的真 DOM 臂 |
 | `tools/e2e-136-l2-load-reprint.mjs` | ★`books#136` F4「**载入后场景头须重印**」的**真浏览器单臂甲**（`#497` 判据的独立旁证）：三条前件（页脚「快存」→「载入快存」链须出／摘头须**用同一读数函数**断真摘掉／链须在文档）＋甲；★自证**只到前件级**（「唯一变量级」刀两试未成立·档头具名）；`rc=2`＝环境错 |

@@ -7,12 +7,14 @@
 :: PassageFooter
 <<nobr>>
 <hr>
-/* ★`books#259` 裁 4：**快存放页脚**（✗ 藏在选项里）。可用性＝`setup.BABEL.页脚可存()`（与 `快存` **同源** ✓）；
- *   战斗中**可见但禁用＋说明**（✗ 不整条藏掉 —— 裁 4 就是"别藏"）✓；逻辑在 `world/encounters.js`（判据够得着 ✓）。 */
-<div class="footersave" data-footer="save">
-<<if setup.BABEL.页脚可存()>><<link "快存">><<run setup.BABEL.页脚快存()>><</link>><<else>><span class="footersave-off" title="战斗中不能存档">快存（战斗中不可用）</span><</if>>
-<<if setup.BABEL.快存有位()>><<link "载入快存">><<run setup.BABEL.快读()>><</link>><</if>>
-</div>
+/* ★`books#259` 裁 4：**快存放页脚**（✗ 藏在选项里）＋ 战斗中**可见但不可点**（别藏 ⇒ 印禁用 span）。
+ *   ★`books#402` 附账定因（`dev-10` 2026-10-08）：本格内容**改由渲染函数给**（`ui/panels.js` 的
+ *     `footer-save` 面板）。原形（twee 的 `<<if>>` ＋ `<<link>>`）只在**段落重渲**时换形，而真实开战
+ *     **不重渲段落** —— `world/01-seven-names-battle.js:60-62` 与 `world/encounters.js:462-470`
+ *     都只是「`战中 = true` ＋ `refreshPanels()`」⇒ 战中页脚会留着**可点链**（裁 4 要的是「可见但不可点」；
+ *     点击会被 `页脚快存()` 拒并出声 ＝ 功能安全，但 affordance 违约）。收成面板后，开战那一下刷新就换形 ✓。
+ *   ⚠ 逻辑（`页脚可存`／`页脚快存`／`快存有位`／`快读`）仍在 `world/encounters.js`（判据够得着 ✓）。 */
+<div class="footersave" data-footer="save" data-panel="footer-save"></div>
 <div class="statusbar">
 	<span class="babel-player-frame" aria-hidden="true"><<print setup.BABEL.visual.playerHTML()>></span>
 	<span class="panel" data-panel="hp"></span>｜<span class="panel" data-panel="location"></span>｜<span class="panel" data-panel="trauma"></span>｜<span class="panel inventory-links" data-panel="inventory"></span>
