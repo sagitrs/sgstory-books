@@ -25,6 +25,19 @@ G="$(cd "$(dirname "$0")" && pwd)"
 : "${ENGINE:?须给 ENGINE=<引擎检出>}"
 export E="$ENGINE" ENGINE="$ENGINE" B="$(pwd)"
 echo "◆ 装置面：E/ENGINE=$ENGINE ｜ B=$(pwd)"
+
+# ── ★★前置：**产物在位**（NIT · `dev-9` 提）────────────────────────────────
+#   ★他第一次跑（未建产物）得到「6 档全红旗·零出声」，而 runner 汇总写「★装置有问题」✗
+#     ⇒ ★该措辞把人**指向产品/臂**（他一度以为判据有问题）✗ —— **真因是缺产物** ✓
+#   ⇒ ★故本器**开跑前**先断产物在位，并**具名**给出补救命令 ⇒ 后来者一眼归因 ✓
+ART="${B}/stories/babel/babel-trial.html"
+if [ ! -f "$ART" ]; then
+  echo "  ✗★ 装置错（★✗ 判据红 · ✗ 产品缺陷）：**产物不在位** —— ${ART}"
+  echo "      ⇒ ★先建产物：python3 ${ENGINE}/build.py \"\$PWD/stories/babel\" --out \"\$PWD/stories/babel/babel-trial.html\" --version 'v0.0.3·<pin前8>'"
+  echo "      ★（本族的臂都要**读产物** ⇒ 缺产物时六档会**全数零出声** ⇒ 那是**装置红旗**、✗ 缺陷 ✓）"
+  exit 2
+fi
+echo "◆ 产物在位：${ART}（$(stat -c%s "$ART") 字节）✓"
 echo "◆ 口径：★候实现红测 ⇒ 预期「红且具名」；红旗（坏档/崩/零出声/早退）✗ 预期"
 
 # ── ① 语法闸（★先于一切：坏档不得进判据统计）──
@@ -65,6 +78,11 @@ done
 
 echo; echo "════ 汇总（★候实现红测口径）════"
 echo "  语法坏档 $bad ｜ ★候实现**判据红 $fail_n 条**（预期）｜ ★红旗 $redflag_n 个（✗ 预期）"
-if [ "$redflag_n" -gt 0 ]; then echo "  ⇒ ★**装置有问题**：先消红旗（坏档/崩/早退），再谈候实现红"; exit 2; fi
+if [ "$redflag_n" -gt 0 ]; then
+  echo "  ⇒ ★**装置/前置有问题**（✗ 判据红、✗ 产品缺陷）：逐档红旗见上（坏档／崩／零出声／早退）"
+  echo "      ★零出声多半＝**产物不在位**或**产物陈旧**（★本器已在前置断「在位」；陈旧由各档 `B*-0` 前置格自报 ✓）"
+  echo "      ★故请**先**核：① 产物在否 ② 是否新于源码 ③ `ENGINE` 指对树 ⇒ 再谈候实现红 ✓"
+  exit 2
+fi
 echo "  ⇒ ★读数可用（红旗 0）· 候实现红 $fail_n 条 ⇒ **本族当前状态：红且具名** ✓（实现落 main 后应转为 0，见 README）"
 exit 0
