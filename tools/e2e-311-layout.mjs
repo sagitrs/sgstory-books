@@ -39,6 +39,11 @@ try {
 	const actual = execFileSync('git', ['-C', engine, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 	if (actual !== pin) throw Error(`engine HEAD ${actual} differs from declared full pin ${pin}`);
 	html = fs.readFileSync(path.join(books, 'stories/babel/babel-trial.html'));
+/* ★产物新鲜度守卫（`tools/bundle-fresh.mjs` 共享件）—— 本臂只认预构建产物 ⇒ 陈旧 ⇒ 具名红退出。 */
+{ const { 断产物新鲜 } = await import('./bundle-fresh.mjs');
+  try { 断产物新鲜({ 产物: path.join(books, 'stories/babel/babel-trial.html'), 引擎根: process.env.ENGINE ?? process.env.E, 仓根: process.cwd() }); }
+  catch (e) { console.error(String(e?.message ?? e)); process.exit(2); } }
+
 	if (!html.includes(Buffer.from('setup.storyAssets')) || !html.includes(Buffer.from('babel-player-art'))) throw Error('rebuild artifact with declared assets first');
 	chromium = createRequire(path.join(path.resolve(process.env.PW_DIR), 'noop.js'))('playwright').chromium;
 	chrome = path.resolve(process.env.CHROME_BIN);

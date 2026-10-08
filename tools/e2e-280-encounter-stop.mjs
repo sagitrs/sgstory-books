@@ -22,12 +22,19 @@
  *   0 = 臂过（或 ⏳ 待判）；1 = 有红（逐条具名）；2 = 环境错（装置，✗ 不当判据红）
  */
 import fs from 'node:fs';
+import process from 'node:process';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const B = path.resolve(arg('--books', process.cwd()));
 const 产物 = path.resolve(arg('--art', path.join(B, 'stories/babel/babel-trial.html')));
+/* ★产物新鲜度守卫（`tools/bundle-fresh.mjs` 共享件）：本臂只认预构建产物 ⇒
+ *   陈旧 ⇒ 读的是上一版源码（读数看着对、量的不是当前树）⇒ 具名红退出。 */
+{ const { 断产物新鲜 } = await import('./bundle-fresh.mjs');
+  try { 断产物新鲜({ 产物: 产物, 引擎根: process.env.ENGINE ?? process.env.E, 仓根: process.cwd() }); }
+  catch (e) { console.error(String(e?.message ?? e)); process.exit(2); } }
+
 const CHROME = process.env.CHROME_BIN || path.join(process.env.HOME, '.cache/ms-playwright/chromium-1243/chrome-linux64/chrome');
 /* ★本席（tester-3）用自己的 tmp 放 playwright（✗ 不借他人 home ✓ —— 族的缺省值指向 tester-4，见本档「用法」）。 */
 const PW = process.env.PW_DIR || path.join(process.env.HOME, 'tmp/pw');
