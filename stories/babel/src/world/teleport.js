@@ -219,6 +219,14 @@ B.map.locations.get(聚落).actions.push(B.只给活人({
 						try { r = 七.选行动(i); }
 						catch (e) { r = { ok: false, why: `行动抛错：${e?.message ?? e}` }; }
 						if (r && r.ok === false) { R.pushNotice?.(`✗ ${r.why ?? r.code ?? '这一步没能执行'}`, { channel: 行程拒通道 }); return false; }
+/* ★★`books#471` 第 2 项**补笔**（本席自然路读数逼出来的）：非战节点**结账后须重进段落** ——
+						 *   与上面战斗支的 `finally` **同一条路** ✓。否则页面停在**旧态**（✗ 实测：结账后正文仍印未处理那支的
+						 *   字，玩家看不到「回答 ＋ 物资摘要」的新分支 ✗）。★无头第 85 组之所以绿，是因为它**直调 `desc()`**
+						 *   且由我**手工摆好状态** ✗ ⇒ 它**测不到**这一味（绿不足以替自然路背书 ✓）。
+						 *   ⚠ 必须**异步**：本回调在 `#renderLocation` 渲染流程内 ⇒ 同步 `Engine.play` 是 SugarCube 禁形
+						 *     「渲染中嵌套 play」（同 `#280` ②-1 的实证 ✓）。 */
+						try { setTimeout(() => { try { SugarCube?.Engine?.play?.('探索'); } catch (e) { /* 无宿主 ⇒ 略 */ } }, 0); }
+						catch (e) { /* ✗ 吞：重绘失败不掩盖动作结果 ✓ */ }
 						return true;
 					},
 				})),
