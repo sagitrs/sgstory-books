@@ -82,6 +82,65 @@ const fails = [];
 const ok = (cond, msg) => { if (!cond) fails.push(msg); };
 const head = (s) => console.log(`\n─ ${s}`);
 
+/* ★`books#536` ①（`#491` 族）：**非 State 面复原通用格** —— 快照／比对／复原 ＋ 文件末守卫。
+ *   病（`#491` 实测）：复原 `State.variables` ＋ `D.Player` **不等**于全局复原 —— `B.战中`（`setup.BABEL.战中`，
+ *     模块旗）与 `RPG.Battle.current`／`RPG.Battle.按会话`（引擎登记面）在**另一层** ⇒ 手工复原常被漏
+ *     ⇒ 判据真调「会提交事务的动作」之后，后续段落看到**脏全局**。
+ *   对策：①`非State面名单()` 快照**通用**（枚举 `setup.BABEL` 的自有**非函数**键 ⇒ 新加模块旗自动覆盖 ✓
+ *          ＋ 引擎那两面）②`非State差异(初)` 比对 ⇒ **具名**（消息**截断**，✗ 抖大对象）③`复原非State面(初)`
+ *          把可 JSON 复原的面写回（★**能力边界**：身份敏感的对象复原不了 ⇒ 那种面按下面口径处理）。
+ *   ★口径（`#491` 定式）：**凡判据真调会提交事务的动作 ⇒ 假定它写到任意一层（`State` 之外也在内）
+ *     ⇒ 整段隔离或按不可撤销处理** ✓
+ *   ★文件末守卫：比一次基值（★基值在**引导之后、首组之前**取 ⇒ ✗ 在文件头取：那时世界还没登记 ✓）⇒ 仍脏 ⇒ 具名红。 */
+const 截断 = (v, n = 90) => {
+	let s;
+	try { s = typeof v === 'string' ? v : JSON.stringify(v); } catch { s = String(v); }
+	if (s == null) return '（无）';
+	return s.length > n ? s.slice(0, n) + '…' : s;
+};
+const 非State面名单 = () => {
+	const 面 = {};
+	try {
+		for (const k of Object.keys(setup.BABEL ?? {})) {
+			const v = setup.BABEL[k];
+			if (typeof v === 'function') continue;
+			try { 面['BABEL.' + k] = JSON.parse(JSON.stringify(v ?? null)); }
+			catch { 面['BABEL.' + k] = String(v); }
+		}
+	} catch { /* 无宿主 ⇒ 略 */ }
+	try {
+		const 战 = setup.RPG?.Battle;
+		if (战) {
+			面['Battle.current'] = 战.current == null ? null : String(战.current?.会话 ?? '有局');
+			面['Battle.按会话'] = 战.按会话?.size ?? null;
+		}
+	} catch { /* 略 */ }
+	return 面;
+};
+let 非State初值 = null;
+/* ★**规范化**：这三面在引导前后**默认值不同形**（引导前「键不存在」＝`undefined`；建好之后 ＝ `false`／`null`／`0`）
+ *   ⇒ 若直接比 ⇒ 全场**假红** ✗（我首版即栽在此：`BABEL.战中（（无） ⇒ false）` ✗ —— 二者**语义相同** ✓）。
+ *   故按面给**默认形**：`战中`⇒`false`／`Battle.current`⇒`null`／`Battle.按会话`⇒`0`；其余面 `undefined`≡`null` ✓。 */
+const 规范面 = (k, v) => {
+	if (v !== undefined && v !== null) return v;
+	if (k === 'BABEL.战中') return false;
+	if (k === 'Battle.按会话') return 0;
+	return null;
+};
+const 非State差异 = (初) => {
+	const 今 = 非State面名单();
+	return Object.keys({ ...初, ...今 })
+		.filter((k) => JSON.stringify(规范面(k, 初?.[k])) !== JSON.stringify(规范面(k, 今[k])))
+		.map((k) => `${k}（${截断(规范面(k, 初?.[k]))} ⇒ ${截断(规范面(k, 今[k]))}）`);
+};
+const 复原非State面 = (初) => {
+	for (const k of Object.keys(初 ?? {})) {
+		if (!k.startsWith('BABEL.')) continue;
+		try { setup.BABEL[k.slice(6)] = 初[k]; } catch { /* 略 */ }
+	}
+	try { if (初?.['Battle.current'] == null && setup.RPG?.Battle) setup.RPG.Battle.current = null; } catch { /* 略 */ }
+};
+
 /** ★失败形必须是「**干净红 ＋ 汇总**」（D 席 M9 的形态：中途裸访问崩溃 ⇒ 吞掉此前已收集的失败）。
  *   故先把汇总抽成函数，并给「未捕获异常」挂兜底 —— 任何崩溃都先打印已收集的失败再退出。 */
 let summaryPrinted = false;
@@ -105,6 +164,8 @@ const printSummary = (extra) => {
  * 刀（记在提交信息）：① 让 `读进度` 内部改走 `eventsOf()`（会建键）⇒ ① 的「零副作用」格红；
  *   ② 把门改回「自带一份判据」（✗ 经读面）⇒ ② 的同一表达式格红。
  */
+/* ★`books#536` ①：基值在**引导之后、首组之前**取（文件头那时世界尚未登记 ⇒ 会全场假红 ✗）。 */
+非State初值 = 非State面名单();
 head('62. `books#207`：进度面唯一读口（只读·零新键）＋ 门只经它（防两处各写一份）');
 {
 	const 层 = 'L1';
@@ -7499,6 +7560,46 @@ head('85. `books#471` 第 2 项：请教反馈分形（回答在前／物资另�
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 85 组：${本组失败 === 0
 		? `全绿 —— **${本组判据} 条判据**（回答在前／物资另列在后／三类文本与真物资一致／重复拒）`
 		: `★本组 ${本组失败} 处失败`}`);
+}
+
+/* ★`books#536` ① 的文件末**守卫**：收题前比一次基值 ⇒ 仍脏 ⇒ 具名红（✗ 静默带过）。 */
+{
+	const 关键面 = ['BABEL.战中', 'Battle.current', 'Battle.按会话'];
+	const 脏 = 非State差异(非State初值);
+	const 关键脏 = 脏.filter((d) => 关键面.some((k) => d.startsWith(k)));
+	/* ⚠ 守卫的**判红范围**＝`#491` 族那三面（本票的具名对象）；其余新出现的面（如测试域登记 `BABEL.测试模式`／
+	 *   `BABEL.测试骰`／`BABEL.运行`）**只报不作红** —— 它们是**另一族**（A2 测试模式把面建出来并有意留着），
+	 *   若一并判红 ⇒ 会把「本票要证的那三面」淹在噪声里 ⇒ 故分开：**红的只报关键面，别的照实印一行** ✓ */
+	if (关键脏.length) {
+		ok(false, `★【非 State 面守卫·关键面】收题前发现**未回位**的面：${关键脏.join('；')} ⇒ 按口径「凡真调会提交事务的动作 ⇒ 假定写到任意层 ⇒ 整段隔离或按不可撤销处理」（books#536 ① · #491 族）`);
+	} else {
+		console.log(`  ✓ 非 State 面守卫：关键面（B.战中／Battle.current／Battle.按会话）收题前无未回位 ✓${脏.length ? `｜★另记（非关键面新增 ${脏.length} 处，属测试域登记面，另论）：${脏.slice(0, 4).join('；')}` : ''}`);
+	}
+}
+
+/* ★`books#536` ① 的**具名格**：快照／比对／复原口三面（✗ 只报条数）。 */
+head('86. `books#536` ①：非 State 面复原通用格（快照含旗面／造脏具名／复原口回零）');
+{
+	const 组前失败86 = fails.length;
+	const 初 = 非State面名单();
+	ok(Object.keys(初).some((k) => k.startsWith('BABEL.')), `★快照须覆盖模块旗面（实得键数 ${Object.keys(初).length}）`);
+	ok(非State差异(初).length === 0, `★刚快照后应零差异（实得 ${截断(非State差异(初))}）`);
+	const 原旗 = setup.BABEL.战中;
+	try {
+		setup.BABEL.战中 = !原旗;
+		const d = 非State差异(初);
+		ok(d.some((x) => x.includes('BABEL.战中')), `★模块旗被改 ⇒ 比对须具名到 \`BABEL.战中\`（实得 ${截断(d)}）`);
+	} finally { setup.BABEL.战中 = 原旗; }
+	ok(非State差异(初).length === 0, `★复原后回零（实得 ${截断(非State差异(初))}）`);
+	const 原旗2 = setup.BABEL.战中;
+	try {
+		setup.BABEL.战中 = !原旗2;
+		ok(非State差异(初).some((x) => x.includes('BABEL.战中')), '★（前置）造脏后须见差异');
+		复原非State面(初);
+		ok(非State差异(初).length === 0, `★\`复原非State面(初)\` ⇒ 应回零（实得 ${截断(非State差异(初))}）`);
+	} finally { setup.BABEL.战中 = 原旗2; }
+	const 本组失败86 = fails.length - 组前失败86;
+	console.log(`  ${本组失败86 === 0 ? '✓' : '✗'} 第 86 组：${本组失败86 === 0 ? '五格全绿（快照含旗面／刚快照零差异／造脏具名／复原后回零／复原口回零）' : `★本组 ${本组失败86} 处失败`}`);
 }
 
 printSummary();
