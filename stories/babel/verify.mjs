@@ -5972,7 +5972,7 @@ head('72. `books#400` S6：两路同一事务／同一幂等键／提前✗不�
 		const 早边 = 取边('提前结束本次出城'), 九边 = 取边('确认回城');
 		okR(!!早边 && !!九边, '★前置：两条出口边**都在**（提前边／E9 确认边 ✓）');
 		/* 格A（提前边）：备态 ⇒ **调 action()** ⇒ 断成功 ＋ ✗ 完成 ＋ 机会已消费 */
-		State.variables[域] = { 态: '进行中', 当前: 'E4', 结果: {}, 机会: { 用: false, 实例: 'i-edge-a' }, 路径: ['E0'] };
+		State.variables.sevenNames = { 态: '进行中', 当前: 'E4', 结果: {}, 机会: { 用: false, 实例: 'i-edge-a' }, 路径: ['E0'] };
 		D.Player.hp = D.Player.maxHp;
 		State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 终局: false });
 		okR(早边.when() === true, '★格A：提前边**现算可用**（进行中 ∧ ✗E9 ∧ 机会未用 ✓）');
@@ -7402,5 +7402,91 @@ head('84. `books#200` 同族（`#402` 修派）：治疗文案取实回（✗ �
 		: `★本组 ${本组失败} 处失败`}`);
 }
 
+
+/* ── 第 85 组（本笔自带格 · `books#471` 第 2 项 · writer-2 裁文 `6064598718`）：请教反馈**分形** ──
+ * 断什么：①同一次反馈里**回答在前**（「请教」成功须**真回答**，✗ 只写「获得补给」那类领奖形）②**物资另列在后**、
+ *   中性（「收到补给：名称×数量」），**无物资 ⇒ ✗ 不显示空盒**（谢绝支 ✓）③**三类文本与真物资一致**：
+ *   接下补给／请教成败皆 干粮1＋绷带1（★**失败不是没发** ✓）、谢绝为空 ✓ ④**一次交付／重复拒绝**：同节点再选 ⇒ 拒且背包✗不增 ✓。
+ * ⚠ 装置声明：**无头**（jsdom）＋ 受控掷桩（`S7.掷检定`）⇒ 只证**文本/交付/顺序**；自然 UI 与窄屏另记（见 PR）。
+ * 刀（记在提交信息）：把「回答在前」拆成两次反馈（或让失败不发补给）⇒ 本组须具名红 ✓。 */
+head('85. `books#471` 第 2 项：请教反馈分形（回答在前／物资另列在后／三类文本与真物资一致）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const 计 = () => { 本组判据++; };
+	const S7 = B.七名河;
+	const 域存 = JSON.parse(JSON.stringify(State.variables ?? {}));
+	const 背存 = JSON.parse(JSON.stringify(D?.Player?.items ?? null));
+	const 位存 = map.current;
+	try {
+		const 重置 = () => {
+			State.variables.sevenNames = { 态: '进行中', 当前: 'E4', 结果: {}, 机会: { 用: false, 实例: `i-info-${Math.floor((State.turns ?? 0) + 1)}` }, 路径: ['E0'] };
+			State.variables.inventory = [];
+		};
+		const 交 = () => (S7.读档()?.结果?.E4?.交付 ?? []);
+		/* ★桩靶（本席首版打错 · 当场修）：`选行动` 走的是 `00-seven-names.js` **闭包内**那份 `掷检定`
+		 *   ⇒ 桩 `S7.掷检定` **不生效** ✗（实测：桩失败仍得成功文 ✓）⇒ 改桩**引擎的** `R.checkRoll` ✓。 */
+		const 掷桩 = (成) => { const 原 = R.checkRoll; R.checkRoll = () => ({ success: 成, roll: 成 ? 20 : 1, mod: 0, bonus: 0, total: 成 ? 20 : 1, dc: 8, die: '1d20' }); return 原; };
+		const 包数 = () => (State.variables.inventory ?? []).length;
+		const 描 = () => String(typeof map.locations.get('W09').desc === 'function' ? map.locations.get('W09').desc() : map.locations.get('W09').desc);
+
+		/* ① 接下补给（无检定）：文本是**行动后果**、物资由摘要另列 */
+		重置();
+		const a = S7.选行动(0);
+		计(); ok(a?.ok === true, `★① 接下补给应成功（实得 ${JSON.stringify(a)?.slice(0, 70)}）`);
+		计(); ok(交().length === 2 && 交().some((x) => x.startsWith('ration')) && 交().some((x) => x.startsWith('bandage')),
+			`★① 交付应=干粮1＋绷带1（实得 ${JSON.stringify(交())}）`);
+		计(); ok(!/领奖|领取成功/.test(String(a.文本)), `★① 文本里 ✗ 不该出现「领奖」类字样（实得 ${JSON.stringify(a.文本)}）`);
+
+		/* ② 请教·成功 ⇒ **真回答**（✗ 领奖形），物资仍照原规则 */
+		重置();
+		const 原1 = 掷桩(true); const b = S7.选行动(1); R.checkRoll = 原1;
+		计(); ok(/左岸/.test(String(b.文本)) && /右/.test(String(b.文本)),
+			`★② 请教成功须**真回答**（左／右水灵强弱；实得 ${JSON.stringify(b.文本)}）`);
+		计(); ok(!/获得|领取|补给包/.test(String(b.文本)),
+			`★② 回答里 ✗ 不再写「获得补给」那类（物资改由摘要给；实得 ${JSON.stringify(b.文本)}）`);
+		计(); ok(交().length === 2, `★② 成功仍照原规则交付（实得 ${JSON.stringify(交())}）`);
+
+		/* ③ 请教·失败 ⇒ 仍**保留未听懂** ＋ **仍提示先走左侧** ＋ **仍发补给**（✗ 不是没发） */
+		重置();
+		const 原2 = 掷桩(false); const c = S7.选行动(1); R.checkRoll = 原2;
+		计(); ok(/没听懂/.test(String(c.文本)), `★③ 失败须保留「没听懂水势细节」（实得 ${JSON.stringify(c.文本)}）`);
+		计(); ok(/先走左/.test(String(c.文本)), '★③ 失败仍须明确提示先走左侧（回答在前 ✓）');
+		计(); ok(交().length === 2, `★③ ★**失败不是没发补给**（仍 干粮1＋绷带1；实得 ${JSON.stringify(交())}）`);
+
+		/* ④ 谢绝 ⇒ 交付为空（且场景 ✗ 不显示空奖励盒） */
+		重置();
+		const d = S7.选行动(2);
+		计(); ok((交()?.length ?? 0) === 0, `★④ 谢绝 ⇒ 交付为空（实得 ${JSON.stringify(交())}）`);
+		计(); ok(/危险差别/.test(String(d.文本)), `★④ 谢绝支仍须说明两路危险差别（实得 ${JSON.stringify(d.文本)}）`);
+
+		/* ⑤ 场景呈现：**回答在前、物资摘要在后**；谢绝支**不出现**摘要 */
+		重置(); S7.选行动(1);
+		const 描1 = 描();
+		const i文 = 描1.indexOf(String(S7.读档().结果.E4.文本).slice(0, 12));
+		const i物 = 描1.indexOf('收到补给：');
+		计(); ok(i文 >= 0 && i物 >= 0 && i文 < i物,
+			`★⑤ 场景须**回答在前、物资摘要在后**（文本@${i文} vs 摘要@${i物}；摘=${JSON.stringify(描1.slice(-40))}）`);
+		计(); ok(/口粮×1/.test(描1) && /绷带×1/.test(描1), `★⑤ 摘要须列**名称×数量**（引擎真名「口粮」✓）（实得 ${JSON.stringify(描1.slice(-46))}）`);
+		重置(); S7.选行动(2);
+		计(); ok(!/收到补给/.test(描()), '★⑤ 谢绝支 ✗ 不得显示空奖励盒（✗ 出现「收到补给」）');
+
+		/* ⑥ 一次交付／重复拒绝：同节点再选 ⇒ 拒 ＋ 背包✗不增 */
+		重置(); S7.选行动(1);
+		const 包1 = 包数();
+		const 再 = S7.选行动(1);
+		计(); ok(再?.ok === false, `★⑥ 同节点再选须被拒（实得 ${JSON.stringify(再)?.slice(0, 60)}）`);
+		计(); ok(包数() === 包1, `★⑥ 重复 ⇒ **背包✗不增**（前 ${包1} ⇒ 后 ${包数()}）`);
+	} finally {
+		for (const k of Object.keys(State.variables)) if (!(k in 域存)) delete State.variables[k];
+		for (const [k, v] of Object.entries(域存)) State.variables[k] = JSON.parse(JSON.stringify(v));
+		try { if (D?.Player) { if (背存 === null) delete D.Player.items; else D.Player.items = 背存.map((x) => R.reviveItem(x)); } } catch { /* ✗ 吞 */ }
+		try { map.current = 位存; } catch { /* ✗ 吞 */ }
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 85 组：${本组失败 === 0
+		? `全绿 —— **${本组判据} 条判据**（回答在前／物资另列在后／三类文本与真物资一致／重复拒）`
+		: `★本组 ${本组失败} 处失败`}`);
+}
 
 printSummary();
