@@ -7265,5 +7265,78 @@ head('82. `books#456` 预备：普通远征「价值参照」参数化（数据�
 		: `★本组 ${本组失败} 处失败`}`);
 }
 
+/* ── 84. `books#200` 同族（`#402` 修派）：治疗文案取**实回**（✗ 名义）—— 城市照护两处 ────────
+ *
+ * 病：`books#200` P0 的**同类** —— 「文案的 N 必须＝**实际回血**」。故事层自己印数的治疗处 = **医所**：
+ *   `clinic()` 原写 `p.heal(cfg.clinicHeal)` 而文案直写 `${cfg.clinicHeal}`（**名义** 4）；
+ *   近满被 `maxHp` 夹过时（差 2 点满 ⇒ 实回 2）文案仍印 4 ⇒ **假读数**；动作**标签**同病。
+ *   （引擎侧三件治疗物／治疗面板早已读 `DND3.applyHeal`／`healDelta` ⇒ 本次扫过后不是病灶，本组不复测。）
+ * 断什么（★尺＝**独立字面量**：实回由 `hp` 前后差现算，✗ 不读被测的文案反推）：
+ *   ① 近满（差 2 点满）⇒ 文案须印 **实回 2**（✗ 名义 4）＋ HP 夹到上限 ＋ 仍扣价目；
+ *   ② 满额（差 4 点满）⇒ 实回＝名义 ⇒ 文案须印 4（✗ 不误伤）；
+ *   ③ 满血 ⇒ **拒 ＋ 出声「已满」＋ 零收费**（✗ 付了钱没治）；
+ *   ④ 动作**标签**：近满须印 **2**；满血须标「当前已满」且 **✗ 不印 4**。
+ * 刀（记在提交信息）：① 文案改回 `${cfg.clinicHeal}` ⇒ ① 红；② 标签改回名义 ⇒ ④ 红。
+ */
+head('84. `books#200` 同族（`#402` 修派）：治疗文案取实回（✗ 名义）—— 城市照护两处');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok84 = (c, m) => { 本组判据++; ok(c, m); };
+	const P = D.Player, B84 = setup.BABEL;
+	const 存 = { hp: P.hp, 位: map.current, 账: JSON.parse(JSON.stringify(State.variables.babelL10 ?? null)), 币: JSON.parse(JSON.stringify(State.variables.inventory ?? null)) };
+	ok84(typeof B84?.L10?.clinic === 'function' && !!B84?.L10?.cfg, '前置：`B.L10.clinic`／`cfg` 在位');
+	if (typeof B84?.L10?.clinic !== 'function') {
+		console.log(`  ✗ 第 84 组：前置缺 ⇒ 本组不继续（判据 ${本组判据} 条）`);
+	} else {
+		const 原Perform = R.perform;
+		const 言 = [];
+		R.perform = (x) => { 言.push(String(x)); return 原Perform?.call(R, x); };
+		try {
+			State.variables.babelL10 = { sold: 0, resident: true };
+			map.moveTo('L10-infirmary');
+			R.give('coin', 60);
+			const 钱 = () => R.heldTotal(P, 'coin') ?? 0;
+			const 价 = B84.L10.cfg.clinicPrice, 名 = B84.L10.cfg.clinicHeal;
+			/* ① 近满：差 2 点满（名义 4 ⇒ 实回 2） */
+			P.hp = P.maxHp - 2; 言.length = 0; const 前1 = P.hp, 钱前1 = 钱();
+			const r1 = B84.L10.clinic();
+			const 文1 = 言.join(' ');
+			ok84(r1 === true, `★①前置：差 2 点满时照护须成立（实得 ${JSON.stringify(r1)}）`);
+			ok84(P.hp === P.maxHp, `★①近满：HP 须夹到上限（${前1} ⇒ ${P.hp}）`);
+			ok84(/HP 恢复 2/.test(文1), `★★①承重：文案须取**实回 2**（✗ 名义 ${名}）；实得 ${JSON.stringify(文1)}`);
+			ok84(!/HP 恢复 4/.test(文1), '★①反向：**不得**印名义量 4');
+			ok84(钱前1 - 钱() === 价, `★①费用：仍按价目收 ${价} 枚（实扣 ${钱前1 - 钱()}）`);
+			/* ② 满额：差 4 点满（实回＝名义＝4）—— ✗ 不误伤 */
+			P.hp = P.maxHp - 名; 言.length = 0;
+			B84.L10.clinic();
+			ok84(new RegExp(`HP 恢复 ${名}`).test(言.join(' ')), `★②满额：差 ${名} 点满时实回＝名义 ⇒ 文案须印 ${名}（实得 ${JSON.stringify(言.join(' '))}）`);
+			/* ③ 满血：拒 ＋ 出声 ＋ 零收费 */
+			P.hp = P.maxHp; 言.length = 0; const 钱前3 = 钱();
+			const r3 = B84.L10.clinic();
+			ok84(r3 === false && /已满/.test(言.join(' ')), `★③满血须拒并出声（实得 ${JSON.stringify(r3)}／${JSON.stringify(言.join(' '))}）`);
+			ok84(钱() === 钱前3, `★③满血被拒**不得收费**（前 ${钱前3} ⇒ 后 ${钱()}）`);
+			/* ④ 动作标签：N 亦取实回预计 */
+			const 标 = (hp) => { P.hp = hp; return (map.locations.get('L10-infirmary')?.actions ?? []).map((a) => (typeof a.text === 'function' ? a.text() : a.text)).filter(Boolean).find((t) => /活人照护/.test(t)) ?? ''; };
+			const 近标 = 标(P.maxHp - 2);
+			ok84(/恢复 2 HP/.test(近标), `★★④标签（近满）：须印实回预计 2（✗ 名义）；实得 ${JSON.stringify(近标)}`);
+			const 满标 = 标(P.maxHp);
+			ok84(/当前已满/.test(满标) && !/恢复 4/.test(满标), `★④标签（满血）：须标「当前已满」且**✗ 不印 4**；实得 ${JSON.stringify(满标)}`);
+		} catch (e) {
+			ok84(false, `★本组内部抛错：${e?.message ?? e}`);
+		} finally {
+			R.perform = 原Perform;
+			P.hp = 存.hp;
+			if (存.账 === null) delete State.variables.babelL10; else State.variables.babelL10 = 存.账;
+			State.variables.inventory = 存.币 ?? [];
+			try { if (存.位) map.moveTo(存.位); } catch (e) { /* 回不去则略 */ }
+		}
+	}
+	const 本组失败 = fails.length - 组前失败;
+	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 84 组：${本组失败 === 0
+		? `全绿 —— **${本组判据} 条判据**（近满取实回／满额不误伤／满血拒且零收费／标签同取实回）`
+		: `★本组 ${本组失败} 处失败`}`);
+}
+
 
 printSummary();
