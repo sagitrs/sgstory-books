@@ -373,7 +373,25 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 	 *   `has` 缺席时才退回 `isEmpty`（更老的宿主），并**明知其不可靠**。 */
 	const 空否 = typeof S.has === 'function' ? !S.has(slot) : S.isEmpty(slot);
 	if (空否) { R.perform('这个存档位还是空的。'); return false; }
-	S.load(slot);
+	/* ★`books#402` ①（writer-2 线上实测 128–130）：**载入 = 换一个世界 ⇒ 本屏须跟着换**。
+	 *
+	 *   病灶：SugarCube 的 `unmarshal()` 只做 `onLoadHandlers` ＋ `State.unmarshalForSave()`
+	 *     —— **✗ 不调 `Engine.play`／`Engine.show`**（`vendor/format.js`）。侧栏存档面板那条路
+	 *     **自己有** `.then(Engine.show)`（同档 dialog 的槽位「载入」按钮 ✓），而本入口（页脚
+	 *     「载入快存」）原**丢了 `S.load` 的 promise** ⇒ State 还原了，而段落层与页脚都停在
+	 *     **载入前**那一屏（页脚还要等开关地图才跟上）。
+	 *   ⇒ 载入成功后走**统一收尾**：`Engine.show()`（体＝`Engine.play(State.passage, true)`，
+	 *     与面板那条**同一条引擎口**）⇒ 重画本屏；其 `:passagedisplay` 收口再刷面板 ⇒
+	 *     位置／装备／库存一同跟上（`ui/panels.js` ✓）。
+	 *   ⚠ 能力探测：`Engine.show` 缺席（无头／桩环境）⇒ 静默跳过（与 `refreshPanels?.` 同形）；
+	 *     载入**失败**（promise 拒）⇒ 可读出声（✗ 静默 —— 同面板那条的 alert 之旨）。 */
+	const p = S.load(slot);
+	if (p && typeof p.then === 'function') {
+		p.then(
+			() => { try { SugarCube.Engine.show(); } catch (e) { /* 无宿主（无头自检）⇒ 略 */ } },
+			(e) => { R.perform(`✗ 读档失败：${e?.message ?? e}`); },
+		);
+	}
 	return true;
 };
 
