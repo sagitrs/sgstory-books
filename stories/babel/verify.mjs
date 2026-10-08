@@ -5511,7 +5511,18 @@ head('68. `books#397` 片 3a：返程结算 —— 适用集／前态分类／�
 					ok(演2.文.includes('获得脆弱的') && 演2.文.includes('原已脆弱而消失的') && 演2.文.includes('保持稳定的'),
 						`★提前返程**演出**须真演出三栏（实得通知：${JSON.stringify(演2.文.slice(0, 90))}）`);
 				}
-				/* ① **回城叙述**：★dev 尖上此站**无基底**（D1 的免费快回那片在 `merge: main ⇒ dev` 被整档换掉、**恢复中** ✓）⇒ ✗ 本笔**不并**这一站 ✓（✗ 造基底 —— 那是 D1 恢复的事 ✓）。 */
+				/* ① **回城叙述**（免费快回那条 path ⇒ 通知落 map-scene ✓） */
+				{
+					const 层id = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'].find((x) => (map.locations.get(x)?.availableActions ?? []).length >= 0) ?? 'L1';
+					State.variables.babelRun = Object.assign({}, State.variables.babelRun, { 已战: Object.fromEntries(['L1','L2','L3','L4','L5','L6','L7','L8','L9'].map((x) => [x, true])) });
+					try { map.moveTo(层id); } catch { /* 无图时不做 ✓ */ }
+					const 快边 = (map.exits ?? []).find((e) => e.from === 层id && e.to === 'L10-camp');
+					ok(!!快边, `★免费快回边在位（${层id} → 聚落）`);
+					if (快边) {
+						const 走 = 采('演出', () => 快边.action());
+						ok(走.文.includes('你沿来路走回共炉'), `★回城叙述须落具名通道（实得 ${JSON.stringify(走.文.slice(0, 60))}）`);
+					}
+				}
 				/* ② **P1-4 拒因兜底**（七名河动作 `r.ok===false` 分支 ⇒ 通知落 拒因通道 ✓）
 				 *   ★触发＝**重复调用同一动作**：首调消费该事件 ⇒ 再调状态机具名拒 ✓（裁 1「先战斗→再判定事件」的形 ✓）。 */
 				{
