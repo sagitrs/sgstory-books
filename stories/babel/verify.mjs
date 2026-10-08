@@ -6719,5 +6719,58 @@ head('81. 线上 P1 · `books#402` ①：快读 ⇒ 段落层重画（✗ 只还
 		? `全绿 —— **${本组判据} 条判据**（载入成功⇒恰重画一次／未 resolve 前不重画／失败⇒不重画＋出声）`
 		: `★本组 ${本组失败} 处失败`}`);
 }
+head('83. 线上 P1 · `books#402` ③：战中快读 ⇒ **清战斗生命周期**（✗ 回城＋战限制混合态）');
+{
+	const 组前失败 = fails.length;
+	let 本组判据 = 0;
+	const ok83 = (c, m) => { 本组判据++; ok(c, m); };
+	const B83 = setup.BABEL;
+	/* ★病灶（writer-2 线上实证实测 255／256／258 ✓）：**战中快读 ⇒ 回城的正文与位置 ＋ 战的限制混合** ✓ ——
+	 *   `unmarshal() 只还原 State，✗ 不碰**模块面** ⇒ B.战中 仍真 ＋ 引擎侧 RPG.Battle` 登记面仍在
+	 *   ⇒ 快存标禁／战中提示／存档 disabled ✓。★修政（领队 2026-10-08 裁）：**允许战中读档**（玩家正当 ✓）
+	 *   ⇒ 载入**成功**回调里一并清**两面** ✓；★保存资格**随还原后的 `State 复原**（存档门读 战中` ✓）。
+	 *   ★本组判「清」这一件事，✗ 判引擎内部如何登记（那是引擎侧判据 ✓）。 */
+	const 旧Save83 = SugarCube.Save, 旧Show83 = SugarCube.Engine.show;
+	const 旧战83 = B83.战中, 旧斗83 = R?.Battle?.current, 旧会话键83 = [...(R?.Battle?.按会话?.keys?.() ?? [])];
+	try {
+		ok83(typeof B83?.快读 === 'function' && !!B83?.槽位, '前置：`快读／槽位` 在位');
+		let 解83 = null, 拒83 = null;
+		const 桩表 = { has: () => true, isEmpty: () => false, get: () => ({}),
+			load: () => new Promise((res, rej) => { 解83 = res; 拒83 = rej; }) };
+		SugarCube.Save = { slots: 桩表 };
+		SugarCube.Engine.show = () => {};
+		const 假斗 = { 假: true };
+		/* ② 前置：把「战中」两面**都立起来**（✗ 否则下面的判据是恒真式 ✓） */
+		B83.战中 = true;
+		if (R?.Battle) { R.Battle.current = 假斗; R.Battle.按会话?.set?.('t-83', 假斗); }
+		ok83(B83.战中 === true && R?.Battle?.current === 假斗, '★②前置：战中两面前置确已立起（✗ 恒真式）');
+		/* ③ 承重：载入**成功** ⇒ 两面皆清 ⇒ 保存资格随 State 复原 */
+		const 接83 = B83.快读(B83.槽位.快存);
+		ok83(接83 === true, '★前置：有档 ⇒ 快读须接受');
+		解83?.(true);
+		for (let w = 0; w < 200 && B83.战中 === true; w++) await new Promise((r) => setTimeout(r, 2));
+		ok83(B83.战中 === false, `★★③承重：载入成功后 **B.战中 须为 false**（✗ 回城正文＋战限制混合态 ⇒ 快存标禁／战中提示／存档 disabled；实得 ${B83.战中}）`);
+		ok83(R?.Battle?.current == null, `★★③承重：引擎**登记面 current 须清**（实得 ${JSON.stringify(R?.Battle?.current)}）`);
+		ok83(!(R?.Battle?.按会话?.size > 0), `★★③承重：按会话登记面须清（实得 ${R?.Battle?.按会话?.size}）`);
+		/* ④ 反向：载入**失败** ⇒ **✗ 清**（失败＝没换世界 ⇒ 战还在打 ✓） */
+		B83.战中 = true; if (R?.Battle) R.Battle.current = 假斗;
+		拒83?.(new Error('坏档83'));
+		for (let w = 0; w < 50; w++) await new Promise((r) => setTimeout(r, 1));
+		ok83(B83.战中 === true, `★④反向：载入**失败** ⇒ ✗ 清战斗（实得 ${B83.战中}）`);
+	} finally {
+		if (旧Save83 === undefined) delete SugarCube.Save; else SugarCube.Save = 旧Save83;
+		SugarCube.Engine.show = 旧Show83;
+		B83.战中 = 旧战83;
+		if (R?.Battle) {
+			R.Battle.current = 旧斗83;
+			if (R.Battle.按会话) { for (const k of [...R.Battle.按会话.keys()]) if (!旧会话键83.includes(k)) R.Battle.按会话.delete(k); }
+		}
+	}
+	const 本组失败83 = fails.length - 组前失败;
+	console.log(`  ${本组失败83 === 0 ? '✓' : '✗'} 第 83 组：${本组失败83 === 0
+		? `全绿 —— **${本组判据} 条判据**（战中两面清／登记面清／失败不清／保存资格随 State）`
+		: `★本组 ${本组失败83} 处失败`}`);
+}
+
 
 printSummary();

@@ -388,7 +388,24 @@ setup.BABEL.快读 = (slot = 槽位.快存) => {
 	const p = S.load(slot);
 	if (p && typeof p.then === 'function') {
 		p.then(
-			() => { try { SugarCube.Engine.show(); } catch (e) { /* 无宿主（无头自检）⇒ 略 */ } },
+			() => {
+				/* ★`books#402` ③（writer-2 线上实测 255／256／258）：**载入 = 换一个世界 ⇒ 战斗生命周期须一并清** ——
+				 *   `unmarshal()` 只还原 `State`（`vendor/format.js` ✓），✗ 不碰**模块面** ⇒ 战中快读后
+				 *   `B.战中` 仍为真 ＋ 引擎侧 `RPG.Battle` 登记面（`current`／`按会话`）仍在
+				 *   ⇒ ★「回城的正文与位置 ＋ 战的限制」**混合态**（快存标禁／战中提示／存档 disabled ✓）。
+				 *   ★修政（领队 2026-10-08 裁）：**允许战中读档**（玩家正当 ✓）⇒ 在本回调**一并清生命周期**；
+				 *     保存资格**随还原后的 `State` 复原**（存档门读 `战中` ✓ ⇒ ✗ 另立一份判据 ✓）。
+				 *   ★**清两面**（同 `#491` 的「非 `State` 面」口径 ✓）：故事侧**模块旗** ＋ 引擎侧**登记面** ✓。 */
+				try { setup.BABEL.战中 = false; } catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
+				try {
+					const 战 = setup?.RPG?.Battle;
+					if (战) {
+						战.current = null;
+						if (战.按会话 && typeof 战.按会话.clear === 'function') 战.按会话.clear();
+					}
+				} catch (e) { /* 同上 */ }
+				try { SugarCube.Engine.show(); } catch (e) { /* 无宿主（无头自检）⇒ 略 */ }
+			},
 			(e) => { R.perform(`✗ 读档失败：${e?.message ?? e}`); },
 		);
 	}
