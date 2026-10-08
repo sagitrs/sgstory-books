@@ -101,10 +101,10 @@ R.registerPanel('footer-save', {
 	render: () => {
 		const B = setup.BABEL;
 		const 快存面 = B?.['页脚可存']?.() === true
-			? '<a class="rpg-footersave-save" role="button">快存</a>'
+			? '<a class="rpg-footersave-save" href="#" role="button">快存</a>'
 			: '<span class="footersave-off" title="战斗中不能存档">快存（战斗中不可用）</span>';
 		const 载入面 = B?.['快存有位']?.() === true
-			? '<a class="rpg-footersave-load" role="button">载入快存</a>'
+			? '<a class="rpg-footersave-load" href="#" role="button">载入快存</a>'
 			: '';
 		return 快存面 + 载入面;
 	},
