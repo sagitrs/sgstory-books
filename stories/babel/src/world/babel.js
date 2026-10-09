@@ -1355,6 +1355,41 @@ setup.BABEL.服务 = Object.freeze({
 	开: (kind) => typeof setup.BABEL.L10?.menu === 'function' && typeof kind === 'string',
 	菜单: (kind) => setup.BABEL.L10?.menu?.(kind),
 });
+/* ═══ ★`books#420`（E2）：脆弱／返程顺序／旧卷轴 —— 三个**读口聚合面**（真源＝`B.返程结算`）═══
+ * 依据：领队裁（`#420` 评论 `6083537609`）「**准聚合形**」＋ 票面②「返程遵循 #395 及 #400 政策：
+ *   **旧损毁先于新附加**，新脆弱同次保留；取消/非法/重复零错误消费」＋ 票面③「旧卷轴兼容可核」。
+ * ★纪律同前两笔：①**同源委派** `B.返程结算`（它已是 `00-return-settle.js` 的只读聚合面 ✓）
+ *   ⇒ ✗ 抄判定、✗ 另建第二真值；②**只读**（✗ 写域、✗ 改资格）。
+ * ★键名映射＝**逐字声明 ＋ 具名出处**（照本席 `#420` 评论 `6083286807` 的自纠形）：
+ *   `顺序` 之所以是**声明**（✗ 派生）：真源 `分类()` 返回的是**三栏结果**（消失/新增/稳定），
+ *   ✗ 一个「顺序」标量 ⇒ 无法真派生 ⇒ 逐字声明并写明它由哪一个机制实现 ✓（改源必改此处）。
+ */
+setup.BABEL.脆弱 = Object.freeze({
+	键: () => setup.BABEL.返程结算?.脆弱键 ?? null,        // 真源：'脆弱'（物件 state 位）
+	是: (件) => setup.BABEL.返程结算?.是脆弱?.(件) === true,
+	快照: () => setup.BABEL.返程结算?.快照?.() ?? null,
+	适用件: () => setup.BABEL.返程结算?.适用件?.() ?? null,
+});
+setup.BABEL.返程 = Object.freeze({
+	/* ★**顺序声明**：来源＝`00-return-settle.js` 的 `分类()`（快照三栏）＋ 裁文 `6018346663`。
+	 *   ★语义：**原已脆弱 ∧ 无豁免 ⇒ 消失**（先）／**本次新获脆弱**（后，同次保留）／稳定者不动。 */
+	顺序: '旧损毁（原已脆弱无豁免者消失）先于新附加（本次新获脆弱，同次保留）；稳定者不变',
+	旧损毁先: true,                                    // ★与上同一事实的布尔面（判据两种读法皆可 ✓）
+	分类: (前) => setup.BABEL.返程结算?.分类?.(前) ?? null,
+	读: () => setup.BABEL.返程结算?.读返程?.() ?? null,
+	结算: (参) => setup.BABEL.返程结算?.返程事务?.(参),
+	演出: (栏) => setup.BABEL.返程结算?.演出?.(栏) ?? null,
+});
+setup.BABEL.卷轴 = Object.freeze({
+	现付费: 'return-scroll',                           // 来源：`00-l10-city.js` `cfg.buy['return-scroll']=30`（证前可买 ✓）
+	价: () => setup.BABEL.L10?.cfg?.buy?.['return-scroll'] ?? null,
+});
+setup.BABEL.旧卷轴 = Object.freeze({
+	/* ★旧卷轴**冻结例外**（✗ 执行脆弱结算）—— 真源具名口 `RETURN_SCROLL_EXEMPT` ✓（`#443` N2 四裁第 3 项）。 */
+	豁免: () => setup.BABEL.返程结算?.旧卷轴返程?.() ?? null,
+	码: 'RETURN_SCROLL_EXEMPT',
+	适用层段: '旧卷轴（新政策适用层段之外）—— 逐字声明；真源见 `旧卷轴返程()` 的裁文出处',
+});
 setup.BABEL.收购 = Object.freeze({
 	目录: () => setup.BABEL.L10?.cfg?.sell ?? null,
 	卖: (id, n) => setup.BABEL.L10?.sell?.(id, n),
