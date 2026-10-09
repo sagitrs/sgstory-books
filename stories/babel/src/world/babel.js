@@ -677,11 +677,10 @@ const makeLayerLocation = (L) => new R.Location({
 		 *       判不出守卫（`dev-10` 的刀：只拆本守卫而保留授予 ⇒ 全档零红）；**文案**那面才是本守卫
 		 *       真正承重的 ⇒ 判据＝`verify.mjs` ㉘①后半的**文案计数**（只拆守卫 ⇒ 该条红）。
 		 *   ⚠ 授予**不耗随机单元**（与抽签／危害的次序无关）⇒ 上两行的次序不变。 */
-		if (L.id === 预知授予层 && !(DND3.Player?.contains?.('precognition'))) {
-			DND3.Player?.gain?.('precognition');
-			R.perform('你开始能听见下一层的低语 —— 下一层会有什么，你可以先选一样。');
-		}
-	},
+		/* ★`books#419`（B5）：**L5 预知授予已退役**（本节不再授予，也不印那句低语）。
+		 *   依据：终裁「移除故事里的预知授予、玩家选择与课程依赖，不将开发控制留在正式教程」。
+		 *   ★引擎侧通用被动 `precognition` **保留**（`src/dnd/dnd3/core/passives.js`，纯占位挂载面）。
+		 *   ⚠ 旧档迁移：读档时由 `B.预知退役()` 确定性撤「未入账层」的旧选择（见 `story/hooks.js` 读档收尾）。 */	},
 	actions: [
 		/* ★`books#133` 笔 1（领队裁 ②B）：**L5–L8 的基础采集退役** —— 采集在该四层改为「抽中的事件」，
 		 *   故此处**不入表**（其余层与二段照旧，`when` 仍管「采空即消失」）。 */
@@ -1315,6 +1314,25 @@ Object.defineProperty(setup.BABEL, '存档禁用', {
 	get: () => setup.BABEL?.战中 === true || setup.RPG?.Battle?.current != null,
 });
 setup.BABEL.是头目战场 = 是头目战场;  // ★`books#201`：`fight()`（跑分器走的真路）据此在该层发保证装备
+
+/* ═══ ★`books#419`（B5）：**预知退役** —— 读旧档迁移时**确定性**执行（✗ 无 UI ✗ 新局不涉 ✗ 不改通用能力）═══
+ * 口径：B1 八项终裁第 4 项（同代、无跨局继承）＋ 第三节旧档政策 ＋ 领队裁①「退役时机＝读旧档迁移时」。
+ *   ① 打**退役标志**（`$babelRun.预知.已退役 = true`）—— 幂等，重复读档同一结果；
+ *   ② **不继续控制未入账层**：撤掉「尚未抽过事件」那些层的旧预知选择（`$span1Foresee`），
+ *      ★**已抽层一律不动**（终裁第 4 项／B5-5：已抽事件不重抽、不因退役重新抽）；
+ *   ③ ✗ 清 `span1Events`、✗ 追补战果或奖励、✗ 删引擎侧通用被动 `precognition`（纯占位挂载面）。
+ * ⚠ 本动作只动与预知有关的两个键：`babelRun.预知`、`span1Foresee`（✗ 触 `span1Events`）。
+ */
+const 预知退役 = () => {
+	const r = (State.variables.babelRun ??= {});
+	r.预知 = Object.assign({}, r.预知 ?? {}, { 已退役: true });
+	const 旧选 = (State.variables.span1Foresee ??= {});
+	const 抽过 = State.variables.span1Events ?? {};
+	let 撤 = 0;
+	for (const k2 of Object.keys(旧选)) if (!(k2 in 抽过)) { delete 旧选[k2]; 撤 += 1; }
+	return { 已退役: true, 撤销未入账层: 撤 };
+};
+setup.BABEL.预知退役 = 预知退役;   // ★`books#419`（B5）：读旧档迁移时调用；判据按它断「有真退役动作」
 /* ═══ ★`books#417`（B3）：L5–L8 **受控事件池**与资源节奏 —— 四面（**按既有真机制导出**，✗ 造常量面）═══
  *
  * 口径来源：B1（`#410`）八项终裁第 2／3 项 ＋ `docs/plans/babel/l1-9-curriculum.md`（L5–L8 学习目标）。

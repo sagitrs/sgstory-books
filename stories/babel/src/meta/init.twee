@@ -25,7 +25,7 @@
 <<set $buildVersion to "—">>
 /* ★`books#176`：本局账增 `终局`（死亡＝游戏失败后本局是否已中止）—— 它是**入口的幂等门**
  *   （不复活后尸体会恒在 ⇒ 没这道账每调一次都会重结算）。仍在 `$babelRun` 内，✗ 新顶层键。 */
-<<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1", 终局: false, 时间: 0 }>>
+<<set $babelRun to { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: "L1", 终局: false, 时间: 0, 已战: {}, 已跳过: {} }>>
 <<set $babelGiven to {}>>
 /* L10 两项主进度与个人库存分开；方法、目录、地图不进档。 */
 /* ★`books#206`：城镇设施域（设施表；`下次产出日`＝**绝对日号**）。方法与目录不进档。 */
