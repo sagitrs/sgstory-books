@@ -1,0 +1,8 @@
+✓ B5-1 ★新局状态里**无活动预知**（B1 第4项：同代、无跨局继承）   ← babelRun.预知=null
+✗ B5-2 ★`babelRun.已战`**存在**且是**账形体**（B1：缺键为「无此记录」，✗ 不以深度补 true）   ← babelRun.已战=null
+✓ B5-3 ★**不另存** `map.deepest` 同义账（B1：用既有位置与 babelRun.deepest 权威）   ← V().map.deepest=undefined
+✓ B5-4 ★**不新建**「每层已领」账（B1 第3项：去掉独立「已领」账的验收要求）   ← babelRun.已领=null
+✓ B5-5 ★`span1Events` 是**保留**式账（B1：不因读档/退役/刷新重新抽）   ← span1Events={}
+✗ B5-6 ★有**退役**动作/标志（B5 交付面；✗ 只是不写键）   ← B.预知退役=undefined｜babelRun.预知.已退役=undefined
+
+  ⇒ B5 失败 2 条（★候实现：B5 交付未落 ⇒ 本档为**红候实现**）
