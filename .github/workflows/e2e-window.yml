@@ -393,6 +393,14 @@ jobs:
           echo "真浏览器 smoke 子集 ✓（四支：正跑 ＋ 自检）"
           { echo "- 真浏览器 smoke: kills-easy／encounter-stop／save-delete／playtest（正跑＋刀）✓"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+      - name: ★B 族候实现红测（红**须具名** · 红旗 ✗ 预期 · `#416`–`#420`／`#425`）
+        run: |
+          set -u
+          # ★口径（沿 `tests/b-series/README.md`）：本族是「**候实现红测**」⇒
+          #   · **判据红＝预期** ✓（每条须具名指出「哪一面的什么事实不成立」）
+          #   · **红旗＝装置/前置错** ✗（坏档／崩／零出声／早退／缺产物）—— runner 自带此判并 `exit 2` ✓
+          #   ⇒ 故本步**只**用 runner 的退出码与汇总行：红旗 0 ⇒ rc 0（读数可用）✓；✗ 不得把红旗当「判据红」✓
+          bash tests/b-series/run-all.sh
       - name: 引擎仓没被写脏（归因）
         run: |
           set -euo pipefail
