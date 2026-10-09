@@ -32,11 +32,21 @@ for (const L of 层) { try { B.map.moveTo(L); 通.push(L); } catch { /* 该层�
 判('B6-2 ★九层**端到端可寻址**（L1…L9 逐层进得去）',
 	通.length === 层.length, `实达 ${通.length}/${层.length}｜达=${通.join(',') || '（无）'}`);
 
-/* ── ③ 到 L10 与返城**分开**（✗ 把前进门当返城）── */
-try { B.map.moveTo('L10'); } catch { /* 不可达 */ }
-判('B6-3 ★可到 **L10**（九层引导的出口）',
-	String(V()?.位置) === 'L10' || String(V()?.map?.current ?? '') === 'L10',
-	`位置=${JSON.stringify(V()?.位置)}｜map.current=${JSON.stringify(V()?.map?.current ?? null)}`);
+/* ── ③ 到 L10 与返城**分开**（✗ 把前进门当返城）──
+ * ★T 席裁定（2026-10-09 · 应 `#564` §三 两读法之请）：**取甲（字面）**，并**补一翼**。
+ *   依据（我一手探针跑出，✗ 读码）：`moveTo('L10')` ⇒ **抛**「不存在的地点「L10」」；
+ *     `moveTo('L10-camp')` ⇒ **未抛**、`V().位置 = "L10-camp"`（而 `map.current` 是 `null` ⇒ 旧断言里那条投影翼在本档**用不上**）。
+ *   ⇒ 甲：靶 id 用**地图上真实的实体 id**（`L10-camp`，聚落；`teleport.js`／`00-l10-city.js` 同用）。
+ *   ★为何✗ 用乙（真经胜利门）：本档**整体是「框架可寻址」面**（`B6-2` 就是九层逐层 `moveTo` 直调 ✓）⇒
+ *     乙要真打 Boss（成本高，且「未胜不出前进门」已由 `B4-5` 覆盖 ⇒ 重复）。
+ *   ★但「**九层引导的出口**」这层语义要**在册**（✗ 只靠格名）⇒ **补第二翼**：`B.门.前进.向 === 'L10-camp'`
+ *     （`books#418` 笔 3 落的声明面 ⇒ 「出口**指向** L10」可核，✗ 需真流程 ✓）。 */
+try { B.map.moveTo('L10-camp'); } catch { /* 不可达 */ }
+判('B6-3 ★可到 **L10**（九层引导的出口 —— 靶=真实实体 id ＋ 出口指向两翼）',
+	(String(V()?.位置) === 'L10-camp' || String(V()?.map?.current ?? '') === 'L10-camp')
+		&& B?.门?.前进?.向 === 'L10-camp',
+	`位置=${JSON.stringify(V()?.位置)}｜map.current=${JSON.stringify(V()?.map?.current ?? null)}`
+		+ `｜★出口指向=${JSON.stringify(B?.门?.前进?.向 ?? null)}（须 'L10-camp'）`);
 
 /* ── ④ 真实槽位存读（✗ 不重奖/不复生/不重掷）── */
 let 存读可核 = false;
@@ -44,10 +54,23 @@ try { await D.saveAt(s, 1); await D.loadAt(s, 1); 存读可核 = true; } catch (
 判('B6-4 ★**真实槽位**存读可往返（票面②）', 存读可核, 存读可核 ? 'saveAt/loadAt 往返成功' : '✗ saveAt/loadAt 失败（根因见上）');
 
 /* ── ⑤ 量具在册（票面③：装备保证/温泉/Boss 胜率/资源预算 可核）── */
+/* ★T 席加固（2026-10-09）：原形只断 `!= null`（**存在性**）⇒ ★**空面也过**：
+ *   本席实测（同一批树）刀A `B.装备保证 = {}` ⇒ `B6-5` **仍绿** ✗；刀B `B.资源预算 = true` ⇒ **仍绿** ✗。
+ *   ⇒ 「在册」之外**再断面内容成形状**（✗ 断具体数值 —— 数值归 D 面；这里只断**面本身可核**）。 */
 const 量具 = ['装备保证', '温泉', 'Boss', '资源预算'];
 const 在册 = 量具.filter((k) => B?.[k] != null || SC.setup.RPG?.[k] != null);
-判('B6-5 ★四类**量具**在册（装备保证/温泉/Boss/资源预算）',
-	在册.length === 量具.length, `在册=${在册.join(',') || '（无）'}｜缺=${量具.filter((k) => !在册.includes(k)).join(',')}`);
+const g = B?.装备保证, r = B?.资源预算;
+const 函 = (x) => typeof x === 'function';
+const 成形状 = (g != null && Array.isArray(g.课程层) && g.课程层.length === 4
+		&& 函(g.课程保证已发) && 函(g.保证点) && 函(g.战前保底)
+		&& Array.isArray(g.件) && g.件.includes('heavy-wooden-shield') && g.件.includes('sword-quenched'))
+	&& (r != null && r.受控池 != null && r.温泉耗时 != null
+		&& (r.温泉耗时.分钟 ?? r.温泉耗时) === 60 && 函(r.分钟账) && 函(r.第几日));
+判('B6-5 ★四类**量具**在册（装备保证/温泉/Boss/资源预算）＋ 两块面**成形状**',
+	在册.length === 量具.length && 成形状,
+	`在册=${在册.join(',') || '（无）'}｜缺=${量具.filter((k) => !在册.includes(k)).join(',')}`
+		+ `｜★装备保证键=${g ? Object.keys(g).join('/') : '（无）'}（须 课程层/课程保证已发/保证点/战前保底/件）`
+		+ `｜★资源预算键=${r ? Object.keys(r).join('/') : '（无）'}（须 受控池/温泉耗时/分钟账/第几日）`);
 
 console.log(out.join('\n'));
 const 红 = out.filter((l) => l.startsWith('✗')).length;
