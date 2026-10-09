@@ -28,7 +28,10 @@ const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, V = () => SC.State.variab
 const 刀 = process.argv.find((a) => a.startsWith('--knife')) ?? null;
 if (刀 === '--knife=1') { B.Boss = { 名: '不眠者', 固定: true, 入池: false }; }
 if (刀 === '--knife=2') {
-	B.胜利 = { 由Boss: true, 胜: true };
+	/* ★T 席加固（2026-10-09）：B4-4 现在**还断写口行为**（只认 `victory`）⇒ 桩须给**真写口**
+	 *   （✗ 恒真桩 —— 那正是要被抓住的红线：`写(任意果) ⇒ 已胜 真`）。 */
+	const 胜利态 = { 已: false };
+	B.胜利 = { 由Boss: true, 胜: true, 写: (果) => { if (果 === 'victory') 胜利态.已 = true; }, 已胜: () => 胜利态.已 };
 	B.门 = { 胜利条件: 'Boss胜', 前进: { 向: 'L10-camp', 消费返城: false, 施脆弱: false,
 			/* ★`dev-9` NIT（2026-10-09）：确认口须**真幂等** ⇒ 刀② 才能把 **B4-7** 也带绿 ✓ */
 			确认: (() => { let 已 = false; return () => (已 ? { ok: false, 重复: true } : ((已 = true), { ok: true, 记账: true })); })() }, 返城: { 向: 'L10-camp', 别: '返城' } };
@@ -58,9 +61,20 @@ const 胜 = B?.胜利 ?? R?.胜利 ?? null;
 判('B4-3 ★「胜利」是**真实结算**的单一事实（✗ 由到达 L9/L10 推得）',
 	胜 != null && typeof 胜 === 'object' && Object.keys(胜).length > 0,
 	`B.胜利=${JSON.stringify(B?.胜利 ?? null).slice(0,60)}｜R.胜利=${JSON.stringify(R?.胜利 ?? null).slice(0,60)}`);
+/* ★T 席加固（2026-10-09）：原形只断「声明面字段」（`由Boss` 或门侧 `胜利条件`）——
+ *   ★**声明字段断不到行为**。本笔（`#559`）同时交付**经手读口** `写(果)`／`已胜()` ⇒ 它的
+ *   **机械负证**必须在册：`写('到达')` ⇒ `已胜()` **不得**改变（＝票面①「到达不自动判胜」）。
+ *   本席实测（同一批树）：把 `写` 改成**无条件落 `victory`**（＝「到达即胜」的等价实现）⇒
+ *   ★**旧形 B4-3／B4-4 全绿** ✗（抓不住）；而作者私跑的活性探针**红** ✓ ⇒ 判据缺一翼。
+ *   ⇒ 补此翼（写口存在 ＋ **只认 `victory`**）。⚠ 该探针会**真调** `写('到达')` —— 正常实现下
+ *     ✗ 落账（无污染）；坏实现下落账 ⇒ **该红**（正是要抓的）。 */
 判('B4-4 ★**到达不自动判胜**（Boss 胜是开门条件，✗ 位置即胜）',
-	Boolean((B?.胜利 ?? null) != null && (B.胜利.由Boss === true || B.门?.胜利条件 != null)),
-	`B.胜利.由Boss=${JSON.stringify(B?.胜利?.由Boss ?? null)}｜B.门.胜利条件=${JSON.stringify(B?.门?.胜利条件 ?? null)}`);
+	Boolean((B?.胜利 ?? null) != null && (B.胜利.由Boss === true || B.门?.胜利条件 != null))
+		&& typeof B.胜利.写 === 'function' && typeof B.胜利.已胜 === 'function'
+		&& (() => { try { const 前 = B.胜利.已胜(); B.胜利.写('到达'); return B.胜利.已胜() === 前; } catch { return false; } })(),
+	`B.胜利.由Boss=${JSON.stringify(B?.胜利?.由Boss ?? null)}｜B.门.胜利条件=${JSON.stringify(B?.门?.胜利条件 ?? null)}`
+		+ `｜★写口=${typeof B?.胜利?.写}／已胜=${typeof B?.胜利?.已胜}`
+		+ `｜★写('到达') 后已胜()=${JSON.stringify((() => { try { B?.胜利?.写?.('到达'); return B?.胜利?.已胜?.(); } catch (e) { return '抛:' + String(e?.message ?? e).slice(0, 40); } })())}（须与写前同）`);
 
 /* ── ③ 前进门 **≠** 返城门；不消费返城机会、不自动施脆弱（票面③）── */
 const 门 = B?.门 ?? B?.出口 ?? null;
