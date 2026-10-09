@@ -26,7 +26,9 @@ const 刀 = process.argv.find((a) => a.startsWith('--knife')) ?? null;
 if (刀 === '--knife=1') { B.Boss = { 名: '不眠者', 固定: true, 入池: false }; }
 if (刀 === '--knife=2') {
 	B.胜利 = { 由Boss: true, 胜: true };
-	B.门 = { 胜利条件: 'Boss胜', 前进: { 向: 'L10-camp', 消费返城: false, 施脆弱: false, 确认: () => ({ ok: true, 记账: true }) }, 返城: { 向: 'L10-camp', 别: '返城' } };
+	B.门 = { 胜利条件: 'Boss胜', 前进: { 向: 'L10-camp', 消费返城: false, 施脆弱: false,
+			/* ★`dev-9` NIT（2026-10-09）：确认口须**真幂等** ⇒ 刀② 才能把 **B4-7** 也带绿 ✓ */
+			确认: (() => { let 已 = false; return () => (已 ? { ok: false, 重复: true } : ((已 = true), { ok: true, 记账: true })); })() }, 返城: { 向: 'L10-camp', 别: '返城' } };
 }
 
 /* ── ① 准备区与 Boss 入口在**统一框架**内 ── */
@@ -77,12 +79,20 @@ const 门 = B?.门 ?? B?.出口 ?? null;
 }
 
 console.log(out.join('\n'));
+/* ★`dev-9` NIT：★**输出计数**（★绿 N ／ 红 N ⇒ 读的人不必自己数 ✓；★红须**具名** ✓）。 */
+{
+	const 绿数 = out.filter((l) => l.startsWith('✓')).length;
+	const 红数 = out.filter((l) => l.startsWith('✗')).length;
+	console.log(`  ⇒ **计数**：✓ ${绿数} 条｜✗ ${红数} 条（共 ${out.length} 格）`);
+}
 const 红 = out.filter((l) => l.startsWith('✗')).length;
 console.log(`\n  ⇒ B4 失败 ${红} 条（${红 ? '★候实现：B4 交付未落 ⇒ 本档为**红候实现**' : '全过'}）`);
 /* ★刀模式：✗ 判「红几条」✓，★判「**该转绿的那格真转绿了吗**」——
  *   ★这才是「刀让结果翻转」✓（✗ 刀后仍红＝我这刀没咬到 ✓）。 */
 if (刀) {
-	const 该绿 = 刀 === '--knife=1' ? ['B4-2'] : ['B4-3', 'B4-4', 'B4-5', 'B4-6'];
+	const 该绿 = 刀 === '--knife=1' ? ['B4-2']
+		/* ★`dev-9` NIT：B4-7（重复确认不重复记账）也由刀② 的声明满足 ⇒ **入该绿** ✓ */
+		: ['B4-3', 'B4-4', 'B4-5', 'B4-6', 'B4-7'];
 	const 取格 = (名) => out.find((l) => l.includes(名)) ?? '';
 	const 未绿 = 该绿.filter((名) => !取格(名).startsWith('✓'));
 	if (未绿.length === 0) {
