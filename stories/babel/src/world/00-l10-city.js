@@ -281,5 +281,5 @@ const ensure = () => {
 	if (!Array.isArray(locker)) throw new Error('[L10] 无效个人寄存库存');
 	for (const slot of locker) R.noteEntityId(slot.entityId);
 };
-B.L10 = { cfg, locations, state, ensure, alive, resident, sell, buy, certify, rest, clinic, trauma, repair, store, chooseEnding, menu, build };
+B.L10 = { cfg, locations, state, ensure, alive, resident, permit, sell, buy, certify, rest, clinic, trauma, repair, store, chooseEnding, menu, build };
 R.events.on('save:ready', ensure);
