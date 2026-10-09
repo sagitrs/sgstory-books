@@ -1333,6 +1333,32 @@ const 预知退役 = () => {
 	return { 已退役: true, 撤销未入账层: 撤 };
 };
 setup.BABEL.预知退役 = 预知退役;   // ★`books#419`（B5）：读旧档迁移时调用；判据按它断「有真退役动作」
+
+/* ═══ ★`books#420`（E2）：居民证与证后服务 —— **读口聚合面**（真源＝`B.L10`，✗ 第二真值）═══
+ * 依据：票面①「证前仍可恢复/售货/再次出发；证后服务可用，**消费和脆弱不撤销永久资格/历史任务事实**」
+ *       ＋ 领队裁（`#420` 评论 `6083262089`）：脆弱/返程/卷轴三面用**读口聚合形**（本处同形）。
+ * ★两条纪律：①**同源委派**（读 `B.L10` 自己的 `resident`／`state`／`permit`／`menu`／`sell` ⇒ ✗ 抄一份判定/目录）；
+ *   ②**只读**（✗ 写 `babelL10`／✗ 改资格 ⇒ 「消费与脆弱不撤销资格」是**本面不写**的自然结果 ✓）。
+ */
+setup.BABEL.居民证 = Object.freeze({
+	持有: () => setup.BABEL.L10?.resident?.() === true,
+	账: () => setup.BABEL.L10?.state?.() ?? null,
+	阈值: () => setup.BABEL.L10?.cfg?.threshold ?? null,
+	独立于消费与脆弱: true,          // 票面①：消费/脆弱**不撤销**永久资格（本面只读 ⇒ 天然成立）
+});
+setup.BABEL.服务 = Object.freeze({
+	/* ★本清单**是声明**（✗ 派生）：真源 `00-l10-city.js` 的 `menu()` 把「需证」判在**布尔闸**上
+	 *   （`permit(expected, ['storage','repair','trauma','settled'].includes(kind))`）⇒ 那是**谓词**、✗ 清单
+	 *   ⇒ 无法从它**真派生**出清单 ✗。故此处**逐字声明**并写明出处（改源必改此处 ⇒ 由 `B.L10.permit` 同源可核 ✓）。 */
+	证后: Object.freeze(['storage', 'repair', 'trauma', 'settled']),   // 来源：00-l10-city.js `menu()` 的 permit(…, true) 名单
+	证前: Object.freeze(['sale', 'supply', 'forge']),
+	开: (kind) => typeof setup.BABEL.L10?.menu === 'function' && typeof kind === 'string',
+	菜单: (kind) => setup.BABEL.L10?.menu?.(kind),
+});
+setup.BABEL.收购 = Object.freeze({
+	目录: () => setup.BABEL.L10?.cfg?.sell ?? null,
+	卖: (id, n) => setup.BABEL.L10?.sell?.(id, n),
+});
 /* ═══ ★`books#417`（B3）：L5–L8 **受控事件池**与资源节奏 —— 四面（**按既有真机制导出**，✗ 造常量面）═══
  *
  * 口径来源：B1（`#410`）八项终裁第 2／3 项 ＋ `docs/plans/babel/l1-9-curriculum.md`（L5–L8 学习目标）。
