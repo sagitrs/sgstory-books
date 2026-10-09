@@ -10,3 +10,6 @@ node_modules
 # Python 字节码缓存（模型脚本会产生）
 __pycache__/
 *.pyc
+
+# ★B 族 runner 的跑次日志（ 每跑一档写一份）——★✗ 入库（跑次产物）
+tests/b-series/.run.*.mjs.log
