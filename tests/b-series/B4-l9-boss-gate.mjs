@@ -21,7 +21,10 @@ const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, V = () => SC.State.variab
 /* ★★刀架（`books#418` 笔 4 · T 域）：★本族是「**红候实现**」⇒ ★**红本身是预期** ✓ ⇒
  *   但那 5 格**凭什么一定红**？★须证它们**判得了**（★补上正确声明就**转绿** ✓，✗ 恒红 ✗ 恒真）。
  *   `--knife=1` ⇒ 补 `B.Boss`（★B4-2 应转绿 ✓）
- *   `--knife=2` ⇒ 补 `B.门`（两个门 ＋ 前进门零副作用）＋ `B.胜利`（★B4-3／B4-4／B4-5／B4-6 应转绿 ✓） */
+ *   `--knife=2` ⇒ 补 `B.门`（两个门 ＋ 前进门零副作用）＋ `B.胜利`（★B4-3／B4-4／B4-5／B4-6 应转绿 ✓）
+ *   ★**单键负例**（T 面自证 · ✗ 走 runner）：`B.Boss` 的**两键各自**是必要条件 ⇒
+ *     只翻「入池」一键（`固定: true ∧ 入池: true`）⇒ **B4-2 须回红** ✓
+ *     （旧 OR 形下此刀**不回红** —— 那正是本格被加严的原因；见 B4-2 的断言注释）。 */
 const 刀 = process.argv.find((a) => a.startsWith('--knife')) ?? null;
 if (刀 === '--knife=1') { B.Boss = { 名: '不眠者', 固定: true, 入池: false }; }
 if (刀 === '--knife=2') {
@@ -35,9 +38,20 @@ if (刀 === '--knife=2') {
 判('B4-1 ★L9 **准备区**是可寻址的独立态（✗ 直接进 Boss）',
 	(B?.准备区 ?? null) != null || (() => { try { B.map.moveTo('L9准备区'); return String(V()?.位置) === 'L9准备区'; } catch { return false; } })(),
 	`B.准备区=${JSON.stringify(B?.准备区 ?? null).slice(0,60)}｜moveTo 后位置=${JSON.stringify(V()?.位置 ?? null)}`);
+/* ★两键**各自**是必要条件（✗ OR）—— 本席实测的判据洞：
+ *   旧形 `固定 === true || 入池 === false` 是 **OR** ⇒ ★**一翼撑绿**：
+ *   只翻「入池」一键（`固定: true ∧ 入池: true` ＝ **Boss 入池成真**）时，
+ *   「固定」那一翼仍把它撑绿 ⇒ 本笔票面口径「**不新增随机池或额外普通遭遇**」的
+ *   **反面**（Boss 入了池）判不出来（刀：两键齐翻 ⇒ 回红 ✓；只翻「入池」⇒ **仍绿** ✗）。
+ *   ⇒ 改 **AND**：★这与 t4 契约表 §三 笔 1 的红线口径「`B.Boss` 一旦**入池** ⇒ B4-2 回红」
+ *     一致 ✓（旧 OR 形与该口径**不符**）。
+ *   ⚠ 格数／格名／`--knife=1` 的「该绿」集合／README 计数**均不变**（只加严判据）。 */
 判('B4-2 ★Boss 是**固定**不眠者（✗ 随机池成员）',
-	(B?.Boss ?? null) != null && typeof B.Boss === 'object' && (B.Boss.固定 === true || B.Boss.入池 === false),
-	B?.Boss ? JSON.stringify(B.Boss).slice(0, 120) : '（Boss 未声明）');
+	(B?.Boss ?? null) != null && typeof B.Boss === 'object'
+		&& B.Boss.固定 === true && B.Boss.入池 === false,
+	B?.Boss
+		? `${JSON.stringify(B.Boss).slice(0, 96)}｜★固定=${JSON.stringify(B.Boss.固定)}（须 true）｜★入池=${JSON.stringify(B.Boss.入池)}（须 false）`
+		: '（Boss 未声明）');
 
 /* ── ② 胜利事实**真实结算**；**到达不自动判胜**（票面①）── */
 const 胜 = B?.胜利 ?? R?.胜利 ?? null;
