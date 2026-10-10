@@ -346,13 +346,33 @@ const 真打一场 = async (s, { 保留注入 = false } = {}) => {
 		}
 	}
 	for (let i = 0; i < 80 && currentPassage(s) === '遭遇战'; i += 1) {
-		const 拍一 = choiceButtons(s).find((t) => /攻击|挥|砍|劈|打击|重复上一次/.test(t) && !/盾|防具|甲|铠/.test(t));
+		/* ★★`#584` 根因修（T 面 · 2026-10-10）：★**旧形把「攻击」交给 `driveButton`** ⇒
+		 *   它取**第一条**匹配 ⇒ ★在 B2「保证装备」之后，★**盾的**那一项（「用已装备重木盾攻击」✓）排在前面 ⇒
+		 *   而它的 `used()` 在**战斗中恒拒**（`action-refused` ✓）⇒ ★**每拍空转** ⇒ 8 回合僵持 ⇒ ★无 `已战` ⇒
+		 *   ★调用方崩在「找不到上行边」 ✗（＝**每日七连红**那条 ✓；★领队分叉实验已判到底 ✓）。
+		 *   ⇒ ★修法三条（均只动**本档**·✗ 改产品 ✓）：
+		 *     ①★**拍一只认真武器**（`/剑.*攻击|挥|砍|劈|枪|锤|斧/` ✓；★盾／防具一律✗ ✓）——
+		 *        ★这样 `driveButton` 的**第一条匹配**就是真武器 ✓（★不必改那个原语本身 ✓）
+		 *     ②★「对谁？」面（`（敌方）` ✓）照旧 ✓（原有拍二 ✓）
+		 *     ③★胜后**先「收下」再「继续探索」**（★两门 ✓，见下 ✓） */
+		const 真武器 = /剑.*攻击|挥|砍|劈|枪|锤|斧|杖.*攻击/;
+		const 拍一 = choiceButtons(s).find((t) => 真武器.test(t) && !/盾|防具|甲|铠/.test(t));
 		const 拍二 = choiceButtons(s).find((t) => /（敌方）|敌方/.test(t));
 		const 选 = 拍一 ?? 拍二;
 		if (!选) break;
-		try { await driveButton(s, 拍一 ? /攻击|挥|砍|劈|打击|重复上一次/ : /（敌方）|敌方/, { read: () => choiceButtons(s).join('|') }); }
+		try { await driveButton(s, 拍一 ? 真武器 : /（敌方）|敌方/, { read: () => choiceButtons(s).join('|') }); }
 		catch { /* ✗ 吞：那一拍可能已生效（读数未变而抛）⇒ 继续下一拍 ✓ */ }
 		await tick(80);
+	}
+	/* ★`#584` ③：★胜后**两门**——先「收下」（奖励结算 ✓）再「继续探索」✓
+	 *   （★旧形只看 `继续探索` ⇒ ★若「收下」挡在前面 ⇒ 本场收不了尾 ✓） */
+	for (let k = 0; k < 3; k += 1) {
+		if (choiceButtons(s).some((t) => /^收下/.test(t))) {
+			try { await driveButton(s, /^收下/, { read: () => choiceButtons(s).join('|') }); } catch (e) { break; }
+			await tick(150);
+			continue;
+		}
+		break;
 	}
 	if (currentPassage(s) !== '探索' && choiceButtons(s).some((t) => /继续探索/.test(t))) {
 		await driveButton(s, /继续探索/, { read: choiceButtons, expectNavigate: '探索' });
