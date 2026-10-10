@@ -12,7 +12,7 @@
 |---|---|
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
 | `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；`--selftest` 自检 15 断言） |
-| `tools/check-engine-pin.mjs` | 引擎检出与 `.github/engine-ref.json` 声明 pin 的一致性（★不一致＝**装置错**，✗ 非产品缺陷） |
+| `tools/check-engine-pin.mjs` | 引擎检出与**声明 pin** 的一致性（★不一致＝**装置错**，✗ 非产品缺陷）；★`--ref-file` 可**指定声明件**（CLI 独立 pin 拟用 `stories/hof-cli/engine-ref.json` ⇒ 同一门、**同一条真值**，✗ 不许 workflow 内联自读 JSON）；★`--print-ref`＝**检出前**阶段（stdout 只出 ref 一行、来源行走 stderr）；★坏 ref（非 40 位）与缺声明皆 **rc=2 具名**（✗ 不落到「不一致」） |
 | `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
 | `tools/e2e-161-restart.mjs` | `:enginerestart` 处理器族的真浏览器臂（真 jQuery 下真触发 · 两向＋缺席闸＋`--knife`）|
 | `tools/e2e-280-fullrun.mjs` | 整局单跑真浏览器臂（L1→L20→**试玩终点**；结构式断言＋`--selftest` 8 例） |
