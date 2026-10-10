@@ -4,6 +4,10 @@
 
 ---
 
+## 原创CLI原型：灰港送灯
+
+[启动、正常胜局/下一局与测试](stories/hof-cli/README.md)使用独立完整引擎pin、Node22/Linux，标准库即可跑。含真实分支、资源事件、商店/装备/消耗品、整场战斗、精英、胜败/合法撤退、下一局解锁及手动跨进程存读；不改变Babel网页pin或发布路径。产品unit42/e2e8与H1/H2自证各4项分账，未覆盖/限制见游戏README；[审查地图](docs/plans/hof-cli/prototype-review.md)给出需求—实现—测试对应。CLI工具仍在根内的`tools/cli/`，由它的门实际对账，不声称旧平面scanner已递归覆盖。
+
 ## 游戏测试指导
 
 [游戏测试指南](docs/playtest/game-testing-guide.md)说明如何准备、操作、观察并提交报告。人类读[手工试玩章](docs/playtest/game-testing-guide.md#人类测试人员)，bot 读[浏览器实测章](docs/playtest/game-testing-guide.md#bot-测试人员)；两者共用版本与存档约定、报告模板，不必阅读对方的技术步骤。故事玩法仍以本次测试版本的说明为准，试玩不等于发布验收。
@@ -28,6 +32,9 @@
 ### 明细
 
 以下明细按 `gsvector-process#300` 条款⑤「**落盘判准与准入**」（条文落点 `rules/tester.md`）入册。用法逐件见各档文件头。
+
+- [`cli/check-ci.mjs`](tools/cli/check-ci.mjs) 实核新CLI workflow、三件嵌套工具/两张README名单、非空登记和网页隔离；配对反控另计。[工具参数/计数/预算](tools/cli/README.md)给出完整固定命令。
+- [`cli/test.mjs`](tools/cli/test.mjs) 是Linux游戏族/自证入口，命令 `node tools/cli/test.mjs --engine <独立固定引擎> --suite unit`或`--suite e2e`，可加`--selftest`；`cli/player.mjs`是其e2e实际import的普通终端驾驶库。
 
 - [`run-l10-checks.py`](tools/run-l10-checks.py) 从本仓复现本地 17 步检查并保存逐步日志；固定命令见工具索引 §22，不是 Actions run，也不代浏览器或平衡验收。
 - [`verify-l10-city.mjs`](tools/verify-l10-city.mjs) 是 L10 无头装配模块，随 `node stories/babel/verify.mjs --engine <精确 pin 检出>` 执行；不是独立 CLI，不把合成 `save:ready` 当宿主往返。

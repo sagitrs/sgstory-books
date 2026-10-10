@@ -80,6 +80,7 @@ export async function runSuite(root, engine, suite, evidence = {}) {
     console.log(`${suite}: 通过=${pass} 产品失败=${product} 环境作废=${environment} 未覆盖=${uncovered} 问题总数=${problems} 套件计划总数=${pass + problems}`);
     return environment || cancelled ? 2 : problems || result.code !== 0 ? 1 : 0;
   } catch (e) {
+    evidence.problem = e.message;
     console.error(`APPARATUS ${suite}: ${e.message}`);
     if (data?.cases?.length) console.log(`${suite}: 通过=0 产品失败=0 环境作废=${data.cases.length} 未覆盖=0 问题总数=${data.cases.length} 套件计划总数=${data.cases.length}`);
     else console.log(`${suite}: 套件计划总数未知，登记不可核；不得判绿`);
@@ -107,11 +108,44 @@ async function selftest(engine, suite) {
     await fs.writeFile(target, bytes); const restored = await runSuite(root, engine, suite), same = (await fs.readFile(target)).equals(bytes);
     const ok = baseline === 0 && hit && restored === 0 && same;
     console.log(`${suite} knife ${knife.name}: baseline=${baseline} mutant=${mutant} named=${hit} restored=${restored} byteSame=${same}; selftest=${ok ? '4/4' : 'red'}`);
-    return ok ? 0 : [baseline, mutant, restored].includes(2) ? 2 : 1;
+    if (!ok) return [baseline, mutant, restored].includes(2) ? 2 : 1;
+    return suite === 'unit' ? await apparatus(root, engine) : 0;
   } finally {
     await fs.rm(owned, { recursive: true, force: true });
     try { await fs.access(owned); throw new Error('APPARATUS RESIDUE knife directory'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
+}
+// Four registered-apparatus controls live here, not in a private evidence script.
+// Invoked by unit --selftest in the real five-step job. No product denominator.
+async function apparatus(root, engine) {
+  const paths = ['tests/hof-cli/unit/rules.test.mjs', 'tests/hof-cli/e2e/player.test.mjs', 'tests/hof-cli/registry.json', 'stories/hof-cli/play.mjs'];
+  const saved = new Map(await Promise.all(paths.map(async p => [p, await fs.readFile(path.join(root, p))])));
+  for (const name of ['missing-file', 'empty-registry', 'non-git', 'hung-cli']) {
+    const data = JSON.parse(saved.get(paths[2]).toString());
+    let suite = 'unit', needle;
+    try {
+      if (name === 'missing-file') { await fs.unlink(path.join(root, paths[0])); needle = 'APPARATUS missing/unregistered test file'; }
+      else if (name === 'empty-registry') { data.unit.cases = []; await fs.writeFile(path.join(root, paths[2]), JSON.stringify(data)); needle = 'APPARATUS empty/invalid case registry'; }
+      else if (name === 'non-git') { await fs.rename(path.join(root, '.git'), path.join(root, '.git-owned-backup')); needle = 'APPARATUS HOF_BOOKS missing books git root'; }
+      else {
+        suite = 'e2e'; needle = 'TIMEOUT CLI 10000ms';
+        const title = 'HOF-APP hung normal CLI must be environment failure';
+        console.log('HOF_APPARATUS hung-cli: temporary one-case apparatus; formal e2e registry stays 8');
+        await fs.writeFile(path.join(root, paths[3]), 'setInterval(() => {}, 1000);\n');
+        await fs.writeFile(path.join(root, paths[1]), `import test from 'node:test';\nimport { playCase } from '../../../tools/cli/player.mjs';\ntest(${JSON.stringify(title)}, async () => playCase(async make => { await make().frame(); }));\n`);
+        data.e2e.cases = [title]; await fs.writeFile(path.join(root, paths[2]), JSON.stringify(data));
+      }
+      const evidence = {}, rc = await runSuite(root, engine, suite, evidence);
+      if (rc !== 2 || !(String(evidence.problem || '') + String(evidence.output || '')).includes(needle)) throw new Error(`APPARATUS control ${name} expected named 2, got ${rc}`);
+      console.log(`HOF_APPARATUS ${name}: rc=2 named=true`);
+    } finally {
+      if (name === 'non-git') await fs.rename(path.join(root, '.git-owned-backup'), path.join(root, '.git'));
+      for (const [p, bytes] of saved) await fs.writeFile(path.join(root, p), bytes);
+    }
+  }
+  for (const [p, bytes] of saved) if (!(await fs.readFile(path.join(root, p))).equals(bytes)) throw new Error('APPARATUS control source restore failed');
+  console.log('HOF_APPARATUS 4/4; bytes restored; owned fixture cleanup follows; not product cases');
+  return 0;
 }
 if (process.argv[1] === import.meta.filename) {
   try {
