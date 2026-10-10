@@ -1,0 +1,82 @@
+name: hof-cli-tests
+
+# 单个CLI进程10秒；具名case25秒；unit族30秒/e2e族75秒；整个job180秒。
+# books#569/570 Tester许可仅本实施PR合入前有效；原网页三档workflow不改。
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hof-cli-tests.yml'
+      - 'stories/hof-cli/**'
+      - 'tools/**'
+      - 'tests/hof-cli/**'
+      - 'README.md'
+      - 'docs/plans/hof-cli/**'
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hof-cli-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  hof-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 检出books（全历史供当前PR旧面隔离核）
+        uses: actions/checkout@v4
+        with:
+          path: books
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Node22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 同一门导出独立pin
+        id: pin
+        working-directory: books
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(node tools/check-engine-pin.mjs --ref-file stories/hof-cli/engine-ref.json --print-ref)"
+          [ -n "$ref" ] || { printf 'APPARATUS HOF_PIN empty ref\n' >&2; exit 2; }
+          printf 'ref=%s\n' "$ref" >> "$GITHUB_OUTPUT"
+      - name: 检出固定引擎（ref直接来自pin步）
+        uses: actions/checkout@v4
+        with:
+          repository: sagitrs/sgstory
+          ref: ${{ steps.pin.outputs.ref }}
+          path: engine
+          persist-credentials: false
+      - name: 核pin、登记、族、两刀及必经readonly
+        working-directory: books
+        shell: bash
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          readonly_() {
+            local bad=0
+            for tree in books engine; do
+              if ! git -C "$GITHUB_WORKSPACE/$tree" status --porcelain=v1 --untracked-files=all > "$RUNNER_TEMP/hof-$tree-status"; then
+                printf 'APPARATUS READONLY unavailable: %s\n' "$tree" >&2
+                bad=2
+              elif [ -s "$RUNNER_TEMP/hof-$tree-status" ]; then
+                printf 'APPARATUS READONLY dirty: %s\n' "$tree" >&2
+                bad=2
+              fi
+            done
+            printf 'READONLY books+engine: prior=%s apparatus=%s\n' "$rc" "$bad"
+            return "$bad"
+          }
+          trap 'rc=$?; trap - EXIT; readonly_ || rc=2; exit "$rc"' EXIT
+          node tools/check-engine-pin.mjs --ref-file stories/hof-cli/engine-ref.json --engine "$GITHUB_WORKSPACE/engine"
+          node tools/cli/check-ci.mjs
+          node tools/check-tool-registry.mjs
+          node tools/check-readme-tables.mjs tools/README.md tools/cli/README.md
+          node tools/cli/test.mjs --engine "$GITHUB_WORKSPACE/engine" --suite unit
+          node tools/cli/test.mjs --engine "$GITHUB_WORKSPACE/engine" --suite e2e
+          node tools/cli/test.mjs --engine "$GITHUB_WORKSPACE/engine" --suite unit --selftest
+          node tools/cli/test.mjs --engine "$GITHUB_WORKSPACE/engine" --suite e2e --selftest
