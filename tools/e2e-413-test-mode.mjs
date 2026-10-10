@@ -202,6 +202,58 @@ ok(正.正式同 === true, `★测试局全程 ⇒ **正式面（State.variables
 ok(正.槽同 === true, `★测试局全程 ⇒ **Save.slots 键集不变**（实得 ${正.槽同}）`);
 ok(页错.length === 0, `★全程不得有 pageerror（实得 ${JSON.stringify(页错)?.slice(0, 200)}）`);
 
+/* ── ⑧ `books#536` ③：测试档的**三面** —— ★**真浏览器 ＋ 真 `reload()`** 之下断 ─────────────
+ *  ①**版本／模式不认 ⇒ 具名拒**（✗ 静默当旧档）②**白名单外 ⇒ 丢弃并计数上报** ③**活动控制面 ⇒ 不入档**
+ *  ★本节的**探形留证**：先把 `测试档` 的**键名/白名单/活动面/版本/前缀**与**入档原始键**打出来 ✓
+ *    （✗ 凭印象说「键是什么」—— 本席在 `#536` ② 就栽在「认不出 HP 键」上 ✓）。 */
+段('⑧ `books#536` ③：测试档三面（版本／模式具名拒 · 白名单 ＋ 控制面 ⇒ 丢弃并计数）· 跨真刷新');
+const 档形 = await p.evaluate(() => {
+	const T = globalThis.SugarCube.setup.BABEL.测试档;
+	return { 键: Object.keys(T).sort(), 白名单: T.白名单, 活动面: T.活动面, 版本: T.版本, 模式: T.模式, 前缀: T.前缀 };
+});
+console.log(`  ★探形留证：测试档键=${JSON.stringify(档形.键)}｜白名单=${JSON.stringify(档形.白名单)}｜活动面=${JSON.stringify(档形.活动面)}｜版本=${档形.版本}｜模式=${JSON.stringify(档形.模式)}｜前缀=${JSON.stringify(档形.前缀)}`);
+ok(Array.isArray(档形.白名单) && 档形.白名单.length === 2 && 档形.白名单.includes('事实') && 档形.白名单.includes('历史'),
+	`★⑧前置：入档白名单须**恰为** [事实, 历史]（实得 ${JSON.stringify(档形.白名单)}）`);
+ok(Array.isArray(档形.活动面) && 档形.活动面.length > 0, `★⑧前置：活动控制面须**点名在册**（实得 ${JSON.stringify(档形.活动面)}）`);
+const 塞 = { id: 's-536c', 事实: { a: 1 }, 历史: [1], 骰面: [2], 额度: 3, 入口标记: 'x', 输入队列: [], 订阅: {}, 活动控制: 1, 跑题: 'z' };
+const 期望丢 = ['骰面', '额度', '入口标记', '输入队列', '订阅', '活动控制', '跑题'];
+const 保 = await p.evaluate(({ 场次, 白 }) => {
+	const T = globalThis.SugarCube.setup.BABEL.测试档;
+	const r = T.保存(场次);
+	const 键 = T.键形('s-536c');
+	const 原 = globalThis.localStorage.getItem(键);
+	let 入档 = null; try { 入档 = JSON.parse(原); } catch { 入档 = '（解析失败）'; }
+	/* ★坏档具名拒：**直接写库**造两种（✗ 靠产品自己写 ✓）—— 版本不符 / 模式不符 */
+	globalThis.localStorage.setItem(T.键形('s-536ver'), JSON.stringify({ 模式: T.模式, 版本: 99, 事实: {} }));
+	globalThis.localStorage.setItem(T.键形('s-536mod'), JSON.stringify({ 模式: '别的局', 版本: T.版本, 事实: {} }));
+	return { 保: r, 键, 入档键: 入档 && typeof 入档 === 'object' ? Object.keys(入档).sort() : 入档,
+		读: T.读取('s-536c'), 读坏版: T.读取('s-536ver'), 读坏模: T.读取('s-536mod') };
+}, { 场次: 塞, 白: 档形.白名单 });
+console.log(`  ★探形留证：保存.丢弃=${JSON.stringify(保.保?.丢弃)}｜入档原始键=${JSON.stringify(保.入档键)}｜坏版本读=${JSON.stringify(保.读坏版?.code)}｜坏模式读=${JSON.stringify(保.读坏模?.code)}`);
+ok(保.保?.ok === true, `★⑧②：保存须成（实得 ${JSON.stringify(保.保)?.slice(0, 160)}）`);
+const 丢 = Array.isArray(保.保?.丢弃) ? 保.保.丢弃 : [];
+ok(期望丢.every((k) => 丢.includes(k)), `★⑧②：白名单外**＋**控制面键须**逐个出现在「丢弃」上报里**（期望 ${JSON.stringify(期望丢)}；实得 ${JSON.stringify(丢)}）`);
+ok(丢.length === 期望丢.length, `★⑧②：**计数**须**恰为** ${期望丢.length}（✗ 多报／漏报；实得 ${丢.length}：${JSON.stringify(丢)}）`);
+ok(Array.isArray(保.入档键) && 保.入档键.every((k) => ['模式', '版本', '场次', '事实', '历史'].includes(k)),
+	`★⑧③：**入档原始值**只许含 模式／版本／场次／事实／历史（实得 ${JSON.stringify(保.入档键)}）⇒ 控制面**不入档** ✓`);
+ok(保.读?.ok === true && 保.读?.事实?.a === 1, `★⑧②：存完能读回（实得 ${JSON.stringify(保.读)?.slice(0, 120)}）`);
+ok(保.读坏版?.code === 'TEST_SAVE_WRONG_VERSION', `★⑧①：**版本 99 ⇒ 具名拒** ` + '`TEST_SAVE_WRONG_VERSION`' + `（✗ 静默当旧档；实得 ${JSON.stringify(保.读坏版)?.slice(0, 160)}）`);
+ok(保.读坏模?.code === 'TEST_SAVE_WRONG_MODE', `★⑧①：**模式不符 ⇒ 具名拒** ` + '`TEST_SAVE_WRONG_MODE`' + `（实得 ${JSON.stringify(保.读坏模)?.slice(0, 160)}）`);
+/* ── ⑧·跨真刷新：上面三条**过 process 边界**之后仍须成立 ── */
+await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(3200);
+const 刷 = await p.evaluate(() => {
+	const T = globalThis.SugarCube.setup.BABEL.测试档;
+	const 原 = globalThis.localStorage.getItem(T.键形('s-536c'));
+	let 键 = null; try { 键 = Object.keys(JSON.parse(原)).sort(); } catch { 键 = '（解析失败）'; }
+	return { 键, 读: T.读取('s-536c'), 坏版: T.读取('s-536ver'), 坏模: T.读取('s-536mod') };
+});
+console.log(`  ★探形留证（reload 后）：入档原始键=${JSON.stringify(刷.键)}｜坏版本读=${JSON.stringify(刷.坏版?.code)}｜坏模式读=${JSON.stringify(刷.坏模?.code)}`);
+ok(Array.isArray(刷.键) && 刷.键.every((k) => ['模式', '版本', '场次', '事实', '历史'].includes(k)) && !刷.键.includes('骰面') && !刷.键.includes('入口标记'),
+	`★⑧③跨刷新：真 ` + '`reload()`' + ` 之后入档值**仍**只含白名单面（实得 ${JSON.stringify(刷.键)}）`);
+ok(刷.读?.ok === true, `★⑧②跨刷新：真 refresh 之后**仍可读回**（实得 ${JSON.stringify(刷.读)?.slice(0, 120)}）`);
+ok(刷.坏版?.code === 'TEST_SAVE_WRONG_VERSION' && 刷.坏模?.code === 'TEST_SAVE_WRONG_MODE',
+	`★⑧①跨刷新：**两处具名拒**过 process 边界仍成立（版本=${JSON.stringify(刷.坏版?.code)}／模式=${JSON.stringify(刷.坏模?.code)}）`);
+
 await b.close();
 console.log(`\n${本组失败 === 0 ? '✓' : '✗'} 测试模式 e2e：${本组失败 === 0 ? '全绿' : `★本组 ${本组失败} 处失败`} —— **${判据} 条判据**`);
 if (打刀) {
