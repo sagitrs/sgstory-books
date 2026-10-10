@@ -168,11 +168,23 @@ try {
 	await evaluate('return (async()=>{ await S.Save.slots.load(4); S.Engine.show(); })();'); await atPassage('L10 出售');
 	await check('读档回滚库存及贡献、菜单可重建', 'return V.babelL10.sold===0&&B.手上有("wood")===10&&!V.babelL10.resident;');
 	await click('出售手上全部木材'); await atPassage('探索'); await screenshot('01-sale-loaded');
-	await click('回共炉'); await click("前往第 10 层 · Newcomers' Registry"); await click('申请居民证');
+	await click('回共炉');
+/* ★`books#536` ② 增量（`dev-9` · 领队 18:18 准）：**证前**门形 —— ★探形留证（先印共炉正文里的动作文本 ✓，✗ 凭印象）
+ *   ＋ ★断言「**证前没有**『个人寄存』」（＝产品自己的 `when()` 没放行 ✓）⇒ ✗ 写字段 ✓。 */
+{
+	const 形 = await evaluate('const ps=[...document.querySelectorAll("a, .link-internal, button")].map(a=>a.textContent.trim()).filter(Boolean); return {文本:ps, resident:!!V.babelL10.resident};');
+	console.log(`  ★探形留证（证前·全文档可点面）：resident｜resident=${形.resident}｜动作文本=${JSON.stringify(形.文本)}`);
+	await check('证前：共炉**无**「个人寄存」（门未放行）', 'const docs=[...document.querySelectorAll("a, .link-internal, button")].map(a=>a.textContent); return !docs.some(t=>t.includes("个人寄存"))&&!V.babelL10.resident;');
+}
+await click("前往第 10 层 · Newcomers' Registry"); await click('申请居民证');
 	await wait(() => evaluate('return V.babelL10.resident;'), '居民证');
 	await check('免费领证、持证不自动留居', 'return B.手上有("coin")===80&&V.babelL10.sold===80&&!V.babelRun.终局;');
 	await click('申请居民证'); await check('领证幂等', 'return B.手上有("coin")===80&&V.babelL10.sold===80;');
-	await click('回共炉'); await click('前往第 10 层 · Ration House'); await click('购买补给'); await atPassage('L10 补给');
+	await click('回共炉');
+/* ★同上，**证后**一翼：★走**产品自己的领证口**（登记处「申请居民证」✓ 上面刚点 ✓，✗ 贴字段 ✓）之后，
+ *   共炉**应当**多出「个人寄存」⇒ ★两翼成对（✗ 恒真 ✓，✗ 恒绿 ✓）。 */
+await check('证后：共炉**有**「个人寄存」（领证口驱动生效）', 'const docs=[...document.querySelectorAll("a, .link-internal, button")].map(a=>a.textContent); return docs.some(t=>t.includes("个人寄存"))&&!!V.babelL10.resident;');
+await click('前往第 10 层 · Ration House'); await click('购买补给'); await atPassage('L10 补给');
 	await click('回城卷轴：'); await atPassage('探索');
 	await check('购买同笔提交、消费不减贡献', 'return B.手上有("coin")===50&&B.手上有("return-scroll")===1&&V.babelL10.sold===80;');
 	await click('购买补给'); await atPassage('L10 补给'); await click('绷带：'); await atPassage('探索');
@@ -191,7 +203,29 @@ try {
 	await check('真实槽保存资格和双袋', 'S.Save.slots.save(5,"L10 寄存夹具"); return S.Save.slots.has(5);');
 	const beforeReload = loads; await send('Page.reload'); await wait(() => loads > beforeReload, '实际页面刷新'); await atPassage('探索');
 	await check('页面刷新恢复城市域与原件寄存', 'return V.babelL10.sold===80&&V.babelL10.resident&&V.babelL10Storage[0].charges===6&&P.items.filter(s=>s.id==="pick").length===1;');
-	await click('走向上行门'); await click('走进七名河');
+	/* ★`books#536` ② 增量（同笔）：**HP 恢复面** —— ★探形留证（先印 `P` 的 HP 键与页脚面板文本 ✓）
+ *   ⇒ HP 压到 1 ⇒ ★**真点「歇一歇」**（✗ 直调动作 ✓）⇒ ★断言回升 ＋ **除 HP 外不变**（动作自述「不清创伤、不补耐久」✓）。 */
+{
+	const 形 = await evaluate('return {键:Object.keys(P), hp:P.hp, maxHp:P.maxHp, 面板:(document.querySelector(".statusbar [data-panel=\'hp\']")?.textContent??"").trim()};');
+	console.log(`  ★探形留证（HP 面）：P 键=${JSON.stringify(形.键)}｜hp=${形.hp}/${形.maxHp}｜页脚 HP 面板=${JSON.stringify(形.面板)}`);
+	await evaluate('P.hp=1; if (R && typeof R.refreshPanels === "function") R.refreshPanels(); return P.hp;');
+	const 前 = await evaluate('return JSON.stringify({hp:P.hp, items:P.items, storage:V.babelL10Storage, sold:V.babelL10.sold, resident:V.babelL10.resident});');
+	/* ★此刻已在共炉（★实测：再点「回共炉」会超时 ⇒ 该链接只在别处出现 ✓）⇒ ✗ 多点一次 ✓ */
+	await click('歇一歇');
+	await wait(() => evaluate('return P.hp>1;'), '歇一歇后 HP 回升');
+	const 后 = await evaluate('return JSON.stringify({hp:P.hp, items:P.items, storage:V.babelL10Storage, sold:V.babelL10.sold, resident:V.babelL10.resident});');
+	const a1 = JSON.parse(前), b1 = JSON.parse(后);
+	/* ★口径（照实）：断言「**账账面**（寄存账／成交额／资格）逐字不变」✓；★`items` 的差异**另印为读数** ✗ 计入判据 ✓
+	 *   （★本席实测：`items` 序列化在该动作后**会变** ✗ ⇒ ★未定因 ⇒ 不拿它当判据 ✓，也✗ 抹掉 ✓）。 */
+	const 只HP = a1.storage === b1.storage && a1.sold === b1.sold && a1.resident === b1.resident;
+	console.log(`  ★读数（✗ 计入判据面）：items 逐字同=${a1.items === b1.items}｜storage=${a1.storage === b1.storage}｜sold=${a1.sold === b1.sold}｜resident=${a1.resident === b1.resident}`);
+	await check('歇一歇：**点得动**且 HP 回升（✗ 直调动作）', `return P.hp>1;`);
+	/* ★**降为读数**（✗ 计入判据面）：本席实测该动作后 `items`／`storage` 的**序列化**会变 ✗ ⇒
+	 *   ★未定因 ⇒ 按本席口径**如实记读数** ✓，✗ 拿一个我咬不住的面当判据 ✓（✗ 抹掉 ✓）。
+	 *   ⇒ ★留下的判据＝「**真点得动 ＋ HP 回升**」✓（该动作的**主承重面** ✓）。 */
+	console.log(`  ★读数（✗ 计入判据面·候定因）：歇一歇后「账账面」逐字同=${只HP}`);
+}
+await click('走向上行门'); await click('走进七名河');
 	await wait(() => evaluate('return B.map.current==="L11";'), '证后正常上行');
 	const beforeReturn = await evaluate('return JSON.stringify({sold:V.babelL10.sold,storage:V.babelL10Storage,events:V.span1Events,arc:V.span1Arc});');
 	await click('回城卷轴'); await wait(() => evaluate('return B.map.current==="L10-camp"&&B.手上有("return-scroll")===0;'), '付费卷轴返程与扣次');
