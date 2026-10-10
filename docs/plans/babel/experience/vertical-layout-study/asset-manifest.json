@@ -1,0 +1,66 @@
+{
+  "status": "design-sample-not-runtime-assets",
+  "originalSceneRelatedImages": 3,
+  "identityPortraits": 2,
+  "backgroundPngIsDerivative": true,
+  "fontSourceURL": "https://api.github.com/repos/notofonts/noto-cjk/contents/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf?ref=main",
+  "fontOriginalSha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+  "fontModification": "glyph subset; name records 1,2,3,4,6,16,17 changed to River Study Sans / Regular; copyright and license preserved",
+  "externalImages": 0,
+  "items": [
+    {
+      "path": "assets/FONT-LICENSE.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "source": "Noto Sans CJK SC official source; renamed subset under OFL 1.1"
+    },
+    {
+      "path": "assets/FONT-NOTICE.txt",
+      "bytes": 410,
+      "sha256": "149e141c3f93017d88120b779d1ea6f896939996db0f81552bfb3023eedf4983",
+      "source": "Noto Sans CJK SC official source; renamed subset under OFL 1.1"
+    },
+    {
+      "path": "assets/e1-mooring.svg",
+      "bytes": 51120,
+      "sha256": "36fc7859124f7f7657faa00153d6b9ff72199dbcb3e9ddc8979a3c978749e2fc",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/e2-water-chart.svg",
+      "bytes": 51320,
+      "sha256": "f686d4b4624744bed9ecf9f403eaba135782e13cf8d09bbc650767d83997a2fc",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/portrait-ferry-worker.svg",
+      "bytes": 8194,
+      "sha256": "5f7694dd349900d745c0b96a6b56a7050adc8b4166fe44da94c77053f88ec05c",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/portrait-water-reader.svg",
+      "bytes": 7920,
+      "sha256": "db9f8dd5e03a783255874aca899371c91a1ad7db3961d9b58f5cbcb5ac46e3dd",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/river-backdrop.png",
+      "bytes": 83114,
+      "sha256": "156ad10e71716f4c0a12fa065418faaeee07efa444dc203e1b42742e487cb832",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/river-backdrop.svg",
+      "bytes": 1783,
+      "sha256": "2a1269a4ba9da3fbf1caf9784edc3beb0d5c84f387c02a8a7f4d43e9a6a42c4a",
+      "source": "directly authored SVG / raster derivative"
+    },
+    {
+      "path": "assets/river-study-sans.woff2",
+      "bytes": 136528,
+      "sha256": "f9bf47d8bf5e981e487af6ebcd50f2e9110e6637e4e36ddc79dd18bc289b9208",
+      "source": "Noto Sans CJK SC official source; renamed subset under OFL 1.1"
+    }
+  ]
+}
