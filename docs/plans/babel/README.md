@@ -20,6 +20,7 @@
 | [core/expedition-author-decisions-2026-10-06.md](core/expedition-author-decisions-2026-10-06.md) | 普通远征作者逐字节录及替代关系，不以归档冻结参数 |
 | [core/expedition-value-reference.md](core/expedition-value-reference.md) | SRD目录价与原创局部拟合，不是商店/通量或平衡验收 |
 | [core/sources-and-status.md](core/sources-and-status.md) | 所用 v1.3 裁定摘录、后续作者原文、继承／替代关系和未决边界 |
+| [core/worlds-runtime-data-format.md](core/worlds-runtime-data-format.md) | 20 世界**运行数据格式**正式规格：三段字段骨架、可复算五点、span2 选甲、持久化先判据（四裁 `6092948618`）|
 
 具体地图原理、日期参数、人物和服务数值仍须按各自状态处理。下方收录 L10 城内与首次出城的表现方案，不预建四城完整细案，也不因未迁入就删除其中已经确定的规范。
 
