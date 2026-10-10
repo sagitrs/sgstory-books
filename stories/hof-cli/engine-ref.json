@@ -1,0 +1,7 @@
+{
+  "ref": "f4f5fafca42a250b387d76ab9a2ee14a09cb66ef",
+  "interfaceVersion": 1,
+  "why": "独立 CLI 完整引擎 PR #2077 经非作者 D/T 同锚批准与 tester-4 执合；不复用网页 pin。",
+  "checked": "2026-10-10; merge API, own exact-HEAD checkout, main cli-tests run 38047970712 success",
+  "source": "https://github.com/sagitrs/sgstory/pull/2077"
+}
