@@ -1,0 +1,76 @@
+{
+  "unit": {
+    "files": ["tests/hof-cli/unit/rules.test.mjs"],
+    "cases": [
+      "HOF-U01 initial state and actual pinned Session are compatible",
+      "HOF-U02 counter probability has a nonzero five percent floor",
+      "HOF-U03 counter probability has a ninety-five percent ceiling",
+      "HOF-U04 counter threshold is inclusive and only hits roll damage",
+      "HOF-U05 roll above threshold causes no counter or damage draw",
+      "HOF-U06 weapon reduces probability but never potential attack count",
+      "HOF-U07 whole battle can naturally be damage free",
+      "HOF-U08 armor reduces actual effective damage",
+      "HOF-U09 armor may absorb an effective hit without forced damage",
+      "HOF-U10 death stops remaining attack and damage draws",
+      "HOF-U11 blessing and curse change only counter probability",
+      "HOF-U12 first departure separates fresh run from profile",
+      "HOF-U13 first routes have different real food costs",
+      "HOF-U14 zero food permits only one legal retreat settlement",
+      "HOF-U15 insufficient branch cost refuses without mutation or RNG",
+      "HOF-U16 marsh event uses real Session RNG and named consumption",
+      "HOF-U17 food trade checks event and travel costs before rewards",
+      "HOF-U18 cliff ore consumes health and awards gold once",
+      "HOF-U19 buying weapon pays once and actually equips it",
+      "HOF-U20 rejected purchase leaves fee and inventory untouched",
+      "HOF-U21 duplicate equipment is a named refusal not another charge",
+      "HOF-U22 changing equipped weapon never stacks both ratings",
+      "HOF-U23 tonic heals to cap and consumes exactly one bottle",
+      "HOF-U24 full health rejects tonic without consuming bottle",
+      "HOF-U25 shop enforces three tonic carry limit without charge",
+      "HOF-U26 death unlock changes real next-run shop prices",
+      "HOF-U27 bread has a real five-food resource effect",
+      "HOF-U28 rescue checks three-food cost and gives nonstacking blessing",
+      "HOF-U29 shrine does not sell a duplicate blessing",
+      "HOF-U30 curse money increases next battle counter risk",
+      "HOF-U31 victory commits reward and first canal unlock together",
+      "HOF-U32 finished node cannot award victory twice",
+      "HOF-U33 death loses run resources without victory reward",
+      "HOF-U34 next victory run resets resources but preserves progress",
+      "HOF-U35 natural rule death unlocks equipped watch departure once",
+      "HOF-U36 unlocked canal is a working shortcut not text only",
+      "HOF-U37 state rejects unknown fields and impossible health",
+      "HOF-U38 state rejects duplicate or impossible route history",
+      "HOF-U39 profile unlock claims must agree with outcomes",
+      "HOF-U40 real random snapshot restore resumes identical battle",
+      "HOF-U41 failure after real battle leaves state RNG log revision atomic",
+      "HOF-U42 failed stored JSON or game version load preserves live session"
+    ],
+    "knife": {
+      "name": "H1",
+      "path": "stories/hof-cli/game.mjs",
+      "anchor": " - armor); // H1: armor only affects effective damage.",
+      "replacement": " - 0); // H1: armor only affects effective damage.",
+      "target": "HOF-U08 armor reduces actual effective damage"
+    }
+  },
+  "e2e": {
+    "files": ["tests/hof-cli/e2e/player.test.mjs"],
+    "cases": [
+      "HOF-E01 normal player completes equipped blessed victory",
+      "HOF-E02 saved victory exposes usable next-run canal",
+      "HOF-E03 natural seeded defeat enables real watch departure",
+      "HOF-E04 cross-process save restores actual next battle and RNG",
+      "HOF-E05 marsh and dunes are real playable resource branches",
+      "HOF-E06 natural food exhaustion has a legal nonvictory exit",
+      "HOF-E07 queries and invalid commands leave visible counters unchanged",
+      "HOF-E08 failed normal load preserves the live game"
+    ],
+    "knife": {
+      "name": "H2",
+      "path": "stories/hof-cli/game.mjs",
+      "anchor": "has(s, 'canal') ? food() : '先点亮灯塔解锁潮渠捷径'",
+      "replacement": "false ? food() : '先点亮灯塔解锁潮渠捷径'",
+      "target": "HOF-E02 saved victory exposes usable next-run canal"
+    }
+  }
+}
