@@ -1,6 +1,6 @@
 # 灰港送灯：可完成一局的原创 CLI 原型
 
-GNU/Linux、Node22、git，无新增npm包。正式规则/试作参数见 [spec.md](spec.md)，文字与数据见 [content.mjs](content.mjs)，行为见 [game.mjs](game.mjs)。不复制引擎，不使用网页pin，不自动发布。数值仍需试玩，不宣称已经平衡。
+GNU/Linux、Node22、git，无新增npm包。正式规则/试作参数见 [spec.md](spec.md)，#572/#597 剧情决策增量见 [event-spec.md](event-spec.md)，文字与数据见 [content.mjs](content.mjs)，行为见 [game.mjs](game.mjs)。不复制引擎，不使用网页pin，不自动发布。数值仍需试玩，不宣称已经平衡。
 
 ## 一组启动与测试命令
 
@@ -13,7 +13,7 @@ git clone https://github.com/sagitrs/sgstory.git "$HOME/tmp/grayharbor-engine"
 git -C "$HOME/tmp/grayharbor-engine" checkout --detach "$REF"
 ENGINE="$HOME/tmp/grayharbor-engine"
 node tools/check-engine-pin.mjs --ref-file stories/hof-cli/engine-ref.json --engine "$ENGINE"
-node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 42 --save-dir "$HOME/tmp/grayharbor-saves"
+node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 42 --save-dir "$HOME/tmp/grayharbor-v2-saves"
 ```
 
 阶段一和二由同一个既有pin门读取声明；没有另一段JSON ref解析。声明ref是合法合入的完整引擎 SHA，接口1，依据见 [engine-ref.json](engine-ref.json)。游戏入口也先通过该门才启动；不支持的CLI接口具名拒绝，不回落网页引擎。工具的正式判据只认已提交的pin，未提交声明会rc2。
@@ -26,19 +26,22 @@ node tools/cli/test.mjs --engine "$ENGINE" --suite unit --selftest
 node tools/cli/test.mjs --engine "$ENGINE" --suite e2e --selftest
 ```
 
-unit42个具名用例、正常玩家e2e8个；H1/H2各4项自证另计，CI契约反控也另计，不相加成产品用例数。固定登记与实际非空名称逐项对账。退出码0判据绿、1产品/判据红、2装置错或超时；没有“缺测试但通过”形。详见 [工具说明](../../tools/cli/README.md)。
+unit64个具名用例、正常玩家e2e13个；H1/H2各4项自证另计，CI契约反控也另计，不相加成产品用例数。固定登记与实际非空名称逐项对账。退出码0判据绿、1产品/判据红、2装置错或超时；没有“缺测试但通过”形。详见 [工具说明](../../tools/cli/README.md)。
 
 ## 正常玩家可重现的胜局与下一局
 
 数字选择当前可见选项。查询 `help/status/bag/map` 不耗随机或资源；`save 名字`、`load 名字`、`quit` 是引擎命令，EOF/退出不自动保存。商店的价格、不可选理由、武器/护甲、粮食、胜败和解锁都在终端可见。
 
-此脚本是固定规则1/seed42的普通输入：崖道取矿、买长刀/护胸/粮/药、用药、整场伏击、林地补给、祝福、精英、点灯并手动保存。不造状态、不改档、不替换RNG。
+此脚本是固定游戏版本2/seed42的普通输入：崖道取矿、买长刀/护胸/粮/药、用药、整场伏击、分粮给守林人、中间存档、继续判定、到塔门兑现协助、点灯并手动保存。不造状态、不改档、不替换RNG。新用v2目录，避免覆盖原型旧档。
 
 ```bash
-printf '1\n2\n1\n2\n3\n5\n6\n10\n7\n1\n1\n1\n1\n1\n1\nsave journey\nquit\n' |
-  node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 42 --save-dir "$HOME/tmp/grayharbor-saves"
+printf '1\n2\n1\n2\n3\n5\n6\n10\n7\n1\n1\n2\nsave pending\n1\n3\n1\n1\nsave journey\nquit\n' |
+  node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 42 --save-dir "$HOME/tmp/grayharbor-v2-saves"
 printf 'load journey\n1\n3\nstatus\nmap\nquit\n' |
-  node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 7 --save-dir "$HOME/tmp/grayharbor-saves"
+  node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 7 --save-dir "$HOME/tmp/grayharbor-v2-saves"
+# 从已经支付口粮、尚未判定的中间阶段恢复，而非重交口粮
+printf 'load pending\nstatus\n1\n3\n1\n1\nquit\n' |
+  node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 999 --save-dir "$HOME/tmp/grayharbor-v2-saves"
 ```
 
 第一段应出现“送灯成功”、胜1/败0和潮渠解锁；第二段实际从保存的胜局开始下一局、经解锁潮渠到商店，本局2/生命20/金币10/粮食7。恢复后消费的是档内随机状态，不是新启动seed7。脚本数字只对应本规则版本；自动测试解析实际选项标签，不把失效数字静默换成其他动作。
@@ -47,7 +50,9 @@ printf 'load journey\n1\n3\nstatus\nmap\nquit\n' |
 
 ## 保存与跨局的准确含义
 
-`profile` 保存胜/败/撤退计数及解锁；`run` 保存本局资源/节点/装备/战果。两者随一次原子引擎动作提交，保存也是同一个信封。通关解锁潮渠；死亡解锁护符，下局可带护胸并享商店折价。本局金币/装备不跨局叠加。继续新局不重置随机流。
+`profile` 保存胜/败/撤退计数及解锁；`run` 保存本局资源/地图节点/装备/战果及当前林地阶段、实际救助和待兑现的塔门后果。两者随一次原子引擎动作提交，保存也是同一个信封。通关解锁潮渠；死亡解锁护符，下局可带护胸并享商店折价。本局金币/装备不跨局叠加。继续新局不重置随机流。
+
+游戏版本2不迁移原型version1档，读取旧版具名 `SAVE_GAME` 拒绝并保留当前会话，旧档文件不覆写。林地给粮/取粮之后不会立即离开，需继续判定；可在待判定、待应战和塔门前手动保存再恢复。叙事给线索，不在选项预报隐藏收益或精确概率；`bag`按需解释已识别装备。
 
 必须手动保存才跨进程保留新进度；不另写隐藏账户档。不保存退出、恢复更早的旧档会丢/回退较新的长期进度，这是本原型明确的离线语义。加载失败完整保留当前会话，成功加载才替换。档案不是防篡改账户，不保证fsync/断电耐久或多进程冲突。
 

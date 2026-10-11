@@ -122,8 +122,9 @@ test('HOF-U45 prebattle clues match the foe without revealing exact chances', ()
 });
 test('HOF-U46 forest queries preserve state RNG log and boundary', () => {
   const s = new Session(game, 42); choose(s, ['begin', 'cliff', 'ore', 'buy-bread', 'leave', 'fight', 'grove', 'aid']);
-  const before = s.snapshot(), boundary = s.frame().boundary;
-  for (const name of ['status', 'bag', 'map']) s.query(name); s.frame(); s.frame();
+  const before = s.snapshot(), frame = s.frame(), boundary = frame.boundary;
+  for (const name of ['status', 'bag', 'map']) s.query(name);
+  assert.deepEqual(s.frame(), frame); assert.deepEqual(s.frame(), frame);
   assert.deepEqual(s.snapshot(), before); assert.equal(s.frame().boundary, boundary);
 });
 test('HOF-U47 food changes all four encounter slots with exact distributions', () => {
