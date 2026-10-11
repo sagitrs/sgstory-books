@@ -3,18 +3,34 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import game, { initial, validate, apply, view, battle, counterChance } from '../../../stories/hof-cli/game.mjs';
+import game, { initial, validate, apply, view, battle, counterChance, encounterOutcome, enemyFor } from '../../../stories/hof-cli/game.mjs';
 import { ENEMIES } from '../../../stories/hof-cli/content.mjs';
 const { Session } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/session.mjs')).href);
 const { Store } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/storage.mjs')).href);
 const quiet = { integer: (_min, max) => max };
 const deadly = { integer: (min, max) => max === 100 ? min : max };
-const walk = (s, ids, random = quiet) => { for (const id of ids) { const r = apply(s, id, random); assert.equal(r.kind, 'accepted', `${id}: ${r.reason}`); } return s; };
+// Legacy fixtures complete the new forest stages explicitly; stage tests below use apply one action at a time.
+const walk = (s, ids, random = quiet) => {
+  const act = id => { const r = apply(s, id, random); assert.equal(r.kind, 'accepted', `${id}: ${r.reason}`); };
+  for (const id of ids) { act(id); if (['aid', 'forage'].includes(id)) { act('listen'); if (s.run.forester.stage === 'fight') act('forest-fight'); } }
+  return s;
+};
 const shop = () => walk(initial(), ['begin', 'cliff', 'ore']);
 const elite = () => walk(shop(), ['leave', 'fight', 'grove', 'forage', 'curse']);
 const victory = () => walk(shop(), ['buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'forage', 'bless', 'fight', 'light']);
 const death = () => { const s = elite(); walk(s, ['fight'], deadly); return s; };
 const choose = (s, ids) => { for (const id of ids) assert.equal(s.choose(id).kind, 'accepted', id); };
+const committed = (session, before, boundary, id) => {
+  const after = session.snapshot(); assert.notDeepEqual(after.state, before.state); assert.ok(after.rng.draws > before.rng.draws);
+  assert.notDeepEqual(after.log, before.log); assert.equal(after.log.at(-1).choice, id); assert.equal(after.revision, before.revision + 1);
+  assert.equal(session.frame().boundary, boundary + 1);
+  const tag = id === 'listen' ? 'U57' : before.state.run.node === 'elite' ? 'U58' : 'U41';
+  console.log(`HOF_ATOMIC ${tag} success: state=changed rng=${before.rng.draws}->${after.rng.draws} log=${before.log.length}->${after.log.length} revision=${before.revision}->${after.revision} boundary=${boundary}->${session.frame().boundary}`);
+};
+const failedReadout = (session, before, boundary, tag) => {
+  const after = session.snapshot(); assert.deepEqual(after, before); assert.equal(session.frame().boundary, boundary);
+  console.log(`HOF_ATOMIC ${tag} throw: state=unchanged rng=${before.rng.draws}->${after.rng.draws} log=${before.log.length}->${after.log.length} revision=${before.revision}->${after.revision} boundary=${boundary}->${session.frame().boundary}`);
+};
 test('HOF-U01 initial state and actual pinned Session are compatible', () => { assert.equal(validate(initial()), true); assert.match(new Session(game, 42).query('status'), /生命20\/20/); });
 test('HOF-U02 counter probability has a nonzero five percent floor', () => assert.equal(counterChance(65, 3, true, false), 5));
 test('HOF-U03 counter probability has a ninety-five percent ceiling', () => assert.equal(counterChance(100, 0, false, true), 95));
@@ -39,7 +55,13 @@ test('HOF-U18 cliff ore consumes health and awards gold once', () => { const s =
 test('HOF-U19 buying weapon pays once and actually equips it', () => { const s = shop(); walk(s, ['buy-sabre']); assert.equal(s.run.gold, 10); assert.equal(s.run.weapon, 'sabre'); assert.deepEqual(s.run.bag, ['sabre']); });
 test('HOF-U20 rejected purchase leaves fee and inventory untouched', () => { const s = shop(); s.run.gold = 1; const before = structuredClone(s); assert.equal(apply(s, 'buy-sabre', quiet).kind, 'refused'); assert.deepEqual(s, before); });
 test('HOF-U21 duplicate equipment is a named refusal not another charge', () => { const s = shop(); walk(s, ['buy-coat']); const before = structuredClone(s); assert.equal(apply(s, 'buy-coat', quiet).reason, '已经拥有这件装备'); assert.deepEqual(s, before); });
-test('HOF-U22 changing equipped weapon never stacks both ratings', () => { const s = shop(); walk(s, ['buy-knife', 'buy-sabre', 'equip-knife', 'leave', 'fight']); assert.equal(s.run.weapon, 'knife'); assert.match(s.run.last, /概率50%/); });
+test('HOF-U22 changing equipped weapon never stacks both ratings', () => {
+  const s = shop(); walk(s, ['buy-knife', 'buy-sabre', 'equip-knife', 'leave']);
+  assert.equal(s.run.weapon, 'knife'); const calls = [];
+  walk(s, ['fight'], { integer(a, b) { calls.push(b); return b === 100 ? 50 : 1; } });
+  assert.equal(s.run.hp, 13); assert.deepEqual(calls, [100, 4, 100, 4, 100, 4]); // Actual threshold 50%, not leaked UI metadata.
+  assert.doesNotMatch(s.run.last, /概率\d+%/);
+});
 test('HOF-U23 tonic heals to cap and consumes exactly one bottle', () => { const s = shop(); walk(s, ['buy-tonic', 'tonic']); assert.equal(s.run.hp, 20); assert.deepEqual(s.run.bag, []); });
 test('HOF-U24 full health rejects tonic without consuming bottle', () => { const s = shop(); walk(s, ['buy-tonic']); s.run.hp = 20; const before = structuredClone(s); assert.equal(apply(s, 'tonic', quiet).reason, '生命已满'); assert.deepEqual(s, before); });
 test('HOF-U25 shop enforces three tonic carry limit without charge', () => { const s = shop(); walk(s, ['buy-tonic', 'buy-tonic', 'buy-tonic']); const before = structuredClone(s); assert.equal(apply(s, 'buy-tonic', quiet).reason, '最多携带3瓶药'); assert.deepEqual(s, before); });
@@ -58,13 +80,167 @@ test('HOF-U37 state rejects unknown fields and impossible health', () => { const
 test('HOF-U38 state rejects duplicate or impossible route history', () => { const s = shop(); s.run.visited.push('fork'); assert.equal(validate(s), false); s.run.visited = ['fork', 'elite']; assert.equal(validate(s), false); });
 test('HOF-U39 profile unlock claims must agree with outcomes', () => { const s = shop(); s.profile.unlocks.push('canal'); assert.equal(validate(s), false); });
 test('HOF-U40 real random snapshot restore resumes identical battle', () => { const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre', 'leave']); const saved = a.snapshot(); choose(a, ['fight']); const b = new Session(game, 999); b.restore(saved); choose(b, ['fight']); assert.deepEqual(b.snapshot(), a.snapshot()); });
-test('HOF-U41 failure after real battle leaves state RNG log revision atomic', () => { const fragile = { ...game, apply(s, id, random) { const r = apply(s, id, random); if (id === 'fight') throw new Error('after settlement'); return r; } }; const s = new Session(fragile, 42); choose(s, ['begin', 'cliff', 'ore', 'leave']); const before = s.snapshot(), boundary = s.frame().boundary; assert.equal(s.choose('fight').kind, 'failed'); assert.deepEqual(s.snapshot(), before); assert.equal(s.frame().boundary, boundary); });
+test('HOF-U41 failure after real battle leaves state RNG log revision atomic', () => {
+  const fragile = { ...game, apply(s, id, random) { const r = apply(s, id, random); if (id === 'fight') throw new Error('after settlement'); return r; } };
+  const s = new Session(fragile, 42); choose(s, ['begin', 'cliff', 'ore', 'leave']); const before = s.snapshot(), boundary = s.frame().boundary;
+  const normal = new Session(game, 42); normal.restore(before); const liveBoundary = normal.frame().boundary;
+  assert.equal(normal.choose('fight').kind, 'accepted'); committed(normal, before, liveBoundary, 'fight');
+  assert.equal(s.choose('fight').kind, 'failed'); failedReadout(s, before, boundary, 'U41');
+});
 test('HOF-U42 failed stored JSON or game version load preserves live session', async () => {
   const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'store-'));
   try {
     const s = new Session(game, 42); choose(s, ['begin', 'cliff']); const before = s.snapshot(); const store = new Store(dir);
     await fs.writeFile(path.join(dir, 'bad.json'), '{broken'); await assert.rejects(store.load(s, 'bad'), e => e.code === 'SAVE_JSON'); assert.deepEqual(s.snapshot(), before);
-    const bad = structuredClone(before); bad.game.version = 2; await fs.writeFile(path.join(dir, 'wrong.json'), JSON.stringify(bad)); await assert.rejects(store.load(s, 'wrong'), e => e.code === 'SAVE_GAME'); assert.deepEqual(s.snapshot(), before);
+    const bad = structuredClone(before); bad.game.version = 1; await fs.writeFile(path.join(dir, 'wrong.json'), JSON.stringify(bad)); await assert.rejects(store.load(s, 'wrong'), e => e.code === 'SAVE_GAME'); assert.deepEqual(s.snapshot(), before);
     await store.save(s, 'good'); choose(s, ['ore']); await store.load(s, 'good'); assert.deepEqual(s.snapshot(), before);
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+
+const grove = () => walk(shop(), ['buy-bread', 'leave', 'fight', 'grove']);
+const pending = fed => { const s = grove(); assert.equal(apply(s, fed ? 'aid' : 'forage', quiet).kind, 'accepted'); return s; };
+const slot = n => ({ integer(a, b) { assert.equal(a, 1); assert.equal(b, 4); return n; } });
+const rescuedElite = () => { const s = pending(true); assert.equal(apply(s, 'listen', slot(2)).kind, 'accepted'); return walk(s, ['pass']); };
+test('HOF-U43 event and travel cost labels match total committed deltas', () => {
+  const s = walk(initial(), ['begin', 'marsh']); const old = s.run.food;
+  assert.match(view(s).choices.find(c => c.id === 'trade').label, /另付前进1粮，共3粮/);
+  walk(s, ['trade']); assert.equal(old - s.run.food, 3); assert.match(s.run.last, new RegExp(`粮食${old}→${s.run.food}`));
+  const g = pending(true); assert.equal(g.run.food, 6); assert.match(view(g).text, /分给守林人的2粮另计/);
+});
+test('HOF-U44 shop and optional bag explain existing gear without new rules', () => {
+  const s = shop(); assert.match(view(s).choices.find(c => c.id === 'buy-mail').label, /每次有效反击伤害减3/);
+  assert.match(view(s).choices.find(c => c.id === 'buy-mail').label, /护甲0→3/);
+  walk(s, ['buy-sabre', 'buy-coat']); assert.match(view(s).bag, /降低45个百分点/); assert.match(view(s).bag, /伤害减1/);
+  assert.match(view(s).choices.find(c => c.id === 'buy-knife').label, /较当前长刀更弱/);
+  assert.match(view(s).choices.find(c => c.id === 'buy-sabre').label, /买下即换装/); assert.equal(counterChance(65, 3, false, false), 20);
+});
+test('HOF-U45 prebattle clues match the foe without revealing exact chances', () => {
+  const a = walk(shop(), ['leave']), b = walk(initial(), ['begin', 'marsh', 'fish', 'leave']);
+  assert.equal(enemyFor(a).name, ENEMIES.birds.name); assert.match(view(a).text, /三只崖道掠鸟/);
+  assert.equal(enemyFor(b).name, ENEMIES.rats.name); assert.match(view(b).text, /两侧泥沟/);
+  for (const s of [a, b, pending(true), pending(false)]) assert.doesNotMatch(view(s).text + view(s).choices.map(c => c.label).join(''), /\d+%|1\/4|2\/4|3\/4|大成功|keeper-assisted|binding/);
+});
+test('HOF-U46 forest queries preserve state RNG log and boundary', () => {
+  const s = new Session(game, 42); choose(s, ['begin', 'cliff', 'ore', 'buy-bread', 'leave', 'fight', 'grove', 'aid']);
+  const before = s.snapshot(), boundary = s.frame().boundary;
+  for (const name of ['status', 'bag', 'map']) s.query(name); s.frame(); s.frame();
+  assert.deepEqual(s.snapshot(), before); assert.equal(s.frame().boundary, boundary);
+});
+test('HOF-U47 food changes all four encounter slots with exact distributions', () => {
+  assert.deepEqual([1, 2, 3, 4].map(n => encounterOutcome(true, n)), ['great', 'success', 'success', 'failure']);
+  assert.deepEqual([1, 2, 3, 4].map(n => encounterOutcome(false, n)), ['success', 'failure', 'failure', 'failure']);
+  assert.throws(() => encounterOutcome(true, 0)); assert.throws(() => encounterOutcome(false, 5));
+});
+test('HOF-U48 both forest decisions commit once and stay at the pending stage', () => {
+  for (const fed of [true, false]) {
+    const s = grove(), old = structuredClone(s.run); assert.equal(apply(s, fed ? 'aid' : 'forage', quiet).kind, 'accepted');
+    assert.equal(s.run.node, 'grove'); assert.equal(s.run.forester.stage, 'check'); assert.equal(s.run.forester.fed, fed);
+    assert.equal(s.run.food - old.food, fed ? -2 : 3); assert.equal(s.run.hp, old.hp); assert.equal(s.run.blessing, false);
+    assert.deepEqual(s.run.visited, old.visited); const before = structuredClone(s);
+    assert.equal(apply(s, fed ? 'aid' : 'forage', quiet).kind, 'refused'); assert.deepEqual(s, before);
+  }
+});
+test('HOF-U49 aid reserves event completion food and rejects without a draw', () => {
+  const s = grove(); s.run.food = 2; const before = structuredClone(s);
+  assert.equal(apply(s, 'aid', { integer() { throw new Error('must not draw'); } }).kind, 'refused'); assert.deepEqual(s, before);
+  s.run.food = 3; assert.equal(apply(s, 'aid', quiet).kind, 'accepted'); assert.equal(s.run.food, 1); assert.equal(s.run.forester.stage, 'check');
+});
+test('HOF-U50 fed great outcome grants actual rescue and future map binding', () => {
+  const s = pending(true), gold = s.run.gold; assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted');
+  assert.equal(s.run.node, 'shrine'); assert.equal(s.run.forester.result, 'great'); assert.equal(s.run.forester.rescued, true); assert.equal(s.run.forester.pledged, true);
+  assert.equal(s.run.gold, gold + 2); assert.equal(s.run.hp, 20); assert.equal(s.run.blessing, true);
+  assert.deepEqual(s.run.binding, { mapId: 'grayharbor', nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false });
+});
+test('HOF-U51 unrescued shrine blessing never impersonates NPC assistance', () => {
+  const s = pending(false); assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted'); walk(s, ['bless']);
+  assert.equal(s.run.blessing, true); assert.equal(s.run.forester.rescued, false); assert.equal(s.run.binding, null);
+  assert.equal(enemyFor(s).endurance, 4); assert.doesNotMatch(view(s).text, /守林人从墙后/);
+});
+test('HOF-U52 forest decisions are mutually exclusive and impossible memory is rejected', () => {
+  const s = pending(false), before = structuredClone(s); assert.equal(apply(s, 'aid', quiet).kind, 'refused'); assert.deepEqual(s, before);
+  s.run.forester.rescued = true; s.run.forester.pledged = true; assert.equal(validate(s), false);
+  const t = pending(true); t.run.forester.result = 'success'; assert.equal(validate(t), false);
+  const u = pending(true); u.run.battles = 0; assert.equal(validate(u), false);
+});
+test('HOF-U53 map targets consumption and bindings are strictly validated', () => {
+  for (const [key, value] of [['mapId', 'elsewhere'], ['nodeId', 'shop'], ['consumed', true], ['replacement', 'unknown']]) {
+    const s = rescuedElite(); s.run.binding[key] = value; assert.equal(validate(s), false, key);
+  }
+  const s = pending(false); s.run.binding = { mapId: 'grayharbor', nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false }; assert.equal(validate(s), false);
+});
+test('HOF-U54 cooperative boss uses local parameters and consumes the binding once', () => {
+  const s = rescuedElite(), base = structuredClone(ENEMIES.keeper), foe = enemyFor(s);
+  assert.equal(foe.count * foe.endurance, 4); assert.equal(ENEMIES.keeper.count * ENEMIES.keeper.endurance, 8);
+  assert.equal(foe.sides, base.sides); assert.equal(foe.probability, base.probability); assert.match(view(s).text, /守林人从墙后/);
+  walk(s, ['fight']); assert.equal(s.run.binding.consumed, true); assert.equal(s.run.node, 'beacon'); assert.deepEqual(ENEMIES.keeper, base);
+  const before = structuredClone(s); assert.equal(apply(s, 'fight', quiet).kind, 'refused'); assert.deepEqual(s, before);
+});
+test('HOF-U55 failed encounter stays for a real battle before rescue can complete', () => {
+  for (const fed of [true, false]) {
+    const s = pending(fed); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted');
+    assert.equal(s.run.node, 'grove'); assert.equal(s.run.forester.stage, 'fight'); assert.equal(s.run.forester.rescued, false); assert.equal(s.run.binding, null);
+    walk(s, ['forest-fight']); assert.equal(s.run.node, 'shrine'); assert.equal(s.run.forester.rescued, fed); assert.equal(s.run.forester.pledged, fed);
+  }
+});
+test('HOF-U56 forest death never grants NPC rewards or a future binding', () => {
+  const s = pending(true); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted'); s.run.hp = 1;
+  walk(s, ['forest-fight'], deadly); assert.equal(s.run.phase, 'death'); assert.equal(s.run.forester.rescued, false);
+  assert.equal(s.run.binding, null); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1);
+});
+test('HOF-U57 failed encounter handler commits no partial stage or RNG', () => {
+  const fragile = { ...game, apply(s, id, random) { const r = apply(s, id, random); if (id === 'listen') throw new Error('after encounter'); return r; } };
+  const s = new Session(fragile, 42); choose(s, ['begin', 'cliff', 'ore', 'buy-bread', 'leave', 'fight', 'grove', 'aid']);
+  const before = s.snapshot(), boundary = s.frame().boundary;
+  const normal = new Session(game, 42); normal.restore(before); const liveBoundary = normal.frame().boundary;
+  assert.equal(normal.choose('listen').kind, 'accepted'); committed(normal, before, liveBoundary, 'listen'); assert.equal(normal.snapshot().rng.draws, before.rng.draws + 1);
+  assert.equal(s.choose('listen').kind, 'failed'); failedReadout(s, before, boundary, 'U57');
+});
+test('HOF-U58 failed cooperative battle commits no binding or reward', () => {
+  const fragile = { ...game, apply(s, id, random) { const cooperative = s.run.node === 'elite' && s.run.binding !== null; const r = apply(s, id, random); if (id === 'fight' && cooperative) throw new Error('after cooperation'); return r; } };
+  const s = new Session(fragile, 42); choose(s, ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'aid', 'listen', 'pass']);
+  assert.equal(s.snapshot().state.run.binding.consumed, false); const before = s.snapshot(), boundary = s.frame().boundary;
+  const normal = new Session(game, 42); normal.restore(before); const liveBoundary = normal.frame().boundary;
+  assert.equal(normal.choose('fight').kind, 'accepted'); committed(normal, before, liveBoundary, 'fight'); assert.equal(normal.snapshot().state.run.binding.consumed, true);
+  assert.equal(s.choose('fight').kind, 'failed'); failedReadout(s, before, boundary, 'U58');
+});
+test('HOF-U59 real saved pending stage restores paid food and next outcome', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'stage-'));
+  try {
+    const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'aid']);
+    const store = new Store(dir), saved = a.snapshot(); await store.save(a, 'pending'); choose(a, ['listen']); const expected = a.snapshot();
+    const b = new Session(game, 999); await store.load(b, 'pending'); assert.deepEqual(b.snapshot(), saved); assert.equal(b.snapshot().state.run.forester.stage, 'check');
+    choose(b, ['listen']); assert.deepEqual(b.snapshot(), expected);
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+test('HOF-U60 a new run resets local stages bindings and NPC memory', () => {
+  const s = rescuedElite(); walk(s, ['fight', 'light']); assert.equal(s.run.binding.consumed, true); assert.equal(s.profile.wins, 1);
+  walk(s, ['begin']); assert.equal(s.run.binding, null); assert.deepEqual(s.run.forester, { stage: 'unmet', fed: false, result: 'none', rescued: false, pledged: false });
+  assert.equal(s.profile.wins, 1); assert.deepEqual(s.profile.unlocks, ['canal']);
+});
+test('HOF-U61 retreat cancels pending events without inventing rescue', () => {
+  for (const fed of [true, false]) {
+    const s = pending(fed); walk(s, ['retreat']); assert.equal(s.run.forester.stage, 'abandoned'); assert.equal(s.run.binding, null);
+    assert.equal(s.profile.retreats, 1); assert.equal(s.profile.wins, 0); assert.equal(validate(s), true);
+  }
+});
+test('HOF-U62 consumed binding cannot be replayed at a visited target', () => {
+  const s = rescuedElite(); walk(s, ['fight']); const before = structuredClone(s);
+  s.run.binding.consumed = false; assert.equal(validate(s), false); s.run.binding.consumed = true;
+  assert.equal(apply(s, 'forest-fight', quiet).kind, 'refused'); assert.deepEqual(s, before);
+});
+test('HOF-U63 retreat at the bound target expires unused help without blocking exit', () => {
+  for (const food of [4, 0]) {
+    const s = rescuedElite(); s.run.food = food; walk(s, ['retreat']);
+    assert.equal(s.run.phase, 'withdrawn'); assert.equal(s.run.binding.consumed, false); assert.equal(s.profile.retreats, 1); assert.equal(validate(s), true);
+    walk(s, ['begin']); assert.equal(s.run.binding, null); assert.equal(s.run.forester.stage, 'unmet');
+  }
+});
+test('HOF-U64 saved promised encounter keeps its local boss parameters', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'binding-'));
+  try {
+    const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'aid', 'listen', 'pass']);
+    const saved = a.snapshot(); assert.equal(saved.state.run.binding.consumed, false); const store = new Store(dir); await store.save(a, 'promised');
+    choose(a, ['fight']); const expected = a.snapshot(); const b = new Session(game, 999); await store.load(b, 'promised');
+    assert.deepEqual(b.snapshot(), saved); assert.equal(enemyFor(b.snapshot().state).endurance, 2); choose(b, ['fight']); assert.deepEqual(b.snapshot(), expected);
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
