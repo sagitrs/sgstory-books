@@ -49,6 +49,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { resolveEnv, boot, currentPassage, playPassage, panels, storyLinks } from './e2e-harness.mjs';
 
 const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
@@ -676,24 +677,57 @@ if (has('--selftest')) {
 		console.log('  ②-1 到达停·读数 = ' + JSON.stringify(读数));
 	}
 
-	let L正 = null, L反 = null, L回滚 = null, L处理器数 = null;
-	{
-		await 清阶段再向上(s, /向上，去第 2 层/, 6, { 至层: 'L1' });      // ★`#342`：先钉位置（✗ 不靠上一节）
-		L正 = passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
-		await saveAt(s, 3);
-		await 清层阶段(s);                                        // ★②-1：L2 的采集是战后动作（靶随门改而过期）
-		await driveButton(s, /^采集/, { read: choiceButtons });
-		const 采前 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
-		L处理器数 = s.SC.Save.onLoad.size;              // 至少两条：引擎的裁决 ＋ 故事侧的换实例
-		s.SC.Save.onLoad.clear();                       // ★唯一变量：撤掉全部读档处理器
-		await loadAt(s, 3);
-		const 采后 = choiceButtons(s).find((b) => b.startsWith('采集')) ?? '';
-		L回滚 = 采后 !== 采前;
-		L反 = !passageLines(s).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+	/* ★★★面 L 的刀（`#590` 重做）：**先问「驱动在哪条路」，再让刀咬在那条路上** —— 旧刀判错了驱动 ✗。
+	 *   ★**判到底**（`#590` · 本席仪器化产物实测）：同地点读档后「头重印」有**两个**机制都做得到 ——
+	 *     · **引擎侧**：`src/core/60-map.js` 的 `MapScene.execute()`（**进场口**）把 `#headerLoc` 清 null
+	 *       （承 `sgstory#1904`）⇒ 读档 ⇒ 进场 ⇒ 复位 ⇒ 重印（仪器读数：读档那一下 `at:'execute'` ✓）；
+	 *     · **故事侧**：`stories/babel/src/story/hooks.js` 的读档**换实例**（`books#136` F4，挂 `Save.onLoad`）
+	 *       —— ★在「引擎复位缺席」时它**仍**能把头印出来（换实例 ⇒ 实例私有缓存归零）。
+	 *   ⇒ ★旧断言「清掉 `Save.onLoad` ⇒ 头**必不重印**」把**故事侧**当唯一变量、却拿**引擎侧**当结论 ✗
+	 *     ⇒ 在现头**恒红**（清掉 3 条处理器后头**仍**重印 —— `#590` 实证）。
+	 *   ⇒ 本刀改为**两臂 ＋ 一具装置**（✗ 不靠"清处理器"单独推结论）：
+	 *     · **刀①（正例）**：清掉故事侧全部 `Save.onLoad` ⇒ 头**仍须重印** ⇒ 故事侧**不足以**取消它 ✓
+	 *     · **装置**：把引擎**进场复位**那一行摘掉（**唯一变量**，打在**产物副本**上）⇒ 供刀②
+	 *     · **刀②（该红型）**：该副本上再清 `Save.onLoad` ⇒ 头**须不重印** ⇒ 证明刀① 判的**正是引擎那条路** ✓
+	 *       （✗ 缺刀② ⇒ 刀① 可能只是同义反复）
+	 *   ⚠ 锚点命中数须**恰为 1**：0／>1 ⇒ **装置错** `rc=2` 具名（✗ 判据红、✗ 产品缺陷）——锚随引擎源码漂移时先修锚。
+	 *   ⚠ 副本写 `os.tmpdir()`（✗ 写本仓 ⇒ 脏检出）。 */
+	const 唯一变量锚 = '\t\tthis.#headerLoc = null;\n\t\tawait this.#renderLocation();';
+	/* ★装置先行（✗ 别让装置错被读成判据红）：锚点命中数须恰为 1 ⇒ 否则 `rc=2` 具名退出。 */
+	const 原档 = fs.readFileSync(env.htmlPath, 'utf8');
+	const 锚命中 = 原档.split(唯一变量锚).length - 1;
+	if (锚命中 !== 1) {
+		bail(`面 L 刀② 的**装置**错（✗ 判据红 · ✗ 产品缺陷）：产物里「引擎进场复位」锚点命中 ${锚命中} 处（须恰 1）`
+			+ `⇒ 锚随引擎源码漂移了，先修 tools/e2e-drive.mjs 的唯一变量锚（产物：${env.htmlPath}）`, 2);
 	}
-	F('★面 L 两向 · 正例臂：未清处理器时走到 L2 ⇒ 头**看得见**（✗ 看不见则本面判不了）', L正 === true);
-	F('★面 L 唯一变量：只清 `Save.onLoad` 处理器（清前 ' + L处理器数 + ' 条）⇒ 同地点读档后头**确不重印**（判据红得了）', L反 === true);
-	F('★面 L 反例臂仍有效：清处理器后读档**照常回滚**（✗ 则上一条是「读档坏了」造的假刀）', L回滚 === true);
+	const 走一遍同地点读档 = async (sess) => {
+		await 清阶段再向上(sess, /向上，去第 2 层/, 6, { 至层: 'L1' });   // ★`#342`：先钉位置（✗ 不靠上一节）
+		const 到L2看得见 = passageLines(sess).some((t) => t.includes('【第 2 层 · 倒木坡】'));
+		await saveAt(sess, 3);
+		await 清层阶段(sess);                                        // ★②-1：L2 的采集是战后动作（靶随门改而过期）
+		await driveButton(sess, /^采集/, { read: choiceButtons });
+		const 采前 = choiceButtons(sess).find((b) => b.startsWith('采集')) ?? '';
+		const 处理器数 = sess.SC.Save.onLoad.size;              // 至少两条：引擎的裁决 ＋ 故事侧的换实例
+		sess.SC.Save.onLoad.clear();                       // ★唯一变量：撤掉全部读档处理器（故事侧那条含在内）
+		await loadAt(sess, 3);
+		const 采后 = choiceButtons(sess).find((b) => b.startsWith('采集')) ?? '';
+		return {
+			到L2看得见, 处理器数, 回滚: 采后 !== 采前,
+			读档后看得见: passageLines(sess).some((t) => t.includes('【第 2 层 · 倒木坡】')),
+		};
+	};
+	const 现实树 = await 走一遍同地点读档(s);
+	F('★面 L 两向 · 正例臂：未清处理器时走到 L2 ⇒ 头**看得见**（✗ 看不见则本面判不了）', 现实树.到L2看得见 === true);
+	F('★面 L 反例臂仍有效：清处理器后读档**照常回滚**（✗ 则刀① 那条读数可能是「读档坏了」造的）', 现实树.回滚 === true);
+	F('★面 L 刀①（正例）：清掉故事侧 `Save.onLoad` 全部处理器（清前 ' + 现实树.处理器数 + ' 条）⇒ 同地点读档后头**仍须重印**（驱动含**引擎进场复位**那条路 · ✗ 故事侧换实例）', 现实树.读档后看得见 === true);
+	{
+		const 目录 = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-drive-L-'));
+		const 副本 = path.join(目录, 'babel-trial.knife-L.html');
+		fs.writeFileSync(副本, 原档.replace(唯一变量锚, '\t\t/* ★刀：摘掉引擎进场复位（本格唯一变量） */\n\t\tawait this.#renderLocation();'));
+		const s2 = await boot({ ...env, htmlPath: 副本 });
+		const 刀树 = await 走一遍同地点读档(s2);
+		F('★面 L 刀②（该红型）：**只**把引擎进场复位摘掉（产物副本 ＋ 清故事侧处理器）⇒ 同地点读档后头**须不重印**（＝刀① 判的正是引擎那条路，✗ 同义反复）', 刀树.读档后看得见 === false);
+	}
 
 	/* ★面 M 的**刀**（`books#133` 笔 1）：证明「抽中的两类才在」这条**红得了** ——
 	 *   唯一变量＝**注入的随机源**（其余全不动）：两个源给出两个**不同**的抽中集，
