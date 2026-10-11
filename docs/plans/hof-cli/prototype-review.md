@@ -1,13 +1,13 @@
 # 灰港送灯完整原型：需求、实现与判据阅读地图
 
-References [books#570](https://github.com/sagitrs/sgstory-books/issues/570)。本文是审查入口，不是验收/发布批准；通过证据须看PR当前头的Self-audit、原始终端与真正执行的Actions。作者不投自己的D/T票，不自合。
+原型 References [books#570](https://github.com/sagitrs/sgstory-books/issues/570)；剧情决策增量归 [#572](https://github.com/sagitrs/sgstory-books/issues/572)/[#597](https://github.com/sagitrs/sgstory-books/issues/597)，见 [增量阅读地图](event-review.md)。本文是审查入口，不是验收/发布批准；通过证据须看PR当前头的Self-audit、原始终端与真正执行的Actions。作者不投自己的D/T票，不自合。
 
 ## 先读哪几件
 
 1. [规格](../../../stories/hof-cli/spec.md)先定试作参数、保存/跨局语义与不包含项。
 2. [内容](../../../stories/hof-cli/content.mjs)是原创节点图、敌人、装备与解锁；[行为](../../../stories/hof-cli/game.mjs)分状态验证、概率/整场战斗、合法选项、事件结算与纯视图。
 3. [独立pin](../../../stories/hof-cli/engine-ref.json)锚合法合入的完整引擎；[产品入口](../../../stories/hof-cli/play.mjs)经既有同一pin门核定后才导入真实接口1，不复制引擎代码或读网页pin。
-4. [登记](../../../tests/hof-cli/registry.json)列42个unit/8个正常CLI用例及两把刀，源在unit/rules.test.mjs和e2e/player.test.mjs。前者允许构造规则边界；后者只从正常终端操作，测试本身不import运行时、不造状态/改档/换旅程内RNG。
+4. [登记](../../../tests/hof-cli/registry.json)列64个unit/13个正常CLI用例及两把刀，源在unit/rules.test.mjs和e2e/player.test.mjs。前者允许构造规则边界；后者只从正常终端操作，测试本身不import运行时、不造状态/改档/换旅程内RNG。
 5. [装置说明](../../../tools/cli/README.md)给计数、实际嵌套工具对账、退出码、私有临时目录、进程组预算与两树只读。正式CI接线按 [契约](test-contract.md) 和Tester公开许可核，不以本地字符串门替代Actions加载事实。
 
 ## 需求—实现—测试对应
@@ -29,7 +29,7 @@ References [books#570](https://github.com/sagitrs/sgstory-books/issues/570)。�
 | 工具/CI不静默漏面 | tools/cli实际文件与两张表、真实workflow调用对应；player核实际import | check-ci门及配对内存反控，旧平面门单独跑 |
 | 网页隔离 | 相对受检PR基座，网页pin/三档旧workflow逐字相同；不永久冻住未来合法网页更新 | 新静态门当前基座对账；旧门及平台babel-tests另计 |
 
-U/E编号是登记中具名测试的前缀，不是没有断言的覆盖口号。42/8是产品用例，不与命令数、刀、静态反控、旧网页/引擎断言相加。每族报告通过/产品失败/环境作废/未覆盖，问题=后三者之和，计划=通过+问题；读不到登记时计划未知，不能造0/0绿。
+U/E编号是登记中具名测试的前缀，不是没有断言的覆盖口号。64/13是当前产品用例（#570原验收为42/8，新用例归#572/#597），不与命令数、刀、静态反控、旧网页/引擎断言相加。每族报告通过/产品失败/环境作废/未覆盖，问题=后三者之和，计划=通过+问题；读不到登记时计划未知，不能造0/0绿。
 
 ## 边界及交付层次
 

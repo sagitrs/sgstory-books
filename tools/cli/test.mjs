@@ -130,7 +130,7 @@ async function apparatus(root, engine) {
       else {
         suite = 'e2e'; needle = 'TIMEOUT CLI 10000ms';
         const title = 'HOF-APP hung normal CLI must be environment failure';
-        console.log('HOF_APPARATUS hung-cli: temporary one-case apparatus; formal e2e registry stays 8');
+        console.log('HOF_APPARATUS hung-cli: temporary one-case apparatus; formal e2e registry unchanged');
         await fs.writeFile(path.join(root, paths[3]), 'setInterval(() => {}, 1000);\n');
         await fs.writeFile(path.join(root, paths[1]), `import test from 'node:test';\nimport { playCase } from '../../../tools/cli/player.mjs';\ntest(${JSON.stringify(title)}, async () => playCase(async make => { await make().frame(); }));\n`);
         data.e2e.cases = [title]; await fs.writeFile(path.join(root, paths[2]), JSON.stringify(data));
