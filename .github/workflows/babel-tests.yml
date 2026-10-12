@@ -273,6 +273,14 @@ jobs:
 
       - name: 步骤键形门（每步须有 run/uses · 块内 run 不重复 · workflow 须有 name）
         working-directory: books
+      # ★`#603`：工作流标识符里的**非常规字符**（门 ＋ 刀 · 成对 ✓）
+      - name: 门 · 工作流标识符的非常规字符（#603）
+        working-directory: books
+        run: node tests/gates/shell-identifiers.mjs
+      - name: 刀 · 同门自检（合法 ASCII 须绿／别个非常规名须红且具名／中文标点不误报／空面须红 · #603）
+        working-directory: books
+        run: node tests/gates/shell-identifiers.selftest.mjs
+
         run: node tests/gates/workflow-steps.mjs
 
       - name: ★步骤键形门自检（K0/K4 绿 · K1/K2/K3 红 · K5 装置错 rc=2）

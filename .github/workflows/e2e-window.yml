@@ -392,13 +392,13 @@ jobs:
           ART="$GITHUB_WORKSPACE/books/stories/babel/babel-trial.html"
           fail=0
           run_one() {
-            local f="$1" 守护="$2" rc=0
+            local f="$1" GUARD="$2" rc=0
             echo "── $f"
             node "$f" --books "$PWD" --engine "$GITHUB_WORKSPACE/engine" --art "$ART" > "/tmp/out" 2>&1 || rc=$?
             tail -6 /tmp/out
             if [ "$rc" -eq 2 ]; then echo "::error title=e2e-280::$f 是**装置错**（rc=2：引擎根／产物／浏览器）⇒ ✗ 不是产品红"; fail=1; return 0; fi
             if [ "$rc" -ne 0 ]; then echo "::error title=e2e-280::$f 判据红（rc=$rc）⇒ 读 /tmp/$f.out 的具名红"; fail=1; return 0; fi
-            grep -qF "$守护" "/tmp/out" || { echo "::error title=e2e-280::$f 没打印守护串「$守护」（读数没跑到 ⇒ 绿的没有根据）"; fail=1; return 0; }
+            grep -qF "$GUARD" "/tmp/out" || { echo "::error title=e2e-280::$f 没打印守护串「$GUARD」（读数没跑到 ⇒ 绿的没有根据）"; fail=1; return 0; }
             node "$f" --selftest > /tmp/knife.out 2>&1 || { echo "::error title=e2e-280::$f 自检（刀）红 ⇒ 判据恐已退化"; tail -6 /tmp/knife.out; fail=1; return 0; }
             echo "  ✓ 正跑 ＋ 自检（刀）都过"
           }
