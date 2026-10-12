@@ -123,6 +123,10 @@
 	};
 	const reply = () => {
 		const s = read();
+		if (s?.guard === 'fighting') {
+			const help = s.stage === 'rescued' ? C.共炉救助 : s.stage === 'fed' ? C.共炉只递粮 : s.stage === 'declined' ? C.共炉拒绝 : s.stage === 'unseen' ? C.共炉未见 : C.共炉无救助;
+			return `${help}\n${C.共炉冲突未了}`;
+		}
 		if (s?.stage === 'rescued') return s.guard === 'defeated' ? C.共炉冲突 : s.guard === 'passed' ? C.共炉和平 : C.共炉救助;
 		if (s?.guard === 'defeated') return C.共炉未救冲突;
 		return s?.stage === 'fed' ? C.共炉只递粮 : s?.stage === 'declined' ? C.共炉拒绝 : s?.stage === 'unseen' ? C.共炉未见 : C.共炉无救助;
