@@ -7767,6 +7767,10 @@ head('88. books#599：补给不等于救助／原件身份／守路后果／本�
 		B.战果 = () => 'stalemate';
 		const stalled = await Q.fight({ interactive: false });
 		assert(stalled.outcome === 'stalemate' && !Q.open() && !Q.read().claimed && !B.战中, '非胜不开放旧室，战中旗归零');
+		at(Q.places.city);
+		assert(Q.report().ok && Q.read().reported.guard === 'fighting' && Q.reply().includes(C.共炉拒绝) && Q.reply().includes(C.共炉冲突未了),
+			'非胜返城也记未结束的冲突，不以救助进度抹掉它');
+		at(Q.places.guard);
 		const guardSnapshot = JSON.parse(JSON.stringify(Q.read().foes[0]));
 		assert(!!guardSnapshot.entityId && Q.read().guard === 'fighting', '真实对手生成持久单位身份并留存伤势');
 		B.战果 = () => 'victory';
