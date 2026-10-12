@@ -157,6 +157,13 @@
 		try {
 			battle = new R.Battle(roundLimit, [D.Player], foes, interactive);
 			await battle.execute();
+		} catch (error) {
+			// 已执行的伤害不能因后续异常而被“换满血对手”抹去；旧场次不能写进新状态。
+			if (vars() === state && read() === anchor && B.map.current === places.guard) {
+				anchor.foes = foes.map((x) => x.toJSON()); anchor.revision += 1;
+				B.记血?.();
+			}
+			throw error; // 真实异常仍响亮上抛，不伪造胜利或发奖。
 		} finally {
 			B.战中 = false;
 			globalThis.document?.body?.classList?.remove('战中');

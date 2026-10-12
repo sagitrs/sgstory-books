@@ -7667,7 +7667,7 @@ head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终�
 head('88. books#599：补给不等于救助／原件身份／守路后果／本局记忆');
 {
 	const beforeFails = fails.length, saved = JSON.parse(JSON.stringify(State.variables)), nonState = 非State面名单();
-	const originalOutcome = B.战果, originalChoice = R.choice, originalDeposit = R.deposit;
+	const originalOutcome = B.战果, originalChoice = R.choice, originalDeposit = R.deposit, originalExecute = R.Battle.prototype.execute;
 	const battleCurrent = R.Battle.current, battleSessions = new Map(R.Battle.按会话);
 	const Q = lamplighter599, C = setup.BABEL_CONTENT.搬运队;
 	let count = 0;
@@ -7778,10 +7778,20 @@ head('88. books#599：补给不等于救助／原件身份／守路后果／本�
 		at(Q.places.city);
 		assert(Q.report().ok && Q.reply() === C.共炉未救冲突, 'NPC 不把硬闯当成救助信任');
 		assert(!State.variables.babelRun.已战?.L12, '旁支战胜也不写本层主路已战');
+		fresh(); at(Q.places.guard); B.战果 = originalOutcome;
+		R.Battle.prototype.execute = async function () {
+			this.enemies[0].hp -= 1; D.Player.hp -= 1;
+			throw R.refuse('LAMPLIGHTER_EXECUTE_ABORT', '受控伤害后异常');
+		};
+		let aborted = false;
+		try { await Q.fight({ interactive: false }); } catch (e) { aborted = e.code === 'LAMPLIGHTER_EXECUTE_ABORT'; }
+		R.Battle.prototype.execute = originalExecute;
+		assert(aborted && !B.战中 && Q.read().guard === 'fighting' && Q.read().foes[0].hp === 2 && D.Player.hp === 999 && !Q.open() && !Q.read().claimed,
+			'异常结束保留已发生的双方伤势、清战中旗，不伪造胜利/奖励');
 		State.reset();
 		assert(Q.read() === null && !Q.hasProof(), '新局 State.reset 清阶段、信物关联、对手与 NPC 记忆');
 	} finally {
-		R.deposit = originalDeposit; R.choice = originalChoice; B.战果 = originalOutcome;
+		R.deposit = originalDeposit; R.choice = originalChoice; B.战果 = originalOutcome; R.Battle.prototype.execute = originalExecute;
 		restore(saved); 复原非State面(nonState); Object.assign(B, lamplighterEnvironment599);
 		R.Battle.按会话.clear(); battleSessions.forEach((v, k) => R.Battle.按会话.set(k, v));
 		R.Battle.current = battleCurrent;
