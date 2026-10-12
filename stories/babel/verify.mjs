@@ -307,6 +307,10 @@ const R = setup.RPG;
 const RPG_create = (id) => R.createItem(id);
 const D = setup.DND3;
 const B = setup.BABEL;
+// 既有第 86 组的 JSON 复原会剥去模块方法；保留新模块身份，不改共享复原器。
+const lamplighter599 = B.搬运队;
+const lamplighterEnvironment599 = Object.fromEntries(Object.entries(Object.getOwnPropertyDescriptors(B))
+	.filter(([, d]) => d.writable === true).map(([k, d]) => [k, d.value])); // 不给只读访问器赋值。
 const map = B?.map;
 
 /* StoryInit 的变量（twee 不在本脚本里执行，故手工摆上 —— 与 meta/init.twee 逐项同形）。
@@ -350,7 +354,7 @@ ok(map instanceof R.WorldMap, '`setup.BABEL.map` 不是 WorldMap');
 if (map) {
 	ok(map.validate().length === 0, `地图结构不合法：${map.validate().join('；')}`);
 	ok(map.validateConnectivity('L1').length === 0, `L1 出发不可达：${map.validateConnectivity('L1').join('；')}`);
-	ok(map.locations.size === 31, `地点数应为 31（原 30 处 ＋ ★books#397 裁 (b) 新增的独立区域 W09「七名河」✓），实为 ${map.locations.size}`);
+	ok(map.locations.size === 34, `地点数应为 34（原 31 处＋books#599 的伤者、守路人、旧搬运室），实为 ${map.locations.size}`);
 }
 console.log(`  地点 ${map.locations.size} 个｜边 ${map.exits.length} 条`);
 
@@ -7657,6 +7661,132 @@ head('87. `books#536` ⑦：事件账**读面不建键**（写读分离 · 终�
 	}
 	const 本组失败 = fails.length - 组前失败;
 	console.log(`  ${本组失败 === 0 ? '✓' : '✗'} 第 87 组：${本组失败 === 0 ? `全绿 —— **${本组判据} 条判据**（写面建键〔正控〕／读面不建键）` : `★本组 ${本组失败} 处失败`}`);
+}
+
+/* books#599：故事编排正反格。真保存/真实鼠标入口另由 e2e-599-lamplighter 证明；这里不冒充宿主。 */
+head('88. books#599：补给不等于救助／原件身份／守路后果／本局记忆');
+{
+	const beforeFails = fails.length, saved = JSON.parse(JSON.stringify(State.variables)), nonState = 非State面名单();
+	const originalOutcome = B.战果, originalChoice = R.choice, originalDeposit = R.deposit;
+	const battleCurrent = R.Battle.current, battleSessions = new Map(R.Battle.按会话);
+	const Q = lamplighter599, C = setup.BABEL_CONTENT.搬运队;
+	let count = 0;
+	const assert = (c, name) => { count++; ok(c, `books#599 ${name}`); };
+	// 原子性面＝全部持久玩法事实，排除成功/拒绝反馈本来就会追加的通知缓冲。
+	const snap = () => JSON.stringify(Object.fromEntries(Object.entries(State.variables).filter(([k]) => k !== 'rpgNotices')));
+	const restore = (s) => {
+		for (const k of Object.keys(State.variables)) delete State.variables[k];
+		Object.assign(State.variables, JSON.parse(JSON.stringify(s)));
+	};
+	const fresh = () => {
+		B.map = map; // 第 86 组同样 JSON 化了图；恢复引导时捕获的真实图，不改通用装置。
+		restore(saved); delete State.variables[Q.key]; delete State.variables.rpgCommits;
+		State.variables.inventory = [];
+		State.variables.babelRun = { deaths: 0, kills: 0, gathered: 0, harvests: 0, traumasSeen: [], deepest: 'L12', 终局: false };
+		D.Player.hp = D.Player.maxHp = 1000; D.Player.effects = []; D.Player.nonlethal = 0;
+		B.战中 = false; B.停档 = null;
+	};
+	const at = (id) => { State.variables.mapCurrent_babel = id; }; // 只铺位置前件；浏览器臂走真实边。
+	try {
+		Object.assign(B, lamplighterEnvironment599);
+		assert(!!Q, '模块必须真实装载，缺席不得跳过');
+		fresh(); at(Q.places.wounded);
+		const before = snap();
+		for (let i = 0; i < 5; i++) { Q.read(); Q.hasProof(); Q.woundedDesc(); Q.guardDesc(); Q.reply(); }
+		assert(snap() === before && !Q.read(), '读面不建键、不改事实');
+		assert(Q.discover().ok && Q.read().stage === 'seen', '实际发现才建 seen');
+		const seen = snap();
+		assert(!Q.rescue().ok && snap() === seen, '未补给不能凭空救助/拿信物');
+		assert(!Q.feed().ok && snap() === seen, '干粮不足原子拒绝');
+		assert(!Q.feed('coin').ok && snap() === seen, '非声明补给拒绝');
+		R.deposit(D.Player.items, 'ration', 2);
+		const food = R.heldTotal(D.Player, 'ration');
+		assert(Q.feed().ok && R.heldTotal(D.Player, 'ration') === food - 1 && Q.read().stage === 'fed' && !Q.read().token, '仅扣一份干粮，fed 不是已救助');
+		const fed = snap();
+		assert(!Q.feed().ok && snap() === fed, '重复补给零变化');
+		R.deposit = (...args) => { originalDeposit(...args); throw R.refuse('LAMPLIGHTER_INJECTED_DELIVERY', '受控投递失败'); };
+		assert(!Q.rescue().ok && snap() === fed, '草稿投递后抛错，事实与库存仍回零');
+		R.deposit = originalDeposit;
+		assert(Q.rescue().ok && Q.read().stage === 'rescued' && Q.hasProof(), '实际扶离才授原件并记录救助');
+		const rescued = snap(), token = JSON.parse(JSON.stringify(D.Player.items.find((x) => x.id === Q.tokenId)));
+		assert(!Q.rescue().ok && snap() === rescued, '重复救助不重发原件');
+		at(Q.places.guard);
+		D.Player.items = D.Player.items.filter((x) => x.entityId !== token.entityId);
+		R.deposit(D.Player.items, Q.tokenId, 1); // 真造同名新品，不能替原件冒领。
+		const mainExitBefore = map.exits.find((x) => x.from === 'L12' && x.to === 'L13').when();
+		const fake = snap();
+		assert(!Q.hasProof() && !Q.pass().ok && snap() === fake && Q.read().stage === 'rescued', '遗失原件仍保留救助事实；同名新品不获放行');
+		D.Player.items.push({ ...token, state: { origin: '另一处伤者' } });
+		const wrongOrigin = snap();
+		assert(!Q.hasProof() && !Q.pass().ok && snap() === wrongOrigin, '相同实体号但来历不符也拒绝');
+		D.Player.items = D.Player.items.filter((x) => x.entityId !== token.entityId);
+		D.Player.items.push(token);
+		assert(Q.pass().ok && Q.open() && Q.read().guard === 'passed', '事实与原件同时成立，守路人和平放行');
+		const passed = snap();
+		assert(!Q.pass().ok && snap() === passed, '重复放行不改事实/库存');
+		assert(!State.variables.babelRun.已战?.L12 && map.exits.find((x) => x.from === 'L12' && x.to === 'L13').when() === mainExitBefore, '旁支放行不写主路战果、不改变原有上行规则');
+		at(Q.places.room);
+		const medicine = R.heldTotal(D.Player, 'bandage');
+		State.variables.rpgCommits = Object.freeze(State.variables.rpgCommits);
+		const beforeFailedClaim = snap();
+		assert(!Q.claim().ok && snap() === beforeFailedClaim && !Q.read().claimed, '提交记账失败，绷带与领取事实一起回滚');
+		State.variables.rpgCommits = JSON.parse(JSON.stringify(State.variables.rpgCommits));
+		assert(Q.claim().ok && Q.read().claimed && R.heldTotal(D.Player, 'bandage') === medicine + (R.createItem('bandage').charges ?? 1), '仅投递一份既有绷带，次数沿定义');
+		const claimed = snap();
+		assert(!Q.claim().ok && snap() === claimed, '重复领取不重发储备');
+		at(Q.places.city);
+		const beforeCity = JSON.stringify({ bag: D.Player.items, city: State.variables.babelL10, run: State.variables.babelRun });
+		assert(Q.report().ok && Q.reply() === C.共炉和平 && Q.read().reported.guard === 'passed', '返城回应记住和平交涉');
+		assert(JSON.stringify({ bag: D.Player.items, city: State.variables.babelL10, run: State.variables.babelRun }) === beforeCity, '回应不免费治疗/发物/增加居民资格');
+		const heard = snap();
+		assert(Q.report().reused && snap() === heard, '同一版消息重读零变化');
+		B.战中 = true;
+		assert(!Q.report().ok && snap() === heard, '战中不能借返城对话执行操作'); B.战中 = false;
+		D.Player.hp = 0; const dead = snap();
+		assert(!Q.report().ok && snap() === dead, '死者不能交涉或藉此复活');
+
+		fresh(); at(Q.places.wounded); Q.discover();
+		R.deposit(D.Player.items, 'herb-poultice', 1);
+		const poultice = R.heldTotal(D.Player, 'herb-poultice'), hp = D.Player.hp;
+		assert(Q.feed('herb-poultice').ok && R.heldTotal(D.Player, 'herb-poultice') === poultice - 1 && D.Player.hp === hp && Q.read().suppliedWith === 'herb-poultice', '替代补给真扣一次敷料，不治疗自己');
+		at(Q.places.city);
+		assert(Q.report().ok && Q.reply() === C.共炉只递粮 && !Q.hasProof(), '只用了补给，NPC 不谎称已救助');
+		fresh(); at(Q.places.wounded); Q.discover();
+		assert(Q.decline().ok && Q.read().stage === 'declined' && !Q.hasProof(), '明确拒绝独立于暂离，无信物');
+		const refused = snap();
+		assert(!Q.feed().ok && !Q.rescue().ok && snap() === refused, '拒绝后不能换成已经救助');
+		at(Q.places.guard);
+		const beforeCancel = snap(); R.choice = async () => 'leave'; await Q.guardMenu(); R.choice = originalChoice;
+		assert(snap() === beforeCancel && !Q.open(), '应战确认取消不生战斗、不发储备');
+		assert(!Q.pass().ok && snap() === beforeCancel, '未救助者无法交涉冒领');
+
+		// 战果分支受控；Battle.execute 真跑。只验编排，不据此声明胜率或平衡。
+		const prototype = JSON.stringify(R.characters.get('goblin').toJSON());
+		R.deposit(D.Player.items, 'sword', 1); D.Player.items.find((x) => x.id === 'sword').equipped = true;
+		D.Player.stats.ac = 1000;
+		B.战果 = () => 'stalemate';
+		const stalled = await Q.fight({ interactive: false });
+		assert(stalled.outcome === 'stalemate' && !Q.open() && !Q.read().claimed && !B.战中, '非胜不开放旧室，战中旗归零');
+		const guardSnapshot = JSON.parse(JSON.stringify(Q.read().foes[0]));
+		assert(!!guardSnapshot.entityId && Q.read().guard === 'fighting', '真实对手生成持久单位身份并留存伤势');
+		B.战果 = () => 'victory';
+		const won = await Q.fight({ interactive: false });
+		assert(won.outcome === 'victory' && Q.open() && Q.read().guard === 'defeated' && Q.read().foes[0].entityId === guardSnapshot.entityId, '续战沿用同一个对手，胜后开放');
+		assert(Q.read().foes[0].hp <= guardSnapshot.hp && JSON.stringify(R.characters.get('goblin').toJSON()) === prototype, '不重置对手伤势、不改基础注册定义');
+		const wonState = snap();
+		assert(!(await Q.fight({ interactive: false })).ok && snap() === wonState, '已结束的冲突不能重复击杀/重开');
+		at(Q.places.city);
+		assert(Q.report().ok && Q.reply() === C.共炉未救冲突, 'NPC 不把硬闯当成救助信任');
+		assert(!State.variables.babelRun.已战?.L12, '旁支战胜也不写本层主路已战');
+		State.reset();
+		assert(Q.read() === null && !Q.hasProof(), '新局 State.reset 清阶段、信物关联、对手与 NPC 记忆');
+	} finally {
+		R.deposit = originalDeposit; R.choice = originalChoice; B.战果 = originalOutcome;
+		restore(saved); 复原非State面(nonState); Object.assign(B, lamplighterEnvironment599);
+		R.Battle.按会话.clear(); battleSessions.forEach((v, k) => R.Battle.按会话.set(k, v));
+		R.Battle.current = battleCurrent;
+	}
+	console.log(`  第 88 组：判据 ${count} 条｜失败 ${fails.length - beforeFails}`);
 }
 
 printSummary();

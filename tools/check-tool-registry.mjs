@@ -35,6 +35,7 @@ export const 豁免 = Object.freeze({
   'verify-l10-city.mjs': 'L10 无头装配判据模块（随故事主 verify 执行，✗ 不是独立 CLI 步骤）',
   'e2e-413-test-mode.mjs': 'T 席测试模式验收包（A2）的真浏览器臂：须真页 reload 才能验 `babelTest/` 跨刷新，CI 无浏览器 ⇒ 本地手跑体例，候接线评估',
   'e2e-314-l10-city.mjs': 'L10 真浏览器臂（由 writer 侧 run-l10-checks.py 在本地/发布窗手跑；候接线评估）',
+  'e2e-599-lamplighter.mjs': '#599 真浏览器/存读臂，本地手跑、未接 CI；node tools/e2e-599-lamplighter.mjs --engine <pin 树>（浏览器与依赖见工具索引）',
   /* ★`books#136` F4「载入后场景头须重印」（`#497` 判据的独立旁证 · 真浏览器单臂甲）：
    *   ★须**先有产物** ＋ `PW_DIR`／`CHROME_BIN`（真浏览器）⇒ 与 `e2e-280-*` 一族同属**本地手跑／窗口式**体例；
    *   ★本笔先只落**装置**（领队裁「只留甲一臂」），接线另笔评估（✗ 免在窗口里多压一步）。 */

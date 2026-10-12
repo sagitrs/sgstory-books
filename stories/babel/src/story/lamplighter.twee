@@ -1,0 +1,3 @@
+/* books#599：确认与交互战在独立段落等待，不在 MapScene 的同步动作内悬挂。 */
+:: 搬运旧道应战
+<<run setup.BABEL.搬运队.guardMenu()>>

@@ -28,6 +28,11 @@
 			"依据": "领队 21:13 裁①：照实况固化（`story/**` 是段落与出口骨架 ✓）"
 		},
 		{
+			"path": "stories/babel/src/story/lamplighter.twee",
+			"类别": "段落骨架",
+			"依据": "books#599：搬运旧道的确认与真实交互战段落；只调用故事菜单，不含数学或库存规则。"
+		},
+		{
 			"path": "stories/babel/src/story/play.twee",
 			"类别": "段落骨架",
 			"依据": "领队 21:13 裁①：照实况固化（`story/**` 是段落与出口骨架 ✓）"
@@ -86,6 +91,16 @@
 			"path": "stories/babel/src/world/00-domains.js",
 			"类别": "规则/装置",
 			"依据": "本档为新档（`books#208` · `#172` 批 3）：**纯规则/装置** —— 物品／节点／建筑三域的**只读域属视图**与**冲突检测**（✗ 不另存域表）。★人核「无叙事」：档内**无玩家可读文案**（只有域名单、字段名与内部返回形）⇒ 去注释后叙事密度 **0 < 30** ✓。类别仍须独立评审 ✓。"
+		},
+		{
+			"path": "stories/babel/src/world/00-lamplighter-content.js",
+			"类别": "内容（叙事）",
+			"依据": "books#599：原创伤者、扣环、守路人、储备与补给员对白的纯常量；无控制流、函数或判定数学。"
+		},
+		{
+			"path": "stories/babel/src/world/zz-narrative-lamplighter.js",
+			"类别": "规则/装置",
+			"依据": "books#599：故事阶段、对应实体身份、引擎提交边界/战斗接入及图接线。玩家正文全部从内容常量读取，无自造判定数学或保存接口。"
 		},
 		{
 			"path": "stories/babel/src/world/00-l10-city.js",
