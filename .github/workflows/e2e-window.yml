@@ -423,13 +423,22 @@ jobs:
           { echo "- 真浏览器 smoke: kills-easy／encounter-stop／save-delete／playtest（正跑＋刀）✓"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
       - name: ★B 族候实现红测（红**须具名** · 红旗 ✗ 预期 · `#416`–`#420`／`#425`）
+        # ★`books#619`：本步此前**缺** `working-directory` ⇒ 在 `$GITHUB_WORKSPACE` 下找
+        #   `tests/b-series/run-all.sh`，而本仓被检出到 `$GITHUB_WORKSPACE/books/` ⇒ `No such file` ⇒ **rc 127**
+        #   （装置面，✗ 判据红；出生即坏 · 潜伏 43 笔 · `#603` 步 25 转绿后才首晒）。与 `#304` 同族。
+        #   ★步 27 不必动：它自带 `cd "$GITHUB_WORKSPACE/engine"`。
+        working-directory: books
         run: |
           set -u
           # ★口径（沿 `tests/b-series/README.md`）：本族是「**候实现红测**」⇒
           #   · **判据红＝预期** ✓（每条须具名指出「哪一面的什么事实不成立」）
           #   · **红旗＝装置/前置错** ✗（坏档／崩／零出声／早退／缺产物）—— runner 自带此判并 `exit 2` ✓
           #   ⇒ 故本步**只**用 runner 的退出码与汇总行：红旗 0 ⇒ rc 0（读数可用）✓；✗ 不得把红旗当「判据红」✓
-          bash tests/b-series/run-all.sh
+          # ★`books#619` 第二处（同一档内）：本器把 `ENGINE` 当**必填**（`run-all.sh:25` 的
+          #   `: "${ENGINE:?…}"`）—— 本 step 此前既没 `working-directory`、也没 `ENGINE`
+          #   ⇒ 即便修了目录，脚本也会在 line 25 早退（实测 rc=1「须给 ENGINE=<引擎检出>」）。
+          #   ⇒ 与步 25 同 idiom，显式指引擎树（✗ 不新增 YAML 键，保持最小面）。
+          ENGINE="$GITHUB_WORKSPACE/engine" bash tests/b-series/run-all.sh
       - name: 引擎仓没被写脏（归因）
         run: |
           set -euo pipefail
