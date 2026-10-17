@@ -33,3 +33,28 @@ export const NODES = deepFreeze({
   beacon: { name: '旧灯塔', text: '灯芯送到了。点亮塔灯才算通关；离开仍只是撤退。', next: [] },
 });
 export const UNLOCKS = deepFreeze({ canal: '潮渠捷径', watch: '守夜护符' });
+// 「玩家细节」视图的四类与条目定义（单一事实源）。
+// 判据只读 run：未遭遇/未获得的条目**根本不可见** —— 不是「列出后标为不可选」。
+// 显示名与可见性在这里；详情文案与结构化 data 在 game.mjs（那里能复用 bag/status 的同一份文本）。
+export const CATEGORIES = deepFreeze([
+  { id: 'cat-active', name: '主动道具', text: '玩家可主动使用的消耗品。' },
+  { id: 'cat-passive', name: '被动道具（含装备）', text: '装备与在身物件。' },
+  { id: 'cat-status', name: '状态（正面＋负面）', text: '影响规则判定的标记。' },
+  { id: 'cat-intel', name: '情报', text: '已知线索与解锁。' },
+]);
+// 被动道具**从 bag 派生**（不遍历 GEAR）：行粮购买即转粮食、永不进 bag，故不进枚举。
+export const ENTRIES = deepFreeze([
+  { id: 'tonic', name: '回春药', kind: 'item', category: 'cat-active', visible: r => r.bag.includes('tonic') },
+  { id: 'knife', name: '短刃', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('knife') },
+  { id: 'sabre', name: '长刀', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('sabre') },
+  { id: 'coat', name: '护胸', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('coat') },
+  { id: 'mail', name: '鳞甲', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('mail') },
+  { id: 'blessing', name: '灯祝福', kind: 'status', category: 'cat-status', visible: r => r.blessing === true },
+  { id: 'curse', name: '诅咒', kind: 'status', category: 'cat-status', visible: r => r.curse === true },
+  // 显示名中性：stage === 'done' 含「已救」与「未救（吃干粮走人／应战失败）」两态，救与未救写在详情里。
+  { id: 'forester-aid', name: '守林人', kind: 'status', category: 'cat-status', visible: r => r.forester.stage !== 'unmet' },
+  { id: 'binding', name: '塔门协助承诺', kind: 'status', category: 'cat-status', visible: r => r.binding !== null },
+  { id: 'intel-map', name: '地图', kind: 'intel', category: 'cat-intel', visible: () => true },
+  { id: 'intel-forester', name: '守林人线索', kind: 'intel', category: 'cat-intel', visible: r => r.forester.stage !== 'unmet' },
+  { id: 'intel-binding', name: '塔门线索', kind: 'intel', category: 'cat-intel', visible: r => r.binding !== null },
+]);

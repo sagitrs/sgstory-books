@@ -1,5 +1,5 @@
-import { GEAR, ENEMIES, NODES, UNLOCKS } from './content.mjs';
-const MAX_HP = 20, MAX_RUNS = 1000000, MAP = 'grayharbor', WEAPON_STEP = 15;
+import { GEAR, ENEMIES, NODES, UNLOCKS, CATEGORIES, ENTRIES } from './content.mjs';
+const MAX_HP = 20, MAX_RUNS = 1000000, MAP = 'grayharbor', WEAPON_STEP = 15, COUNTER_BLESSING = 15, COUNTER_CURSE = 15;
 const integer = (n, max = 999) => Number.isSafeInteger(n) && n >= 0 && n <= max;
 const keys = (x, names) => x && !Array.isArray(x) && typeof x === 'object' && Object.keys(x).sort().join(',') === [...names].sort().join(',');
 const total = p => p.wins + p.deaths + p.retreats;
@@ -51,7 +51,7 @@ export function validate(s) {
   if (r.visited.includes('canal') && !has(s, 'canal')) return false;
   return true;
 }
-export function counterChance(base, weapon, blessing, curse) { return Math.max(5, Math.min(95, base - weapon * WEAPON_STEP - (blessing ? 15 : 0) + (curse ? 15 : 0))); }
+export function counterChance(base, weapon, blessing, curse) { return Math.max(5, Math.min(95, base - weapon * WEAPON_STEP - (blessing ? COUNTER_BLESSING : 0) + (curse ? COUNTER_CURSE : 0))); }
 export function battle(enemy, hp, weapon, armor, blessing, curse, random) {
   const potential = enemy.count * enemy.endurance;
   const chance = counterChance(enemy.probability, weapon, blessing, curse);
@@ -266,16 +266,72 @@ function enemyClue(s) {
   if (foe.name === ENEMIES.dogs.name) return `现场：${count}只食砂犬守着废车，盯着你身上的行粮。`;
   return `现场：灰沟鼠群从两侧泥沟围来，${count}道鼠影夹着尖牙和水声一起逼近。`;
 }
+// bag 首行与 map 查询的正文：详情页与它们共用这两个函数（接口 v2 的「同源」判据，不是两份文案）。
+function blessingText(r) { return `祝福：${r.blessing ? '灯祝福' : '无'}；诅咒：${r.curse ? '有' : '无'}`; }
+function mapText(s) { const r = s.run; return `当前：${NODES[r.node].name}。已过：${r.visited.map(k => NODES[k].name).join(' → ') || '无'}。\n可走路线：沼泽/崖道 → 商店 → 伏击 → 林地/沙地 → 祠堂 → 精英 → 灯塔；潮渠捷径${has(s, 'canal') ? '已解锁' : '未解锁'}。`; }
 export function view(s) {
   const r = s.run, p = s.profile;
   const unlocked = p.unlocks.map(k => UNLOCKS[k]).join('、') || '无';
   const stage = r.node === 'grove' && r.phase === 'journey' ? { decision: '林地选择', check: '林间动静·待判定', fight: '林间遭遇·待应战' }[r.forester.stage] : { camp: '营地', journey: '旅程中', victory: '胜利', death: '死亡', withdrawn: '撤退' }[r.phase];
   const status = `生命${r.hp}/20；金币${r.gold}；粮食${r.food}；本局${r.id}；整场战斗${r.battles}。\n阶段：${stage}。长期：胜${p.wins}，败${p.deaths}，撤退${p.retreats}；已解锁：${unlocked}。`;
   const detail = r.bag.filter((x, i, a) => a.indexOf(x) === i).map(k => `${GEAR[k].name}：${gearDescription(k, true)}`).join('\n');
-  const bag = `武器：${GEAR[r.weapon]?.name || '无'}；护甲：${GEAR[r.armor]?.name || '无'}；祝福：${r.blessing ? '灯祝福' : '无'}；诅咒：${r.curse ? '有' : '无'}。\n背包：${r.bag.map(k => GEAR[k].name).join('、') || '空'}。${detail ? '\n' + detail : ''}`;
-  const map = `当前：${NODES[r.node].name}。已过：${r.visited.map(k => NODES[k].name).join(' → ') || '无'}。\n可走路线：沼泽/崖道 → 商店 → 伏击 → 林地/沙地 → 祠堂 → 精英 → 灯塔；潮渠捷径${has(s, 'canal') ? '已解锁' : '未解锁'}。`;
+  const bag = `武器：${GEAR[r.weapon]?.name || '无'}；护甲：${GEAR[r.armor]?.name || '无'}；${blessingText(r)}。\n背包：${r.bag.map(k => GEAR[k].name).join('、') || '空'}。${detail ? '\n' + detail : ''}`;
+  const map = mapText(s);
   const ending = { victory: '送灯成功', death: '送灯失败', withdrawn: '旅程撤退' }[r.phase];
   const travel = r.node === 'grove' && r.phase === 'journey' ? '旅程规则：本事件完成后前进耗1粮；分给守林人的2粮另计。' : '';
   return { title: ending || NODES[r.node].name, text: [sceneText(r), enemyClue(s), travel, r.last, status].filter(Boolean).join('\n'), phase: ending ? 'ended' : 'playing', choices: options(s), status, bag, map };
 }
-export default { id: 'grayharbor-lamp', version: 2, initial, validate, view, apply };
+// 诊断视图（引擎接口 v2 的可选 inspect 钩子）。纯读：只用传入的副本，不碰任何字段，也不读随机。
+const entryOf = id => ENTRIES.find(e => e.id === id);
+function foresterDetail(r) {
+  const f = r.forester;
+  if (f.rescued) return `你分给他两份口粮，他为你敷药并把小灯递到你手里，约定在塔门前相助。${f.result === 'great' ? '他还取出金币谢你。' : ''}`;
+  if (f.stage === 'abandoned') return '你放弃送灯撤退，没有把他带出来。';
+  if (f.result === 'failure') return '林间遭遇失败，你没能把他带出来。';
+  if (f.stage === 'done') return '你带上倒木边的干粮离开，没有分给他口粮。';
+  if (f.stage === 'decision') return '他的腿仍在渗血，正等你决定分不分口粮。';
+  if (f.stage === 'check') return '你已经作出选择，林间的响动还没有平息。';
+  return '倒木后的鼠群已经扑上来，你还没有离开林地。';
+}
+function detailText(id, s) {
+  const r = s.run;
+  if (GEAR[id]) return gearDescription(id, true); // 与 bag 的逐条详情是同一函数
+  if (id === 'blessing') return '在空灯祠堂献 2 金币点灯所得。受祝福时敌方反击更难命中（受概率边界限制）；已有祝福不能叠加。';
+  if (id === 'curse') return '取走空灯祠堂供钱所得。受诅咒时敌方反击更易命中（受概率边界限制）。';
+  if (id === 'forester-aid' || id === 'intel-forester') return foresterDetail(r);
+  if (id === 'binding' || id === 'intel-binding') return '守林人答应在塔门前牵制失灯守卫；只助一次，用过即失效。';
+  if (id === 'intel-map') return mapText(s); // 与 map 查询是同一函数
+  throw new Error('未定义的诊断条目');
+}
+// data 只在详情页返回，且只在条目可见时可达（不可见条目 inspect 直接返回 null）。
+function entryData(id, s) {
+  const r = s.run, row = entryOf(id);
+  if (GEAR[id]) { const g = GEAR[id]; return { id, name: g.name, slot: g.slot, price: g.price, value: g.value, count: r.bag.filter(x => x === id).length, ...(['weapon', 'armor'].includes(g.slot) ? { equipped: r[g.slot] === id } : {}) }; }
+  if (id === 'blessing') return { id, name: row.name, active: true, counterChanceDelta: -COUNTER_BLESSING };
+  if (id === 'curse') return { id, name: row.name, active: true, counterChanceDelta: COUNTER_CURSE };
+  if (id === 'forester-aid') return { id, name: row.name, ...r.forester };
+  if (id === 'binding') return { id, name: row.name, binding: { ...r.binding } };
+  if (id === 'intel-map') return { id, name: row.name, node: r.node, visited: [...r.visited], canalUnlocked: has(s, 'canal'), nodes: NODES };
+  if (id === 'intel-forester') return { id, name: row.name, stage: r.forester.stage, fed: r.forester.fed, result: r.forester.result, rescued: r.forester.rescued };
+  if (id === 'intel-binding') return { id, name: row.name, pledged: r.forester.pledged, binding: r.binding ? { ...r.binding } : null };
+  throw new Error('未定义的诊断条目');
+}
+export function inspect(target, state) {
+  const r = state.run;
+  const visible = ENTRIES.filter(e => e.visible(r));
+  if (target === null) {
+    return { title: '玩家细节', text: '选择一类查看当前条目；输入 0 返回上一级。',
+      entries: CATEGORIES.map(c => ({ id: c.id, label: c.name, kind: 'category', count: visible.filter(e => e.category === c.id).length })) };
+  }
+  const category = CATEGORIES.find(c => c.id === target);
+  if (category) {
+    const rows = visible.filter(e => e.category === category.id);
+    return { title: category.name, text: rows.length ? category.text : `${category.text}暂无。`,
+      entries: rows.map(e => ({ id: e.id, label: e.name, kind: e.kind })) };
+  }
+  const found = entryOf(target);
+  // 未定义或不可见 ⇒ null（引擎转 INSPECT_NO_TARGET）：隐藏条目根本不可达，其字段自然也进不了 data。
+  if (!found || !found.visible(r)) return null;
+  return { title: found.name, text: detailText(found.id, state), entries: [], data: entryData(found.id, state) };
+}
+export default { id: 'grayharbor-lamp', version: 2, initial, validate, view, apply, inspect };

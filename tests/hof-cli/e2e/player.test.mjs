@@ -115,3 +115,64 @@ test('HOF-E13 promised boss binding survives a real cross-process save', async (
   const b = make(314); await b.frame(); f = await b.command('load promised'); assert.match(f, /守林人从墙后/); assert.equal(await b.command('status'), saved);
   f = await b.select(f, '挑战失灯守卫'); assert.equal(f, expectedFrame); assert.equal(await b.command('status'), expected); await b.quit();
 }));
+test('HOF-E14 inspect browses four categories and returns to the action page', async () => playCase(async make => {
+  const p = make(); await p.frame(); let f = await p.command('inspect');
+  assert.match(f, /玩家细节/); assert.match(f, /1\. 主动道具（共 0 项）/); assert.match(f, /4\. 情报（共 1 项）/);
+  f = await p.select(f, '情报'); assert.match(f, /1\. 地图/);
+  f = await p.select(f, '地图'); assert.match(f, /当前：灰港营地/);
+  f = await p.command('0'); assert.match(f, /已知线索与解锁/);
+  f = await p.command('0'); assert.match(f, /玩家细节/);
+  f = await p.command('0'); assert.match(f, /灰港营地/);
+  assert.match(await p.command('0'), /拒绝 \[NAV_NO_PARENT\]/);
+  await p.quit();
+}));
+test('HOF-E15 inspect navigation does not consume actions or random', async () => playCase(async make => {
+  const p = make(); let f = await steps(p, await p.frame(), ['普通出发', '走崖道']);
+  const before = await p.command('status');
+  f = await p.command('inspect'); f = await p.select(f, '情报'); f = await p.select(f, '地图');
+  f = await p.command('0'); f = await p.command('0'); f = await p.command('0');
+  assert.match(f, /断绳崖道/); const after = await p.command('status');
+  assert.equal(after, before); assert.deepEqual(counters(after), [2, 0]);
+  await p.quit();
+}));
+test('HOF-E16 inspect hides the unmet forester until the encounter', async () => playCase(async make => {
+  const p = make(); await p.frame(); let f = await p.command('inspect');
+  assert.match(f, /3\. 状态（正面＋负面）（共 0 项）/);
+  f = await p.select(f, '状态'); assert.match(f, /暂无/); assert.doesNotMatch(f, /守林人/);
+  f = await p.command('0'); f = await p.command('0');
+  assert.match(f, /灰港营地/);
+  f = await steps(p, f, ['普通出发', '走崖道', '取铜矿', '离开商店', '应战', '走林地']);
+  assert.match(f, /守林人的腿仍在渗血/);
+  f = await p.command('inspect'); assert.match(f, /3\. 状态（正面＋负面）（共 1 项）/);
+  f = await p.select(f, '状态'); assert.match(f, /1\. 守林人/);
+  f = await p.select(f, '守林人'); assert.match(f, /正等你决定分不分口粮/);
+  await p.quit();
+}));
+test('HOF-E17 inspect debug prints entry json on stderr only', async () => playCase(async make => {
+  const p = make(); let f = await steps(p, await p.frame(), ['普通出发', '走崖道', '取铜矿']);
+  const before = await p.command('status');
+  f = await p.command('inspect'); f = await p.select(f, '情报'); f = await p.select(f, '地图');
+  assert.match(await p.command('-1'), /拒绝 \[DEBUG_DISABLED\]/); assert.equal(p.stderr, '');
+  await p.quit();
+  const q = make(7, { debug: true }); let g = await steps(q, await q.frame(), ['普通出发', '走崖道', '取铜矿']);
+  const qBefore = await q.command('status');
+  g = await q.command('inspect'); g = await q.select(g, '情报'); g = await q.select(g, '地图');
+  assert.equal(await q.command('-1'), ''); assert.match(q.stderr, /"canalUnlocked":false/); assert.match(q.stderr, /"nodes":\{/);
+  assert.equal(await q.command('status'), qBefore);
+  await q.quit();
+}));
+test('HOF-E18 guarded choices print as negatives and are selected by number', async () => playCase(async make => {
+  const p = make(); const f = await steps(p, await p.frame(), ['普通出发', '走崖道', '取铜矿']);
+  assert.match(f, /^-1\. 放弃送灯，合法撤退$/m);
+  assert.match(await p.select(f, '放弃送灯'), /旅程撤退/);
+  assert.match(await p.command('status'), /撤退1/);
+  await p.quit();
+}));
+test('HOF-E19 the player harness refuses a missing or ambiguous label', async () => playCase(async make => {
+  const p = make(); const f = await steps(p, await p.frame(), ['普通出发', '走崖道', '取铜矿']);
+  await assert.rejects(() => p.select(f, '这个标签不存在'), /PLAYER_CHOICE/);
+  await assert.rejects(() => p.select(f, '购买'), /PLAYER_CHOICE/);
+  assert.match(await p.select(f, '购买长刀'), /已受理/);
+  assert.match(await p.command('bag'), /长刀/);
+  await p.quit();
+}));

@@ -1,7 +1,14 @@
 {
   "unit": {
-    "files": ["tests/hof-cli/unit/rules.test.mjs"],
+    "files": [
+      "tests/hof-cli/unit/player-debug.test.mjs",
+      "tests/hof-cli/unit/rules.test.mjs"
+    ],
     "cases": [
+      "HOF-U65 debug stderr accepts json dumps and truncated notices",
+      "HOF-U66 debug stderr rejects a non-json line after the cut body",
+      "HOF-U67 debug stderr rejects bare non-json lines",
+      "HOF-U68 debug stderr rejects apparatus or product errors mixed with debug lines",
       "HOF-U01 initial state and actual pinned Session are compatible",
       "HOF-U02 counter probability has a nonzero five percent floor",
       "HOF-U03 counter probability has a ninety-five percent ceiling",
@@ -65,7 +72,12 @@
       "HOF-U61 retreat cancels pending events without inventing rescue",
       "HOF-U62 consumed binding cannot be replayed at a visited target",
       "HOF-U63 retreat at the bound target expires unused help without blocking exit",
-      "HOF-U64 saved promised encounter keeps its local boss parameters"
+      "HOF-U64 saved promised encounter keeps its local boss parameters",
+      "HOF-U69 inspect lists four categories and counts only visible entries",
+      "HOF-U70 inspect hides the unmet forester and unknown or invisible targets",
+      "HOF-U71 inspect entry ids stay stable across runs and save restore",
+      "HOF-U72 inspect detail text reuses the bag and map sources",
+      "HOF-U73 inspect pages are pure read and keep data out of normal views"
     ],
     "knife": {
       "name": "H1",
@@ -76,7 +88,9 @@
     }
   },
   "e2e": {
-    "files": ["tests/hof-cli/e2e/player.test.mjs"],
+    "files": [
+      "tests/hof-cli/e2e/player.test.mjs"
+    ],
     "cases": [
       "HOF-E01 normal player completes equipped blessed victory",
       "HOF-E02 saved victory exposes usable next-run canal",
@@ -90,7 +104,13 @@
       "HOF-E10 paid pending event survives restart and delivers cooperative boss",
       "HOF-E11 refusing aid still checks and reaches a noncooperative boss",
       "HOF-E12 pending forest fight resumes without repeating decision or draw",
-      "HOF-E13 promised boss binding survives a real cross-process save"
+      "HOF-E13 promised boss binding survives a real cross-process save",
+      "HOF-E14 inspect browses four categories and returns to the action page",
+      "HOF-E15 inspect navigation does not consume actions or random",
+      "HOF-E16 inspect hides the unmet forester until the encounter",
+      "HOF-E17 inspect debug prints entry json on stderr only",
+      "HOF-E18 guarded choices print as negatives and are selected by number",
+      "HOF-E19 the player harness refuses a missing or ambiguous label"
     ],
     "knife": {
       "name": "H2",

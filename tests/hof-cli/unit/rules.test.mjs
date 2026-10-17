@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import game, { initial, validate, apply, view, battle, counterChance, encounterOutcome, enemyFor } from '../../../stories/hof-cli/game.mjs';
+import game, { initial, validate, apply, view, inspect, battle, counterChance, encounterOutcome, enemyFor } from '../../../stories/hof-cli/game.mjs';
 import { ENEMIES } from '../../../stories/hof-cli/content.mjs';
 const { Session } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/session.mjs')).href);
 const { Store } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/storage.mjs')).href);
@@ -244,4 +244,73 @@ test('HOF-U64 saved promised encounter keeps its local boss parameters', async (
     choose(a, ['fight']); const expected = a.snapshot(); const b = new Session(game, 999); await store.load(b, 'promised');
     assert.deepEqual(b.snapshot(), saved); assert.equal(enemyFor(b.snapshot().state).endurance, 2); choose(b, ['fight']); assert.deepEqual(b.snapshot(), expected);
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+// 玩家细节视图（#608）：四类枚举、可见性判据、稳定 id、文本同源、纯读。
+const page = (s, target) => inspect(target, s);
+test('HOF-U69 inspect lists four categories and counts only visible entries', () => {
+  const fresh = initial();
+  const root = page(fresh, null);
+  assert.deepEqual(root.entries.map(e => e.id), ['cat-active', 'cat-passive', 'cat-status', 'cat-intel']);
+  assert.ok(root.entries.every(e => e.kind === 'category'));
+  assert.deepEqual(root.entries.map(e => e.count), [0, 0, 0, 1]);
+  for (const id of ['cat-active', 'cat-passive', 'cat-status']) {
+    const empty = page(fresh, id); assert.deepEqual(empty.entries, []); assert.match(empty.text, /暂无/);
+  }
+  const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-knife', 'buy-tonic', 'leave', 'fight', 'dunes', 'bribe', 'bless']);
+  assert.deepEqual(page(s, null).entries.map(e => e.count), [1, 1, 1, 1]);
+  assert.deepEqual(page(s, 'cat-active').entries.map(e => e.id), ['tonic']);
+  assert.deepEqual(page(s, 'cat-passive').entries.map(e => e.id), ['knife']);
+  assert.deepEqual(page(s, 'cat-status').entries.map(e => e.id), ['blessing']);
+  assert.deepEqual(page(s, 'cat-intel').entries.map(e => e.id), ['intel-map']);
+});
+test('HOF-U70 inspect hides the unmet forester and unknown or invisible targets', () => {
+  const shopOnly = () => walk(initial(), ['begin', 'cliff', 'ore']);
+  assert.equal(page(shopOnly(), 'forester-aid'), null);
+  assert.equal(page(shopOnly(), 'intel-forester'), null);
+  assert.equal(page(shopOnly(), 'binding'), null);
+  assert.equal(page(shopOnly(), 'no-such-entry'), null);
+  assert.deepEqual(page(shopOnly(), 'cat-status').entries, []);
+  const grove = walk(shopOnly(), ['leave', 'fight', 'grove']);
+  assert.equal(grove.run.forester.stage, 'decision');
+  assert.deepEqual(page(grove, 'cat-status').entries.map(e => e.id), ['forester-aid']);
+  assert.deepEqual(page(grove, 'cat-intel').entries.map(e => e.id), ['intel-map', 'intel-forester']);
+  const rescued = walk(shopOnly(), ['leave', 'fight', 'grove', 'aid']);
+  assert.equal(rescued.run.forester.rescued, true);
+  assert.deepEqual(page(rescued, 'cat-status').entries.map(e => e.id), ['blessing', 'forester-aid', 'binding']);
+});
+test('HOF-U71 inspect entry ids stay stable across runs and save restore', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'inspect-'));
+  try {
+    const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-knife', 'buy-sabre', 'buy-coat']);
+    const ids = state => page(state, 'cat-passive').entries.map(e => e.id);
+    assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
+    s.run.bag = [...s.run.bag].reverse(); s.run.bag.push('tonic');
+    assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
+    assert.deepEqual(ids(walk(initial(), ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-knife'])), ['knife', 'sabre']);
+    const store = new Store(dir), a = new Session(game, 42);
+    choose(a, ['begin', 'cliff', 'ore', 'buy-knife', 'buy-sabre', 'buy-coat']); await store.save(a, 'inspect');
+    const b = new Session(game, 999); await store.load(b, 'inspect');
+    assert.deepEqual(ids(b.snapshot().state), ['knife', 'sabre', 'coat']);
+    assert.equal(page(b.snapshot().state, 'knife').data.id, 'knife');
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+test('HOF-U72 inspect detail text reuses the bag and map sources', () => {
+  const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-mail', 'buy-tonic', 'leave', 'fight', 'dunes', 'bribe', 'bless']);
+  const shown = view(s);
+  assert.ok(shown.bag.includes(`长刀：${page(s, 'sabre').text}`));
+  assert.ok(shown.bag.includes(`回春药：${page(s, 'tonic').text}`));
+  assert.equal(page(s, 'intel-map').text, shown.map);
+  assert.match(shown.bag, /祝福：灯祝福/); assert.equal(page(s, 'blessing').title, '灯祝福');
+  assert.equal(page(s, 'curse'), null);
+});
+test('HOF-U73 inspect pages are pure read and keep data out of normal views', () => {
+  const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-knife', 'buy-bread', 'leave', 'fight', 'grove', 'aid', 'pass']);
+  const before = structuredClone(s);
+  for (const target of [null, 'cat-active', 'cat-passive', 'cat-status', 'cat-intel', 'knife', 'blessing', 'forester-aid', 'binding', 'intel-map']) page(s, target);
+  assert.deepEqual(s, before);
+  const root = page(s, null), category = page(s, 'cat-passive'), detail = page(s, 'knife');
+  assert.equal('data' in root, false); assert.equal('data' in category, false);
+  assert.equal(detail.data.id, 'knife'); assert.equal(detail.data.equipped, true); assert.equal(detail.data.count, 1);
+  const normal = JSON.stringify(view(s));
+  for (const leak of ['counterChanceDelta', 'canalUnlocked', 'equipped', 'rescued']) assert.equal(normal.includes(leak), false, leak);
 });

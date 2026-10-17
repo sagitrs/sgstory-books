@@ -12,7 +12,7 @@
 
 ## 族判据
 
-`tests/hof-cli/registry.json`登记unit64、e2e13个独立名称；实际测试文件、TAP非空计划、名字、pass/fail/skipped/cancelled/todo及子进程码都要对账。缺文件、空登记、非Git树或数量/退出码不相符是装置rc2，不是“0用例通过”。正常红是rc1。正文输出通过、产品失败、环境作废、未覆盖、问题总数与计划总数，满足：
+`tests/hof-cli/registry.json`登记unit73、e2e19个独立名称；实际测试文件、TAP非空计划、名字、pass/fail/skipped/cancelled/todo及子进程码都要对账。unit族里的`unit/player-debug.test.mjs`直打本档导出的`debugStderrOnly`（截断形在交付树里做不出来，见`books#608`）。缺文件、空登记、非Git树或数量/退出码不相符是装置rc2，不是“0用例通过”。正常红是rc1。正文输出通过、产品失败、环境作废、未覆盖、问题总数与计划总数，满足：
 
 ```text
 问题总数 = 产品失败 + 环境作废 + 未覆盖
@@ -27,7 +27,7 @@ Linux族进程组有上限：unit30秒、e2e75秒；Node具名用例25秒，普�
 
 H1在临时books副本把真实战斗伤害中的护甲减免改为0，必须使 `HOF-U08 armor reduces actual effective damage` 具名rc1。H2在临时副本关闭已解锁潮渠的真实选项前置，必须使 `HOF-E02 saved victory exposes usable next-run canal` 具名rc1；只打印“已解锁”仍过不了真正选捷径/到商店的判据。
 
-两族均：基线0 → 植刀且字节读回 → 目标具名1（装置2不能替代）→ 源字节复原 → 再跑0。unit --selftest还在该同一私有副本跑4个装置反控：缺文件/空登记/非Git books/挂CLI，必须各具名2并复原字节；挂CLI只注册1个临时装置臂，不缩正式e2e13项。各族自证4/4另计。副本的pin单独Git提交以满足既有pin门；正式books/engine从未被植刀，引擎仍只读。没有test文件伪造FAIL，也没有只检查刀marker就算捕获。
+两族均：基线0 → 植刀且字节读回 → 目标具名1（装置2不能替代）→ 源字节复原 → 再跑0。unit --selftest还在该同一私有副本跑4个装置反控：缺文件/空登记/非Git books/挂CLI，必须各具名2并复原字节；挂CLI只注册1个临时装置臂，不缩正式e2e19项。各族自证4/4另计。副本的pin单独Git提交以满足既有pin门；正式books/engine从未被植刀，引擎仍只读。没有test文件伪造FAIL，也没有只检查刀marker就算捕获。
 
 `check-ci.mjs` 的12个配对反控是内存文字/数据副本；另9个装置控制实跑提取的bash块，使用假node和私有双Git树核空ref/错误码/失败必经readonly。它们不起GitHub runner，也不解析所有GitHub YAML语义。它只防本许可形的明确已知约束；平台是否实际加载并执行仍须读当前头Actions，不能拿本地对账代替。
 
