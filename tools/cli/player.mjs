@@ -9,7 +9,8 @@ const PROMPT = '等待输入>\n';
 // 调试输出只可能是两种形：单行 JSON 转储；或「截断提示行 ＋ 紧接其后被切断的 JSON」两行。
 // 后者里的正文被切断，本身不是合法 JSON，所以按「提示行之后只放行一次」处理。
 // 其余任何一行都算真实装置/产品错误 —— 放开 stderr 是「只放行调试行」，不是「不判」。
-const debugStderrOnly = text => {
+// 具名导出：截断形在交付树里做不出来（游戏内容表太小），由 tests/hof-cli/unit/player-debug.test.mjs 直打本谓词。
+export const debugStderrOnly = text => {
   let truncatedBodyPending = false;
   for (const line of text.split('\n')) {
     if (!line.trim()) continue;
