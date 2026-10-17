@@ -50,6 +50,16 @@ export function 判停(链接文) {
   return { kind, 有迎战, 有查看, 是战斗 };
 }
 /** 判「零结算」：给前后两份 babelRun，返回变了的字段。 */
+/* ★第三列＝**项数**（`books#618` 口径改：✗ 行数、✗ 布尔）：一个未判项 = **一条** `待` 项
+ *   （可多行：首行 `  ⏳ …`，续行 5 空格缩进）⇒ 项数 ＝ `待.length`，与 `kills-easy` 完全同形。
+ *   ✗ 布尔（`待.length ? 1 : 0`）会把多项读成 1；✗ 成组推多行则会把 1 项读成多行。
+ *   ★守护串 `通过 4｜失败 0`（`e2e-window.yml` 的 `run_one`）**只锁前两列**，第三列不参与
+ *     ⇒ 本列变数字**不**改变守护串的命中语义（与 `#614` 尾列设计同源）。 */
+export function 待判列(待) { return (待 || []).length; }
+/* ★把「主行 ＋ 续行」并成**一条** `待` 项（✗ 分多次 push —— 那会把 1 项读成多项）。 */
+export function 未判项(主行, 续行 = []) { return [主行, ...续行].join('\n'); }
+/* ★项形不变量：每条 `待` 项的首行须 `^  ⏳`（⇒ 5 空格起头的**续行**若自成一项，本判据必红）。 */
+export function 项形合格(待) { return (待 || []).every((x) => /^ {2}⏳/.test(String(x))); }
 export function 判零结算(前, 后) {
   const 字段 = ['kills', 'deaths', 'gathered', 'harvests'];
   return 字段.filter((k) => (前?.[k] ?? null) !== (后?.[k] ?? null));
@@ -75,13 +85,29 @@ if (argv.includes('--selftest')) {
   //   （本档以「只喂段内链接」保证；K7 断的是：把壳串误喂进来时，**主流程的取法**能挡住 ⇒ 见 K7b）
   const k7 = 判停(['空手打击', '（跳过本回合）']);
   检查('K7 战斗屏段内（无迎战/查看）⇒ kind=battle', k7.kind === 'battle', JSON.stringify(k7));
+  // ★第三列＝**项数**（`books#618`）：一个未判项铺多行 ⇒ 仍算 1；两项 ⇒ 2（★布尔会给 1 ⇒ 本格必红）
+  const 合并项 = 未判项('  ⏳ 主', ['     续1', '     续2']);
+  检查('K8 ★第三列＝项数（✗ 行数、✗ 布尔）：1 项铺 3 行⇒1；两项⇒2', 待判列([合并项]) === 1 && 待判列(['  ⏳ a', '  ⏳ b']) === 2,
+       `1 项 3 行⇒${待判列([合并项])}｜两项⇒${待判列(['  ⏳ a', '  ⏳ b'])}`);
+  // ★负控（合成）：续行被抬成**独立项** ⇒ 项形判据须具名红
+  检查('K9 ★项形：续行 ✗ 不得自成一项', 项形合格([合并项]) === true && 项形合格(['  ⏳ 主', '     续1']) === false,
+       `合并项⇒${项形合格([合并项])}｜续行自成项⇒${项形合格(['  ⏳ 主', '     续1'])}`);
+  /* ★两个**源码形**负控（`books#618`）——把「续行仍是续行」「汇总是项数」从约定变成机器判据：
+   *   A 续行被抬成独立项（`待.push(` 后直接是 5 空格起头的串）⇒ K10 具名红；
+   *   B 汇总行改回布尔（`待.length ? 1 : 0`）⇒ K11 具名红。 */
+  const 自文 = fs.readFileSync(new URL(import.meta.url), 'utf8');
+  检查('K10 ★续行 ✗ 不得自成一项（源码形）', !/待\.push\(\s*([`'"]) {5}/.test(自文),
+       `命中=${/待\.push\(\s*([`'"]) {5}/.test(自文)}`);
+  检查('K11 ★汇总行用**项数**（✗ 布尔）（源码形）',
+       /待判 \$\{待判列\(待\)\}/.test(自文) && !/待判 \$\{待\.length \? 1 : 0\}/.test(自文),
+       `用项数=${/待判 \$\{待判列\(待\)\}/.test(自文)}｜仍布尔=${/待判 \$\{待\.length \? 1 : 0\}/.test(自文)}`);
   // K5 零结算：改了 kills ⇒ 须报出该字段
   const k5 = 判零结算({ kills: 0, deaths: 0, gathered: 0, harvests: 0 }, { kills: 1, deaths: 0, gathered: 0, harvests: 0 });
   检查('K5 结算了 kills ⇒ 须报出 ["kills"]', JSON.stringify(k5) === '["kills"]', JSON.stringify(k5));
   // K6 零结算正例
   const k6 = 判零结算({ kills: 0, deaths: 0, gathered: 0, harvests: 0 }, { kills: 0, deaths: 0, gathered: 0, harvests: 0 });
   检查('K6 未结算 ⇒ 报空数组', k6.length === 0, JSON.stringify(k6));
-  console.log(红.length ? `\n  ⇒ 自检失败 ${红.length} 条\n${红.join('\n')}` : '\n  ⇒ 自检：6/6 如期（★判据与主流程共用同一对函数 ✓）');
+  console.log(红.length ? `\n  ⇒ 自检失败 ${红.length} 条\n${红.join('\n')}` : '\n  ⇒ 自检：10/10 如期（★判据与主流程共用同一对函数 ✓）');
   process.exit(红.length ? 1 : 0);
 }
 
@@ -120,9 +146,12 @@ try {
   const ls = await 段内链接(p); const 正 = await 正文(p);
   const d = 判停(ls);
   if (d.kind !== 'stop') {
-    待.push(`  ⏳ 待判（遭遇停尚未落地）：点「遭遇」后 kind=**${d.kind}** ⇒ 链接=${JSON.stringify(ls.slice(0, 8))}`);
-    待.push(`     据以判定的两条：有迎战=${d.有迎战}｜有查看=${d.有查看}｜已是战斗屏=${d.是战斗}`);
-    待.push(`     段内链接=${JSON.stringify((await 段内链接(p)).slice(0, 8))}（★只判段内 ⇒ ✗ 不收 UI 壳）`);
+    /* ★**一个未判项铺 3 行**（`books#618` 裁定：成组推须并为**一条** `待` 项）⇒ 明细面仍打 3 行，
+     *   但 `待.length` ＝ **1**（项数）⇒ 第三列不会把 1 项读成 3 项，也不会像布尔那样把多项读成 1。 */
+    待.push(未判项(`  ⏳ 待判（遭遇停尚未落地）：点「遭遇」后 kind=**${d.kind}** ⇒ 链接=${JSON.stringify(ls.slice(0, 8))}`, [
+      `     据以判定的两条：有迎战=${d.有迎战}｜有查看=${d.有查看}｜已是战斗屏=${d.是战斗}`,
+      `     段内链接=${JSON.stringify((await 段内链接(p)).slice(0, 8))}（★只判段内 ⇒ ✗ 不收 UI 壳）`,
+    ]));
   } else {
     ok('臂②-2 ① 描述在（停在事件屏且正文非空）', 正.replace(/\s/g, '').length > 40, `正文 ${正.replace(/\s/g, '').length} 字｜链接 ${JSON.stringify(ls.slice(0, 6))}`);
     ok('臂②-2 ② 两选项在（迎战 ＋ 查看）', d.有迎战 && d.有查看, `有迎战=${d.有迎战}｜有查看=${d.有查看}`);
@@ -134,7 +163,7 @@ try {
   }
   await p.close();
   console.log([...档, ...红, ...待].join('\n'));
-  console.log(`\n  ⇒ 通过 ${档.length}｜失败 ${红.length}｜待判 ${待.length ? 1 : 0}`);
+  console.log(`\n  ⇒ 通过 ${档.length}｜失败 ${红.length}｜待判 ${待判列(待)}`);   // ★项数（✗ 布尔）；守护串只锁前两列
   for (const l of 红) console.log(l);
 } catch (e) { console.error(`✗ 环境错（装置跑不起来，✗ 不当判据红）：${e?.message ?? e}`); await b?.close(); process.exit(2); }
 await b.close();
