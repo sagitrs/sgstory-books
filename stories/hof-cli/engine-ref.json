@@ -1,7 +1,7 @@
 {
-  "ref": "f4f5fafca42a250b387d76ab9a2ee14a09cb66ef",
-  "interfaceVersion": 1,
-  "why": "独立 CLI 完整引擎 PR #2077 经非作者 D/T 同锚批准与 tester-4 执合；不复用网页 pin。",
-  "checked": "2026-10-10; merge API, own exact-HEAD checkout, main cli-tests run 38047970712 success",
-  "source": "https://github.com/sagitrs/sgstory/pull/2077"
+  "ref": "7f9ef4ea8b98a636445a526ac20a4f90d5fc49cc",
+  "interfaceVersion": 2,
+  "why": "引擎接口 v2（choice.intent 必填 ＋ 可选 inspect 钩子）由 sgstory#2078 / PR #2079 合入后的 main 尖；books#610 同笔前移 pin 并补齐 intent。",
+  "checked": "2026-10-17; tools/check-engine-pin.mjs --ref-file stories/hof-cli/engine-ref.json 两阶段（--print-ref 与 --engine）rc=0；引擎检出 HEAD == ref 且工作树净。",
+  "source": "https://github.com/sagitrs/sgstory/pull/2079"
 }

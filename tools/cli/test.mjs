@@ -7,10 +7,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const TEMP = process.env.TMPDIR || path.join(os.homedir(), 'tmp');
 const BUDGET = { unit: 30000, e2e: 75000 };
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 10000 });
+// 接口版本门只认数据：声明的接口版本必须等于引擎实际导出的那个。写成字面量（如 `!== 1`）
+// 会在接口升级时静默失效，所以这里比对两个运行期取值，读不到即拒绝（装置错 rc=2）。
+export const interfaceAgrees = (declared, exported) => Number.isSafeInteger(declared) && Number.isSafeInteger(exported) && declared === exported;
 async function registry(root) { return JSON.parse(await fs.readFile(path.join(root, 'tests/hof-cli/registry.json'), 'utf8')); }
 function kill(pid) { try { process.kill(-pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
 function alive(pid) { try { process.kill(-pid, 0); return true; } catch (e) { if (e.code === 'ESRCH') return false; throw e; } }
@@ -33,7 +37,10 @@ async function preflight(root, engine) {
   const checked = spawnSync(process.execPath, [path.join(root, 'tools/check-engine-pin.mjs'), '--ref-file', 'stories/hof-cli/engine-ref.json', '--engine', engine, '--quiet'], { cwd: root, encoding: 'utf8', timeout: 15000 });
   if (checked.error || checked.status !== 0) throw new Error(`APPARATUS HOF_PIN ${checked.error?.message || checked.stdout + checked.stderr}`);
   const pin = JSON.parse(await fs.readFile(path.join(root, 'stories/hof-cli/engine-ref.json'), 'utf8'));
-  if (pin.interfaceVersion !== 1) throw new Error('APPARATUS unsupported CLI interface declaration');
+  let exported;
+  try { ({ CLI_INTERFACE_VERSION: exported } = await import(pathToFileURL(path.join(engine, 'src/cli/session.mjs')).href)); }
+  catch (error) { throw new Error(`APPARATUS CLI interface unreadable: ${error.message}`); }
+  if (!interfaceAgrees(pin.interfaceVersion, exported)) throw new Error(`APPARATUS CLI interface mismatch: declared ${pin.interfaceVersion}, engine exports ${exported}`);
   for (const file of ['main', 'session', 'storage', 'rng', 'json']) await fs.access(path.join(engine, `src/cli/${file}.mjs`));
   const status = git(engine, 'status', '--porcelain=v1', '--untracked-files=all');
   if (status.error || status.status || status.stdout) throw new Error('APPARATUS dirty/unreadable engine pin tree');

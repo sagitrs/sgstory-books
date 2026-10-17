@@ -2,7 +2,7 @@
 
 References [#572](https://github.com/sagitrs/sgstory-books/issues/572)、[#597](https://github.com/sagitrs/sgstory-books/issues/597)。本轮交付一个可玩版本，两票分别对账，不变更已关闭#570/#585的原验收。本文不是非作者技术票、已合入或发布声明。
 
-先读 [增量规格](../../../stories/hof-cli/event-spec.md)，再读 [行为](../../../stories/hof-cli/game.mjs) 的阶段/校验/选择/整场战斗/纯视图，最后按 [正式登记](../../../tests/hof-cli/registry.json) 查具名断言。依旧使用接口1与CLI正式pin，不改引擎、workflow或工具逻辑。
+先读 [增量规格](../../../stories/hof-cli/event-spec.md)，再读 [行为](../../../stories/hof-cli/game.mjs) 的阶段/校验/选择/整场战斗/纯视图，最后按 [正式登记](../../../tests/hof-cli/registry.json) 查具名断言。依旧使用接口2与CLI正式pin，不改引擎、workflow或工具逻辑。
 
 ## 需求—实现—判据
 
