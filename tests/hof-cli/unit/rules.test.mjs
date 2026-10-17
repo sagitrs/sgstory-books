@@ -298,6 +298,26 @@ test('HOF-U71 inspect entry ids stay stable across runs and save restore', async
     assert.equal(page(b.snapshot().state, 'knife').data.id, 'knife');
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
+// #625 ②：补回 U71 的「唯一之失」——旧 schema 的「打乱 bag 数组」在新模型下不可表达（顺序源自定义表），
+// 但「整体替换容器 ⇒ 视图跟新」仍可表达。判据取自 #625 票面 tester-4 的三条（①整体替换 ②与原地改可区分 ③负控见 PR 记录）。
+test('HOF-U82 inspect entries follow a whole counts replacement, not only in-place edits', () => {
+  const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-knife', 'buy-sabre', 'buy-coat']);
+  const ids = state => page(state, 'cat-passive').entries.map(e => e.id);
+  const 背包串 = state => view(state).bag;
+  assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
+  // ①「原地改」这一形：容器本身不变，只改其中的数（U71 已覆盖）
+  s.run.counts.mail = 1; assert.deepEqual(ids(s), ['knife', 'sabre', 'coat', 'mail']);
+  s.run.counts.mail = 0; assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
+  // ②「整体替换容器」这一形：换掉 counts 对象本身 —— 持旧引用的实现只在这一形上暴露
+  const 甲 = structuredClone(s.run.counts); 甲.mail = 1; s.run.counts = 甲;
+  assert.deepEqual(ids(s), ['knife', 'sabre', 'coat', 'mail']);
+  assert.match(背包串(s), /鳞甲/);
+  assert.equal(validate(s), true);
+  const 乙 = structuredClone(s.run.counts); 乙.mail = 0; s.run.counts = 乙;
+  assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
+  assert.doesNotMatch(背包串(s), /鳞甲/);
+  assert.equal(validate(s), true);
+});
 test('HOF-U72 inspect detail text reuses the bag and map sources', () => {
   const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-mail', 'buy-tonic', 'leave', 'fight', 'dunes', 'bribe', 'bless']);
   const shown = view(s);

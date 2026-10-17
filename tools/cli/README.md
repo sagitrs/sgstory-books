@@ -12,7 +12,7 @@
 
 ## 族判据
 
-`tests/hof-cli/registry.json`登记unit81、e2e19个独立名称；实际测试文件、TAP非空计划、名字、pass/fail/skipped/cancelled/todo及子进程码都要对账。unit族里的`unit/player-debug.test.mjs`直打本档导出的`debugStderrOnly`（截断形在交付树里做不出来，见`books#608`）。缺文件、空登记、非Git树或数量/退出码不相符是装置rc2，不是“0用例通过”。正常红是rc1。正文输出通过、产品失败、环境作废、未覆盖、问题总数与计划总数，满足：
+`tests/hof-cli/registry.json`登记unit82、e2e19个独立名称；实际测试文件、TAP非空计划、名字、pass/fail/skipped/cancelled/todo及子进程码都要对账。unit族里的`unit/player-debug.test.mjs`直打本档导出的`debugStderrOnly`（截断形在交付树里做不出来，见`books#608`）。缺文件、空登记、非Git树或数量/退出码不相符是装置rc2，不是“0用例通过”。正常红是rc1。正文输出通过、产品失败、环境作废、未覆盖、问题总数与计划总数，满足：
 
 ```text
 问题总数 = 产品失败 + 环境作废 + 未覆盖

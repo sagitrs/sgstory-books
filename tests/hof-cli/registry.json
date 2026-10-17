@@ -85,7 +85,8 @@
       "HOF-U78 equipped slot without its item is rejected",
       "HOF-U79 run state carries no legacy dual writes and resources stay out of the bag",
       "HOF-U80 death gold bound is rejected above the halving ceiling",
-      "HOF-U81 stored interface version mismatch is named without showing the old save"
+      "HOF-U81 stored interface version mismatch is named without showing the old save",
+      "HOF-U82 inspect entries follow a whole counts replacement, not only in-place edits"
     ],
     "knife": {
       "name": "H1",
