@@ -16,7 +16,7 @@ node tools/check-engine-pin.mjs --ref-file stories/hof-cli/engine-ref.json --eng
 node stories/hof-cli/play.mjs --engine "$ENGINE" --seed 42 --save-dir "$HOME/tmp/grayharbor-v2-saves"
 ```
 
-阶段一和二由同一个既有pin门读取声明；没有另一段JSON ref解析。声明ref是合法合入的完整引擎 SHA，接口1，依据见 [engine-ref.json](engine-ref.json)。游戏入口也先通过该门才启动；不支持的CLI接口具名拒绝，不回落网页引擎。工具的正式判据只认已提交的pin，未提交声明会rc2。
+阶段一和二由同一个既有pin门读取声明；没有另一段JSON ref解析。声明ref是合法合入的完整引擎 SHA，接口2，依据见 [engine-ref.json](engine-ref.json)。游戏入口也先通过该门才启动；不支持的CLI接口具名拒绝，不回落网页引擎。工具的正式判据只认已提交的pin，未提交声明会rc2。
 
 ```bash
 node tools/cli/check-ci.mjs

@@ -94,7 +94,7 @@ function gearComparison(r, id) {
 const price = (s, item) => Math.max(1, item.price - (has(s, 'watch') ? 1 : 0));
 function options(s) {
   const r = s.run, out = [];
-  const add = (id, label, reason = '') => out.push({ id, label, enabled: !reason, reason });
+  const add = (id, label, reason = '', intent = 'normal') => out.push({ id, label, enabled: !reason, reason, intent });
   const food = (cost = 1) => r.food < cost ? `需要${cost}份粮食` : '';
   if (r.phase !== 'journey') {
     const limit = total(s.profile) >= MAX_RUNS ? '长期记录已达100万局上限' : '';
@@ -102,9 +102,9 @@ function options(s) {
     add('begin-watch', '带守夜护符出发', limit || (has(s, 'watch') ? '' : '先经历一次死亡解锁守夜护符'));
     return out;
   }
-  if (!r.food) { add('retreat', '粮食耗尽，结束旅程'); return out; }
+  if (!r.food) { add('retreat', '粮食耗尽，结束旅程', '', 'guarded'); return out; }
   if (r.node === 'grove' && r.forester.stage === 'check') {
-    add('listen', '循着声音辨认林间动静'); add('retreat', '放弃送灯，合法撤退'); return out;
+    add('listen', '循着声音辨认林间动静'); add('retreat', '放弃送灯，合法撤退', '', 'guarded'); return out;
   }
   switch (r.node) {
     case 'fork':
@@ -131,7 +131,7 @@ function options(s) {
     case 'dunes': add('fight', '驱逐食砂犬（胜后前进耗1粮）', food()); add('bribe', '付2金币绕过食砂犬（前进耗1粮）', r.gold < 2 ? '需要2金币' : food()); break;
     case 'shrine':
       add('bless', '献2金币点灯（前进耗1粮）', r.blessing ? '已有灯祝福，不能叠加' : r.gold < 2 ? '需要2金币' : food());
-      add('curse', '取走供品旁的5金币（前进耗1粮）', food()); add('pass', '不取供品，继续前行（耗1粮）', food()); break;
+      add('curse', '取走供品旁的5金币（前进耗1粮）', food(), 'guarded'); add('pass', '不取供品，继续前行（耗1粮）', food()); break;
     case 'elite': add('fight', '挑战失灯守卫，结算整场精英战（胜后前进耗1粮）', food()); break;
     case 'beacon': add('light', '点亮灯塔，完成挑战'); break;
     default: throw new Error('旅程节点无规则');
@@ -140,7 +140,7 @@ function options(s) {
     const item = GEAR[id]; add(`equip-${id}`, `装备${item.name}（替换旧件，不叠加）`, r[item.slot] === id ? '已经装备' : '');
   }
   add('tonic', '使用回春药（恢复至多6生命）', !r.bag.includes('tonic') ? '背包没有回春药' : r.hp === MAX_HP ? '生命已满' : '');
-  add('retreat', '放弃送灯，合法撤退');
+  add('retreat', '放弃送灯，合法撤退', '', 'guarded');
   return out;
 }
 function advance(s, node, cost = 1) {

@@ -6,7 +6,7 @@
 
 1. [规格](../../../stories/hof-cli/spec.md)先定试作参数、保存/跨局语义与不包含项。
 2. [内容](../../../stories/hof-cli/content.mjs)是原创节点图、敌人、装备与解锁；[行为](../../../stories/hof-cli/game.mjs)分状态验证、概率/整场战斗、合法选项、事件结算与纯视图。
-3. [独立pin](../../../stories/hof-cli/engine-ref.json)锚合法合入的完整引擎；[产品入口](../../../stories/hof-cli/play.mjs)经既有同一pin门核定后才导入真实接口1，不复制引擎代码或读网页pin。
+3. [独立pin](../../../stories/hof-cli/engine-ref.json)锚合法合入的完整引擎；[产品入口](../../../stories/hof-cli/play.mjs)经既有同一pin门核定后才导入真实接口2，不复制引擎代码或读网页pin。
 4. [登记](../../../tests/hof-cli/registry.json)列64个unit/13个正常CLI用例及两把刀，源在unit/rules.test.mjs和e2e/player.test.mjs。前者允许构造规则边界；后者只从正常终端操作，测试本身不import运行时、不造状态/改档/换旅程内RNG。
 5. [装置说明](../../../tools/cli/README.md)给计数、实际嵌套工具对账、退出码、私有临时目录、进程组预算与两树只读。正式CI接线按 [契约](test-contract.md) 和Tester公开许可核，不以本地字符串门替代Actions加载事实。
 
