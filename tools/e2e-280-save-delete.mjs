@@ -67,6 +67,7 @@ export function 待判列(待) { return (待 || []).length; }
 /* ★把「主行 ＋ 续行」并成**一条** `待` 项（✗ 分多次 push —— 那会把 1 项读成多项）。 */
 export function 未判项(主行, 续行 = []) { return [主行, ...续行].join('\n'); }
 /* ★项形不变量：每条 `待` 项首行须 `^  ⏳`（⇒ 5 空格起头的**续行**若自成一项，本判据必红）。 */
+/* ★本函数仅供自检（运行时校验由 K10／K14 的源码形正则承担）。 */
 export function 项形合格(待) { return (待 || []).every((x) => /^ {2}⏳/.test(String(x))); }
 /* ★「中间态机读面」缺席判据（`books#618` 裁定 4）：**面在 ⇒ 声明行必须消失**。 */
 export function 缺面声明(面) { return 面 === null || 面 === undefined || 面 === ''; }
