@@ -3,14 +3,22 @@ function deepFreeze(value) {
   if (value && typeof value === 'object') { Object.values(value).forEach(deepFreeze); Object.freeze(value); }
   return value;
 }
-export const GEAR = deepFreeze({
-  knife: { name: '短刃', price: 3, slot: 'weapon', value: 1 },
-  sabre: { name: '长刀', price: 6, slot: 'weapon', value: 3 },
-  coat: { name: '护胸', price: 3, slot: 'armor', value: 1 },
-  mail: { name: '鳞甲', price: 6, slot: 'armor', value: 3 },
-  bread: { name: '行粮', price: 3, slot: 'food', value: 5 },
-  tonic: { name: '回春药', price: 2, slot: 'medicine', value: 6 },
+// 条目定义表（#609 §1）：单一事实源。class 决定类别规则 —— resource 不占背包格、
+// gear 唯一（max:1）、consumable 有携带上限；数值仍按既有参数，各自一个字段，不另设第二份。
+export const ITEMS = deepFreeze({
+  hp: { class: 'resource', name: '生命', max: 20 },
+  gold: { class: 'resource', name: '金币', max: 999 },
+  food: { class: 'resource', name: '粮食', max: 999 },
+  tonic: { class: 'consumable', name: '回春药', max: 3, price: 2, slot: 'medicine', use: { hp: 6 } },
+  knife: { class: 'gear', name: '短刃', max: 1, price: 3, slot: 'weapon', tier: 1 },
+  sabre: { class: 'gear', name: '长刀', max: 1, price: 6, slot: 'weapon', tier: 3 },
+  coat: { class: 'gear', name: '护胸', max: 1, price: 3, slot: 'armor', armor: 1 },
+  mail: { class: 'gear', name: '鳞甲', max: 1, price: 6, slot: 'armor', armor: 3 },
 });
+// 行粮是「立即转化为粮食」的商店动作，不留背包（#609 §1）⇒ 不进 ITEMS；它只有价格与转化量两个数。
+export const BREAD = deepFreeze({ name: '行粮', price: 3, food: 5 });
+// 商店货架与选项编号顺序（既有顺序，本票不改）。
+export const SHOP_STOCK = deepFreeze(['knife', 'sabre', 'coat', 'mail', 'bread', 'tonic']);
 export const ENEMIES = deepFreeze({
   rats: { name: '灰沟鼠群', count: 2, endurance: 2, sides: 6, probability: 70 },
   birds: { name: '崖道掠鸟', count: 3, endurance: 1, sides: 4, probability: 65 },
@@ -44,11 +52,11 @@ export const CATEGORIES = deepFreeze([
 ]);
 // 被动道具**从 bag 派生**（不遍历 GEAR）：行粮购买即转粮食、永不进 bag，故不进枚举。
 export const ENTRIES = deepFreeze([
-  { id: 'tonic', name: '回春药', kind: 'item', category: 'cat-active', visible: r => r.bag.includes('tonic') },
-  { id: 'knife', name: '短刃', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('knife') },
-  { id: 'sabre', name: '长刀', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('sabre') },
-  { id: 'coat', name: '护胸', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('coat') },
-  { id: 'mail', name: '鳞甲', kind: 'item', category: 'cat-passive', visible: r => r.bag.includes('mail') },
+  { id: 'tonic', name: '回春药', kind: 'item', category: 'cat-active', visible: r => r.counts.tonic > 0 },
+  { id: 'knife', name: '短刃', kind: 'item', category: 'cat-passive', visible: r => r.counts.knife > 0 },
+  { id: 'sabre', name: '长刀', kind: 'item', category: 'cat-passive', visible: r => r.counts.sabre > 0 },
+  { id: 'coat', name: '护胸', kind: 'item', category: 'cat-passive', visible: r => r.counts.coat > 0 },
+  { id: 'mail', name: '鳞甲', kind: 'item', category: 'cat-passive', visible: r => r.counts.mail > 0 },
   { id: 'blessing', name: '灯祝福', kind: 'status', category: 'cat-status', visible: r => r.blessing === true },
   { id: 'curse', name: '诅咒', kind: 'status', category: 'cat-status', visible: r => r.curse === true },
   // 显示名中性：stage === 'done' 含「已救」与「未救（吃干粮走人／应战失败）」两态，救与未救写在详情里。
