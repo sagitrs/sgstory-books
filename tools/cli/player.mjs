@@ -6,13 +6,18 @@ import os from 'node:os';
 const ROOT = path.resolve(import.meta.dirname, '../..');
 export const CLI_PROCESS_MS = 10000;
 const PROMPT = '等待输入>\n';
-// 调试行只可能是引擎打到 stderr 的单行 JSON 转储，或截断提示行（带 DEBUG_TRUNCATED）。
-// 其余任何一行都算真实装置/产品错误 —— 所以放开 stderr 是「只放行调试行」，不是「不判」。
-const isDebugLine = line => {
-  const text = line.trim();
-  if (!text) return true;
-  if (text.includes('DEBUG_TRUNCATED')) return true;
-  try { JSON.parse(text); return true; } catch { return false; }
+// 调试输出只可能是两种形：单行 JSON 转储；或「截断提示行 ＋ 紧接其后被切断的 JSON」两行。
+// 后者里的正文被切断，本身不是合法 JSON，所以按「提示行之后只放行一次」处理。
+// 其余任何一行都算真实装置/产品错误 —— 放开 stderr 是「只放行调试行」，不是「不判」。
+const debugStderrOnly = text => {
+  let truncatedBodyPending = false;
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    if (truncatedBodyPending) { truncatedBodyPending = false; continue; }
+    if (line.includes('DEBUG_TRUNCATED')) { truncatedBodyPending = true; continue; }
+    try { JSON.parse(line.trim()); } catch { return false; }
+  }
+  return true;
 };
 export async function playCase(fn) {
   const base = process.env.HOF_TEST_ROOT || process.env.TMPDIR || path.join(os.homedir(), 'tmp');
@@ -62,8 +67,8 @@ class Player {
   async quit() {
     this.#child.stdin.write('quit\n'); const result = await this.#close;
     if (this.#problem) throw new Error(this.#problem);
-    // debug 开启时只放行调试行；关闭时任何 stderr 输出仍是失败（反向控制，防「放宽成不判」）。
-    const unexpected = (this.#debug ? this.stderr.split('\n').filter(line => !isDebugLine(line)) : [this.stderr]).join('\n');
+    // debug 开启时只放行调试行（含截断提示行与其后那一次正文）；关闭时任何 stderr 输出仍是失败。
+    const unexpected = this.#debug ? (debugStderrOnly(this.stderr) ? '' : this.stderr) : this.stderr;
     if (result.code !== 0 || unexpected.trim()) throw new Error(`CLI_EXIT quit ${result.code}: ${this.stderr}`);
   }
   async dispose() { if (!this.#closed) this.#child.kill('SIGKILL'); await this.#close; clearTimeout(this.#timer); }
