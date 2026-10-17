@@ -4,11 +4,13 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import game, { initial, validate, apply, view, inspect, battle, counterChance, encounterOutcome, enemyFor } from '../../../stories/hof-cli/game.mjs';
-import { ENEMIES } from '../../../stories/hof-cli/content.mjs';
+import { ENEMIES, ITEMS } from '../../../stories/hof-cli/content.mjs';
 const { Session } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/session.mjs')).href);
 const { Store } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/storage.mjs')).href);
 const quiet = { integer: (_min, max) => max };
 const deadly = { integer: (min, max) => max === 100 ? min : max };
+// 派生背包（#609 §2）：非资源且数量大于0的条目；顺序＝定义表顺序。
+const bag = r => Object.keys(ITEMS).filter(k => ITEMS[k].class !== 'resource' && r.counts[k] > 0);
 // Legacy fixtures complete the new forest stages explicitly; stage tests below use apply one action at a time.
 const walk = (s, ids, random = quiet) => {
   const act = id => { const r = apply(s, id, random); assert.equal(r.kind, 'accepted', `${id}: ${r.reason}`); };
@@ -46,37 +48,37 @@ test('HOF-U09 armor may absorb an effective hit without forced damage', () => { 
 test('HOF-U10 death stops remaining attack and damage draws', () => { let n = 0; const r = battle(ENEMIES.keeper, 3, 0, 0, false, false, { integer(a, b) { n++; return b === 100 ? 1 : b; } }); assert.equal(r.potential, 8); assert.equal(r.checked, 1); assert.equal(r.damage, 3); assert.equal(n, 2); assert.equal(r.won, false); });
 test('HOF-U11 blessing and curse change only counter probability', () => { assert.equal(counterChance(75, 1, true, false), 45); assert.equal(counterChance(75, 1, true, true), 60); });
 test('HOF-U12 first departure separates fresh run from profile', () => { const s = initial(); walk(s, ['begin']); assert.equal(s.run.id, 1); assert.equal(s.run.node, 'fork'); assert.deepEqual(s.profile, { wins: 0, deaths: 0, retreats: 0, unlocks: [] }); });
-test('HOF-U13 first routes have different real food costs', () => { const a = walk(initial(), ['begin', 'marsh']), b = walk(initial(), ['begin', 'cliff']); assert.equal(a.run.food, 6); assert.equal(b.run.food, 7); assert.notEqual(a.run.node, b.run.node); });
-test('HOF-U14 zero food permits only one legal retreat settlement', () => { const s = shop(); s.run.food = 0; assert.deepEqual(view(s).choices.map(x => x.id), ['retreat']); walk(s, ['retreat']); assert.equal(s.profile.retreats, 1); assert.equal(s.profile.wins, 0); const before = structuredClone(s); assert.equal(apply(s, 'retreat', quiet).kind, 'refused'); assert.deepEqual(s, before); });
-test('HOF-U15 insufficient branch cost refuses without mutation or RNG', () => { const s = walk(initial(), ['begin']); s.run.food = 1; const before = structuredClone(s); assert.equal(apply(s, 'marsh', { integer() { throw new Error('must not draw'); } }).kind, 'refused'); assert.deepEqual(s, before); });
+test('HOF-U13 first routes have different real food costs', () => { const a = walk(initial(), ['begin', 'marsh']), b = walk(initial(), ['begin', 'cliff']); assert.equal(a.run.counts.food, 6); assert.equal(b.run.counts.food, 7); assert.notEqual(a.run.node, b.run.node); });
+test('HOF-U14 zero food permits only one legal retreat settlement', () => { const s = shop(); s.run.counts.food = 0; assert.deepEqual(view(s).choices.map(x => x.id), ['retreat']); walk(s, ['retreat']); assert.equal(s.profile.retreats, 1); assert.equal(s.profile.wins, 0); const before = structuredClone(s); assert.equal(apply(s, 'retreat', quiet).kind, 'refused'); assert.deepEqual(s, before); });
+test('HOF-U15 insufficient branch cost refuses without mutation or RNG', () => { const s = walk(initial(), ['begin']); s.run.counts.food = 1; const before = structuredClone(s); assert.equal(apply(s, 'marsh', { integer() { throw new Error('must not draw'); } }).kind, 'refused'); assert.deepEqual(s, before); });
 test('HOF-U16 marsh event uses real Session RNG and named consumption', () => { const s = new Session(game, 42); choose(s, ['begin', 'marsh', 'fish']); const snap = s.snapshot(); assert.equal(snap.rng.draws, 1); assert.equal(snap.log.at(-1).random[0].purpose, '芦苇渡口漂粮数量'); assert.equal(snap.state.run.node, 'shop'); });
-test('HOF-U17 food trade checks event and travel costs before rewards', () => { const s = walk(initial(), ['begin', 'marsh']); s.run.food = 2; const before = structuredClone(s); assert.equal(apply(s, 'trade', quiet).kind, 'refused'); assert.deepEqual(s, before); s.run.food = 3; walk(s, ['trade']); assert.equal(s.run.food, 0); assert.equal(s.run.gold, 14); });
-test('HOF-U18 cliff ore consumes health and awards gold once', () => { const s = shop(); assert.equal(s.run.hp, 16); assert.equal(s.run.gold, 16); assert.equal(s.run.food, 6); const before = structuredClone(s); assert.equal(apply(s, 'ore', quiet).kind, 'refused'); assert.deepEqual(s, before); });
-test('HOF-U19 buying weapon pays once and actually equips it', () => { const s = shop(); walk(s, ['buy-sabre']); assert.equal(s.run.gold, 10); assert.equal(s.run.weapon, 'sabre'); assert.deepEqual(s.run.bag, ['sabre']); });
-test('HOF-U20 rejected purchase leaves fee and inventory untouched', () => { const s = shop(); s.run.gold = 1; const before = structuredClone(s); assert.equal(apply(s, 'buy-sabre', quiet).kind, 'refused'); assert.deepEqual(s, before); });
+test('HOF-U17 food trade checks event and travel costs before rewards', () => { const s = walk(initial(), ['begin', 'marsh']); s.run.counts.food = 2; const before = structuredClone(s); assert.equal(apply(s, 'trade', quiet).kind, 'refused'); assert.deepEqual(s, before); s.run.counts.food = 3; walk(s, ['trade']); assert.equal(s.run.counts.food, 0); assert.equal(s.run.counts.gold, 14); });
+test('HOF-U18 cliff ore consumes health and awards gold once', () => { const s = shop(); assert.equal(s.run.counts.hp, 16); assert.equal(s.run.counts.gold, 16); assert.equal(s.run.counts.food, 6); const before = structuredClone(s); assert.equal(apply(s, 'ore', quiet).kind, 'refused'); assert.deepEqual(s, before); });
+test('HOF-U19 buying weapon pays once and actually equips it', () => { const s = shop(); walk(s, ['buy-sabre']); assert.equal(s.run.counts.gold, 10); assert.equal(s.run.equipped.weapon, 'sabre'); assert.deepEqual(bag(s.run), ['sabre']); });
+test('HOF-U20 rejected purchase leaves fee and inventory untouched', () => { const s = shop(); s.run.counts.gold = 1; const before = structuredClone(s); assert.equal(apply(s, 'buy-sabre', quiet).kind, 'refused'); assert.deepEqual(s, before); });
 test('HOF-U21 duplicate equipment is a named refusal not another charge', () => { const s = shop(); walk(s, ['buy-coat']); const before = structuredClone(s); assert.equal(apply(s, 'buy-coat', quiet).reason, '已经拥有这件装备'); assert.deepEqual(s, before); });
 test('HOF-U22 changing equipped weapon never stacks both ratings', () => {
   const s = shop(); walk(s, ['buy-knife', 'buy-sabre', 'equip-knife', 'leave']);
-  assert.equal(s.run.weapon, 'knife'); const calls = [];
+  assert.equal(s.run.equipped.weapon, 'knife'); const calls = [];
   walk(s, ['fight'], { integer(a, b) { calls.push(b); return b === 100 ? 50 : 1; } });
-  assert.equal(s.run.hp, 13); assert.deepEqual(calls, [100, 4, 100, 4, 100, 4]); // Actual threshold 50%, not leaked UI metadata.
+  assert.equal(s.run.counts.hp, 13); assert.deepEqual(calls, [100, 4, 100, 4, 100, 4]); // Actual threshold 50%, not leaked UI metadata.
   assert.doesNotMatch(s.run.last, /概率\d+%/);
 });
-test('HOF-U23 tonic heals to cap and consumes exactly one bottle', () => { const s = shop(); walk(s, ['buy-tonic', 'tonic']); assert.equal(s.run.hp, 20); assert.deepEqual(s.run.bag, []); });
-test('HOF-U24 full health rejects tonic without consuming bottle', () => { const s = shop(); walk(s, ['buy-tonic']); s.run.hp = 20; const before = structuredClone(s); assert.equal(apply(s, 'tonic', quiet).reason, '生命已满'); assert.deepEqual(s, before); });
+test('HOF-U23 tonic heals to cap and consumes exactly one bottle', () => { const s = shop(); walk(s, ['buy-tonic', 'tonic']); assert.equal(s.run.counts.hp, 20); assert.deepEqual(bag(s.run), []); });
+test('HOF-U24 full health rejects tonic without consuming bottle', () => { const s = shop(); walk(s, ['buy-tonic']); s.run.counts.hp = 20; const before = structuredClone(s); assert.equal(apply(s, 'tonic', quiet).reason, '生命已满'); assert.deepEqual(s, before); });
 test('HOF-U25 shop enforces three tonic carry limit without charge', () => { const s = shop(); walk(s, ['buy-tonic', 'buy-tonic', 'buy-tonic']); const before = structuredClone(s); assert.equal(apply(s, 'buy-tonic', quiet).reason, '最多携带3瓶药'); assert.deepEqual(s, before); });
-test('HOF-U26 death unlock changes real next-run shop prices', () => { const s = death(); walk(s, ['begin-watch', 'cliff', 'rope']); assert.match(view(s).choices.find(x => x.id === 'buy-sabre').label, /5金币/); const old = s.run.gold; walk(s, ['buy-sabre']); assert.equal(old - s.run.gold, 5); });
-test('HOF-U27 bread has a real five-food resource effect', () => { const s = shop(), old = s.run.food; walk(s, ['buy-bread']); assert.equal(s.run.food, old + 5); assert.equal(s.run.gold, 13); assert.equal(s.run.bag.includes('bread'), false); });
-test('HOF-U28 rescue checks three-food cost and gives nonstacking blessing', () => { const s = walk(shop(), ['leave', 'fight', 'grove']); s.run.food = 2; const before = structuredClone(s); assert.equal(apply(s, 'aid', quiet).kind, 'refused'); assert.deepEqual(s, before); s.run.food = 3; walk(s, ['aid']); assert.equal(s.run.food, 0); assert.equal(s.run.hp, 20); assert.equal(s.run.blessing, true); });
+test('HOF-U26 death unlock changes real next-run shop prices', () => { const s = death(); walk(s, ['begin-watch', 'cliff', 'rope']); assert.match(view(s).choices.find(x => x.id === 'buy-sabre').label, /5金币/); const old = s.run.counts.gold; walk(s, ['buy-sabre']); assert.equal(old - s.run.counts.gold, 5); });
+test('HOF-U27 bread has a real five-food resource effect', () => { const s = shop(), old = s.run.counts.food; walk(s, ['buy-bread']); assert.equal(s.run.counts.food, old + 5); assert.equal(s.run.counts.gold, 13); assert.equal(bag(s.run).includes('bread'), false); });
+test('HOF-U28 rescue checks three-food cost and gives nonstacking blessing', () => { const s = walk(shop(), ['leave', 'fight', 'grove']); s.run.counts.food = 2; const before = structuredClone(s); assert.equal(apply(s, 'aid', quiet).kind, 'refused'); assert.deepEqual(s, before); s.run.counts.food = 3; walk(s, ['aid']); assert.equal(s.run.counts.food, 0); assert.equal(s.run.counts.hp, 20); assert.equal(s.run.blessing, true); });
 test('HOF-U29 shrine does not sell a duplicate blessing', () => { const s = walk(shop(), ['buy-bread', 'leave', 'fight', 'grove', 'aid']); const before = structuredClone(s); assert.equal(apply(s, 'bless', quiet).reason, '已有灯祝福，不能叠加'); assert.deepEqual(s, before); });
-test('HOF-U30 curse money increases next battle counter risk', () => { const s = elite(); assert.equal(s.run.curse, true); assert.equal(s.run.gold, 25); const r = battle(ENEMIES.keeper, 20, 0, 0, false, s.run.curse, quiet); assert.equal(r.chance, 90); });
-test('HOF-U31 victory commits reward and first canal unlock together', () => { const s = victory(); assert.equal(s.run.phase, 'victory'); assert.equal(s.profile.wins, 1); assert.deepEqual(s.profile.unlocks, ['canal']); assert.equal(s.run.gold, 20); assert.equal(validate(s), true); });
+test('HOF-U30 curse money increases next battle counter risk', () => { const s = elite(); assert.equal(s.run.curse, true); assert.equal(s.run.counts.gold, 25); const r = battle(ENEMIES.keeper, 20, 0, 0, false, s.run.curse, quiet); assert.equal(r.chance, 90); });
+test('HOF-U31 victory commits reward and first canal unlock together', () => { const s = victory(); assert.equal(s.run.phase, 'victory'); assert.equal(s.profile.wins, 1); assert.deepEqual(s.profile.unlocks, ['canal']); assert.equal(s.run.counts.gold, 20); assert.equal(validate(s), true); });
 test('HOF-U32 finished node cannot award victory twice', () => { const s = victory(), before = structuredClone(s); assert.equal(apply(s, 'light', quiet).kind, 'refused'); assert.deepEqual(s, before); });
-test('HOF-U33 death loses run resources without victory reward', () => { const s = shop(); walk(s, ['buy-sabre', 'buy-coat', 'buy-tonic', 'leave', 'fight', 'grove', 'forage', 'curse']); const gold = s.run.gold; walk(s, ['fight'], deadly); assert.equal(s.run.phase, 'death'); assert.equal(s.run.gold, Math.floor(gold / 2)); assert.equal(s.run.hp, 0); assert.equal(s.run.food, 0); assert.deepEqual(s.run.bag, []); assert.equal(s.run.weapon, 'none'); assert.equal(s.run.armor, 'none'); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1); });
-test('HOF-U34 next victory run resets resources but preserves progress', () => { const s = victory(); walk(s, ['begin']); assert.equal(s.profile.wins, 1); assert.equal(s.run.id, 2); assert.equal(s.run.gold, 10); assert.equal(s.run.battles, 0); assert.deepEqual(s.run.visited, []); assert.equal(view(s).choices.find(x => x.id === 'canal').enabled, true); });
-test('HOF-U35 natural rule death unlocks equipped watch departure once', () => { const s = death(); assert.deepEqual(s.profile.unlocks, ['watch']); walk(s, ['begin-watch']); assert.equal(s.run.armor, 'coat'); assert.deepEqual(s.run.bag, ['coat']); assert.equal(s.profile.deaths, 1); });
-test('HOF-U36 unlocked canal is a working shortcut not text only', () => { const s = victory(); walk(s, ['begin', 'canal']); assert.equal(s.run.node, 'shop'); assert.equal(s.run.food, 7); assert.equal(s.run.hp, 20); assert.deepEqual(s.run.visited, ['fork', 'canal']); });
-test('HOF-U37 state rejects unknown fields and impossible health', () => { const s = shop(); s.run.hp = -1; assert.equal(validate(s), false); s.run.hp = 20; s.run.hidden = true; assert.equal(validate(s), false); });
+test('HOF-U33 death loses run resources without victory reward', () => { const s = shop(); walk(s, ['buy-sabre', 'buy-coat', 'buy-tonic', 'leave', 'fight', 'grove', 'forage', 'curse']); const gold = s.run.counts.gold; walk(s, ['fight'], deadly); assert.equal(s.run.phase, 'death'); assert.equal(s.run.counts.gold, Math.floor(gold / 2)); assert.equal(s.run.counts.hp, 0); assert.equal(s.run.counts.food, 0); assert.deepEqual(bag(s.run), []); assert.equal(s.run.equipped.weapon, 'none'); assert.equal(s.run.equipped.armor, 'none'); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1); });
+test('HOF-U34 next victory run resets resources but preserves progress', () => { const s = victory(); walk(s, ['begin']); assert.equal(s.profile.wins, 1); assert.equal(s.run.id, 2); assert.equal(s.run.counts.gold, 10); assert.equal(s.run.battles, 0); assert.deepEqual(s.run.visited, []); assert.equal(view(s).choices.find(x => x.id === 'canal').enabled, true); });
+test('HOF-U35 natural rule death unlocks equipped watch departure once', () => { const s = death(); assert.deepEqual(s.profile.unlocks, ['watch']); walk(s, ['begin-watch']); assert.equal(s.run.equipped.armor, 'coat'); assert.deepEqual(bag(s.run), ['coat']); assert.equal(s.profile.deaths, 1); });
+test('HOF-U36 unlocked canal is a working shortcut not text only', () => { const s = victory(); walk(s, ['begin', 'canal']); assert.equal(s.run.node, 'shop'); assert.equal(s.run.counts.food, 7); assert.equal(s.run.counts.hp, 20); assert.deepEqual(s.run.visited, ['fork', 'canal']); });
+test('HOF-U37 state rejects unknown fields and impossible health', () => { const s = shop(); s.run.counts.hp = -1; assert.equal(validate(s), false); s.run.counts.hp = 20; s.run.hidden = true; assert.equal(validate(s), false); });
 test('HOF-U38 state rejects duplicate or impossible route history', () => { const s = shop(); s.run.visited.push('fork'); assert.equal(validate(s), false); s.run.visited = ['fork', 'elite']; assert.equal(validate(s), false); });
 test('HOF-U39 profile unlock claims must agree with outcomes', () => { const s = shop(); s.profile.unlocks.push('canal'); assert.equal(validate(s), false); });
 test('HOF-U40 real random snapshot restore resumes identical battle', () => { const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre', 'leave']); const saved = a.snapshot(); choose(a, ['fight']); const b = new Session(game, 999); b.restore(saved); choose(b, ['fight']); assert.deepEqual(b.snapshot(), a.snapshot()); });
@@ -102,10 +104,10 @@ const pending = fed => { const s = grove(); assert.equal(apply(s, fed ? 'aid' : 
 const slot = n => ({ integer(a, b) { assert.equal(a, 1); assert.equal(b, 4); return n; } });
 const rescuedElite = () => { const s = pending(true); assert.equal(apply(s, 'listen', slot(2)).kind, 'accepted'); return walk(s, ['pass']); };
 test('HOF-U43 event and travel cost labels match total committed deltas', () => {
-  const s = walk(initial(), ['begin', 'marsh']); const old = s.run.food;
+  const s = walk(initial(), ['begin', 'marsh']); const old = s.run.counts.food;
   assert.match(view(s).choices.find(c => c.id === 'trade').label, /另付前进1粮，共3粮/);
-  walk(s, ['trade']); assert.equal(old - s.run.food, 3); assert.match(s.run.last, new RegExp(`粮食${old}→${s.run.food}`));
-  const g = pending(true); assert.equal(g.run.food, 6); assert.match(view(g).text, /分给守林人的2粮另计/);
+  walk(s, ['trade']); assert.equal(old - s.run.counts.food, 3); assert.match(s.run.last, new RegExp(`粮食${old}→${s.run.counts.food}`));
+  const g = pending(true); assert.equal(g.run.counts.food, 6); assert.match(view(g).text, /分给守林人的2粮另计/);
 });
 test('HOF-U44 shop and optional bag explain existing gear without new rules', () => {
   const s = shop(); assert.match(view(s).choices.find(c => c.id === 'buy-mail').label, /每次有效反击伤害减3/);
@@ -136,20 +138,20 @@ test('HOF-U48 both forest decisions commit once and stay at the pending stage', 
   for (const fed of [true, false]) {
     const s = grove(), old = structuredClone(s.run); assert.equal(apply(s, fed ? 'aid' : 'forage', quiet).kind, 'accepted');
     assert.equal(s.run.node, 'grove'); assert.equal(s.run.forester.stage, 'check'); assert.equal(s.run.forester.fed, fed);
-    assert.equal(s.run.food - old.food, fed ? -2 : 3); assert.equal(s.run.hp, old.hp); assert.equal(s.run.blessing, false);
+    assert.equal(s.run.counts.food - old.counts.food, fed ? -2 : 3); assert.equal(s.run.counts.hp, old.counts.hp); assert.equal(s.run.blessing, false);
     assert.deepEqual(s.run.visited, old.visited); const before = structuredClone(s);
     assert.equal(apply(s, fed ? 'aid' : 'forage', quiet).kind, 'refused'); assert.deepEqual(s, before);
   }
 });
 test('HOF-U49 aid reserves event completion food and rejects without a draw', () => {
-  const s = grove(); s.run.food = 2; const before = structuredClone(s);
+  const s = grove(); s.run.counts.food = 2; const before = structuredClone(s);
   assert.equal(apply(s, 'aid', { integer() { throw new Error('must not draw'); } }).kind, 'refused'); assert.deepEqual(s, before);
-  s.run.food = 3; assert.equal(apply(s, 'aid', quiet).kind, 'accepted'); assert.equal(s.run.food, 1); assert.equal(s.run.forester.stage, 'check');
+  s.run.counts.food = 3; assert.equal(apply(s, 'aid', quiet).kind, 'accepted'); assert.equal(s.run.counts.food, 1); assert.equal(s.run.forester.stage, 'check');
 });
 test('HOF-U50 fed great outcome grants actual rescue and future map binding', () => {
-  const s = pending(true), gold = s.run.gold; assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted');
+  const s = pending(true), gold = s.run.counts.gold; assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted');
   assert.equal(s.run.node, 'shrine'); assert.equal(s.run.forester.result, 'great'); assert.equal(s.run.forester.rescued, true); assert.equal(s.run.forester.pledged, true);
-  assert.equal(s.run.gold, gold + 2); assert.equal(s.run.hp, 20); assert.equal(s.run.blessing, true);
+  assert.equal(s.run.counts.gold, gold + 2); assert.equal(s.run.counts.hp, 20); assert.equal(s.run.blessing, true);
   assert.deepEqual(s.run.binding, { mapId: 'grayharbor', nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false });
 });
 test('HOF-U51 unrescued shrine blessing never impersonates NPC assistance', () => {
@@ -184,7 +186,7 @@ test('HOF-U55 failed encounter stays for a real battle before rescue can complet
   }
 });
 test('HOF-U56 forest death never grants NPC rewards or a future binding', () => {
-  const s = pending(true); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted'); s.run.hp = 1;
+  const s = pending(true); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted'); s.run.counts.hp = 1;
   walk(s, ['forest-fight'], deadly); assert.equal(s.run.phase, 'death'); assert.equal(s.run.forester.rescued, false);
   assert.equal(s.run.binding, null); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1);
 });
@@ -231,7 +233,7 @@ test('HOF-U62 consumed binding cannot be replayed at a visited target', () => {
 });
 test('HOF-U63 retreat at the bound target expires unused help without blocking exit', () => {
   for (const food of [4, 0]) {
-    const s = rescuedElite(); s.run.food = food; walk(s, ['retreat']);
+    const s = rescuedElite(); s.run.counts.food = food; walk(s, ['retreat']);
     assert.equal(s.run.phase, 'withdrawn'); assert.equal(s.run.binding.consumed, false); assert.equal(s.profile.retreats, 1); assert.equal(validate(s), true);
     walk(s, ['begin']); assert.equal(s.run.binding, null); assert.equal(s.run.forester.stage, 'unmet');
   }
@@ -245,6 +247,7 @@ test('HOF-U64 saved promised encounter keeps its local boss parameters', async (
     assert.deepEqual(b.snapshot(), saved); assert.equal(enemyFor(b.snapshot().state).endurance, 2); choose(b, ['fight']); assert.deepEqual(b.snapshot(), expected);
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
+
 // 玩家细节视图（#608）：四类枚举、可见性判据、稳定 id、文本同源、纯读。
 const page = (s, target) => inspect(target, s);
 test('HOF-U69 inspect lists four categories and counts only visible entries', () => {
@@ -284,7 +287,8 @@ test('HOF-U71 inspect entry ids stay stable across runs and save restore', async
     const s = walk(initial(), ['begin', 'cliff', 'ore', 'buy-knife', 'buy-sabre', 'buy-coat']);
     const ids = state => page(state, 'cat-passive').entries.map(e => e.id);
     assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
-    s.run.bag = [...s.run.bag].reverse(); s.run.bag.push('tonic');
+    s.run.counts.tonic = 2;   // 新模型：顺序由定义表派生 ⇒ 换成「持有量变化不改 id 与顺序」这一臂
+    s.run.counts.mail = 1; assert.deepEqual(ids(s), ['knife', 'sabre', 'coat', 'mail']); s.run.counts.mail = 0;
     assert.deepEqual(ids(s), ['knife', 'sabre', 'coat']);
     assert.deepEqual(ids(walk(initial(), ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-knife'])), ['knife', 'sabre']);
     const store = new Store(dir), a = new Session(game, 42);
