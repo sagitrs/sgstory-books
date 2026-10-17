@@ -105,7 +105,16 @@ if (process.argv.includes('--selftest')) {
    *     那一面靠人眼与上面那条契约，✗ 无机械判据。 */
   const 明账入档 = /档\.push\('  · /.test(自文);
   检查('K7 明账／缺席闸不得计进 `档`（机械防回退；刀口＝任何 `· ` 形明账行）', !明账入档, `明账行入档命中=${明账入档}`);
-  console.log(红S.length ? `\n  ⇒ 自检失败 ${红S.length} 条\n${红S.join('\n')}` : '\n  ⇒ 自检：8/8 如期（K1／K3 判 `要点()`；★K2／K2b 判 `取段内` 的**排除壳**；K4 机械防"取法回退" ✓；★K5／K6／K7 判汇总三列、守护串与明账不回退 —— `books#614` ✓）');
+    /* ★②-3 择器（`books#613` 定因）：纯函数直打 —— 出手必须是**武器槽件**，✗ 取菜单首项。
+   *   ★本档实测：首项是「用已装备**重木盾**攻击」⇒ 产品具名拒（得穿在身上挡刀）⇒ 回合白过 ⇒ 战斗永不结束。 */
+  const 菜单 = ['用已装备重木盾攻击', '用已装备淬火长剑攻击', '空手打击', '（跳过本回合）'];
+  const 候 = 菜单.filter(x => /攻击|打击/.test(x));
+  检查('K8 ★首项是盾 ⇒ 择器须选**武器槽件**（✗ 取首项）', 择武器槽件(菜单, 候, '淬火长剑') === '用已装备淬火长剑攻击',
+       `被选=${JSON.stringify(择武器槽件(菜单, 候, '淬火长剑'))}｜首项=${JSON.stringify(候[0])}`);
+  检查('K9 ★刀形：把择器改回"取首项" ⇒ 被选＝盾（非武器槽件）✗ 本格须红', 择武器槽件(菜单, 候, '淬火长剑') !== 候[0],
+       `被选=${JSON.stringify(择武器槽件(菜单, 候, '淬火长剑'))}`);
+  检查('K10 槽件读不到（空名）⇒ 返回 null（✗ 静默兜底）', 择武器槽件(菜单, 候, '') === null, `实得=${JSON.stringify(择武器槽件(菜单, 候, ''))}`);
+  console.log(红S.length ? `\n  ⇒ 自检失败 ${红S.length} 条\n${红S.join('\n')}` : '\n  ⇒ 自检：11/11 如期（K1／K3 判 `要点()`；★K2／K2b 判 `取段内` 的**排除壳**；K4 机械防"取法回退" ✓；★K5／K6／K7 判汇总三列、守护串与明账不回退 —— `books#614` ✓；★K8／K9／K10 判择器只挑武器槽件 —— `books#613` ✓）');
   process.exit(红S.length ? 1 : 0);
 }
 
@@ -142,6 +151,16 @@ export function 取段内(项) { return (项 || []).filter((x) => x.在段内 ==
 const 段内链接 = async (p) => 取段内(await 读链接项(p));
 /** ★纯判据：段内项里"要不要点某一项"（主流程与 `--selftest` 共用 ✓ ⇒ 判据的期望不与被测物同源）。 */
 export function 要点(段内文, 形) { return (段内文 || []).some((x) => (形.前缀 ? String(x).startsWith(形.前缀) : String(x).includes(形.含))); }
+/* ★②-3 **择器**（纯函数，可自检直打 · `books#606`／`#607` 同形 · `books#613` 定因）：
+ *   出手只点**持在武器槽的那一件**；✗ 取列表首项、✗ 名字黑名单；读不到 ⇒ `null`（交回调用方明账）。 */
+export function 择武器槽件(链接, 候选, 武器槽名) {
+  const L = (链接 || []).map((x) => String(x));
+  const 在表 = (候选 || []).filter((x) => L.includes(x));
+  if (!在表.length) return null;
+  const 槽名 = String(武器槽名 ?? '').trim();
+  if (!槽名) return null;
+  return 在表.find((x) => x.includes(槽名)) ?? null;
+}
 const 正文 = (p) => p.evaluate(()=>document.body.innerText);
 const run  = (p) => p.evaluate(()=>{try{return JSON.parse(JSON.stringify(SugarCube.State.variables.babelRun))}catch(e){return null}});
 /* ★★`点段内`：★**在 `#passages` 段内点**（✗ 不用全文档 `点`）。
@@ -176,8 +195,33 @@ const prepL1 = async (p) => {
   await 点(p,'遭遇'); await p.waitForTimeout(1500);
   /* ★★`books#365`：`:: 遭遇战` 段的「迎战／查看」是 `<<link>>` ⇒ 落成 `#passages` 内的
    *   `<a class="link-internal macro-link">`（**不在 `.choice-box`**）⇒ ★**必须点「迎战」战斗才起** ——
-   *   ✗ 漏这一步 ⇒ 下面的「攻击」永远取不到 ⇒ `kills` 恒 0、`gathered` 恒 0（★本档四条红的同一根因）。 */
+   *   ✗ 漏这一步 ⇒ 下面的「攻击」永远取不到 ⇒ `kills` 恒 0、`gathered` 恒 0 ★**已由 #613 证伪：真根因是择器取到盾**）。 */
   await 点段内(p,'迎战'); await p.waitForTimeout(1200);
+};
+/* ★②-3 **择器**（`books#606`／`#607` 同形 · `books#613` 定因）：出手必须点**持在武器槽的那一件**。
+ *  ★为何要它（单变量 A/B 实测 ✓）：本档菜单首项是「用已装备**重木盾**攻击」⇒ 产品当场具名拒
+ *    （「重木盾」得穿在身上挡刀 —— 用「装备」把它带上。→ 本回合白过）⇒ A 臂 12 轮仍【第 1 回合】、`kills` 恒 0
+ *    ⇒ 走不到结算门与事件屏 ⇒ **臂②/⑤ 三红 ＋ 臂⑦ 未覆盖，同一根因**。改点武器槽件（B 臂）⇒ 2 回合打赢、链路全通。
+ *  ★数据源＝页内 `RPG.equippedIn('weapon')`（返回槽件的**显示名**）—— ✗ 名字黑名单（会腐烂）、✗ 取首项。
+ *  ★读不到槽件 ⇒ 返回 `null`（交回调用方**具名明账** ＋ 回退旧形，✗ 静默兜底）。 */
+/* ★读**槽件的显示名**（`equippedIn` 返回的是**条目对象** ⇒ 取 `.name`；实测见 `books#613` 的首轮跑）。
+ *   与 `tools/e2e-280-kills-easy.mjs:209` 同一取法（两档同源，✗ 各写一套）。 */
+const 武器槽名 = (p) => p.evaluate(() => { try { const R = globalThis.RPG ?? globalThis.window?.RPG; return R?.equippedIn?.('weapon')?.name ?? ''; } catch (e) { return ''; } });
+let 择器明账已报 = false;
+/* 一次出手：只点武器槽件攻击。返回 `点了`／`缺槽件`／`无攻击项`（后两者由调用方回退＋明账）。 */
+const 一次出手 = async (p, ls) => {
+  const 名 = await 武器槽名(p);
+  const 候选 = ls.filter((x) => /攻击|打击/.test(x));
+  const 选 = 择武器槽件(ls, 候选, 名);
+  if (!选) {
+    if (!择器明账已报) {
+      择器明账已报 = true;
+      待.push('  · 择器：读不到武器槽件（槽名=' + JSON.stringify(名) + '）⇒ 回退取首项（✗ 静默；`books#613`）');
+    }
+    return { r: 名 ? '无匹配' : '缺槽件', 名, 候选 };
+  }
+  await 点段内(p, 选);
+  return { r: '点了', 名, 选, 候选 };
 };
 const 到L1事件屏 = async p => {
   /* ★★`books#365`：**一处源** —— 起手整套（战斗教学 ⇒ 站起来 ⇒ 清到达拍 ⇒ 拾起 ＋装备前件 ⇒ 遭遇 ⇒ **迎战**）
@@ -187,15 +231,18 @@ const 到L1事件屏 = async p => {
   /* ★外层已完成同一起手（含「迎战」）⇒ ✗ 不再重复调 `prepL1`（✗ 两处起手＝两处真值） */
   for (let i=0;i<40;i++){ if((await run(p))?.kills>0) break; const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.includes('迎战'))){ await 点段内(p,'迎战'); await p.waitForTimeout(1200); }
-    else if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
-    else if (ls.some(x=>x.includes('跳过本回合'))) await 点(p,'（跳过本回合）'); }
+    else if (ls.some(x=>/攻击|打击/.test(x))){
+      const o = await 一次出手(p, ls);
+      if (o.r !== '点了') await 点段内(p, o.候选[0] ?? '空手打击');   // 回退旧形（已具名明账）
+      await 点(p,'幼獾'); }
+    else if (ls.some(x=>x.includes('跳过本回合'))) await 点段内(p,'（跳过本回合）'); }
   /* ★★`books#365`：②-4 **结算门**（`books#351` 起）—— 胜后停在一屏，**须点「收下」**才走到事件屏；
    *   ✗ 漏这一步 ⇒ 事件屏的「采集／不采了」永不出现（第二条同根因）。 */
   for (let k=0;k<30;k++){ const ls=await 段内链接(p)   // ★四处：点哪一项＝段内（#323 族体例）;
     if (ls.some(x=>x.startsWith('采集'))||ls.some(x=>x.includes('不采了'))) break;
     if (ls.some(x=>x==='收下')){ await 点段内(p,'收下'); await p.waitForTimeout(1300); continue; }
-    if (ls.some(x=>x.includes('继续探索'))){ await 点(p,'继续探索'); continue; }
-    if (ls.some(x=>x.includes('攻击'))){ await 点(p,'攻击'); await 点(p,'幼獾'); }
+    if (ls.some(x=>x.includes('继续探索'))){ await 点段内(p,'继续探索'); continue; }
+    if (ls.some(x=>/攻击|打击/.test(x))){ const o = await 一次出手(p, ls); if (o.r !== '点了') await 点段内(p, o.候选[0] ?? '空手打击'); await 点(p,'幼獾'); }
     else if (ls.some(x=>x.includes('迎战'))){ await 点段内(p,'迎战'); await p.waitForTimeout(1200); }
     else await p.waitForTimeout(500); } };
 
@@ -221,6 +268,11 @@ try {
   r = await run(p);
   ok('臂① 未胜/僵持后回屏「遭遇」可重试', (await 段内链接(p)).some(x=>x.includes('遭遇')), `deaths=${r?.deaths} kills=${r?.kills}`);
   await p.close();
+
+  // ── 臂③ 宝箱三臂（`books#616`）：★L5+ 的抽签事件 ⇒ **L1 本就不存在** —— 走**缺席闸**
+  /* ★须**有一行**落在 `待`：✗ 落 `档`（那会被当通过）· ✗ 无行（读者分不清「按设计缺席」与「忘了判」）。
+   *   本行**不进** `ok()` ⇒ 判定行数仍 10 ⇒ `通过` 仍 10、守护串命中语义不变。 */
+  待.push('  · 臂③ 宝箱三臂 —— ★**低层缺席闸**（`books#284`：L5+ 才有抽签事件 ⇒ L1 本就不存在）⇒ 记声明、✗ 判红（`books#616`）');
 
   // ── 臂② 采净一行 ──
   p = await 新页(); await 到L1事件屏(p); await 点(p,'采集'); await p.waitForTimeout(2300); r = await run(p);
@@ -253,9 +305,10 @@ try {
       if ((await run(p7))?.终局) break;
       const ls = await 段内链接(p7);
       if (ls.some(x=>x.includes('继续探索'))) break;
-      const 攻 = ls.find(x=>/用.*攻击/.test(x)) || ls.find(x=>x.includes('空手打击'));
+      const 攻 = ls.filter(x=>/攻击|打击/.test(x)).length > 0;
       if (攻) {
-        await 点段内(p7, 攻);
+        const o = await 一次出手(p7, ls);
+        if (o.r !== '点了') await 点段内(p7, o.候选[0] ?? '空手打击');   // 回退旧形（已具名明账）
         const 目标 = (await 段内链接(p7)).find(x=>/幼獾|獾/.test(x) && !/攻击|打击/.test(x));
         if (目标) await 点段内(p7, 目标);
       } else if (ls.some(x=>x.includes('（跳过本回合）'))) { await 点段内(p7,'（跳过本回合）'); }
