@@ -318,3 +318,76 @@ test('HOF-U73 inspect pages are pure read and keep data out of normal views', ()
   const normal = JSON.stringify(view(s));
   for (const leak of ['counterChanceDelta', 'canalUnlocked', 'equipped', 'rescued']) assert.equal(normal.includes(leak), false, leak);
 });
+
+test('HOF-U74 death settlement keeps half the gold for odd and even purses', () => {
+  for (const [purse, expected] of [[7, 3], [8, 4], [1, 0], [0, 0]]) {
+    const s = elite(); s.run.counts.gold = purse;
+    walk(s, ['fight'], deadly);
+    assert.equal(s.run.phase, 'death'); assert.equal(s.run.counts.gold, expected, `purse=${purse}`);
+    assert.equal(s.run.counts.food, 0); assert.deepEqual(bag(s.run), []); assert.equal(s.run.equipped.weapon, 'none');
+  }
+});
+test('HOF-U75 full health refuses tonic while eighteen health heals exactly two', () => {
+  const full = shop(); walk(full, ['buy-tonic']); full.run.counts.hp = 20;
+  const refused = apply(full, 'tonic', quiet); assert.equal(refused.kind, 'refused'); assert.match(refused.reason, /生命已满/);
+  assert.equal(full.run.counts.tonic, 1); assert.equal(full.run.counts.hp, 20);
+  const hurt = shop(); walk(hurt, ['buy-tonic']); hurt.run.counts.hp = 18; const bottles = hurt.run.counts.tonic;
+  assert.equal(apply(hurt, 'tonic', quiet).kind, 'accepted');
+  assert.equal(hurt.run.counts.hp, 20); assert.equal(hurt.run.counts.tonic, bottles - 1);
+});
+test('HOF-U76 bread over the food cap refuses without spending gold', () => {
+  const s = shop(); const cost = 3; s.run.counts.food = 995; const gold = s.run.counts.gold;
+  const refused = apply(s, 'buy-bread', quiet); assert.equal(refused.kind, 'refused'); assert.match(refused.reason, /粮食达到上限/);
+  assert.equal(s.run.counts.food, 995); assert.equal(s.run.counts.gold, gold);
+  s.run.counts.food = 994; assert.equal(apply(s, 'buy-bread', quiet).kind, 'accepted');
+  assert.equal(s.run.counts.food, 999); assert.equal(s.run.counts.gold, gold - cost);
+});
+test('HOF-U77 watch departure initial state pairs the camp baseline', () => {
+  const camp = initial();
+  assert.deepEqual(camp.run.counts, { hp: 20, gold: 10, food: 8, tonic: 0, knife: 0, sabre: 0, coat: 0, mail: 0 });
+  assert.deepEqual(camp.run.equipped, { weapon: 'none', armor: 'none' }); assert.deepEqual(bag(camp.run), []);
+  const watch = elite(); walk(watch, ['fight'], deadly); walk(watch, ['begin-watch']);
+  assert.equal(watch.run.counts.coat, 1); assert.equal(watch.run.equipped.armor, 'coat');
+  assert.equal(watch.run.counts.hp, 20); assert.equal(watch.run.counts.food, 8); assert.deepEqual(bag(watch.run), ['coat']);
+});
+test('HOF-U78 equipped slot without its item is rejected', () => {
+  const s = shop(); s.run.counts.sabre = 0; s.run.equipped.weapon = 'sabre';
+  assert.equal(validate(s), false);
+  s.run.counts.sabre = 1; assert.equal(validate(s), true);
+  s.run.equipped.armor = 'coat'; assert.equal(validate(s), false);
+});
+test('HOF-U79 run state carries no legacy dual writes and resources stay out of the bag', () => {
+  const s = shop(); walk(s, ['buy-sabre', 'buy-bread']); const r = structuredClone(s.run);   // 序列化后的形状（进档的就是它）
+  for (const legacy of ['hp', 'gold', 'food', 'bag', 'weapon', 'armor']) assert.equal(legacy in r, false, legacy);
+  assert.deepEqual(Object.keys(r.counts).sort(), ['coat', 'food', 'gold', 'hp', 'knife', 'mail', 'sabre', 'tonic']);
+  for (const resource of ['hp', 'gold', 'food']) assert.equal(bag(r).includes(resource), false, resource);
+  assert.equal(r.equipped.weapon, 'sabre'); assert.equal(r.counts.sabre, 1);
+});
+test('HOF-U80 death gold bound is rejected above the halving ceiling', () => {
+  const s = elite(); walk(s, ['fight'], deadly); assert.equal(s.run.phase, 'death');
+  s.run.counts.gold = 499; assert.equal(validate(s), true);
+  s.run.counts.gold = 500; assert.equal(validate(s), false);
+  s.run.counts.gold = 250; assert.equal(validate(s), true);
+});
+test('HOF-U81 stored interface version mismatch is named without showing the old save', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'version-'));
+  try {
+    const s = new Session(game, 42); choose(s, ['begin', 'cliff']); const before = s.snapshot(); const store = new Store(dir);
+    const stale = structuredClone(before); stale.interfaceVersion = 1; stale.state.run.counts.gold = 7777; // 哨兵只可能来自档内
+    const text = JSON.stringify(stale); await fs.writeFile(path.join(dir, 'old.json'), text);
+    const failure = await store.load(s, 'old').then(() => null, e => e);   // 档名不带扩展名（与既有 U42 同形）
+    assert.ok(failure, '接口不符的档必须被拒绝');
+    assert.equal(failure.code, 'SAVE_VERSION');
+    assert.match(failure.message, /档为接口 v1/); assert.match(failure.message, /本版为接口 v2/);
+    assert.equal(failure.message.includes('7777'), false, '提示里不得带出档内内容');
+    // 另一条路径（游戏版本不符）须与上一条可区分：码不同，且文案说游戏版本而不是接口版本。
+    const older = structuredClone(before); older.game.version = 2;
+    await fs.writeFile(path.join(dir, 'older.json'), JSON.stringify(older));
+    const gameFailure = await store.load(s, 'older').then(() => null, e => e);
+    assert.equal(gameFailure.code, 'SAVE_GAME');
+    assert.match(gameFailure.message, /v2/); assert.equal(/接口/.test(gameFailure.message), false, 'SAVE_GAME 的文案不得说接口版本');
+    assert.deepEqual(s.snapshot(), before);
+    assert.deepEqual(s.snapshot(), before);
+    assert.equal(await fs.readFile(path.join(dir, 'old.json'), 'utf8'), text, '档文件不得被改写');
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});

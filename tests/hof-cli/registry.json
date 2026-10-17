@@ -77,7 +77,15 @@
       "HOF-U70 inspect hides the unmet forester and unknown or invisible targets",
       "HOF-U71 inspect entry ids stay stable across runs and save restore",
       "HOF-U72 inspect detail text reuses the bag and map sources",
-      "HOF-U73 inspect pages are pure read and keep data out of normal views"
+      "HOF-U73 inspect pages are pure read and keep data out of normal views",
+      "HOF-U74 death settlement keeps half the gold for odd and even purses",
+      "HOF-U75 full health refuses tonic while eighteen health heals exactly two",
+      "HOF-U76 bread over the food cap refuses without spending gold",
+      "HOF-U77 watch departure initial state pairs the camp baseline",
+      "HOF-U78 equipped slot without its item is rejected",
+      "HOF-U79 run state carries no legacy dual writes and resources stay out of the bag",
+      "HOF-U80 death gold bound is rejected above the halving ceiling",
+      "HOF-U81 stored interface version mismatch is named without showing the old save"
     ],
     "knife": {
       "name": "H1",
