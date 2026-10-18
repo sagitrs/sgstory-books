@@ -39,7 +39,7 @@ const browser = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu'
 	'--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1440,1000', '--no-first-run', 'about:blank'],
 	{ env: { ...process.env, LD_LIBRARY_PATH: deps }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = '', ws, seq = 0, session, exitCode = 0, loads = 0;
-const total = 27, rows = [], errors = [], pageChecks = [], pending = new Map(), start = Date.now();
+const total = 30, rows = [], errors = [], pageChecks = [], pending = new Map(), start = Date.now();
 browser.stdout.on('data', (x) => { log += x; }); browser.stderr.on('data', (x) => { log += x; });
 browser.on('error', (e) => errors.push(e.message));
 const wait = async (fn, name, timeout = 15000) => {
@@ -226,7 +226,12 @@ await click('前往第 10 层 · Ration House'); await click('购买补给'); aw
 	console.log(`  ★读数（✗ 计入判据面·候定因）：歇一歇后「账账面」逐字同=${只HP}`);
 }
 await click('走向上行门'); await click('走进七名河');
-	await wait(() => evaluate('return B.map.current==="L11";'), '证后正常上行');
+	/* ★`books#397` 裁 (b)：**首次出城分流到 W09 教程**（教程未完成 ⇒ 走七名河；完成 ⇒ 才走旧 L11）。
+	 *   本臂此前等 `L11`，那是分流上线（10-07／10-08）之前的旧期望 ⇒ 恒超时（`books#592`）。
+	 *   兄弟装置 `tools/verify-l10-city.mjs:157` 已按同一裁定改成「`L11` 或 `W09` 皆算能出发」；
+	 *   本臂走的是**真点击**，新局玩家此刻只到得了 W09 ⇒ 断言按**设计行为**写 `W09`
+	 *   （✗ 不把期望倒过来迁就旧绿；教程完成后的旧 L11 路由由 `e2e-599-lamplighter.mjs` 覆盖 ✓）。 */
+	await wait(() => evaluate('return B.map.current==="W09";'), '首次出城分流到 W09 教程');
 	const beforeReturn = await evaluate('return JSON.stringify({sold:V.babelL10.sold,storage:V.babelL10Storage,events:V.span1Events,arc:V.span1Arc});');
 	await click('回城卷轴'); await wait(() => evaluate('return B.map.current==="L10-camp"&&B.手上有("return-scroll")===0;'), '付费卷轴返程与扣次');
 	await check('卷轴无资源／事件／寄存重置', `return ${JSON.stringify(beforeReturn)}===JSON.stringify({sold:V.babelL10.sold,storage:V.babelL10Storage,events:V.span1Events,arc:V.span1Arc});`);
