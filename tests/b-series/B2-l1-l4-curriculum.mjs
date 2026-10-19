@@ -51,9 +51,16 @@ const 有文档 = fs.existsSync(文档);
 判('B2-2 ★课程文档落仓（B1 第1项：落点为 docs/plans/babel/l1-9-curriculum.md）',
 	有文档, 有文档 ? '在' : `✗ 不缺 ${文档}`);
 const 文本 = 有文档 ? fs.readFileSync(文档, 'utf8') : '';
-判('B2-3 ★课程文档含**九层**学习目标（L1…L9 逐层具名）',
-	层.concat(['L5', 'L6', 'L7', 'L8', 'L9']).every((L) => new RegExp(`\\b${L}\\b`).test(文本)),
-	`命中层号=${层.concat(['L5', 'L6', 'L7', 'L8', 'L9']).filter((L) => new RegExp(`\\b${L}\\b`).test(文本)).join(',') || '（无）'}`);
+const 九层 = 层.concat(['L5', 'L6', 'L7', 'L8', 'L9']);
+/* ★`#634` 收紧（灵敏度低）：原形只问「正文里**有没有**这九个 token」⇒ 那九个字样出现在**别处**
+ *   （链接／散文／`L5–L8` 这类区间写法）也能绿 ✗。⇒ 现要求**每层各有一行**：行首是该层
+ *   （`| L1 |` 形），且该行**带正文**（剔掉表格符与 token 后仍 ≥ 10 字）。 */
+const 行们 = 文本.split('\n');
+const 层行 = (L) => 行们.find((x) => new RegExp('^\\s*\\|\\s*' + L + '\\b').test(x)
+	&& x.replace(/[|*#\-\s]/g, '').replace(new RegExp('\\b' + L + '\\b'), '').length >= 10);
+判('B2-3 ★课程文档含**九层**学习目标（L1…L9 **逐层**具名，每层各有一行带正文）',
+	九层.every((L) => 层行(L) != null),
+	`命中层=${九层.filter((L) => 层行(L) != null).join(',') || '（无）'}（须九层各一行）`);
 
 /* ── ③ L2：物品按**真实 ID/容量/状态**进背包（✗ 文案写「获得」就算）── */
 const inv = V().inventory ?? [];
@@ -62,9 +69,11 @@ const inv = V().inventory ?? [];
 	`inventory=${JSON.stringify(inv).slice(0, 120)}`);
 
 /* ── ④ 死亡/战中存档禁用（票面第③条）── */
+/* ★`#634` 收紧（值面不判）：原形 `(x ?? null) != null` 把 **`false`／任何值**都算「有旗」✗
+ *   （实测 `B.存档禁用` 就是 `false`）。⇒ 现须判**值面**：运行旗的类型须是 **boolean**。 */
 判('B2-5 ★战中存档禁用有**运行旗**（✗ 只在文案里说）',
-	(R?.存档禁用 ?? null) != null || (B?.存档禁用 ?? null) != null,
-	`R.存档禁用=${JSON.stringify(R?.存档禁用 ?? null)}｜B.存档禁用=${JSON.stringify(B?.存档禁用 ?? null)}`);
+	typeof B?.存档禁用 === 'boolean' || typeof R?.存档禁用 === 'boolean',
+	`typeof R.存档禁用=${typeof R?.存档禁用}｜typeof B.存档禁用=${typeof B?.存档禁用}（须 boolean）`);
 
 console.log(out.join('\n'));
 const 红 = out.filter((l) => l.startsWith('✗')).length;
