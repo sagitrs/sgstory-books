@@ -22,9 +22,15 @@ const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, V = () => SC.State.variab
 
 /* ── ① 受控池（✗ 全池随机）：允许组合/禁组合须有正反断言面 ── */
 const 池 = B?.受控池 ?? B?.事件池 ?? R?.受控池 ?? null;
+/* ★`#634` 收紧（空壳即绿）：原形只验「非空对象」⇒ `{x:1}` 也绿 ✗。⇒ 现须判**形状**：
+ *   受控池至少要**声明它的层与类**（非空数组）、有**抽数**（number）、有**抽**（可调用）。 */
+const 池形 = (p) => p != null && typeof p === 'object'
+	&& Array.isArray(p.层) && p.层.length > 0
+	&& Array.isArray(p.类) && p.类.length > 0
+	&& typeof p.抽数 === 'number' && typeof p.抽 === 'function';
 判('B3-1 ★L5-L8 有**受控事件池**（✗ 全池随机）',
-	池 != null && typeof 池 === 'object' && Object.keys(池).length > 0,
-	`B.受控池=${JSON.stringify(B?.受控池 ?? null).slice(0,60)}｜B.事件池=${JSON.stringify(B?.事件池 ?? null).slice(0,60)}`);
+	池形(池),
+	池 ? `键=${JSON.stringify(Object.keys(池))}｜层=${JSON.stringify(池.层)}｜类=${JSON.stringify(池.类)}｜抽数=${JSON.stringify(池.抽数)}｜typeof 抽=${typeof 池.抽}` : '（池不存在）');
 /* ★`#632` 收紧（值面漏判）：原形 `x != null` 收 `false`／任何值 ⇒ `{允许:false, 禁:false}` 也绿 ✗。
  *   ★实测两面都是 **function**（`typeof 池.允许 === 'function'`）⇒ 收紧为**可调用面或非空面**。
  *   ★为何不把两支 AND 起来：那两支是**键名别名**（允许／准入），✗ 不是两个语义翼 ⇒
@@ -37,9 +43,13 @@ const 有面 = (v) => typeof v === 'function' || (typeof v === 'string' && v.tri
 
 /* ── ② 放弃**不补取**另一支（B1 L5 边界）── */
 const 放弃 = B?.放弃 ?? B?.事件放弃 ?? null;
+/* ★`#634` 收紧（空壳即绿）：原形只验「非空对象」⇒ `{x:1}` 也绿 ✗。⇒ 现须判**实质**：
+ *   要有**独立动作**（`抽签层`／`固定事件层` 至少一个可调用）且**注明不补取**（`不补取 === true`）。 */
 判('B3-3 ★「明确放弃」有**独立动作**且注明**不补取**另一支',
-	放弃 != null && typeof 放弃 === 'object' && Object.keys(放弃).length > 0,
-	`B.放弃=${JSON.stringify(B?.放弃 ?? null).slice(0,80)}｜B.事件放弃=${JSON.stringify(B?.事件放弃 ?? null).slice(0,60)}`);
+	放弃 != null && typeof 放弃 === 'object'
+		&& (typeof 放弃.抽签层 === 'function' || typeof 放弃.固定事件层 === 'function')
+		&& 放弃.不补取 === true,
+	放弃 ? `键=${JSON.stringify(Object.keys(放弃))}｜动作=${typeof 放弃.抽签层}／${typeof 放弃.固定事件层}｜不补取=${JSON.stringify(放弃.不补取)}（须 true）` : '（放弃未声明）');
 
 /* ── ③ 温泉**不入随机池**、**不恢复**工具耐久/耗材（B1 L8 边界）── */
 const 温泉 = B?.温泉 ?? R?.温泉 ?? null;
@@ -57,9 +67,12 @@ const 温泉 = B?.温泉 ?? R?.温泉 ?? null;
 	温泉 ? `恢复工具耐久=${String(温泉.恢复工具耐久)}（须 false；未声明＝红）` : '（温泉不存在）');
 
 /* ── ④ 第二战：基础遭遇与池内第二战**分开记录**（B1 第2项）── */
+/* ★`#634` 收紧（空壳即绿）：原形只验「任一非 null」⇒ `{x:1}` 也绿 ✗。⇒ 现须判**分开**这层语义：
+ *   第二战账里 `分开记录 === true`，且**两本账**（`基础遭遇已战`／`池内第二战已用`）都在位。 */
 判('B3-6 ★第二战与基础遭遇**分开记录**（B1 第2项：✗ 合并一账）',
-	(B?.第二战 ?? null) != null || (B?.池内第二战 ?? null) != null,
-	`B.第二战=${JSON.stringify(B?.第二战 ?? null).slice(0,60)}｜B.池内第二战=${JSON.stringify(B?.池内第二战 ?? null).slice(0,60)}`);
+	B?.第二战 != null && typeof B.第二战 === 'object' && B.第二战.分开记录 === true
+		&& '基础遭遇已战' in B.第二战 && '池内第二战已用' in B.第二战,
+	B?.第二战 ? `键=${JSON.stringify(Object.keys(B.第二战))}｜分开记录=${JSON.stringify(B.第二战.分开记录)}（须 true）` : '（第二战账未声明）');
 
 console.log(out.join('\n'));
 const 红 = out.filter((l) => l.startsWith('✗')).length;

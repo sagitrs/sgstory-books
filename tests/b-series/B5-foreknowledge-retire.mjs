@@ -65,9 +65,11 @@ const 带deepest的面 = Object.entries(V()).filter(([, v]) => v && typeof v ===
 	`span1Events=${JSON.stringify(V()?.span1Events ?? null).slice(0, 90)}`);
 
 /* ── ⑤ 退役后可核：**旧预知配置不控制未入账层**（票面②）── */
+/* ★`#634` 收紧（空壳即绿）：原形只验「任一非 null」⇒ 存根 `{x:1}` 也绿 ✗。⇒ 现须判**实质**：
+ *   要么是**退役动作**（可调用），要么是**已退役旗**（`=== true`）。 */
 判('B5-6 ★有**退役**动作/标志（B5 交付面；✗ 只是不写键）',
-	(B?.预知退役 ?? null) != null || (B?.退役预知 ?? null) != null || 跑?.预知?.已退役 === true,
-	`B.预知退役=${typeof B?.预知退役}｜babelRun.预知.已退役=${String(跑?.预知?.已退役)}`);
+	typeof B?.预知退役 === 'function' || typeof B?.退役预知 === 'function' || 跑?.预知?.已退役 === true,
+	`typeof B.预知退役=${typeof B?.预知退役}｜typeof B.退役预知=${typeof B?.退役预知}｜babelRun.预知.已退役=${String(跑?.预知?.已退役)}（须 function 或 true）`);
 
 console.log(out.join('\n'));
 const 红 = out.filter((l) => l.startsWith('✗')).length;
