@@ -1,0 +1,24 @@
+# B 族语法闸（判据在 nightly）—— gsvector-ci#18 · Leader temp-guest-1 核定四条落法
+# 只查 tests/b-series/*.mjs 语法（复用 tests/b-series/run-all.sh --syntax-only 单一来源）。
+# 判据闸不在 PR 门：仍归 e2e-window.yml（nightly 03:17 UTC / dispatch）步 26。
+# 本 workflow 绿 = 语法坏档 0，✗ 不代表 B 族判据通过。
+name: b-series-syntax
+
+on:
+  pull_request:
+    paths:
+      - 'tests/b-series/**'
+      - '.github/workflows/b-series-syntax.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: 语法闸（判据在 nightly）
+    runs-on: [self-hosted, sgstory-books]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 语法闸（判据在 nightly）—— node --check 逐档（run-all.sh --syntax-only）
+        run: bash tests/b-series/run-all.sh --syntax-only
