@@ -20,6 +20,11 @@
 #   一个坏档只算**一个**红旗（✗ 双计），且红旗路径下 stderr **无** `command not found`、
 #   提示行里 `B*-0`／`ENGINE` **逐字在位**（反引号不得做命令替换）。
 #
+# ★★第 8 节是**逐格正控**（`#632`）：改判据＝改期望值 ⇒ 每格须自证「**该格原本漏抓的破法**」⇒
+#   改动后**该格变红且具名**。做法：把破法**写进被测档**（锚点＝各档 `const SC = s.SC, …` 那一行之后）
+#   ⇒ 跑 **`run-all.sh`**（汇总 ＋ `.run.*.log` ＋ stdout 三面都走到）⇒ 按 `sha256` 复原。
+#   ★红必须是**判据红（具名）**，✗ 不接受靠崩溃／零出声变红（那是装置错）⇒ 本节每刀都断「**红旗 0 个**」。
+#
 # ★★两处如实声明（✗ 不假装满足）：
 #   ㈠ runner 的**汇总行**只报条数（`判据红 N 条`），但**判据红分支已把具名 `✗` 行印到 stdout**
 #      （`#629` 增补③，每档限 5 行；完整逐条在 `.run.<档>.log`）⇒ 本刀核的是
@@ -60,7 +65,7 @@ sha_before() { sha256sum "$G/$1" | awk '{print $1}'; }
 #   ★每条的「原文本」在其档里须**恰好命中 1 次**（下面用 python 断，✗ 不靠肉眼）。
 KNIVES=(
   "B2-l1-l4-curriculum.mjs|inv.length > 0|inv.length > 100000|B2-4"
-  "B3-l5-l8-pool.mjs|温泉.恢复工具耐久 !== true|温泉.恢复工具耐久 === true|B3-5"
+  "B3-l5-l8-pool.mjs|温泉.恢复工具耐久 === false|温泉.恢复工具耐久 === true|B3-5"
   "B5-foreknowledge-retire.mjs|hasOwnProperty.call(V(), |hasOwnProperty.call({}, |B5-5"
   "B6-newrun-to-l10.mjs|通.length === 层.length|通.length === 层.length + 1|B6-2"
   "E2-return-city.mjs|门.前进 !== 门.返城|门.前进 === 门.返城|E2-5"
@@ -193,6 +198,70 @@ else
   FAIL=$((FAIL+1)); REPORT+=("✗ 在 CASES 里的坏档  rc=$rc（须 2）｜红旗恰 1=$T2｜§① 具名=$T3｜N1=$T4｜复原=$T5")
 fi
 
+# ══════════════════════════════════════════════════════════════════════════
+# ── 第 8 节：逐格正控（`#632`）—— 注入「该格原本漏抓的产品态破法」⇒ 该格须回红且具名 ──
+#   表：档名｜锚点（插在它之后）｜破法（一行）｜期望回红的格｜人读描述
+#   ★红须是**判据红（具名）**：每刀都断 ①`rc=1` ②汇总「红旗 **0** 个」③目标格在 **stdout** 具名
+#     ④目标格在 `.run.<档>.log` 具名 ⑤复原后字节同。
+# ══════════════════════════════════════════════════════════════════════════
+A_B3='const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, V = () => SC.State.variables;'
+A_E2="$A_B3"
+A_B4="$A_B3"
+A_B5='const SC = s.SC, B = SC.setup.BABEL, V = () => SC.State.variables;'
+A_B6="$A_B5"
+KZ=(
+  "B3-l5-l8-pool.mjs|$A_B3|B.受控池 = { ...B.受控池, 允许: false, 禁: false };|B3-2|允许／禁两面都是 false —— 旧形「!= null」收 false 即绿"
+  "B3-l5-l8-pool.mjs|$A_B3|B.温泉 = { ...B.温泉, 固定: true, 入池: true };|B3-4|温泉入池成真（固定仍 true）—— 旧形 OR 一翼撑绿"
+  "B3-l5-l8-pool.mjs|$A_B3|B.温泉 = { ...B.温泉 }; delete B.温泉.恢复工具耐久;|B3-5|温泉未声明恢复工具耐久（B.温泉 **是冻结对象** ⇒ 必须先复制再删）—— 旧形缺键即绿"
+  "E2-return-city.mjs|$A_E2|B.返程 = { ...B.返程, 旧损毁先: false };|E2-4|顺序声明仍在、旧损毁先=false —— 旧形 OR 一翼撑绿"
+  "B4-l9-boss-gate.mjs|$A_B4|B.准备区 = { id: 'L9-nowhere', name: '（正控）声明在但地图上无此地点' };|B4-1|准备区声明在但不可达 —— 旧形 OR 一翼撑绿（翼乙本就恒假）"
+  "B5-foreknowledge-retire.mjs|$A_B5|delete V().babelRun;|B5-1|删 babelRun（初始化坏）—— 旧形缺面即绿"
+  "B5-foreknowledge-retire.mjs|$A_B5|delete V().babelRun;|B5-3|删 babelRun（权威面读不到）—— 旧形缺面即绿"
+  "B5-foreknowledge-retire.mjs|$A_B5|V().map = { deepest: 'L9' };|B5-3|给别的状态面加 deepest 同义账 —— 旧形也咬，证仍咬"
+  "B5-foreknowledge-retire.mjs|$A_B5|delete V().babelRun;|B5-4|删 babelRun（初始化坏）—— 旧形缺面即绿"
+  "B5-foreknowledge-retire.mjs|$A_B5|V().babelRun.已领 = { L1: true, 备注: '正控' };|B5-4|混键的每层已领账 —— 旧形 every 放过去"
+  "B5-foreknowledge-retire.mjs|$A_B5|delete V().span1Events;|B5-5|删 span1Events 键 —— 改名后仍须咬"
+  "B6-newrun-to-l10.mjs|$A_B6|{ const 旧moveTo = B.map.moveTo; B.map.moveTo = (L) => { if (L === 'L4') throw new Error('正控：moveTo 抛'); return 旧moveTo.call(B.map, L); }; }|B6-2|让 moveTo('L4') 抛 —— 收紧后仍须咬"
+)
+for k in "${KZ[@]}"; do
+  IFS='|' read -r FILE ANCHOR BREAK CELL DESC <<<"$k"
+  echo
+  echo "── 正控：$CELL（$FILE）—— $DESC ──"
+  if ! python3 - "$G/$FILE" "$ANCHOR" "$BREAK" <<'PY'
+import sys
+p, a, b = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(p, encoding='utf-8').read()
+c = s.count(a)
+if c != 1:
+    print(f"  ✗★ 装置错：锚点命中 {c} 次（须 1）⇒ 本刀前提不成立，✗ 不动档")
+    sys.exit(3)
+open(p, 'w', encoding='utf-8').write(s.replace(a, a + "\n/* ★`#632` 逐格正控注入 */\n" + b, 1))
+PY
+  then echo "  ⇒ 装置错（注入未生效）"; DEVICE=$((DEVICE+1)); continue; fi
+  OUT="$WORK/kz-$(echo "$CELL" | tr -d ' ')-$(date +%s%N | tail -c 6).out"
+  ENGINE="$ENGINE" timeout 1800 bash "$G/run-all.sh" >"$OUT" 2>&1; rc=$?
+  LOG="$G/.run.$FILE.log"
+  SUM="$(grep -E '语法坏档 [0-9]+ ｜' "$OUT" | tail -1)"
+  STDOUT_NAMED="$(grep -E "✗ ${CELL} " "$OUT" | head -1)"
+  LOG_NAMED="$(grep -cE "^✗ ${CELL} " "$LOG")"
+  REDFLAG="$(echo "$SUM" | grep -oE '红旗 [0-9]+ 个' | grep -oE '[0-9]+' | head -1)"
+  echo "     runner rc=$rc（须 1）｜汇总：${SUM:-（无）}"
+  echo "     stdout 具名：${STDOUT_NAMED:0:120}"
+  echo "     log 具名 $LOG_NAMED 条"
+  cp -p "$BAK/$FILE" "$G/$FILE"
+  K1=0; K2=0; K3=0; K4=0; K5=0
+  [ "$rc" -eq 1 ] && K1=1
+  [ "${REDFLAG:-x}" = "0" ] && K2=1
+  [ -n "$STDOUT_NAMED" ] && K3=1
+  [ "$LOG_NAMED" -ge 1 ] && K4=1
+  [ "$(sha_before "$FILE")" = "$(sha256sum "$BAK/$FILE" | awk '{print $1}')" ] && K5=1
+  if [ "$K1$K2$K3$K4$K5" = "11111" ]; then
+    PASS=$((PASS+1)); REPORT+=("✓ 正控 $CELL（$DESC）  rc=1｜红旗 0｜stdout＋log 具名｜复原字节同")
+  else
+    FAIL=$((FAIL+1)); REPORT+=("✗ 正控 $CELL（$DESC）  rc=$rc（须 1）｜红旗 0=$K2｜stdout 具名=$K3｜log 具名=$K4｜复原=$K5")
+  fi
+done
+
 # ── 收尾：全部复原后复跑（★这一跑是「复原真有效」的机器判据，✗ 不靠 sha 一条）──
 echo
 echo "── 收尾：复原后复跑（须 rc=0 且判据红 0 条）──"
@@ -213,5 +282,5 @@ echo "  证据：$WORK（runner 全文 run-*.out ＋ 各档 .run.*.log）"
 [ "$DEVICE" -gt 0 ] && exit 2
 [ "$FAIL" -gt 0 ] && exit 1
 [ "$FINALOK" -eq 1 ] || { echo "  ✗★ 复原后复跑未回到 rc=0／红 0 ⇒ 本刀不成立"; exit 1; }
-echo "  ⇒ ★五格抽样（改坏期望值）＋ 两种语法闸坏档（不在／在 \`CASES\`）：皆如期回红／回红旗，且**stdout 与 log 双具名**、一个坏档只算**一个**红旗、反引号**不做命令替换**、复原字节同；复原后复跑 rc=0 ⇒ 这几格**判得了**（✗ 恒真／硬编码），语法坏档**不再静默放过也不双计**"
+echo "  ⇒ ★五格抽样（改坏期望值）＋ 两种语法闸坏档 ＋ **10 格逐格正控**（注入「该格原本漏抓的产品态破法」）：皆如期回红／回红旗，且红是**判据红（具名）**（红旗 0）、stdout 与 log 双具名、一个坏档只算**一个**红旗、反引号**不做命令替换**、复原字节同；复原后复跑 rc=0 ⇒ 这些格**判得了**（✗ 恒真／硬编码）"
 exit 0
