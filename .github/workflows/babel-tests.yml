@@ -53,7 +53,8 @@ concurrency:
 
 jobs:
   babel:
-    runs-on: ubuntu-latest
+    # CI18: self-hosted sgstorybooks-runner-1（bare label；原 ubuntu-latest 云billing不可达）——命令/步骤零改动
+    runs-on: sgstory-books
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
