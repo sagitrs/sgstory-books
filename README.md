@@ -53,5 +53,5 @@
 - [`check-premerge.mjs`](tools/check-premerge.mjs) 是**合前检查器**（把 `tools/README.md` 附三从文字变成可跑件）：
   ① 基座同尖（`merge-base(声明基, 票头) === 声明基`；★声明基＝`--base`／CI 的 `GITHUB_BASE_REF`／缺省 `origin/main`）② 回退行 0（对**声明基**的 3-dot `--numstat` 无「只删不加」的档）
   ③ 给了 `--prior` 再算 `patch-id`（逐字同 ⇒ 纯 rebase ⇒ 先前读数沿用）。命令形 `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>]`；
-  `--selftest` 合成例 15 例（真 `git init` 仓；含 K10 声明基解析／K11 同一头换判基 ⇒ 绿红分野两刀）；退出码 `0` 全绿（**打印两条读数**）／`1` 判据红（具名）／`2` 装置错。
+  `--selftest` **22 条断言**（真 `git init` 仓的合成例 ＋ 纯函数两向；含 `K10` 声明基解析／`K11` 同一头换判基 ⇒ 绿红分野两刀，＋ `K12`/`K13` `--base` **空值／缺值／坏 ref** ⇒ 具名装置错 `rc=2` 两刀）；退出码 `0` 全绿（**打印两条读数**）／`1` 判据红（具名）／`2` 装置错。
   ★明账：patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；**纯改名／二进制**档请人眼看。
