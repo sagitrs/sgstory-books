@@ -13,9 +13,12 @@
 #   ④ **runner 的 stdout** 上也出现该格具名的 `✗` 行（`#629` 增补③ · 验收④ —— 步 26 的 CI 读者看的是 stdout，✗ 不是 evidence 里的 log）
 #   ⑤ **复原后字节同**（`sha256`）⇒ 复跑 `rc=0` 且 `判据红 0 条`
 #
-# ★共 6 刀：5 刀改**该格自己的期望值**（B2-4／B3-5／B5-5／B6-2／E2-5），
+# ★共 7 刀：5 刀改**该格自己的期望值**（B2-4／B3-5／B5-5／B6-2／E2-5），
 #   第 6 刀是**语法闸**（`#629` 验收③）：临时造一个**不在 `CASES`** 的坏档 ⇒ 本器须
 #   `exit 2` ＋ 汇总印「语法坏档 N 个」＋ 该档具名；删掉后六档字节仍同。
+#   第 7 刀是**在 `CASES` 里的坏档**（`#629` 增补④ · N2 ＋ N1 两条预存问题的验收）：
+#   一个坏档只算**一个**红旗（✗ 双计），且红旗路径下 stderr **无** `command not found`、
+#   提示行里 `B*-0`／`ENGINE` **逐字在位**（反引号不得做命令替换）。
 #
 # ★★两处如实声明（✗ 不假装满足）：
 #   ㈠ runner 的**汇总行**只报条数（`判据红 N 条`），但**判据红分支已把具名 `✗` 行印到 stdout**
@@ -158,6 +161,38 @@ else
   fi
 fi
 
+# ── 刀 7（**在 `CASES` 里的坏档** · `#629` 增补④）：一个坏档只算**一个**红旗（N2）＋
+#   红旗路径下反引号不做命令替换（N1）。两条都是 `tester-3` 探出的**预存**问题。──
+CASES_MEMBER="B3-l5-l8-pool.mjs"
+echo
+echo "── 刀 $((PASS+FAIL+DEVICE+1))：在 CASES 里的坏档（$CASES_MEMBER）—— 验「不双计」＋「反引号不做命令替换」──"
+printf '\nconst 探针 = ;\n' >> "$G/$CASES_MEMBER"
+OUT="$WORK/run-cases-broken.out"
+ENGINE="$ENGINE" timeout 1800 bash "$G/run-all.sh" >"$OUT" 2>&1; rc=$?
+SUM="$(grep -E '语法坏档 [0-9]+ ｜' "$OUT" | tail -1)"
+NAMED_C="$(grep -E "语法坏档：${CASES_MEMBER}" "$OUT" | head -1)"
+SKIPPED="$(grep -E "跳过（语法坏档）" "$OUT" | head -1)"
+CMDNF="$(grep -cE 'command not found' "$OUT")"
+HINT_B="$(grep -cF '`B*-0`' "$OUT")"
+HINT_E="$(grep -cF '`ENGINE`' "$OUT")"
+echo "     runner rc=$rc（须 2）"
+echo "     汇总：${SUM:-（无）}"
+echo "     §① 具名：${NAMED_C:0:110}"
+echo "     §② 跳过提示：${SKIPPED:0:90}"
+echo "     N1：stderr/输出里 'command not found' ＝ $CMDNF（须 0）｜提示行 \`B*-0\` 在位=$HINT_B｜\`ENGINE\` 在位=$HINT_E（皆须 ≥1）"
+cp -p "$BAK/$CASES_MEMBER" "$G/$CASES_MEMBER"
+T1=0; T2=0; T3=0; T4=0; T5=0
+[ "$rc" -eq 2 ] && T1=1
+echo "$SUM" | grep -qE '语法坏档 1 ｜ .*红旗 1 个' && T2=1
+[ -n "$NAMED_C" ] && T3=1
+{ [ "$CMDNF" -eq 0 ] && [ "$HINT_B" -ge 1 ] && [ "$HINT_E" -ge 1 ]; } && T4=1
+[ "$(sha_before "$CASES_MEMBER")" = "$(sha256sum "$BAK/$CASES_MEMBER" | awk '{print $1}')" ] && T5=1
+if [ "$T1$T2$T3$T4$T5" = "11111" ]; then
+  PASS=$((PASS+1)); REPORT+=("✓ 在 CASES 里的坏档（$CASES_MEMBER）  rc=2｜红旗 1 个（✗ 双计）｜§① 具名｜N1 无反引号命令替换｜复原字节同")
+else
+  FAIL=$((FAIL+1)); REPORT+=("✗ 在 CASES 里的坏档  rc=$rc（须 2）｜红旗恰 1=$T2｜§① 具名=$T3｜N1=$T4｜复原=$T5")
+fi
+
 # ── 收尾：全部复原后复跑（★这一跑是「复原真有效」的机器判据，✗ 不靠 sha 一条）──
 echo
 echo "── 收尾：复原后复跑（须 rc=0 且判据红 0 条）──"
@@ -178,5 +213,5 @@ echo "  证据：$WORK（runner 全文 run-*.out ＋ 各档 .run.*.log）"
 [ "$DEVICE" -gt 0 ] && exit 2
 [ "$FAIL" -gt 0 ] && exit 1
 [ "$FINALOK" -eq 1 ] || { echo "  ✗★ 复原后复跑未回到 rc=0／红 0 ⇒ 本刀不成立"; exit 1; }
-echo "  ⇒ ★五格抽样（改坏期望值）＋ 一格语法闸：皆如期回红／回红旗，且**stdout 与 log 双具名**、复原字节同；复原后复跑 rc=0 ⇒ 这几格**判得了**（✗ 恒真／硬编码），且语法坏档**不再静默放过**"
+echo "  ⇒ ★五格抽样（改坏期望值）＋ 两种语法闸坏档（不在／在 \`CASES\`）：皆如期回红／回红旗，且**stdout 与 log 双具名**、一个坏档只算**一个**红旗、反引号**不做命令替换**、复原字节同；复原后复跑 rc=0 ⇒ 这几格**判得了**（✗ 恒真／硬编码），语法坏档**不再静默放过也不双计**"
 exit 0
