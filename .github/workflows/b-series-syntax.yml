@@ -16,7 +16,7 @@ permissions:
 jobs:
   syntax:
     name: 语法闸（判据在 nightly）
-    runs-on: [self-hosted, sgstory-books]
+    runs-on: sgstory-books
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
