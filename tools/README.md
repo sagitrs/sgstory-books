@@ -14,7 +14,7 @@
 | `tools/cli/test.mjs` | 独立CLI游戏unit42、e2e8非空族及H1/H2真实副本刀；Linux计数/只读/清理/超时 |
 | `tools/cli/player.mjs` | 正常CLI玩家共用库，由e2e实际import，不单独启动；只stdin/stdout，未改档/中途换RNG |
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
-| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；`--selftest` 自检 15 断言） |
+| `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；★`--base` **空值／缺值** ⇒ **具名装置错 `rc=2`**（✗ 静默回退；★判基明账须**如实**）；`--selftest` 自检 **22 断言**） |
 | `tools/check-engine-pin.mjs` | 引擎检出与**声明 pin** 的一致性（★不一致＝**装置错**，✗ 非产品缺陷）；★`--ref-file` 可**指定声明件**（CLI 独立 pin 拟用 `stories/hof-cli/engine-ref.json` ⇒ 同一门、**同一条真值**，✗ 不许 workflow 内联自读 JSON）；★`--print-ref`＝**检出前**阶段（stdout 只出 ref 一行、来源行走 stderr）；★坏 ref（非 40 位）与缺声明皆 **rc=2 具名**（✗ 不落到「不一致」） |
 | `tools/check-workflow-pin-ref.mjs` | 引擎检出须来自本仓声明 pin（`books#375`：✗ 缺省 main；`--selftest` 两向） |
 | `tools/e2e-161-restart.mjs` | `:enginerestart` 处理器族的真浏览器臂（真 jQuery 下真触发 · 两向＋缺席闸＋`--knife`）|
@@ -327,10 +327,10 @@ $ [ "$旧" = "$新" ] && echo "✓ 纯 rebase（内容面逐字同）⇒ 读数�
 | 项 | 内容 |
 |---|---|
 | **清单** | `tools/check-premerge.mjs` —— 落 `tools/README.md` **附三（合前检查）** 那两条：★**①基座同尖**（`merge-base(现main,票头) === 现main`）★**②回退行 0**（对现 main 的 `--numstat` 里没有「只删不加」的档）；★给了 `--base` 再算 **③patch-id**（逐字同 ⇒ 纯 rebase ⇒ 读数沿用）。 |
-| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>] [--main origin/main] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。★**`--base`＝声明基**（三面都判它 ✓；缺省取 `GITHUB_BASE_REF` ⇒ 再缺省 `--main`／`origin/main` ✓）；★③patch-id 的**旧头**＝**`--prior`**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。★**为何**：新分流（main＝阻塞修复专线／dev＝开发线）下 dev 线的笔**本就不该与 main 同尖** ✗ ⇒ 拿 main 当基会常报「落后」✗（**常态 ✗ 缺陷** ✓；`books#505` ✓）。 |
+| **固定命令** | `node tools/check-premerge.mjs --head <票头> [--base <声明基>] [--prior <旧头>] [--main origin/main] [--repo <仓>]`；自检 `node tools/check-premerge.mjs --selftest`。★**`--base`＝声明基**（三面都判它 ✓；缺省取 `GITHUB_BASE_REF` ⇒ 再缺省 `--main`／`origin/main` ✓）；★③patch-id 的**旧头**＝**`--prior`**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。★**`--base` 空值／缺值 ⇒ 具名装置错 `rc=2`**（✗ 静默回退；★**判基明账须如实** —— ✗ 不许把「你给了 `--base`」说成「✗ 给 `--base`」✓）。★**为何**：新分流（main＝阻塞修复专线／dev＝开发线）下 dev 线的笔**本就不该与 main 同尖** ✗ ⇒ 拿 main 当基会常报「落后」✗（**常态 ✗ 缺陷** ✓；`books#505` ✓）。 |
 | **期望读数** | 开头打印**明账**（patch-id 只证「同一改动集」✗ 不证语义等价；同尖 ✗ 不证内容对；纯改名/二进制档请人眼过）。末行 `⇒ ★通过（…）` 或 `⇒ ★判据红 N 条`。退出码 `0` 全绿／`1` 判据红（★逐条具名：哪个档只删不加／patch-id 不同）／`2` **装置错**（✗ 不当判据红：不在 git 仓／取不到 main 或票头）。 |
 | **设立理由** | `books#296`／`#303`／`#305`／`#310` 那四笔「看着干净、合了会坏」的票换来的：★基座落后 ⇒ 对现 main 的 diff 带**回退行** ⇒ 合入抹掉别的笔刚合的东西；★`mergeable_state=clean` **看不出来**这一类。`#315` 先把口径写进 README（附三）＋ 给出实例；本件把口径做成**可跑件**——★README 是"人读过才会跑"，本器是"跑不跑由机器说话"。 |
-| **自检（`--selftest`·合成例 7 例）** | `K1` 落后头 ⇒ ① 判红（**门能红**）｜`K2`/`K3` 同尖干净头 ⇒ ① 绿 ＋ ② 回退行 0（**门不滥红**）｜`K4` 同尖但只删不加 ⇒ ② **检出该档**（② 有牙）｜`K5` 纯 rebase ⇒ patch-id 逐字同｜`K6` 内容有变 ⇒ patch-id 不同｜`K7` 不存在的仓 ⇒ **标为装置错**（✗ 不当判据红）。★自检与主流程**共用同一判据函数**（`检查一`/`检查二`），✗ 不是另写一套。 |
+| **自检（`--selftest`）** | `K1` 落后头 ⇒ ① 判红（**门能红**）｜`K2`/`K3` 同尖干净头 ⇒ ① 绿 ＋ ② 回退行 0（**门不滥红**）｜`K4` 同尖但只删不加 ⇒ ② **检出该档**（② 有牙）｜`K5` 纯 rebase ⇒ patch-id 逐字同｜`K6` 内容有变 ⇒ patch-id 不同｜`K7` 不存在的仓 ⇒ **标为装置错**（✗ 不当判据红）｜`K8`/`K9` 落后提示（纯函数两向 ＋ 调用点源码形）｜`K10`/`K11` `#505` 声明基（解析顺序三向 ＋ 同一头「对 dev 绿／对 main 红」）｜`K12`/`K13` `#505` 续：`--base` **末尾无参／空值**／**坏 ref** ⇒ **具名装置错 `rc=2`**（✗ 静默；★校验在印明账**之前**）。★自检与主流程**共用同一判据函数**（`检查一`/`检查二`/`解析声明基`/`取显式基`/`基错文案`），✗ 不是另写一套。 |
 
 ## 15. `e2e-280-encounter-stop.mjs` —— `books#280` ②-2 **遭遇停**的真浏览器臂（★缺席闸形）
 

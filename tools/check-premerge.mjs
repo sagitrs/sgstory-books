@@ -2,17 +2,17 @@
 /* `books#315` 附三 · **合前检查器** —— 把「合前必跑的两条」从 README 文字变成**机器说了算**。
  *
  * ## 判谁（两条判据 · 各带可复跑的口径）
- *   ① **基座同尖**：`merge-base(<main>, <票头>)` 必须 **===** `<main>`。
- *      ★落后 ⇒ 该票对**现 main** 的 diff 里会带**回退行** ⇒ 合入会抹掉别的笔刚合的东西。
- *   ② **回退行 0**：对现 main 的 `--numstat` 里，**没有「只删不加」（新增 0 行）的档**。
+ *   ① **基座同尖**：`merge-base(<声明基>, <票头>)` 必须 **===** `<声明基>`（★`#505`：判的是**声明基**，✗ 不写死 main）。
+ *      ★落后 ⇒ 该票对**声明基**的 diff 里会带**回退行** ⇒ 合入会抹掉别的笔刚合的东西。
+ *   ② **回退行 0**：对**声明基**的 `--numstat` 里，**没有「只删不加」（新增 0 行）的档**。
  *      ★口径＝**3-dot（对 merge-base）**；★**基座落后时**建议再**干跑合并**核一次，
  *        ✗ **不可**用 **2-dot** 两树直比（含 main 自己的推进 ⇒ 会误读成「回退行」）。
  *   ③ （给了 `--prior` 才算）**patch-id**：纯 rebase ⇒ 同改动集在不同基座上的指纹**逐字同**
  *      ⇒ ★先前核过的读数**沿用不重跑**；不同 ⇒ 内容有变 ⇒ 该核的全核。
  *
  * ## 一处源（✗ 不写死）
- *   ★`<main>` 默认 `origin/main`（可 `--main` 覆盖）；★**判据与命令照 `tools/README.md` 附三抄**：
- *     `git diff --numstat <main> <头> | awk '$1=="0"'` ⇒ 本器用**同一判据**（新增行数 0）。
+ *   ★`<声明基>` 的解析顺序：`--base`（显式）⇒ `GITHUB_BASE_REF`（CI 的 PR 声明 base）⇒ 缺省 `--main`／`origin/main`（★输出**明写判的是哪个 base** ✓）；
+ *     ★**判据与命令照 `tools/README.md` 附三抄**：`git diff --numstat <声明基> <头> | awk '$1=="0"'` ⇒ 本器用**同一判据**（新增行数 0）。
  *
  * ## 装置与退出码（同 210／216 族）
  *   `0` 全绿（★打印两条读数，✗ 不是「通过」二字）｜
@@ -30,6 +30,11 @@
  *   ★`--base`（**声明基**）＝本器**三面一律对它判**的那个基 ✓；缺省＝`GITHUB_BASE_REF`（CI 的 PR 声明 base ✓）⇒ 再缺省 `--main`／`origin/main` ✓（**输出会明写判的是哪个 base** ✓）。
  *   ★`--prior`＝③patch-id 的**旧头**（旧名曾写作 `--base` ⇒ 已改名，✗ 混用 ✓）。
  *   node tools/check-premerge.mjs --selftest
+ *
+ * ## `#505` 续（2026-10-19）：**声明基必须取得到**（两处**具名装置错**，✗ 静默）
+ *   · `--base` **给了但缺参数** ⇒ 具名装置错（✗ 静默退回缺省 —— 那会让「声明基」名不副实）＋ `rc=2` ✓。
+ *   · `--base`／声明基 **ref 取不到** ⇒ 消息**点名 `--base`**（✗ 不把锅甩给 `--main`／`--head`）＋ `rc=2` ✓；
+ *     ★校验放在 ① 之前 ⇒ ✗ 不让它退化成一堆 `git merge-base … 失败` 的通用装置错 ✓。
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -97,6 +102,25 @@ export function 解析声明基({ 显式 = null, 环境基 = null, 缺省 = 'ori
 	return { ref: 缺省, 源: '缺省 `--main`／`origin/main`（★✗ 给 --base、✗ 非 PR 事件 ⇒ 明账）' };
 }
 
+/** ★`#505` 续：`--base` 的**取值校验**（纯函数 ⇒ `--selftest` 与主流程**共用** ✓）。
+ *   ★两个**子情形都要**判为具名装置错（✗ 静默退回缺省 —— 那会让「声明基」名不副实 ✓）：
+ *     ① `--base` **末尾无参**（后面没有值，或紧跟另一个选项）⇒ 修前 `rc=0` 静默回退 ✗；
+ *     ② `--base ""`（**空值**）⇒ 修前 `rc=1` 且 `★判基` 明账写「（★✗ 给 --base…）」⇒ ★**明账在说谎**（你**给了** `--base`，只是值为空）✗。
+ *   ⇒ 两种都 ⇒ **具名装置错 `rc=2`**，且**在校验处就退出** ⇒ ✗ 不会先印一行**说谎的明账** ✓。 */
+export function 取显式基(argv = []) {
+	const i = argv.indexOf('--base');
+	if (i < 0) return { 给了: false, 值: null, 错: null };
+	const v = argv[i + 1];
+	if (v === undefined || v === '' || v.startsWith('--')) return { 给了: true, 值: null, 错: '✗ 装置错：`--base` 给了但**空值／缺参数**（✗ 静默退回缺省 —— 那会让「声明基」名不副实）⇒ 写成 `--base <ref>`（用法见档头）' };
+	return { 给了: true, 值: v, 错: null };
+}
+
+/** ★`#505` 续：声明基**取不到**时的具名文案（纯函数 ⇒ 自检两向 ✓）。
+ *   ★**点名 `--base`**（✗ 不把锅甩给 `--main`／`--head`）—— 这条是「具名 ✗ 静默」的落点 ✓。 */
+export function 基错文案({ ref, 显式 = false } = {}) {
+	return `✗ 装置错：声明基 \`${ref}\` **取不到**${显式 ? '（来自 `--base`）' : ''} ⇒ 核 ref 名（✗ 拼错？）或先 \`git fetch\`；★✗ 静默退回缺省（那会让「声明基」名不副实）`;
+}
+
 function 主流程() {
 	if (has('--selftest')) return 自检();
 	跑头注();
@@ -107,10 +131,16 @@ function 主流程() {
 	 *   新分流（main＝0.0.3 阻塞修复专线／dev＝全速开发线 ✓）下，**dev 线的笔本就不该与 main 同尖** ✗
 	 *   ⇒ 拿 main 当基会常报「基座落后」✗（**那是常态 ✗ 缺陷** ✓）。
 	 *   ⇒ 三面一律对**声明基**判 ✓，并把**判的是哪个 base**明写出来（✗ 让人猜 ✓）。 */
-	const 声明基 = 解析声明基({ 显式: arg('--base'), 环境基: process.env.GITHUB_BASE_REF, 缺省: arg('--main', 'origin/main') });
+	const 显式基 = 取显式基(process.argv.slice(2));
+	if (显式基.错) { console.error(显式基.错); process.exit(2); }   // ★缺参数 ⇒ 具名装置错（✗ 静默退回缺省 ✓）
+	const 声明基 = 解析声明基({ 显式: 显式基.值, 环境基: process.env.GITHUB_BASE_REF, 缺省: arg('--main', 'origin/main') });
 	let main = 声明基.ref;
 	try { git(repo, 'rev-parse', '--git-dir'); }
 	catch { console.error(`✗ 装置错：${repo} 不是 git 仓`); process.exit(2); }
+	/* ★`#505` 续：**声明基必须取得到** ⇒ 取不到就**具名**（点名 `--base`）＋ rc=2（✗ 静默退回缺省 ✓）。
+	 *   放在 检查一 之前 ⇒ ✗ 不让它退化成一堆 `git merge-base … 失败` 的通用装置错 ✓。 */
+	try { git(repo, 'rev-parse', '--verify', `${声明基.ref}^{commit}`); }
+	catch { console.error(基错文案({ ref: 声明基.ref, 显式: 显式基.给了 })); process.exit(2); }
 	let r1; try { r1 = 检查一(repo, main, head); }
 	catch (e) { console.error(`✗ 装置错（✗ 不当判据红）：${e.message}\n   ⇒ 核 --main／--head／--repo 是否指对`); process.exit(2); }
 	const 红 = [];
@@ -204,6 +234,24 @@ function 自检() {
 	const 对dev = 检查一(E, 'dev', 'feat'), 对main = 检查一(E, 'main', 'feat');
 	断言('K11a 同一头「对 dev（声明基）判」⇒ ① 绿', 对dev.同尖 === true, JSON.stringify({ 同尖: 对dev.同尖 }));
 	断言('K11b 同一头「对 main 判」⇒ ① 红（★旧形即误报「落后」✗）', 对main.同尖 === false, JSON.stringify({ 同尖: 对main.同尖 }));
+	/* ★★`#505` 续：两刀（各「纯函数两向 ＋ 调用点源码形」✓）——
+	 *   K12：`--base` **缺值** ⇒ 具名装置错（含 `--base`／「缺参数」）＋ 调用点 ⇒ `process.exit(2)` ✓。
+	 *   K13：`--base` **坏 ref** ⇒ 消息**点名 `--base`**（✗ 不甩锅给 --main／--head）＋ 调用点 ⇒ `process.exit(2)` ✓。 */
+	/* ★两个**子情形**都测（✗ 不许只测一种就宣称覆盖 ✓）：
+	 *   ① `--base` 末尾无参（`['--base']`／`['--base','--head','x']`）② `--base ""`（**空值** —— 修前它 `rc=1` 且**明账说谎** ✗）。 */
+	const 缺值 = 取显式基(['--head', 'x', '--base']);
+	const 空值 = 取显式基(['--head', 'x', '--base', '']);
+	const 给值 = 取显式基(['--base', 'origin/dev']);
+	const 没给 = 取显式基(['--head', 'x']);
+	const 缺值后跟选项 = 取显式基(['--base', '--head', 'x']);
+	断言('K12a `--base` 末尾无参 ⇒ 具名装置错（含 `--base` ＋ 「空值／缺参数」＋ 「✗ 静默」）', !!缺值.错 && /--base/.test(缺值.错) && /空值／缺参数/.test(缺值.错) && /✗ 静默/.test(缺值.错), String(缺值.错).slice(0, 64) + '…');
+	断言('K12b `--base ""`（空值）⇒ **同样**具名装置错（★修前此处 `rc=1` ＋ 明账说谎 ✗）', !!空值.错 && /--base/.test(空值.错) && /空值／缺参数/.test(空值.错) && 空值.给了 === true, JSON.stringify(空值));
+	断言('K12c 给了值／未给／缺值后紧跟另一选项 ⇒ 三向都对（✗ 误报）', 给值.给了 && 给值.值 === 'origin/dev' && !给值.错 && !没给.给了 && !没给.错 && 没给.值 === null && !!缺值后跟选项.错, JSON.stringify({ 给值, 没给, 缺值后跟选项 }));
+	断言('K12d ★调用点：校验＋`exit(2)` 在**印 `★判基` 明账之前**（源码形 ⇒ 明账不得先说 ✓）', 自文.indexOf('取显式基(process.argv') > 0 && 自文.indexOf('取显式基(process.argv') < 自文.indexOf('★判基：') && /取显式基\(process\.argv\.slice\(2\)\)[\s\S]{0,160}?process\.exit\(2\)/.test(自文), `校验位=${自文.indexOf('取显式基(process.argv')}｜判基位=${自文.indexOf('★判基：')}`);
+	const 基错显式 = 基错文案({ ref: 'origin/没有这条线', 显式: true }), 基错缺省 = 基错文案({ ref: 'origin/main' });
+	断言('K13a 坏 ref ⇒ 消息**点名 `--base`** ＋ 带上 ref 名（✗ 静默）', /origin\/没有这条线/.test(基错显式) && /来自 `--base`/.test(基错显式) && /✗ 静默/.test(基错显式), String(基错显式).slice(0, 64) + '…');
+	断言('K13b 缺省基取不到 ⇒ 同文案但✗ 冒认 `--base`（✗ 张冠李戴）', /origin\/main/.test(基错缺省) && !/来自 `--base`/.test(基错缺省), String(基错缺省).slice(0, 64) + '…');
+	断言('K13c ★调用点：基取不到 ⇒ `process.exit(2)`（源码形）', /基错文案\(\{[\s\S]{0,160}?process\.exit\(2\)/.test(自文), '命中=' + /基错文案\(\{[\s\S]{0,160}?process\.exit\(2\)/.test(自文));
 	// ── 例 6：装置错可分（✗ 不是判据红）──
 	let 装置错 = false; try { git(path.join(T, '不存在'), 'rev-parse', 'HEAD'); } catch (e) { 装置错 = e.装置错 === true; }
 	断言('K7 不存在的仓 ⇒ 标为装置错（✗ 不当判据红）', 装置错, String(装置错));
