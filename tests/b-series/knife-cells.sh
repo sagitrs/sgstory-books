@@ -25,6 +25,17 @@
 #   ⇒ 跑 **`run-all.sh`**（汇总 ＋ `.run.*.log` ＋ stdout 三面都走到）⇒ 按 `sha256` 复原。
 #   ★红必须是**判据红（具名）**，✗ 不接受靠崩溃／零出声变红（那是装置错）⇒ 本节每刀都断「**红旗 0 个**」。
 #
+# ★★第 9 节是**逐格 stub 正控**（`#634`）：每一格配一次「把该格承诺的面做成**空壳／坏值**」的注入，
+#   **两头各跑**：
+#     甲 **修前**（`$KZ_BASE` 的该档）＋ 同一注入 ⇒ 该格**仍绿**（证这次真补上了那个洞）
+#     乙 **现头**（工作树）＋ 同一注入 ⇒ 该格**红且具名**（判据红：`rc=1` ＋ **红旗 0 个**）
+#   ★`KZ_BASE` 默讁 `origin/main`（**须指向本笔之前的 main**）；运行时印出它的 SHA 作锚。
+#
+# ★★第 8 节是**逐格正控**（`#632`）：改判据＝改期望值 ⇒ 每格须自证「**该格原本漏抓的破法**」⇒
+#   改动后**该格变红且具名**。做法：把破法**写进被测档**（锚点＝各档 `const SC = s.SC, …` 那一行之后）
+#   ⇒ 跑 **`run-all.sh`**（汇总 ＋ `.run.*.log` ＋ stdout 三面都走到）⇒ 按 `sha256` 复原。
+#   ★红必须是**判据红（具名）**，✗ 不接受靠崩溃／零出声变红（那是装置错）⇒ 本节每刀都断「**红旗 0 个**」。
+#
 # ★★两处如实声明（✗ 不假装满足）：
 #   ㈠ runner 的**汇总行**只报条数（`判据红 N 条`），但**判据红分支已把具名 `✗` 行印到 stdout**
 #      （`#629` 增补③，每档限 5 行；完整逐条在 `.run.<档>.log`）⇒ 本刀核的是
@@ -262,6 +273,113 @@ PY
   fi
 done
 
+# ══════════════════════════════════════════════════════════════════════════
+# ── 第 9 节：第二批判据的「逐格 stub 正控」（`#634`）—— 空壳／坏值注入 · 两头各跑 ──
+#   表：档名｜锚点（插在它之后）｜注入（一行）｜期望回红的格｜人读描述｜注入面（arm 或 doc:<路径>）
+# ══════════════════════════════════════════════════════════════════════════
+A_B2='const SC = s.SC, R = SC.setup.RPG, B = SC.setup.BABEL, V = () => SC.State.variables;'
+KZ_BASE="${KZ_BASE:-origin/main}"
+if ! git -C "$B" rev-parse --verify -q "$KZ_BASE" >/dev/null; then
+  echo; echo "  ✗★ 装置错：修前基准 '$KZ_BASE' 取不到（✗ 本节能空跑）"; DEVICE=$((DEVICE+1))
+else
+echo
+echo "── 第 9 节：逐格 stub 正控（11 格 · 两头各跑）｜修前基准 $KZ_BASE = $(git -C "$B" rev-parse --short "$KZ_BASE")"
+ST=(
+  # ★`B2-5` 的旗是 `Object.defineProperty(..., {get, configurable:false})` 的**非可配置访问器**
+  #   ⇒ 内存里改不了（实测 `TypeError: has only a getter`）⇒ 注入必须打在**它的生产者**上（改 getter 体 ＋ 补烘）。
+  "B2-l1-l4-curriculum.mjs|$A_B2|#srcstub|B2-5|值面：把运行旗的 getter 换成返回文案串（改产品源 ＋ 补烘）|src:stories/babel/src/world/babel.js"
+  "B2-l1-l4-curriculum.mjs|$A_B2|#docstub|B2-3|灵敏度：课程档换成九个裸 token（✗ 无逐层行）|doc:docs/plans/babel/l1-9-curriculum.md"
+  "B3-l5-l8-pool.mjs|$A_B3|B.受控池 = { x: 1 };|B3-1|空壳：受控池换成无形状对象|arm"
+  "B3-l5-l8-pool.mjs|$A_B3|B.放弃 = { x: 1 };|B3-3|空壳：放弃换成无动作无声明的对象|arm"
+  "B3-l5-l8-pool.mjs|$A_B3|B.第二战 = { x: 1 };|B3-6|空壳：第二战账换成无分开声明的对象|arm"
+  "B4-l9-boss-gate.mjs|$A_B4|B.胜利 = { x: 1 };|B4-3|空壳：胜利面换成无结算口的对象|arm"
+  "B5-foreknowledge-retire.mjs|$A_B5|B.预知退役 = { x: 1 };|B5-6|空壳：退役面换成不可调用的对象|arm"
+  "E2-return-city.mjs|$A_E2|B.居民证 = { x: 1 };|E2-1|空壳：居民证换成无独立声明的对象|arm"
+  "E2-return-city.mjs|$A_E2|B.脆弱 = { x: 1 };|E2-2|空壳：脆弱面换成无可调用谓词的对象|arm"
+  "E2-return-city.mjs|$A_E2|B.收购 = { x: 1 }; B.服务 = { x: 1 };|E2-3|空壳：两面皆换成无入口的对象|arm"
+  "E2-return-city.mjs|$A_E2|B.卷轴 = { x: 1 }; B.旧卷轴 = { x: 1 };|E2-6|空壳：两面皆换成无串值的对象|arm"
+)
+DOC_STUB='# L1 L2 L3 L4 L5 L6 L7 L8 L9\n\nL1 L2 L3 L4 L5 L6 L7 L8 L9\n'
+# ★`B2-5` 的源码锚（getter 体）——旧形返回 boolean；stub 让它返回**非布尔**（＝坏值）
+SRC_OLD='get: () => setup.BABEL?.战中 === true || setup.RPG?.Battle?.current != null,'
+SRC_NEW="get: () => '文案里说禁用',"
+注入() { # $1=档 $2=锚点 $3=注入 $4=注入面
+  if [ "$4" = "arm" ]; then
+    python3 - "$G/$1" "$2" "$3" <<'PY'
+import sys
+p, a, b = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(p, encoding='utf-8').read()
+if s.count(a) != 1:
+    print(f"  ✗★ 装置错：锚点命中 {s.count(a)} 次（须 1）"); sys.exit(3)
+open(p, 'w', encoding='utf-8').write(s.replace(a, a + "\n/* ★`#634` stub 注入 */\n" + b, 1))
+PY
+  elif [ "${4#src:}" != "$4" ]; then
+    python3 - "$B/${4#src:}" "$SRC_OLD" "$SRC_NEW" <<'PY'
+import sys
+p, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(p, encoding='utf-8').read()
+if s.count(old) != 1:
+    print(f"  ✗★ 装置错：源码锚命中 {s.count(old)} 次（须 1）"); sys.exit(3)
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+PY
+    [ $? -eq 0 ] || return 1
+    重新烘 || return 1
+  else
+    printf '%b' "$DOC_STUB" > "$B/${4#doc:}"
+  fi
+}
+重新烘() { python3 "$ENGINE/build.py" "$B/stories/babel" --out "$B/stories/babel/babel-trial.html" --version 'v0.0.3·fb20f2a2' >/dev/null 2>&1 || { echo "  ✗★ 烘产物失败"; return 1; }; }
+for k in "${ST[@]}"; do
+  IFS='|' read -r FILE ANCHOR STUB CELL DESC FACE <<<"$k"
+  echo
+  echo "── stub 正控：$CELL（$FILE）—— $DESC ──"
+  OKA=0; OKB=0
+  # ★非 ASCII 标识符：本机 bash **不接受**（`OK甲=0` 会被当命令 ⇒ command not found）——
+  #   与 `run-all.sh` 头注记的同一坑；本节的变量名一律 ASCII。
+  for DUAN in A B; do
+    # ★每一端开跑前先把**注入面**还原（✗ 否则乙 端会看到甲 端留下的 stub ⇒ 源码锚 0 命中 ⇒ 装置错）
+    case "$FACE" in
+      arm) ;;
+      src:*) git -C "$B" checkout -- "${FACE#src:}"; 重新烘 || DEVICE=$((DEVICE+1)) ;;
+      *) git -C "$B" checkout -- "${FACE#doc:}" ;;
+    esac
+    if [ "$DUAN" = "A" ]; then git -C "$B" show "$KZ_BASE:tests/b-series/$FILE" > "$G/$FILE"; else cp -p "$BAK/$FILE" "$G/$FILE"; fi
+    注入 "$FILE" "$ANCHOR" "$STUB" "$FACE" || { DEVICE=$((DEVICE+1)); break; }
+    OUT="$WORK/st-$DUAN-$CELL-$(date +%s%N | tail -c 6).out"
+    ENGINE="$ENGINE" timeout 1800 bash "$G/run-all.sh" >"$OUT" 2>&1; rc=$?
+    LOG="$G/.run.$FILE.log"
+    SUM="$(grep -E '语法坏档 [0-9]+ ｜' "$OUT" | tail -1)"
+    RF="$(echo "$SUM" | grep -oE '红旗 [0-9]+ 个' | grep -oE '[0-9]+' | head -1)"
+    NAMED_S="$(grep -E "✗ ${CELL} " "$OUT" | head -1)"
+    NAMED_L="$(grep -cE "^✗ ${CELL} " "$LOG")"
+    echo "     [$DUAN] rc=$rc｜红旗=${RF:-?}｜stdout 具名=${NAMED_S:0:70}｜log 具名 $NAMED_L 条"
+    if [ "$DUAN" = "A" ]; then
+      # ★甲 只断「**目标格**在修前不出红」＋ 无红旗 —— ✗ 不断 rc=0：同一个 stub 可能连带红**别的**格
+      #   （例：`B3-1` 的 stub 也红 `B3-2`；`B4-3` 的 stub 也红 `B4-4`）—— 那是同一破法的必然，✗ 不是装置错。
+      [ "${RF:-x}" = "0" ] && [ -z "$NAMED_S" ] && OKA=1
+    else
+      [ "$rc" -eq 1 ] && [ "${RF:-x}" = "0" ] && [ -n "$NAMED_S" ] && [ "$NAMED_L" -ge 1 ] && OKB=1
+    fi
+  done
+  cp -p "$BAK/$FILE" "$G/$FILE"
+  case "$FACE" in
+    arm) ;;
+    src:*) git -C "$B" checkout -- "${FACE#src:}"; 重新烘 || DEVICE=$((DEVICE+1)) ;;
+    *) git -C "$B" checkout -- "${FACE#doc:}" ;;
+  esac
+  DZ=1
+  [ "$(sha_before "$FILE")" = "$(sha256sum "$BAK/$FILE" | awk '{print $1}')" ] || DZ=0
+  if [ "$FACE" != "arm" ] && ! git -C "$B" diff --quiet -- "${FACE#doc:}${FACE#src:}"; then
+    DZ=0; echo "     ✗★ 注入面未复原：$FACE"
+  fi
+  if [ "$OKA$OKB$DZ" = "111" ]; then
+    PASS=$((PASS+1)); REPORT+=("✓ stub 正控 $CELL（$DESC）  修前仍绿｜现头红且具名（红旗 0）｜复原字节同")
+  else
+    FAIL=$((FAIL+1)); REPORT+=("✗ stub 正控 $CELL（$DESC）  修前仍绿=$OKA｜现头红且具名=$OKB｜复原=$DZ")
+  fi
+done
+fi
+
 # ── 收尾：全部复原后复跑（★这一跑是「复原真有效」的机器判据，✗ 不靠 sha 一条）──
 echo
 echo "── 收尾：复原后复跑（须 rc=0 且判据红 0 条）──"
@@ -282,5 +400,5 @@ echo "  证据：$WORK（runner 全文 run-*.out ＋ 各档 .run.*.log）"
 [ "$DEVICE" -gt 0 ] && exit 2
 [ "$FAIL" -gt 0 ] && exit 1
 [ "$FINALOK" -eq 1 ] || { echo "  ✗★ 复原后复跑未回到 rc=0／红 0 ⇒ 本刀不成立"; exit 1; }
-echo "  ⇒ ★五格抽样（改坏期望值）＋ 两种语法闸坏档 ＋ **10 格逐格正控**（注入「该格原本漏抓的产品态破法」）：皆如期回红／回红旗，且红是**判据红（具名）**（红旗 0）、stdout 与 log 双具名、一个坏档只算**一个**红旗、反引号**不做命令替换**、复原字节同；复原后复跑 rc=0 ⇒ 这些格**判得了**（✗ 恒真／硬编码）"
+echo "  ⇒ ★五格抽样（改坏期望值）＋ 两种语法闸坏档 ＋ **10 格逐格正控（#632）** ＋ **11 格 stub 正控（#634，两头各跑）**（注入「该格原本漏抓的产品态破法」）：皆如期回红／回红旗，且红是**判据红（具名）**（红旗 0）、stdout 与 log 双具名、一个坏档只算**一个**红旗、反引号**不做命令替换**、复原字节同；复原后复跑 rc=0 ⇒ 这些格**判得了**（✗ 恒真／硬编码）"
 exit 0
