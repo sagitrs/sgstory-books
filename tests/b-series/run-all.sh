@@ -20,9 +20,31 @@
 # ★**本档用 ASCII 变量名**（`fail_n`／`redflag_n`／`crash_n`）：★实测本机 bash **不接受非 ASCII 标识符**
 #   （`红=0` 会被当**命令**执行 ⇒ `command not found`，且 `$崩` **不展开** ⇒ 我首版即栽此）✓
 # 用法：cd <books 检出> && ENGINE=<引擎检出> bash tests/b-series/run-all.sh
+#       语法闸形态（✗ 不需 ENGINE/产物）：bash tests/b-series/run-all.sh --syntax-only
+#       （CI PR 门用此形态；判据闸仍归 nightly —— 见下 `--syntax-only` 分支）
 # ══════════════════════════════════════════════════════════════════════
 set -u
 G="$(cd "$(dirname "$0")" && pwd)"
+
+# ── `--syntax-only` 形态（`gsvector-ci#18` · Leader `temp-guest-1` 04:40Z 四条落法①）──
+#   逻辑留本档（单一来源）：CI 与本地跑**同一段代码**（① 段原样）·跳过 ENGINE 要求与产物前置。
+#   只跑 ① 语法闸；坏档 ⇒ `exit 2`（＝族里「红旗/装置坏」语义，✗ 不是「判据红」）。
+#   判据闸（②）不在本形态内 —— 判据在 nightly（e2e-window.yml 步 26）✓
+if [ "${1:-}" = "--syntax-only" ]; then
+  echo "◆ 形态：--syntax-only（**只查语法** · 判据在 nightly ✗ 本输出不代表判据通过）"
+  bad=0
+  for f in "$G"/*.mjs; do
+    if timeout 60 node --check "$f" >/dev/null 2>&1; then echo "  ✓ $(basename "$f")"
+    else echo "  ✗★ 语法坏档：$(basename "$f")"; timeout 60 node --check "$f" 2>&1 | head -4 | sed 's/^/        /'; bad=$((bad+1)); fi
+  done
+  if [ "$bad" -gt 0 ]; then
+    echo "  ⇒ ★语法坏档 $bad 个 ⇒ exit 2（红旗/装置坏语义）"
+    exit 2
+  fi
+  echo "  ⇒ 语法坏档 0（**仅语法过** · 判据闸在 nightly，✗ 由本输出宣称）"
+  exit 0
+fi
+
 : "${ENGINE:?须给 ENGINE=<引擎检出>}"
 export E="$ENGINE" ENGINE="$ENGINE" B="$(pwd)"
 echo "◆ 装置面：E/ENGINE=$ENGINE ｜ B=$(pwd)"
