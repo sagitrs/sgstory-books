@@ -66,3 +66,22 @@ export const ENTRIES = deepFreeze([
   { id: 'intel-forester', name: '守林人线索', kind: 'intel', category: 'cat-intel', visible: r => r.forester.stage !== 'unmet' },
   { id: 'intel-binding', name: '塔门线索', kind: 'intel', category: 'cat-intel', visible: r => r.binding !== null },
 ]);
+
+// ── `books#576` 组合与规则表（**游戏层**，✗ 引擎）──────────────────────────────
+/* 规则表是**唯一事实源**：效果顺序／叠加／互斥／消耗／清除。
+ *   ★数值不在本表写死 —— 由 `game.mjs` 的 `组合效果()` 用与 `counterChance()` **同一组常量**
+ *     推出（✗ 两处真值；同一优势 ✗ 同时改概率与次数，见票面「不包含」）。 */
+export const COMBO_RULES = deepFreeze({
+  顺序: '基础反扑概率 → 武器（tier ×15）→ 祝福（−15）→ 诅咒（+15）→ 夹取 [5,95]；减伤只在伤害结算时按护甲取一次',
+  叠加: '同类各计一次：武器只取在装那件，祝福与诅咒各一次；✗ 不得把同一优势重复算到概率与次数',
+  互斥: '祝福与诅咒可并存，但只按**净额**计入概率（−15 + 15 ＝ 0），✗ 不各自另算一份',
+  消耗: '塔门协助承诺（`binding`）只助一次；用后 `consumed` 置真，✗ 不得二次协助',
+  清除: '换装只清本槽（另一槽与祝福／诅咒保留）；死亡清空全部装备与祝福／诅咒；存读原样保留（含 `consumed`）',
+});
+/* 三组组合：用途各不相同（进攻／防守／风险），`requires` 即「生效判据」；
+ *   实际作用一律由 `组合效果()` 复算 —— 本表只登记**组合与用途**，✗ 不登记数值。 */
+export const COMBOS = deepFreeze([
+  { id: 'assault', name: '破甲突击', purpose: '进攻：把敌方反击概率压到接近下限', requires: { weapon: 'sabre', blessed: true } },
+  { id: 'bulwark', name: '铁壁守夜', purpose: '防守：把每次有效反击伤害压到最低，并用掉塔门承诺', requires: { armor: 'mail', assist: true } },
+  { id: 'reckless', name: '诅咒贪财', purpose: '风险：以负状态换更高反击概率（与祝福并存时按净额）', requires: { cursed: true } },
+]);

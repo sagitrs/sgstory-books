@@ -1,4 +1,4 @@
-import { ITEMS, BREAD, SHOP_STOCK, CATEGORIES, ENTRIES, ENEMIES, NODES, UNLOCKS } from './content.mjs';
+import { ITEMS, BREAD, SHOP_STOCK, CATEGORIES, ENTRIES, ENEMIES, NODES, UNLOCKS, COMBO_RULES, COMBOS } from './content.mjs';
 const MAX_HP = ITEMS.hp.max, MAX_RUNS = 1000000, MAP = 'grayharbor', WEAPON_STEP = 15, COUNTER_BLESSING = 15, COUNTER_CURSE = 15;
 // 在身条目＝非资源条目（消耗品与装备）；资源不占背包格（#609 §2）。
 const CARRY_IDS = Object.keys(ITEMS).filter(id => ITEMS[id].class !== 'resource');
@@ -83,6 +83,29 @@ export function validate(s) {
   if (r.phase === 'death' && (r.counts.gold > 499 || r.counts.food !== 0 || carryTotal(r.counts) !== 0 || r.equipped.weapon !== 'none' || r.equipped.armor !== 'none')) return false;
   if (r.visited.includes('canal') && !has(s, 'canal')) return false;
   return true;
+}
+/* `books#576`：**组合与规则表的唯一实现** —— 顺序／叠加／互斥／消耗／清除都在这里，
+ *   ✗ 不在 `view()`/`battle()` 里另写一份（数值与 `counterChance()` 同源：WEAPON_STEP／
+ *   COUNTER_BLESSING／COUNTER_CURSE ⇒ 同一优势不会同时改「概率」与「次数」）。 */
+export function 组合效果(s) {
+  const r = s.run;
+  const weapon = r.equipped.weapon === 'none' ? 0 : ITEMS[r.equipped.weapon].tier;
+  const armor = r.equipped.armor === 'none' ? 0 : ITEMS[r.equipped.armor].armor;
+  const 武器减 = weapon * WEAPON_STEP;
+  const 祝福减 = r.blessing ? COUNTER_BLESSING : 0;
+  const 诅咒增 = r.curse ? COUNTER_CURSE : 0;
+  const 净额 = -武器减 - 祝福减 + 诅咒增;   // 同类各计一次；祝福/诅咒按净额（互斥面不另算一份）
+  const 生效 = COMBOS.filter((c) => {
+    const q = c.requires;
+    if (q.weapon && r.equipped.weapon !== q.weapon) return false;
+    if (q.armor && r.equipped.armor !== q.armor) return false;
+    if (q.blessed && !r.blessing) return false;
+    if (q.cursed && !r.curse) return false;
+    if (q.assist && !assisted(r)) return false;
+    return true;
+  }).map((c) => c.id);
+  return { 武器减, 祝福减, 诅咒增, 净额, 减伤: armor, 生效,
+    说明: `武器-${武器减}｜祝福-${祝福减}｜诅咒+${诅咒增}｜护甲减${armor}` };
 }
 export function counterChance(base, weapon, blessing, curse) { return Math.max(5, Math.min(95, base - weapon * WEAPON_STEP - (blessing ? COUNTER_BLESSING : 0) + (curse ? COUNTER_CURSE : 0))); }
 export function battle(enemy, hp, weapon, armor, blessing, curse, random) {
@@ -325,7 +348,9 @@ export function view(s) {
   const detail = carried.map(k => `${ITEMS[k].name}：${describe(k, true)}`).join('\n');
   const bagNames = carried.flatMap(k => Array(counts[k]).fill(ITEMS[k].name)).join('、') || '空';
   const gearName = id => id === 'none' ? '无' : ITEMS[id].name;
-  const bag = `武器：${gearName(r.equipped.weapon)}；护甲：${gearName(r.equipped.armor)}；${blessingText(r)}。\n背包：${bagNames}。${detail ? '\n' + detail : ''}`;
+  const 组合 = 组合效果(s);
+  const 组合行 = 组合.生效.length ? `\n组合：${组合.生效.map((id) => { const c = COMBOS.find((x) => x.id === id); return `${c.name}（${c.purpose}）`; }).join('；')}` : '';
+  const bag = `武器：${gearName(r.equipped.weapon)}；护甲：${gearName(r.equipped.armor)}；${blessingText(r)}。\n背包：${bagNames}。${detail ? '\n' + detail : ''}${组合行}`;
   const map = mapText(s);
   const ending = { victory: '送灯成功', death: '送灯失败', withdrawn: '旅程撤退' }[r.phase];
   const travel = r.node === 'grove' && r.phase === 'journey' ? '旅程规则：本事件完成后前进耗1粮；分给守林人的2粮另计。' : '';

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import game, { initial, validate, apply, view, inspect, battle, counterChance, encounterOutcome, enemyFor } from '../../../stories/hof-cli/game.mjs';
+import game, { initial, validate, apply, view, inspect, battle, counterChance, encounterOutcome, enemyFor, 组合效果 } from '../../../stories/hof-cli/game.mjs';
 import { ENEMIES, ITEMS } from '../../../stories/hof-cli/content.mjs';
 const { Session } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/session.mjs')).href);
 const { Store } = await import(pathToFileURL(path.join(process.env.HOF_ENGINE, 'src/cli/storage.mjs')).href);
@@ -410,4 +410,67 @@ test('HOF-U81 stored interface version mismatch is named without showing the old
     assert.deepEqual(s.snapshot(), before);
     assert.equal(await fs.readFile(path.join(dir, 'old.json'), 'utf8'), text, '档文件不得被改写');
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+
+// 组合与规则表（#576）：顺序／叠加／互斥／消耗／清除；单一实现＝组合效果()。
+const 武装 = ids => walk(initial(), ['begin', 'cliff', 'ore', ...ids]);
+test('HOF-U83 combo table: weapon shifts counter odds once and no combo is active alone', () => {
+  const s = 武装(['buy-sabre']);
+  const e = 组合效果(s);
+  assert.deepEqual(e.生效, []);
+  assert.equal(e.武器减, 45); assert.equal(e.祝福减, 0); assert.equal(e.诅咒增, 0); assert.equal(e.净额, -45);
+  assert.equal(counterChance(50, 3, false, false), 50 + e.净额);   // 与 counterChance 同源：只减一次
+  assert.doesNotMatch(view(s).bag, /组合：/);
+});
+test('HOF-U84 combo table: sabre and blessing stack once per class and match counterChance', () => {
+  const s = 武装(['buy-sabre']); s.run.blessing = true; assert.equal(validate(s), true);
+  const e = 组合效果(s);
+  assert.deepEqual(e.生效, ['assault']);
+  assert.equal(e.净额, -(45 + 15));
+  assert.equal(counterChance(80, 3, true, false), 80 + e.净额);
+  assert.match(view(s).bag, /组合：破甲突击（进攻/);
+});
+test('HOF-U85 combo table: blessing and curse count as a net figure, floor clamps, armor applies once', () => {
+  const s = 武装(['buy-sabre', 'buy-mail']); s.run.blessing = true; s.run.curse = true; assert.equal(validate(s), true);
+  const e = 组合效果(s);
+  assert.equal(e.祝福减, 15); assert.equal(e.诅咒增, 15); assert.equal(e.净额, -45);        // 互斥：只按净额
+  assert.equal(e.减伤, 3);                                                              // 护甲取在装那件
+  assert.equal(counterChance(10, 3, true, false), 5);                                   // 极端：夹到下限
+  assert.equal(counterChance(100, 3, true, true), 100 - 45 - 15 + 15);                  // 极端：上限侧可复算
+  assert.deepEqual(组合效果(s).生效, ['assault', 'reckless']);   // 两组合可同存；净额仍只按一次计
+});
+test('HOF-U86 combo table: swapping a slot clears only that slot and drops its combo', () => {
+  const s = 武装(['buy-knife', 'buy-sabre']); s.run.blessing = true;
+  assert.deepEqual(组合效果(s).生效, ['assault']);
+  assert.equal(apply(s, 'equip-knife', quiet).kind, 'accepted');
+  assert.equal(s.run.equipped.weapon, 'knife');
+  assert.equal(s.run.blessing, true);                       // 另一面保留
+  assert.deepEqual(组合效果(s).生效, []);
+});
+test('HOF-U87 combo table: the tower pledge assists once and is consumed', () => {
+  const base = initial();
+  const st = { run: { ...base.run, node: 'elite', equipped: { weapon: 'none', armor: 'mail' },
+    binding: { mapId: base.run.mapId, nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false } } };
+  assert.deepEqual(组合效果(st).生效, ['bulwark']);
+  st.run.binding.consumed = true;
+  assert.deepEqual(组合效果(st).生效, []);                   // 消耗后 ✗ 二次协助
+});
+test('HOF-U88 combo table: save and restore keep the equipped combo', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'combo-'));
+  try {
+    const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre']);
+    const saved = a.snapshot();
+    const store = new Store(dir); await store.save(a, 'combo');
+    const b = new Session(game, 999); await store.load(b, 'combo');
+    assert.deepEqual(b.snapshot().state, saved.state);
+    assert.deepEqual(组合效果(b.snapshot().state), 组合效果(saved.state));
+    assert.equal(组合效果(saved.state).净额, -45);
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+test('HOF-U89 combo table: equip changes are explained in the CLI bag line', () => {
+  const s = 武装(['buy-sabre']); s.run.blessing = true;
+  assert.match(view(s).bag, /武器：长刀/); assert.match(view(s).bag, /组合：破甲突击（进攻/);
+  const t = 武装(['buy-knife', 'buy-sabre']); t.run.blessing = true;
+  apply(t, 'equip-knife', quiet);
+  assert.match(view(t).bag, /武器：短刃/); assert.doesNotMatch(view(t).bag, /组合：/);
 });
