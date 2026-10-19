@@ -86,7 +86,14 @@
       "HOF-U79 run state carries no legacy dual writes and resources stay out of the bag",
       "HOF-U80 death gold bound is rejected above the halving ceiling",
       "HOF-U81 stored interface version mismatch is named without showing the old save",
-      "HOF-U82 inspect entries follow a whole counts replacement, not only in-place edits"
+      "HOF-U82 inspect entries follow a whole counts replacement, not only in-place edits",
+      "HOF-U83 combo table: weapon shifts counter odds once and no combo is active alone",
+      "HOF-U84 combo table: sabre and blessing stack once per class and match counterChance",
+      "HOF-U85 combo table: blessing and curse count as a net figure, floor clamps, armor applies once",
+      "HOF-U86 combo table: swapping a slot clears only that slot and drops its combo",
+      "HOF-U87 combo table: the tower pledge assists once and is consumed",
+      "HOF-U88 combo table: save and restore keep the equipped combo",
+      "HOF-U89 combo table: equip changes are explained in the CLI bag line"
     ],
     "knife": {
       "name": "H1",
