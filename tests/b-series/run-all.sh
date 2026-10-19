@@ -79,6 +79,11 @@ for c in "${CASES[@]}"; do
     echo "      ★红旗：出声 $((y+n)) < 下限 $need ⇒ 档被**截断/早退**"; redflag_n=$((redflag_n+1))
   fi
   fail_n=$((fail_n+n))
+  # ★判据红**具名到 stdout**（`#629` 增补③ · 领队 01:10Z 裁）：判据红原先**只累加 `fail_n`、不印具名行** ✗ ⇒
+  #   到了步 26（CI 那一步）只剩 `red=N` ⇒ **违反本族头注自己写的「红须具名」** ✗
+  #   （`.run.*.log` 在 evidence 目录里，CI 读者通常看不到）。⇒ 与**红旗分支同形**，把该档的 `✗` 行印到 stdout。
+  #   ⚠ 限 5 行（✗ 不刷屏）；完整逐条仍在 `.run.<档>.log` ✓
+  if [ "$n" -gt 0 ]; then grep -nE '^✗' "$log" | head -5 | sed 's/^/        /'; fi
 done
 
 echo; echo "════ 汇总（★已转正口径：红应为 0）════"
