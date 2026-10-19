@@ -65,7 +65,12 @@ fail_n=0; redflag_n=0
 for c in "${CASES[@]}"; do
   f="${c%%:*}"; need="${c##*:}"
   if [ ! -f "$G/$f" ]; then echo "  ✗★ 档缺失：$f ⇒ 红旗"; redflag_n=$((redflag_n+1)); continue; fi
-  if ! timeout 60 node --check "$G/$f" >/dev/null 2>&1; then echo "  —  $f 跳过（语法坏档）"; redflag_n=$((redflag_n+1)); continue; fi
+  if ! timeout 60 node --check "$G/$f" >/dev/null 2>&1; then
+    # ★**不在这里加红旗数**（`#629` 增补④ · N2 · `tester-3` 探出、领队复现）：
+    #   ① 段的 glob 是**目录下全部 `.mjs`** ⇒ 任何 `CASES` 成员都已被 `bad` 计过 ⇒ 此处再加一**必然是双计** ✗
+    #   （实测：改坏一个在 `CASES` 里的档 ⇒ 旧形报「语法坏档 1 ｜ 红旗 **2** 个」）。
+    #   ★仍保留提示行（读的人要知道本档被跳过了）；★「档缺失」分支**不动** —— 缺失档不在 glob 里，只被 ② 计一次 ✓
+    echo "  —  $f 跳过（语法坏档）"; continue; fi
   log="$G/.run.$f.log"
   timeout 1800 node "$G/$f" >"$log" 2>&1; rc=$?
   y=$(grep -cE '^✓' "$log"); n=$(grep -cE '^✗' "$log")
@@ -90,8 +95,11 @@ echo; echo "════ 汇总（★已转正口径：红应为 0）═══�
 echo "  语法坏档 $bad ｜ **判据红 $fail_n 条（应为 0）**｜ ★红旗 $redflag_n 个（✗ 容忍 ⇒ exit 2）"
 if [ "$redflag_n" -gt 0 ]; then
   echo "  ⇒ ★**装置/前置有问题**（✗ 判据红、✗ 产品缺陷）：逐档红旗见上（坏档／崩／零出声／早退）"
-  echo "      ★零出声多半＝**产物不在位**或**产物陈旧**（★本器已在前置断「在位」；陈旧由各档 `B*-0` 前置格自报 ✓）"
-  echo "      ★故请**先**核：① 产物在否 ② 是否新于源码 ③ `ENGINE` 指对树 ⇒ 再谈判据红 ✓"
+  # ★双引号里的反引号会做**命令替换**（`#629` 增补④ · N1 · `tester-3` 探出、领队复现）：走到**红旗路径**时
+  #   stderr 会多出 `B*-0: command not found`／`ENGINE: command not found`，且提示行里那两处**丢字** ✗
+  #   （实测：`③ `ENGINE` 指对树` ⇒ 印成 `③  指对树`）⇒ 反引号一律**转义** ✓
+  echo "      ★零出声多半＝**产物不在位**或**产物陈旧**（★本器已在前置断「在位」；陈旧由各档 \`B*-0\` 前置格自报 ✓）"
+  echo "      ★故请**先**核：① 产物在否 ② 是否新于源码 ③ \`ENGINE\` 指对树 ⇒ 再谈判据红 ✓"
   exit 2
 fi
 # ★转正后的判力：判据红 > 0 ⇒ exit 1 ⇒ 步 26 走现成的 rc≠0 分支遂红（✗ 不必解冻 workflow）
