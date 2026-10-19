@@ -58,6 +58,10 @@ declare -a CASES=(
 )
 echo; echo "── ② 判据闸（★三者同读：rc ＋ ✓/✗ 出声 ＋ 格数下限）──"
 fail_n=0; redflag_n=0
+# ★语法坏档**进红旗计数**（`#629` 增补② · 预存缺陷）：① 段算出的 `bad` 原先**只印不计数** ⇒
+#   目录内某个**不在 `CASES`** 的 `.mjs` 语法坏时，本器仍 `exit 0` ✗。⇒ 把既有的 `bad` 接进红旗 ⇒ `exit 2` ✓
+#   （★只接计数，✗ 不改 ① 段本身的判定）
+[ "$bad" -gt 0 ] && redflag_n=$((redflag_n+bad))
 for c in "${CASES[@]}"; do
   f="${c%%:*}"; need="${c##*:}"
   if [ ! -f "$G/$f" ]; then echo "  ✗★ 档缺失：$f ⇒ 红旗"; redflag_n=$((redflag_n+1)); continue; fi
