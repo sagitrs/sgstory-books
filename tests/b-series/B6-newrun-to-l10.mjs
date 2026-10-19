@@ -1,4 +1,4 @@
-/* B6 判据（`books#425`）· 候实现红测 · sagitrs-tester-3  ｜ ★联合收口票
+/* B6 判据（`books#425`）· 已转正（`#624`，2026-10-19）· sagitrs-tester-3  ｜ ★联合收口票
  *
  * 口径：`#425` 票面四条 ＋ B1 冻结的九层目标。
  *   ① **正常流程完整走通，不用测试模式跳过地图/课程/出口**；每批迁移先回归再总收口。
@@ -7,7 +7,7 @@
  *   ④ 实现/测试合法合入（不属本档）。
  *   ★票面注：**测试从 B2 开始**，终票只是联合收口；不把最后验收都压在功能完成后。
  *
- * ★本档现在应当是红的（B2-B4 未落 ⇒ 端到端不可能走通）。红须**具名**。
+ * ★本档**已转正**（`#624`，2026-10-19）：口径是**红应为 0**（红 > 0 ⇒ `run-all.sh` `exit 1`）。红须**具名**。
  * 用法：ENGINE=<引擎检出> node tests/b-series/B6-newrun-to-l10.mjs
  */
 const H = await import('file://' + process.cwd() + '/tools/e2e-harness.mjs');
@@ -74,5 +74,5 @@ const 成形状 = (g != null && Array.isArray(g.课程层) && g.课程层.length
 
 console.log(out.join('\n'));
 const 红 = out.filter((l) => l.startsWith('✗')).length;
-console.log(`\n  ⇒ B6 失败 ${红} 条（${红 ? '★候实现：B2-B4 未落 ⇒ 端到端不可能走通 ⇒ 本档为**红候实现**' : '全过'}）`);
+console.log(`\n  ⇒ B6 失败 ${红} 条（${红 ? '★判据红：已转正 ⇒ 红应为 0，逐条具名见上' : '全过'}）`);
 process.exit(红 ? 1 : 0);
