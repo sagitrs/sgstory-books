@@ -31,8 +31,10 @@ const SC = s.SC, B = SC.setup.BABEL, R = SC.setup.RPG, V = () => SC.State.variab
 
 /* ── ② 返程政策：旧损毁**先于**新附加（票面②）── */
 const 返程 = B?.返程 ?? R?.返程 ?? null;
+/* ★`#632` 收紧（OR 一翼撑绿）：原形 `顺序!=null || 旧损毁先===true` 是 **OR** ⇒ 只翻一翼
+ *   （顺序声明仍在、`旧损毁先:false`）时顺序那一翼**仍撑绿** ✗ ⇒ 改 **AND**（同族形）。 */
 判('E2-4 ★返程有**顺序**声明：旧损毁**先于**新附加（票面②）',
-	返程 != null && typeof 返程 === 'object' && (返程.顺序 != null || 返程.旧损毁先 === true),
+	返程 != null && typeof 返程 === 'object' && 返程.顺序 != null && 返程.旧损毁先 === true,
 	返程 ? JSON.stringify(返程).slice(0, 130) : '（返程未声明）');
 
 /* ── ③ 普通前进门 **✗ 当返城**（票面③）── */

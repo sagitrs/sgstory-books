@@ -28,26 +28,39 @@ const SC = s.SC, B = SC.setup.BABEL, V = () => SC.State.variables;
 const 跑 = V().babelRun ?? null;
 
 /* ── ① 新局**不带**旧预知（B1 第4项）── */
+/* ★`#632` 收紧（缺席判据）：原形 `!(跑 && …)` 在 **`babelRun` 缺**时也为真 ⇒ 初始化坏掉时本格**不响** ✗
+ *   ⇒ 现把「**读不到**」与「读到且对」分开（缺面 ⇒ 红且具名）。 */
 判('B5-1 ★新局状态里**无活动预知**（B1 第4项：同代、无跨局继承）',
-	!(跑 && (跑.预知?.活动 === true || 跑.预知?.已授 === true)),
-	`babelRun.预知=${JSON.stringify(跑?.预知 ?? null)}`);
+	跑 != null && !(跑.预知?.活动 === true || 跑.预知?.已授 === true),
+	跑 == null ? '✗ 读不到 `babelRun`（初始化坏？）—— 缺面**不**算通过' : `babelRun.预知=${JSON.stringify(跑?.预知 ?? null)}`);
 
 /* ── ② 已战：缺键为「无此记录」，**不以深度补成 true**（B1 第三节）── */
 const 已战 = 跑?.已战 ?? null;
 判('B5-2 ★`babelRun.已战`**存在**且是**账形体**（B1：缺键为「无此记录」，✗ 不以深度补 true）',
 	已战 != null && typeof 已战 === 'object' && !Array.isArray(已战),
 	`babelRun.已战=${JSON.stringify(已战).slice(0, 90)}`);
-判('B5-3 ★**不另存** `map.deepest` 同义账（B1：用既有位置与 babelRun.deepest 权威）',
-	!Object.prototype.hasOwnProperty.call(V().map ?? {}, 'deepest') || V().map?.deepest === undefined,
-	`V().map.deepest=${JSON.stringify(V()?.map?.deepest)}`);
+/* ★`#632` 收紧（缺席判据 ＋ 读面本不存在）：原形读 `V().map?.deepest`，而**实测该面在本产品里不存在**
+ *   （boot 与 moveTo 后皆 `undefined`）⇒ 它的绿是「没东西可抓」，同义账加到别处它不会响 ✗。
+ *   ⇒ 改成：**权威面 `babelRun` 须读得到** ＋ **全状态面里带 `deepest` 的只准是 `babelRun`**（多一个 ⇒ 红）。 */
+const 带deepest的面 = Object.entries(V()).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)
+	&& Object.prototype.hasOwnProperty.call(v, 'deepest')).map(([k]) => k);
+判('B5-3 ★**不另存** `deepest` 同义账（权威面 `babelRun.deepest` 须**读得到**；✗ 别的状态面不得再带 `deepest`）',
+	V().babelRun != null && 带deepest的面.length === 1 && 带deepest的面[0] === 'babelRun',
+	V().babelRun == null ? '✗ 读不到 `babelRun`（初始化坏？）—— 缺面**不**算通过'
+		: `带 deepest 的状态面=[${带deepest的面.join(',') || '（无）'}]（须恰为 babelRun）`);
 
 /* ── ③ 已领：**不新建**每层 false/true（B1 第3项 ＋ 第三节）── */
+/* ★`#632` 收紧（缺席判据 ＋ 宽判据）：①`跑` 缺 ⇒ 原形**绿**（初始化坏时不响）⇒ 现须**红且具名**；
+ *   ②`every` ⇒ `some`：旧形下 `{L1:true, 备注:'x'}` 这种**混键账**被 `every` 放过去 ✗。 */
 判('B5-4 ★**不新建**「每层已领」账（B1 第3项：去掉独立「已领」账的验收要求）',
-	!(跑 && 跑.已领 != null && typeof 跑.已领 === 'object' && Object.keys(跑.已领).every((k) => /^L\d+$/.test(k))),
-	`babelRun.已领=${JSON.stringify(跑?.已领 ?? null).slice(0, 90)}`);
+	跑 != null && !(跑.已领 != null && typeof 跑.已领 === 'object' && Object.keys(跑.已领).some((k) => /^L\d+$/.test(k))),
+	跑 == null ? '✗ 读不到 `babelRun`（初始化坏？）—— 缺面**不**算通过'
+		: `babelRun.已领=${JSON.stringify(跑?.已领 ?? null).slice(0, 90)}`);
 
 /* ── ④ 抽签事件账 `span1Events` **原样保留**（B1 第三节）── */
-判('B5-5 ★`span1Events` 是**保留**式账（B1：不因读档/退役/刷新重新抽）',
+/* ★`#632` 改名（按领队裁定「以判据为准」）：本格只断**键存在** ⇒ 格名只承诺存在性；
+ *   「不因读档/退役/刷新重新抽」那一面**不在本格**（✗ 留旧名会让读的人以为它已覆盖）。 */
+判('B5-5 ★`span1Events` 账**在册**（只断**键存在**；「不重抽」的保留语义**不在本格**）',
 	Object.prototype.hasOwnProperty.call(V(), 'span1Events'),
 	`span1Events=${JSON.stringify(V()?.span1Events ?? null).slice(0, 90)}`);
 

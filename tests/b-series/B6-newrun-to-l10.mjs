@@ -27,9 +27,12 @@ const SC = s.SC, B = SC.setup.BABEL, V = () => SC.State.variables;
 
 /* ── ② 九层框架**端到端可寻址**（逐层 moveTo 并读回）── */
 const 层 = ['L1','L2','L3','L4','L5','L6','L7','L8','L9'];
+/* ★`#632` 收紧（按领队 2026-10-19T02:0xZ 裁定「优先按名与注释收紧」）：本档注释写的是「逐层 `moveTo`
+ *   **并读回**」而代码只断「不抛」⇒ 现**真的读回位置**（`V().位置 === 该层`）—— 这样
+ *   「`moveTo` 静默不移动」那一面也咬得住（✗ 不再只算「不抛即达」）。 */
 const 通 = [];
-for (const L of 层) { try { B.map.moveTo(L); 通.push(L); } catch { /* 该层不可达 */ } }
-判('B6-2 ★九层**端到端可寻址**（L1…L9 逐层进得去）',
+for (const L of 层) { try { B.map.moveTo(L); if (String(V()?.位置) === L) 通.push(L); } catch { /* 该层不可达 */ } }
+判('B6-2 ★九层**端到端可寻址**（L1…L9 逐层 `moveTo` **并读回位置**）',
 	通.length === 层.length, `实达 ${通.length}/${层.length}｜达=${通.join(',') || '（无）'}`);
 
 /* ── ③ 到 L10 与返城**分开**（✗ 把前进门当返城）──

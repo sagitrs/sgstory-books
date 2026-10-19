@@ -52,9 +52,13 @@ if (刀 === '--knife=2') {
 }
 
 /* ── ① 准备区与 Boss 入口在**统一框架**内 ── */
+/* ★`#632` 收紧（OR 一翼撑绿 ＋ **翼乙读的是不存在的面**）：原形翼乙 `moveTo('L9准备区')` 实测**恒抛**
+ *   （「不存在的地点「L9准备区」」）—— 准备区的真实 id 是 `B.准备区.id`（现取 `L9-camp`）⇒ 那一翼
+ *   **永远为假**，本格只是靠翼甲撑着 ✗。⇒ 改成 **AND**，且翼乙**按真实 id 走**（读回位置相等）。 */
+const 准备区可寻址 = () => { const id = B?.准备区?.id; if (!id) return false; try { B.map.moveTo(id); return String(V()?.位置) === id; } catch { return false; } };
 判('B4-1 ★L9 **准备区**是可寻址的独立态（✗ 直接进 Boss）',
-	(B?.准备区 ?? null) != null || (() => { try { B.map.moveTo('L9准备区'); return String(V()?.位置) === 'L9准备区'; } catch { return false; } })(),
-	`B.准备区=${JSON.stringify(B?.准备区 ?? null).slice(0,60)}｜moveTo 后位置=${JSON.stringify(V()?.位置 ?? null)}`);
+	(B?.准备区 ?? null) != null && 准备区可寻址(),
+	`B.准备区=${JSON.stringify(B?.准备区 ?? null).slice(0,60)}｜按 id moveTo 后位置=${JSON.stringify(V()?.位置 ?? null)}（须 === 该 id）`);
 /* ★两键**各自**是必要条件（✗ OR）—— 本席实测的判据洞：
  *   旧形 `固定 === true || 入池 === false` 是 **OR** ⇒ ★**一翼撑绿**：
  *   只翻「入池」一键（`固定: true ∧ 入池: true` ＝ **Boss 入池成真**）时，
