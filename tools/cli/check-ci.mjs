@@ -50,7 +50,7 @@ function check(d) {
   need(!/^  push:/m.test(w) && /^  pull_request:/m.test(w) && /^  workflow_dispatch:$/m.test(w) && /^    - cron: '17 7 \* \* \*'$/m.test(w), 'trigger');
   need(eq([...w.matchAll(/^      - '([^']+)'$/gm)].map(m => m[1]), PATHS), 'paths');
   need(w.match(/permissions:\n([\s\S]*?)(?=^\S)/m)?.[1] === '  contents: read\n', 'permissions');
-  need(/^    runs-on: ubuntu-latest$/m.test(w) && /^    timeout-minutes: 3$/m.test(w) && /^          node-version: '22'$/m.test(w), 'runtime-budget');
+  need(/^    runs-on: sgstory-books$/m.test(w) && /^    timeout-minutes: 3$/m.test(w) && /^          node-version: '22'$/m.test(w), 'runtime-budget');
   need(!/^    env:\n(?:.*\n)*?\s+TMPDIR: \$\{\{ runner.temp \}\}/m.test(w), 'runner-context-at-job-env');
   need((w.match(/TMPDIR: \$\{\{ runner.temp \}\}/g) || []).length === 1 && !/^\s+if:/m.test(w) && !/continue-on-error|pull_request_target/.test(w), 'unconditional');
   const sections = w.split(/^    steps:\n/m);
