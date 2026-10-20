@@ -59,7 +59,11 @@ export const 豁免 = Object.freeze({
   'check-refs.knives.sh': '引用核的**刀脚本**：由本地/门测手跑（CI 里 `check-refs --require-symbols` 已含注入即红的自证）',
   'check-refs-docs.knives.sh': 'docs 报告态的刀脚本（同上，手跑）；CI 里 `check-refs` 那一步已含注入自证',
   'check-premerge.mjs': '**合前检查**：在本地/评审时手跑（它的输入是两棵树，✗ 不是 CI 里的单树门）',
-  'hof-income-sample.mjs': '`books#537` ① 收入/成长节奏采样：本地手跑出读数（60 局约 6 秒；受控四臂约 8 秒）；CI 接线另笔评估（本笔不自行认定它算不算门，报领队按 gates 判）',
+  /* ★性质与上面那批「候接线」不同（领队 2026-10-20 裁 (a)）：那些是**本该跑的门**、只是还没接；
+   *   本件是**读数生成工具** —— 它的产物是读数档里的数，不是一个红/绿判据，故不进 CI 覆盖面。
+   *   `hof-cli-tests.yml` 的全部 `run:` 块都不调用它；读数由 `docs/plans/hof-cli/income-tempo-sample.md`
+   *   的复跑命令**手工调起**。若日后要把它接成门（例如用它守着「收入结构变化」），另开一笔，✗ 不夹带。 */
+  'hof-income-sample.mjs': '`books#537` ① **读数生成工具，不驱动 CI 覆盖面**：产物是读数档的数，不是红/绿判据；`hof-cli-tests.yml` 不调用它，由读数档复跑命令手工调起（60 局约 6 秒、受控四臂约 8 秒）。接成门另开一笔',
   'check-norms-symbols.py': '**规范用词核**：手跑（候接线 —— 本轮池 B 首笔批只收三项，✗ 不顺手扩面）',
   'e2e-161-restart.mjs': '既有臂，**候接线**（同 `e2e-210`／`e2e-259` 一族）',
   'e2e-178-slots.mjs': '既有臂，**候接线**（同上）',

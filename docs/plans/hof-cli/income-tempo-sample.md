@@ -199,7 +199,39 @@ node tools/hof-income-sample.mjs --engine ~/tmp/engine-537 --selftest
 
 ---
 
-## 十、维护入口
+## 十、两种 pin 别混用（`check-refs` 的用法陷阱）
+
+本仓有**两份**引擎 pin 声明件，各自服务一条产品线，且**互不等于**：
+
+| 声明件 | pin | 谁用它 |
+|---|---|---|
+| `.github/engine-ref.json` | `fb20f2a2d70bd14831e90546165f531d0ca8870c` | babel（`babel-tests.yml`） |
+| `stories/hof-cli/engine-ref.json` | `7f9ef4ea8b98a636445a526ac20a4f90d5fc49cc` | HoF CLI（`hof-cli-tests.yml`） |
+
+`tools/check-refs.mjs` 核的是 `stories/babel/scenarios/scenarios.json` 里声明的**引擎 README 行号**，因此它**只属 babel 面**（`hof-cli-tests.yml` 的 `run:` 块里根本不调它）。拿 HoF CLI 的 pin 去跑它，会报三处具名红：
+
+```
+$ node tools/check-refs.mjs --engine <hof-cli pin 树> --require-symbols
+  通过 48｜不符 3
+  ✗ [span2-vermin-hp-ac-per-item] engine/README.md:50 不含其声明的符号
+  ✗ [span1-animals-hp-ac-per-item] engine/README.md:49 不含其声明的符号
+  ✗ [span1-herb-poultice-house-rule-use] engine/README.md:45 不含其声明的符号
+  rc=1
+```
+
+根因是同一行号在两个 pin 上指向不同内容（`fb20f2a2:45` 是 `Basic Rules and Legal/equipment.md`，`7f9ef4ea:45` 是 `playing-the-game.md` —— README 的 SRD 目录表条目数随 pin 变化）。换到 babel 的 pin 上，同一条命令是 `通过 51｜不符 0`，rc=0。
+
+**结论：这不是基线红，是用法错。** 记在这里的理由：它是**会被后人引用**的类型——「反正有人说是既有问题」然后跳过。真实的门状态以 CI 的 babel job 为准。
+
+复跑（两条 pin 各自跑各自的面）：
+
+```bash
+git worktree add ~/tmp/engine-fb20 fb20f2a2d70bd14831e90546165f531d0ca8870c   # babel 面
+git worktree add ~/tmp/engine-hof  7f9ef4ea8b98a636445a526ac20a4f90d5fc49cc   # HoF CLI 面
+node tools/check-refs.mjs --engine ~/tmp/engine-fb20 --require-symbols        # ⇒ 通过 51｜不符 0
+```
+
+## 十一、维护入口
 
 | 项 | 位置 |
 |---|---|
