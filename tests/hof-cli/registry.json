@@ -139,7 +139,7 @@
     "controls": [
       {
         "id": "no-save-version-check",
-        "why": "去掉引擎的 SAVE_VERSION 检查 ⇒ HOF-E20 必须红在「具名拒」这条断言上",
+        "why": "去掉引擎的 SAVE_VERSION 检查 ⇒ HOF-E20 的「具名拒」必须红。★本 control 只证明该断言会红，**不证明版本检查独立承重**：注入后旧档并非被专用短路门拦下，而是 restore 一路走通（game.version／revision 检查均过），最后落到 checkedState() 抛 GAME_STATE；而 E20 塞的 gold=7777 恰好让 validate() 失败才碰巧被兜住。实测：注入后若档状态合法（只错 version），载入会**被静默接受并替换会话** —— 说明该红形依赖「档状态恰好被篡坏」，✗ 不依赖版本检查本身。",
         "file": "engine:session",
         "anchor": "|| candidate.version !== SAVE_VERSION ||",
         "replacement": "|| false ||",

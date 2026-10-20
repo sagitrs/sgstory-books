@@ -204,8 +204,11 @@ async function gateControls(root, engine, suite, data) {
           const escaped = c.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const output = evidence.output || '';
           const namedCase = new RegExp(`^not ok \\d+ - ${escaped}$`, 'm').test(output);
-          // ★断言级：失败消息（TAP 的 `error:` 块）里必须出现 expectAssertion。
+          // ★断言级：失败消息里必须出现 expectAssertion。
           //   只判用例名会漏掉「该用例红在别的断言上」与「该断言被改成恒真仍不报」两种（见函数头注）。
+          //   ⚠ 实现是扫**整段 TAP 输出**，不是只截 `^  error:` 块 —— 比本注释原写的窄一格。
+          //     当前取值恰好安全（短串串味已实测可抓），但属「恰好安全」非「结构安全」；
+          //     收紧形（先截 error: 块再 includes）记为未覆盖面，见 tools/cli/README.md。
           const namedAssertion = output.includes(c.expectAssertion);
           const hit = mutant === 1 && namedCase && namedAssertion && !evidence.problem;
           await fs.writeFile(targetFile, bytes);
