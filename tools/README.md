@@ -49,6 +49,7 @@
 | `tools/rehearse-workflow.knives.sh` | 演练器的正向刀，针对 `$GITHUB_ENV` 跨步语义 |
 | `tools/check-norms-symbols.py` | 正文文风符号复核器，按判定面与行文面分类 |
 | `tools/balance-babel.mjs` | 战斗跑分器（LegacyBattleRunner），七夹具 × 样本 ⇒ 五战果与胜率区间 |
+| `tools/hof-income-sample.mjs` | 灰港送灯收入与成长节奏采样（`books#537` ①）：三策略 × seed 0–19 共 60 局，出净收支／逐节点账／四分母；`--controlled` 四臂只变武器档与喝药；`--selftest` 两条分母判据 |
 | `tools/e2e-280-firstload.mjs` | **首载变体** e2e（真浏览器 CDP · 两个独立 profile ＋ 有档正控）|
 | `tools/run-l10-checks.py` | 本地复现 16 个必跑 CI 等效检查与一个补充组，逐步日志／反向刀／17 步结果；不是 Actions |
 | `tools/verify-l10-city.mjs` | L10 无头装配判据模块，随故事主 verify 执行，不是独立 CLI |
@@ -520,3 +521,13 @@ node tools/check-readme-tables.mjs tools/README.md tools/cli/README.md
 **四读法。** ①点名使用完整按钮/链接文本**完全相等**；战斗动态菜单先选出完整标签，再精确点击。宿主图标载入按钮按完整可访问名称匹配（例如“载入 槽位 7”），不用空文本冒充定位。②不读 `body.textContent`，不在整页源码里搜故事文案。③比较前定义面：正文是当前 `#passages .passage` 副本去脚本、面板、通知后的文本；事实是 `babelLamplighter`、真实背包、生命与居民域分别读数。拒绝反馈可以追加通知，但不能借此改变费用、阶段或奖励。④受测点击前后不调 `show()`/人为重绘；原生载入按钮自身的宿主重建属于被测路径，浏览器刷新单独立项。
 
 **正常入口重放。** 从“跳过教学”或已有正常远征进入 L11，在“循着敲击声”查看伤者；补给不足时试干粮应拒绝，选择一回草药糊后先存档，再扶离。用原生存档 UI 载入中间档并刷新，仍需扶离且不再扣一回补给。到 L12 搬运旧道出示原件；另存此刻，可分别重放交涉与取消/确认硬闯。和平放行或真战胜后，旧室只能取一份既有绷带（两次使用，数值沿原定义）。使用合法返程回共炉，补给员应区分和平、救助与冲突。起手币/骰子是上述自动臂的验收夹具，不是玩家默认资源或作者冻结的平衡参数。
+
+## 31. `hof-income-sample.mjs` —— 灰港送灯**收入与成长节奏**采样（`books#537` ①）
+
+| 项 | 内容 |
+|---|---|
+| **清单** | 只经 `tools/cli/player.mjs` 的 stdin/stdout 黑盒驱动 `stories/hof-cli/play.mjs`，按三条**完整决策规则**（武器优先／防护优先／资源保守，各六字段：路线／购买顺序／预算／治疗／资源不足／退出／同分）跑 seed 0–19。输出四件事：四列分母（局数／正常结束／失败／无效）、净收支 min／中位／max、逐节点收支、seed 敏感性。`--controlled` 另跑受控四臂（只变武器档与是否真的喝药），用来把「省粮还是省装备」归因分清。 |
+| **固定命令** | `node tools/hof-income-sample.mjs --engine <pin 检出> --json <输出档>`；受控四臂是 `node tools/hof-income-sample.mjs --engine <pin 检出> --controlled --json <输出档>`；判别力自证是 `node tools/hof-income-sample.mjs --engine <pin 检出> --selftest`。引擎 pin 由既有门裁定（`stories/hof-cli/engine-ref.json`），本件不自读该 JSON。 |
+| **期望读数** | 样本：`✓ 无效局 0／60`，rc=0；受控：末行 `✓ 喝药臂确实喝了药（平均瓶数 > 0）—— 本表有证明力`，rc=0。自检：`⇒ 自检：2/2 如期`，rc=0。装置错（引擎根不对）rc=2 且具名；有无效局或喝药臂瓶数为 0 时 rc=1 并具名。 |
+| **设立理由** | `books#537` ① 要「收入/升级节奏读数」，但 HoF CLI **没有等级/经验面**（键集、`ITEMS`、引擎 `player.js:24` 三处都可核，见 `docs/plans/hof-cli/income-tempo-sample.md` §六）。⇒ 该量不存在，只能改测**装备档位**这条实际成长面。★两条自检判据各守一个真踩过的坑：S1「装置错不得计入正常结束」（否则跑挂了伪装成跑了），S2「撤退不得并入失败」（分母会说谎）。受控节另守第三个坑：v1 的喝药臂买了药却从不服用 ⇒ 与无药臂逐字节相同，等于用两对相同臂做结论；现在瓶数为 0 直接 rc=1。 |
+

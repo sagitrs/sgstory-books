@@ -59,6 +59,7 @@ export const 豁免 = Object.freeze({
   'check-refs.knives.sh': '引用核的**刀脚本**：由本地/门测手跑（CI 里 `check-refs --require-symbols` 已含注入即红的自证）',
   'check-refs-docs.knives.sh': 'docs 报告态的刀脚本（同上，手跑）；CI 里 `check-refs` 那一步已含注入自证',
   'check-premerge.mjs': '**合前检查**：在本地/评审时手跑（它的输入是两棵树，✗ 不是 CI 里的单树门）',
+  'hof-income-sample.mjs': '`books#537` ① 收入/成长节奏采样：本地手跑出读数（60 局约 6 秒；受控四臂约 8 秒）；CI 接线另笔评估（本笔不自行认定它算不算门，报领队按 gates 判）',
   'check-norms-symbols.py': '**规范用词核**：手跑（候接线 —— 本轮池 B 首笔批只收三项，✗ 不顺手扩面）',
   'e2e-161-restart.mjs': '既有臂，**候接线**（同 `e2e-210`／`e2e-259` 一族）',
   'e2e-178-slots.mjs': '既有臂，**候接线**（同上）',
