@@ -207,8 +207,11 @@ async function gateControls(root, engine, suite, data) {
           // ★断言级：失败消息里必须出现 expectAssertion。
           //   只判用例名会漏掉「该用例红在别的断言上」与「该断言被改成恒真仍不报」两种（见函数头注）。
           //   ⚠ 实现是扫**整段 TAP 输出**，不是只截 `^  error:` 块 —— 比本注释原写的窄一格。
-          //     当前取值恰好安全（短串串味已实测可抓），但属「恰好安全」非「结构安全」；
           //     收紧形（先截 error: 块再 includes）记为未覆盖面，见 tools/cli/README.md。
+          //   ★部分代偿（承 PR#641 的 B2）：expectAssertion **应带轴名前缀**（如
+          //     `versionLegalState: 拒因须具名旧存档不可用`）。轴间失败形相同时，只写共有的
+          //     断言身份会让装置分不出「红在哪个轴」，删掉某条轴 controls 仍全绿
+          //     —— 实测过：删掉承重轴后 controls 仍 3/3。带轴名即把宽匹配的宽度按取值收回。
           const namedAssertion = output.includes(c.expectAssertion);
           const hit = mutant === 1 && namedCase && namedAssertion && !evidence.problem;
           await fs.writeFile(targetFile, bytes);

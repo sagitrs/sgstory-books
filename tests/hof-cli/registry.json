@@ -144,7 +144,7 @@
         "anchor": "|| candidate.version !== SAVE_VERSION ||",
         "replacement": "|| false ||",
         "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
-        "expectAssertion": "拒因须具名旧存档不可用"
+        "expectAssertion": "versionLegalState: 拒因须具名旧存档不可用"
       },
       {
         "id": "restore-writes-slot-on-failure",
@@ -177,6 +177,12 @@
         "assertion": "stderr 不得带出档内内容",
         "covered": false,
         "why": "HOF-E20 用 make(7) 不带 debug ⇒ CLI 不写 stderr ⇒ 该断言在本用例恒真；stderr 面本身可写（见 player-debug.test.mjs 的 HOF-U65–U68），若将来本用例开 debug 则该断言可达"
+      },
+      {
+        "case": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "assertion": "拒因须为版本支",
+        "covered": false,
+        "why": "与 ① 覆盖同一失败形（静默接受时 refusal 为「已读取：keep」，不含「旧存档不可用」⇒ ① 先红）。元负控：单独去掉本条 ⇒ controls 仍 3/3；单独去掉 ① ⇒ 2/3。⇒ 本条是诊断性断言，✗ 不单独承重；保留用于将来 ① 文案被改宽或误删时指出「落到了状态校验」。"
       }
     ]
   }
