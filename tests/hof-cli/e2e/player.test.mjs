@@ -212,8 +212,12 @@ test('HOF-E20 stale save is refused at the CLI layer without touching session or
     //    新进程是空会话，它的 status 本来就与保存时不同，那样比会误报（本用例初版即踩此坑）。
     const beforeLoad = await q.command('status');
     const refusal = await q.command('load keep');
-    // ① 具名拒：旧存档不可用（本版不支持迁移），且指明是哪一轴不符
-    assert.match(refusal, /旧存档不可用（本版不支持迁移）/, `${axis}: ${refusal}`);
+    // ① 具名拒：旧存档不可用（本版不支持迁移），且指明是哪一轴不符。
+    // ★message 必须带**断言身份**（「拒因须具名旧存档不可用」）而不只是实得文案：
+    //   e2e.controls 的 expectAssertion 靠它判「红在哪条断言」。若 message 只写实际输出，
+    //   当实现改成别的拒绝路径（如 GAME_STATE）时，失败消息里就没有身份锚，
+    //   装置会把「红在 ①」误判成「红在别处」。
+    assert.match(refusal, /旧存档不可用（本版不支持迁移）/, `${axis}: 拒因须具名旧存档不可用；实得：${refusal}`);
     assert.match(refusal, axis === 'interfaceVersion' ? /档为接口 v\d+/ : /档为存档格式 v\d+/, `${axis}: ${refusal}`);
     // ② 会话未变：拒绝后 status 与该进程读档前逐字相等
     assert.equal(await q.command('status'), beforeLoad, `${axis}: 会话必须未变`);

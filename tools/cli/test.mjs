@@ -128,10 +128,20 @@ async function selftest(engine, suite) {
 //
 // 与 H1/H2 的分工：H1/H2 刀的是**产品源码** stories/hof-cli/game.mjs；本函数刀的是
 // **引擎**（pin 树）或产品源码的其它面，验的是「某一支用例对某类缺陷**确实会红**」。
-// 每条 controls 声明 anchor/replacement/target 三件，正文在 tests/hof-cli/registry.json：
+// 每条 controls 声明 anchor/replacement/target/**expectAssertion**，正文在 tests/hof-cli/registry.json：
 //   · 在**私有引擎与之字串唯一的锚点**上注入 ⇒
-//   · 该 suite 必须 rc=1 且 target 具名红 ⇒
+//   · 该 suite 必须 rc=1，且 target 用例具名红 ⇒
+//   · **且失败消息里必须出现 expectAssertion**（★断言级，✗ 到用例级就停）⇒
 //   · 字节复原后必须 rc=0（证明复原是真的）。
+//
+// ★为何必须判到断言级（承 PR#641 的 B1，tester-4 反证）：只判 `not ok N - <用例名>` 时，
+//   把某条判据整条改成 `assert.equal(true, true)` ⇒ 该用例依然红/绿如常，controls 照样全绿。
+//   声明写断言级、实现停在用例级，等于装置为它没验的东西背书。
+//
+// ★未可达的断言必须**显式登记**在 `unreachableAssertions`（`covered: false` ＋ why）：
+//   只让少数几条变精确，剩下的不可达仍会被「controls N/N 全绿」盖住 —— 那是把「用例级」
+//   收窄成「几条规定断言的用例级」，根问题不变。✗ 不补 control 去凑 N/N：造不出失败形时
+//   硬凑就是造假绿。
 // 引擎不是产品源码：正式引擎树**从未被植刀**，这里动的是私有副本。
 // 无 controls 声明 ⇒ 跳过（不是静默通过：打印 no-controls 并计 0 条）。
 async function gateControls(root, engine, suite, data) {
@@ -139,6 +149,13 @@ async function gateControls(root, engine, suite, data) {
   if (controls === undefined) return 0;
   if (!Array.isArray(controls)) throw new Error('APPARATUS controls must be an array');
   if (!controls.length) { console.log(`${suite} controls: none declared`); return 0; }
+  const unreachable = data?.unreachableAssertions;
+  if (!Array.isArray(unreachable)) throw new Error('APPARATUS unreachableAssertions must be declared (may be empty array)');
+  for (const u of unreachable) {
+    for (const k of ['case', 'assertion', 'why']) if (typeof u[k] !== 'string' || !u[k]) throw new Error('APPARATUS unreachableAssertions entry missing ' + k);
+    if (u.covered !== false) throw new Error(`APPARATUS unreachableAssertions ${u.assertion} must be marked covered:false, got ${JSON.stringify(u.covered)}`);
+    if (!data.cases.includes(u.case)) throw new Error(`APPARATUS unreachableAssertions ${u.assertion} names unknown case`);
+  }
   await fs.mkdir(TEMP, { recursive: true });
   const owned = await fs.mkdtemp(path.join(TEMP, 'hof-cli-controls-'));
   const pinRoot = path.join(owned, 'engine');
@@ -159,7 +176,7 @@ async function gateControls(root, engine, suite, data) {
     let failed = 0;
     try {
       for (const c of controls) {
-        for (const k of ['id', 'why', 'anchor', 'replacement', 'target']) if (typeof c[k] !== 'string' || !c[k]) throw new Error(`APPARATUS control ${c.id || '?'} missing ${k}`);
+        for (const k of ['id', 'why', 'anchor', 'replacement', 'target', 'expectAssertion']) if (typeof c[k] !== 'string' || !c[k]) throw new Error(`APPARATUS control ${c.id || '?'} missing ${k}`);
         if (c.anchor === c.replacement) throw new Error(`APPARATUS control ${c.id} anchor equals replacement`);
         if (!c.file) throw new Error(`APPARATUS control ${c.id} missing file`);
         const targetFile = resolveControlFile(c.file, root, pinRoot);
@@ -185,7 +202,12 @@ async function gateControls(root, engine, suite, data) {
           await syncPin(`control ${c.id}: pin -> cut`);
           const evidence = {}, mutant = await runSuite(root, pinRoot, suite, evidence);
           const escaped = c.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hit = mutant === 1 && new RegExp(`^not ok \\d+ - ${escaped}$`, 'm').test(evidence.output || '') && !evidence.problem;
+          const output = evidence.output || '';
+          const namedCase = new RegExp(`^not ok \\d+ - ${escaped}$`, 'm').test(output);
+          // ★断言级：失败消息（TAP 的 `error:` 块）里必须出现 expectAssertion。
+          //   只判用例名会漏掉「该用例红在别的断言上」与「该断言被改成恒真仍不报」两种（见函数头注）。
+          const namedAssertion = output.includes(c.expectAssertion);
+          const hit = mutant === 1 && namedCase && namedAssertion && !evidence.problem;
           await fs.writeFile(targetFile, bytes);
           if (!(await fs.readFile(targetFile)).equals(bytes)) throw new Error(`APPARATUS control ${c.id} engine restore failed`);
           const rc2 = git(pinRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', `control ${c.id}: restore`);
@@ -202,7 +224,7 @@ async function gateControls(root, engine, suite, data) {
             && git(pinRoot, 'status', '--porcelain=v1').stdout === ''
             && restored === 0;
           const ok = hit && same;
-          console.log(`${suite} control ${c.id}: mutant=${mutant} named=${hit} restored=${restored} byteSame=${same}`);
+          console.log(`${suite} control ${c.id}: mutant=${mutant} caseNamed=${namedCase} assertionNamed=${namedAssertion} restored=${restored} byteSame=${same}`);
           if (!ok) failed++;
         } finally {
           // 兜底复原（异常路径也走到）：先还原两处字节，再各提交一次提交把工作区恢复干净。
@@ -215,7 +237,7 @@ async function gateControls(root, engine, suite, data) {
       await fs.writeFile(pinFile, savedPin);
       git(root, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', 'control: finally pin');
     }
-    console.log(`${suite} controls: ${controls.length - failed}/${controls.length}; engine fixture is a private copy, formal pin tree never cut`);
+    console.log(`${suite} controls: ${controls.length - failed}/${controls.length} (assertion-level); unreachable(case-internal, not covered)=${unreachable.length}; engine fixture is a private copy, formal pin tree never cut`);
     return failed ? 1 : 0;
   } finally {
     await fs.rm(owned, { recursive: true, force: true });

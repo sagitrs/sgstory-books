@@ -139,27 +139,44 @@
     "controls": [
       {
         "id": "no-save-version-check",
-        "why": "去掉引擎的 SAVE_VERSION 检查 ⇒ HOF-E20 必须红在「具名拒」",
+        "why": "去掉引擎的 SAVE_VERSION 检查 ⇒ HOF-E20 必须红在「具名拒」这条断言上",
         "file": "engine:session",
         "anchor": "|| candidate.version !== SAVE_VERSION ||",
         "replacement": "|| false ||",
-        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "expectAssertion": "拒因须具名旧存档不可用"
       },
       {
         "id": "restore-writes-slot-on-failure",
-        "why": "让 restore 失败时把档写坏 ⇒ HOF-E20 必须红在「档文件不得被改写」",
+        "why": "让 restore 失败时把档写坏 ⇒ HOF-E20 必须红在「档文件不得被改写」这条断言上",
         "file": "engine:storage",
         "anchor": "session.restore(envelope); // E1",
         "replacement": "try { session.restore(envelope); } catch (e) { await this.#fs.writeFile(target, '{}', 'utf8').catch(() => {}); throw e; } // E1",
-        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "expectAssertion": "档文件不得被改写"
       },
       {
         "id": "leak-stale-content-in-message",
-        "why": "把档内内容带进错误文案 ⇒ HOF-E20 必须红在「提示不得带出档内内容」",
+        "why": "把档内内容带进错误文案 ⇒ HOF-E20 必须红在「提示不得带出档内内容」这条断言上",
         "file": "engine:session",
         "anchor": "throw new Fault('SAVE_VERSION', envelopeMismatch(candidate));",
         "replacement": "throw new Fault('SAVE_VERSION', envelopeMismatch(candidate) + '=' + candidate.state.run.counts.gold);",
-        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "expectAssertion": "提示不得带出档内内容"
+      }
+    ],
+    "unreachableAssertions": [
+      {
+        "case": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "assertion": "会话必须未变",
+        "covered": false,
+        "why": "无 control 声明。该断言可被 control 触发红形（去掉按指定轴拒绝后会话状态随档走），但当前三条 control 均未针对它 ⇒ 本表不为它背书实测覆盖，仅保留为用例内判据。"
+      },
+      {
+        "case": "HOF-E20 stale save is refused at the CLI layer without touching session or file",
+        "assertion": "stderr 不得带出档内内容",
+        "covered": false,
+        "why": "HOF-E20 用 make(7) 不带 debug ⇒ CLI 不写 stderr ⇒ 该断言在本用例恒真；stderr 面本身可写（见 player-debug.test.mjs 的 HOF-U65–U68），若将来本用例开 debug 则该断言可达"
       }
     ]
   }
