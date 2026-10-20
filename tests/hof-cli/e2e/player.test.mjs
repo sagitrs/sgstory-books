@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { playCase } from '../../../tools/cli/player.mjs';
 // These seeds are ordinary launch configuration, never a live RNG override.
 const steps = async (p, frame, labels) => { for (const label of labels) frame = await p.select(frame, label); return frame; };
@@ -175,4 +178,50 @@ test('HOF-E19 the player harness refuses a missing or ambiguous label', async ()
   assert.match(await p.select(f, '购买长刀'), /已受理/);
   assert.match(await p.command('bag'), /长刀/);
   await p.quit();
+}));
+
+// HOF-E20（#581 R1+R3）：旧版拒绝在 **CLI 会话层**的四条判据，一条用例同时断言、两条轴各测一次。
+//
+// 为何不能由 HOF-U81 顶替：U81 走 `new Store(dir)` ＋ `store.load()`，**不经 CLI 进程**，
+// 它证明的是「组件拒绝、且不动它自己造的档」，到不了「真实玩家档 ＋ 真会话」这一层。
+// 四断言为何必须分开：「会话未变」与「盘上的东西没变」判据不同、失败形态也不同——
+// 会话变了但档没变 ⇒ 玩家下次还能玩；档被改了 ⇒ 玩家进度真丢了。二者不能互相顶替。
+// 两条轴各测一次（interfaceVersion 先检／SAVE_VERSION 后检），✗ 不以一条代另一条。
+const sha256 = text => crypto.createHash('sha256').update(text).digest('hex');
+test('HOF-E20 stale save is refused at the CLI layer without touching session or file', async () => playCase(async (make, dir) => {
+  const slotPath = path.join(dir, 'slots', 'keep.json');
+  // 先造一份**真实玩家档**：走真 CLI 玩到有真 profile／run 值，再 save。
+  const p = make(); let f = await p.frame();
+  f = await steps(p, f, ['普通出发', '走崖道', '取铜矿']);
+  assert.match(await p.command('save keep'), /已保存：keep/);
+  await p.quit();
+  const pristine = await fs.readFile(slotPath, 'utf8');
+  assert.ok(pristine.includes('"wins"'), '真实档必须含 profile 真值');
+
+  for (const axis of ['interfaceVersion', 'version']) {
+    // 篡改一条轴，并塞入只可能来自档内的哨兵（U81 的 7777 招，CLI 层重做一遍）
+    const env = JSON.parse(pristine);
+    env[axis] = axis === 'interfaceVersion' ? env[axis] + 1 : env[axis] + 98;
+    env.state.run.counts.gold = 7777;
+    const tampered = JSON.stringify(env) + '\n';
+    await fs.writeFile(slotPath, tampered, 'utf8');
+    assert.notEqual(sha256(tampered), sha256(pristine), `${axis}: 篡改必须真的改了字节`);
+
+    const q = make(7); await q.frame();
+    // ② 的前像必须取**该进程自己的**现局，✗ 不拿另一进程保存时的 status 比——
+    //    新进程是空会话，它的 status 本来就与保存时不同，那样比会误报（本用例初版即踩此坑）。
+    const beforeLoad = await q.command('status');
+    const refusal = await q.command('load keep');
+    // ① 具名拒：旧存档不可用（本版不支持迁移），且指明是哪一轴不符
+    assert.match(refusal, /旧存档不可用（本版不支持迁移）/, `${axis}: ${refusal}`);
+    assert.match(refusal, axis === 'interfaceVersion' ? /档为接口 v\d+/ : /档为存档格式 v\d+/, `${axis}: ${refusal}`);
+    // ② 会话未变：拒绝后 status 与该进程读档前逐字相等
+    assert.equal(await q.command('status'), beforeLoad, `${axis}: 会话必须未变`);
+    // ③ 盘上的东西没变：sha256 前后比（✗ 只比长度）
+    assert.equal(sha256(await fs.readFile(slotPath, 'utf8')), sha256(tampered), `${axis}: 档文件不得被改写`);
+    // ④ 不泄漏档内内容：输出与 stderr 都不得出现哨兵
+    assert.equal(refusal.includes('7777'), false, `${axis}: 提示不得带出档内内容`);
+    assert.equal(q.stderr.includes('7777'), false, `${axis}: stderr 不得带出档内内容`);
+    await q.quit();
+  }
 }));

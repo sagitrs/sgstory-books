@@ -126,7 +126,8 @@
       "HOF-E16 inspect hides the unmet forester until the encounter",
       "HOF-E17 inspect debug prints entry json on stderr only",
       "HOF-E18 guarded choices print as negatives and are selected by number",
-      "HOF-E19 the player harness refuses a missing or ambiguous label"
+      "HOF-E19 the player harness refuses a missing or ambiguous label",
+      "HOF-E20 stale save is refused at the CLI layer without touching session or file"
     ],
     "knife": {
       "name": "H2",
