@@ -116,11 +116,119 @@ async function selftest(engine, suite) {
     const ok = baseline === 0 && hit && restored === 0 && same;
     console.log(`${suite} knife ${knife.name}: baseline=${baseline} mutant=${mutant} named=${hit} restored=${restored} byteSame=${same}; selftest=${ok ? '4/4' : 'red'}`);
     if (!ok) return [baseline, mutant, restored].includes(2) ? 2 : 1;
+    const controls = await gateControls(root, engine, suite, data);
+    if (controls) return controls;
     return suite === 'unit' ? await apparatus(root, engine) : 0;
   } finally {
     await fs.rm(owned, { recursive: true, force: true });
     try { await fs.access(owned); throw new Error('APPARATUS RESIDUE knife directory'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
+}
+// 可复跑的**门控负控**（承 books#581 领队初审：一次性现场自证重跑不了 ⇒ 做成装置）。
+//
+// 与 H1/H2 的分工：H1/H2 刀的是**产品源码** stories/hof-cli/game.mjs；本函数刀的是
+// **引擎**（pin 树）或产品源码的其它面，验的是「某一支用例对某类缺陷**确实会红**」。
+// 每条 controls 声明 anchor/replacement/target 三件，正文在 tests/hof-cli/registry.json：
+//   · 在**私有引擎与之字串唯一的锚点**上注入 ⇒
+//   · 该 suite 必须 rc=1 且 target 具名红 ⇒
+//   · 字节复原后必须 rc=0（证明复原是真的）。
+// 引擎不是产品源码：正式引擎树**从未被植刀**，这里动的是私有副本。
+// 无 controls 声明 ⇒ 跳过（不是静默通过：打印 no-controls 并计 0 条）。
+async function gateControls(root, engine, suite, data) {
+  const controls = data?.controls;
+  if (controls === undefined) return 0;
+  if (!Array.isArray(controls)) throw new Error('APPARATUS controls must be an array');
+  if (!controls.length) { console.log(`${suite} controls: none declared`); return 0; }
+  await fs.mkdir(TEMP, { recursive: true });
+  const owned = await fs.mkdtemp(path.join(TEMP, 'hof-cli-controls-'));
+  const pinRoot = path.join(owned, 'engine');
+  try {
+    // 私有**引擎**副本：必须是 Git 树（pin 门会查），故复制后 init + 单次提交。
+    await fs.cp(path.join(engine, 'src'), path.join(pinRoot, 'src'), { recursive: true });
+    for (const f of ['package.json', 'package-lock.json']) {
+      try { await fs.copyFile(path.join(engine, f), path.join(pinRoot, f)); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    }
+    for (const args of [['init', '--quiet', '-b', 'fixture'], ['add', '-A'], ['-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-m', 'engine fixture']]) {
+      const r = git(pinRoot, ...args);
+      if (r.error || r.status) throw new Error(`APPARATUS cannot build engine fixture: ${r.stderr}`);
+    }
+    // 夹具 pin 树的 HEAD 与声明 pin 不同 ⇒ pin 门会判红。故把它登记成该夹具自己的 ref。
+    const pinFile = path.join(root, 'stories/hof-cli/engine-ref.json');
+    const savedPin = await fs.readFile(pinFile);
+    const fixtureHead = git(pinRoot, 'rev-parse', 'HEAD').stdout.trim();
+    let failed = 0;
+    try {
+      for (const c of controls) {
+        for (const k of ['id', 'why', 'anchor', 'replacement', 'target']) if (typeof c[k] !== 'string' || !c[k]) throw new Error(`APPARATUS control ${c.id || '?'} missing ${k}`);
+        if (c.anchor === c.replacement) throw new Error(`APPARATUS control ${c.id} anchor equals replacement`);
+        if (!c.file) throw new Error(`APPARATUS control ${c.id} missing file`);
+        const targetFile = resolveControlFile(c.file, root, pinRoot);
+        const bytes = await fs.readFile(targetFile);
+        const text = bytes.toString();
+        if (text.split(c.anchor).length !== 2) throw new Error(`APPARATUS control ${c.id} anchor not unique in ${c.file}`);
+        // 夹具 pin 指向夹具引擎，使 pin 门在这一层不干扰。
+        // ★破刀必须**提交**：pin 门对引擎判 `git status` 脏 ⇒ rc=2，
+        //   而一次性现场注入恰好就是这个「脏」形 —— 这正是把它做成装置要解决的事。
+        //   提交后 HEAD 变了 ⇒ pin.ref 必须同步指向新 HEAD，否则又会被判「检出不等于声明」。
+        const pin = JSON.parse(savedPin.toString());
+        const syncPin = async (msg) => {
+          pin.ref = git(pinRoot, 'rev-parse', 'HEAD').stdout.trim();
+          await fs.writeFile(pinFile, JSON.stringify(pin) + '\n');
+          const pc = git(root, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', msg);
+          if (pc.error || pc.status) throw new Error(`APPARATUS cannot commit control fixture pin: ${pc.stderr}`);
+        };
+        try {
+          await fs.writeFile(targetFile, text.replace(c.anchor, c.replacement));
+          if (!(await fs.readFile(targetFile, 'utf8')).includes(c.replacement)) throw new Error(`APPARATUS control ${c.id} readback failed`);
+          const ec = git(pinRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', `control ${c.id}: cut`);
+          if (ec.error || ec.status) throw new Error(`APPARATUS cannot commit engine control cut: ${ec.stderr}`);
+          await syncPin(`control ${c.id}: pin -> cut`);
+          const evidence = {}, mutant = await runSuite(root, pinRoot, suite, evidence);
+          const escaped = c.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const hit = mutant === 1 && new RegExp(`^not ok \\d+ - ${escaped}$`, 'm').test(evidence.output || '') && !evidence.problem;
+          await fs.writeFile(targetFile, bytes);
+          if (!(await fs.readFile(targetFile)).equals(bytes)) throw new Error(`APPARATUS control ${c.id} engine restore failed`);
+          const rc2 = git(pinRoot, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', `control ${c.id}: restore`);
+          if (rc2.error || rc2.status) throw new Error(`APPARATUS cannot commit engine control restore: ${rc2.stderr}`);
+          await syncPin(`control ${c.id}: pin -> restore`);
+          const restored = await runSuite(root, pinRoot, suite);
+          // ★判据三层，各自对应一种真失败：
+          //   ① 破刀文件**字节**回到注入前（注入确实被撤销，不是只改了 marker）；
+          //   ② 破刀所在的**引擎树**工作区干净（pin 门要吃这个，脏了下一轮就是 rc=2）；
+          //   ③ 复原后该 suite **重新全绿**（恢复的不只是字节，而是真的又能跑）。
+          //   ✗ 不判 books 夹具树干净：它只提交过 pin 文件，`stories/`、`tests/`、`tools/` 是
+          //   cp 进来的未跟踪面（`??`），恒非空 —— 拿它判干净会永假（本装置初版即踩此坑）。
+          const same = (await fs.readFile(targetFile)).equals(bytes)
+            && git(pinRoot, 'status', '--porcelain=v1').stdout === ''
+            && restored === 0;
+          const ok = hit && same;
+          console.log(`${suite} control ${c.id}: mutant=${mutant} named=${hit} restored=${restored} byteSame=${same}`);
+          if (!ok) failed++;
+        } finally {
+          // 兜底复原（异常路径也走到）：先还原两处字节，再各提交一次提交把工作区恢复干净。
+          await fs.writeFile(targetFile, bytes);
+          await fs.writeFile(pinFile, savedPin);
+          git(root, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', `control ${c.id}: finally`);
+        }
+      }
+    } finally {
+      await fs.writeFile(pinFile, savedPin);
+      git(root, '-c', 'user.name=fixture', '-c', 'user.email=fixture@local', 'commit', '--quiet', '-am', 'control: finally pin');
+    }
+    console.log(`${suite} controls: ${controls.length - failed}/${controls.length}; engine fixture is a private copy, formal pin tree never cut`);
+    return failed ? 1 : 0;
+  } finally {
+    await fs.rm(owned, { recursive: true, force: true });
+    try { await fs.access(owned); throw new Error('APPARATUS RESIDUE controls directory'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  }
+}
+
+// controls 的 file 字段：`engine:<模块名>` 指私有引擎副本的 src/cli/<模块>.mjs（如 engine:session）。
+// 只认这一种前缀 —— 其余形态一律具名拒，✗ 不猜路径（猜错会把刀下到错的树上）。
+function resolveControlFile(file, root, pinRoot) {
+  const m = /^engine:([a-z][a-z0-9-]*)$/.exec(file || '');
+  if (!m) throw new Error(`APPARATUS control unknown file ${file}`);
+  return path.join(pinRoot, 'src/cli', `${m[1]}.mjs`);
 }
 // Four registered-apparatus controls live here, not in a private evidence script.
 // Invoked by unit --selftest in the real five-step job. No product denominator.

@@ -135,6 +135,32 @@
       "anchor": "has(s, 'canal') ? food() : '先点亮灯塔解锁潮渠捷径'",
       "replacement": "false ? food() : '先点亮灯塔解锁潮渠捷径'",
       "target": "HOF-E02 saved victory exposes usable next-run canal"
-    }
+    },
+    "controls": [
+      {
+        "id": "no-save-version-check",
+        "why": "去掉引擎的 SAVE_VERSION 检查 ⇒ HOF-E20 必须红在「具名拒」",
+        "file": "engine:session",
+        "anchor": "|| candidate.version !== SAVE_VERSION ||",
+        "replacement": "|| false ||",
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+      },
+      {
+        "id": "restore-writes-slot-on-failure",
+        "why": "让 restore 失败时把档写坏 ⇒ HOF-E20 必须红在「档文件不得被改写」",
+        "file": "engine:storage",
+        "anchor": "session.restore(envelope); // E1",
+        "replacement": "try { session.restore(envelope); } catch (e) { await this.#fs.writeFile(target, '{}', 'utf8').catch(() => {}); throw e; } // E1",
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+      },
+      {
+        "id": "leak-stale-content-in-message",
+        "why": "把档内内容带进错误文案 ⇒ HOF-E20 必须红在「提示不得带出档内内容」",
+        "file": "engine:session",
+        "anchor": "throw new Fault('SAVE_VERSION', envelopeMismatch(candidate));",
+        "replacement": "throw new Fault('SAVE_VERSION', envelopeMismatch(candidate) + '=' + candidate.state.run.counts.gold);",
+        "target": "HOF-E20 stale save is refused at the CLI layer without touching session or file"
+      }
+    ]
   }
 }

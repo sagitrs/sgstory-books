@@ -26,7 +26,7 @@ node tools/cli/test.mjs --engine "$ENGINE" --suite unit --selftest
 node tools/cli/test.mjs --engine "$ENGINE" --suite e2e --selftest
 ```
 
-unit82个具名用例、正常玩家e2e19个；H1/H2各4项自证另计，CI契约反控也另计，不相加成产品用例数。固定登记与实际非空名称逐项对账。退出码0判据绿、1产品/判据红、2装置错或超时；没有“缺测试但通过”形。详见 [工具说明](../../tools/cli/README.md)。
+unit89个具名用例、正常玩家e2e20个；H1/H2各4项自证另计，CI契约反控也另计，不相加成产品用例数。固定登记与实际非空名称逐项对账。退出码0判据绿、1产品/判据红、2装置错或超时；没有“缺测试但通过”形。详见 [工具说明](../../tools/cli/README.md)。
 
 ## 正常玩家可重现的胜局与下一局
 
