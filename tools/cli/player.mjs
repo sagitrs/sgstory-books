@@ -24,7 +24,7 @@ export async function playCase(fn) {
   const base = process.env.HOF_TEST_ROOT || process.env.TMPDIR || path.join(os.homedir(), 'tmp');
   await fs.mkdir(base, { recursive: true }); const dir = await fs.mkdtemp(path.join(base, 'player-'));
   const players = [];
-  try { await fn((seed = 42, options = {}) => { const p = new Player(dir, seed, options); players.push(p); return p; }); }
+  try { await fn((seed = 42, options = {}) => { const p = new Player(dir, seed, options); players.push(p); return p; }, dir); }
   finally {
     await Promise.all(players.map(p => p.dispose())); await fs.rm(dir, { recursive: true, force: true });
     try { await fs.access(dir); throw new Error('APPARATUS RESIDUE player directory'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
