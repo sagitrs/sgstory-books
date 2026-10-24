@@ -257,3 +257,32 @@ test('HOF-E20 stale save is refused at the CLI layer without touching session or
     await q.quit();
   }
 }));
+
+test('HOF-E22 the return gift is a real action at the shrine inside a normal victory', async () => playCase(async make => {
+  const p = make(); let f = await grove(p);
+  f = await steps(p, f, ['分给他两份口粮', '循着声音辨认']);
+  assert.match(f, /灯座边放着三份干粮/);                       // 到点就能看见，但不是白给
+  assert.match(f, /收起托人带的干粮/);                        // 具名的行动选项
+  const before = await p.command('status');
+  f = await p.select(f, '收起托人带的干粮');
+  assert.match(f, /你在灯座边找到了托人带的干粮/);
+  assert.match(f, /粮食\d+→\d+/);
+  assert.notEqual(await p.command('status'), before);
+  f = await steps(p, f, ['挑战失灯守卫', '点亮灯塔']);   // claim 已把玩家带到塔门，不再经祠堂
+  assert.match(f, /送灯成功/); assert.match(f, /长期：胜1/);
+  await p.quit();
+}));
+test('HOF-E23 leaving the shrine without claiming loses the gift for this run', async () => playCase(async make => {
+  const p = make(); let f = await grove(p);
+  f = await steps(p, f, ['分给他两份口粮', '循着声音辨认']);
+  assert.match(f, /收起托人带的干粮/);
+  f = await p.select(f, '不取供品');                             // 不收，直接走：这一趟错过
+  assert.match(f, /塔门前，守林人从墙后/);                        // 塔门那一项仍是 pending
+  let page = await p.command('inspect');
+  page = await p.select(page, '状态'); page = await p.select(page, '地图绑定');
+  assert.match(page, /已兑现|这一趟错过了/);                       // missed 是档内可读的事实
+  f = await steps(p, await p.command('0').then(() => p.command('0')).then(() => p.command('0')),
+    ['挑战失灯守卫', '点亮灯塔', '再走一局']);
+  assert.match(f, /本局2/); assert.doesNotMatch(f, /灯座边放着三份干粮/);   // 新局重置
+  await p.quit();
+}));

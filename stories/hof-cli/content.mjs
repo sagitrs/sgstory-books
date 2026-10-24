@@ -61,10 +61,28 @@ export const ENTRIES = deepFreeze([
   { id: 'curse', name: '诅咒', kind: 'status', category: 'cat-status', visible: r => r.curse === true },
   // 显示名中性：stage === 'done' 含「已救」与「未救（吃干粮走人／应战失败）」两态，救与未救写在详情里。
   { id: 'forester-aid', name: '守林人', kind: 'status', category: 'cat-status', visible: r => r.forester.stage !== 'unmet' },
-  { id: 'binding', name: '塔门协助承诺', kind: 'status', category: 'cat-status', visible: r => r.binding !== null },
+  { id: 'binding', name: '地图绑定', kind: 'status', category: 'cat-status', visible: r => r.bindings.length > 0 },
   { id: 'intel-map', name: '地图', kind: 'intel', category: 'cat-intel', visible: () => true },
   { id: 'intel-forester', name: '守林人线索', kind: 'intel', category: 'cat-intel', visible: r => r.forester.stage !== 'unmet' },
-  { id: 'intel-binding', name: '塔门线索', kind: 'intel', category: 'cat-intel', visible: r => r.binding !== null },
+  { id: 'intel-binding', name: '后续点位线索', kind: 'intel', category: 'cat-intel', visible: r => r.bindings.length > 0 },
+]);
+
+// ── `books#572` 同地图点位绑定表（**游戏层**，✗ 引擎）──────────────────────────
+/* 票面要求每条绑定具名六项：**前置标记／目标地图／目标点位／原事件／替换事件／触发时点与有效期**。
+ *   本表即事实源：`run.bindings[]` 的每一项都必须**是本表的一行**（`id` 相等，且
+ *   `mapId`／`targetNode`／`original`／`replacement` 与那一行**逐字相等**）——表外值进不了档，
+ *   `validate` 具名拒绝（✗ 不是「表内任一成员」这种松判据）。
+ *   ★作用域只到**当前地图**（`mapId === 'grayharbor'`）；跨图调度**不实现**，`mapId` 这个字段
+ *     就是留给它的接缝（✗ 承诺跨图、✗ 承诺 schema 永不变更）。
+ *   ★`effect` 决定兑现形：`battle` 给本场局部敌参副本，`reward` 给一次性资源。
+ *   ★`mark` 是前置标记：只有对应事实成立时才写入这些绑定（见 `game.mjs` 的 `bindFor`）。 */
+export const BINDINGS = deepFreeze([
+  { id: 'tower-pledge', mark: 'rescued', mapId: 'grayharbor', targetNode: 'elite',
+    original: 'keeper', replacement: 'keeper-assisted', effect: 'battle',
+    name: '塔门协助', short: '塔门前牵制失灯守卫' },
+  { id: 'shrine-return', mark: 'rescued', mapId: 'grayharbor', targetNode: 'shrine',
+    original: 'shrine', replacement: 'shrine-returned', effect: 'reward', reward: { food: 3 },
+    name: '托人带的干粮', short: '祠堂灯座边留下三份干粮' },
 ]);
 
 // ── `books#576` 组合与规则表（**游戏层**，✗ 引擎）──────────────────────────────
@@ -75,7 +93,7 @@ export const COMBO_RULES = deepFreeze({
   顺序: '基础反扑概率 → 武器（tier ×15）→ 祝福（−15）→ 诅咒（+15）→ 夹取 [5,95]；减伤只在伤害结算时按护甲取一次',
   叠加: '同类各计一次：武器只取在装那件，祝福与诅咒各一次；✗ 不得把同一优势重复算到概率与次数',
   互斥: '祝福与诅咒可并存，但只按**净额**计入概率（−15 + 15 ＝ 0），✗ 不各自另算一份',
-  消耗: '塔门协助承诺（`binding`）只助一次；用后 `consumed` 置真，✗ 不得二次协助',
+  消耗: '地图绑定（`bindings[]`）只兑现一次；兑现后该项 `state` 记 `used`，✗ 不得二次兑现',
   清除: '换装只清本槽（另一槽与祝福／诅咒保留）；死亡清空全部装备与祝福／诅咒；存读原样保留（含 `consumed`）',
 });
 /* 三组组合：用途各不相同（进攻／防守／风险），`requires` 即「生效判据」；
