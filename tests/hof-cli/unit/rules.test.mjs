@@ -152,11 +152,11 @@ test('HOF-U50 fed great outcome grants actual rescue and future map binding', ()
   const s = pending(true), gold = s.run.counts.gold; assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted');
   assert.equal(s.run.node, 'shrine'); assert.equal(s.run.forester.result, 'great'); assert.equal(s.run.forester.rescued, true); assert.equal(s.run.forester.pledged, true);
   assert.equal(s.run.counts.gold, gold + 2); assert.equal(s.run.counts.hp, 20); assert.equal(s.run.blessing, true);
-  assert.deepEqual(s.run.binding, { mapId: 'grayharbor', nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false });
+  assert.deepEqual(s.run.bindings, [{ id: 'tower-pledge', state: 'pending' }, { id: 'shrine-return', state: 'pending' }]);
 });
 test('HOF-U51 unrescued shrine blessing never impersonates NPC assistance', () => {
   const s = pending(false); assert.equal(apply(s, 'listen', slot(1)).kind, 'accepted'); walk(s, ['bless']);
-  assert.equal(s.run.blessing, true); assert.equal(s.run.forester.rescued, false); assert.equal(s.run.binding, null);
+  assert.equal(s.run.blessing, true); assert.equal(s.run.forester.rescued, false); assert.deepEqual(s.run.bindings, []);
   assert.equal(enemyFor(s).endurance, 4); assert.doesNotMatch(view(s).text, /守林人从墙后/);
 });
 test('HOF-U52 forest decisions are mutually exclusive and impossible memory is rejected', () => {
@@ -166,29 +166,39 @@ test('HOF-U52 forest decisions are mutually exclusive and impossible memory is r
   const u = pending(true); u.run.battles = 0; assert.equal(validate(u), false);
 });
 test('HOF-U53 map targets consumption and bindings are strictly validated', () => {
-  for (const [key, value] of [['mapId', 'elsewhere'], ['nodeId', 'shop'], ['consumed', true], ['replacement', 'unknown']]) {
-    const s = rescuedElite(); s.run.binding[key] = value; assert.equal(validate(s), false, key);
+  // 表外值与不可能状态都进不了档；表化后判据是「逐项与 BINDINGS 表行相等」，不是「表内任一成员」。
+  for (const [label, mutate] of [
+    ['table-external id', s => s.run.bindings.push({ id: 'not-in-table', state: 'pending' })],
+    ['duplicate id', s => s.run.bindings.push({ id: 'tower-pledge', state: 'used' })],
+    ['unknown state', s => { s.run.bindings[0].state = 'consumed'; }],
+    ['pending on a visited target', s => { s.run.visited.push('elite'); }],
+    ['bindings without rescue', s => { s.run.forester.rescued = false; s.run.forester.pledged = false; }]
+  ]) {
+    const s = rescuedElite(); mutate(s); assert.equal(validate(s), false, label);
   }
-  const s = pending(false); s.run.binding = { mapId: 'grayharbor', nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false }; assert.equal(validate(s), false);
+  // 冲突规则（最小规则）：同一目标点位不得同时有两条未兑现的绑定。
+  const clash = rescuedElite(); clash.run.bindings = [{ id: 'tower-pledge', state: 'pending' }, { id: 'tower-pledge', state: 'pending' }];
+  assert.equal(validate(clash), false, 'same pending target');
+  const s = pending(false); s.run.bindings = [{ id: 'tower-pledge', state: 'pending' }]; assert.equal(validate(s), false);
 });
 test('HOF-U54 cooperative boss uses local parameters and consumes the binding once', () => {
   const s = rescuedElite(), base = structuredClone(ENEMIES.keeper), foe = enemyFor(s);
   assert.equal(foe.count * foe.endurance, 4); assert.equal(ENEMIES.keeper.count * ENEMIES.keeper.endurance, 8);
   assert.equal(foe.sides, base.sides); assert.equal(foe.probability, base.probability); assert.match(view(s).text, /守林人从墙后/);
-  walk(s, ['fight']); assert.equal(s.run.binding.consumed, true); assert.equal(s.run.node, 'beacon'); assert.deepEqual(ENEMIES.keeper, base);
+  walk(s, ['fight']); assert.equal(s.run.bindings.find(b => b.id === 'tower-pledge').state, 'used'); assert.equal(s.run.node, 'beacon'); assert.deepEqual(ENEMIES.keeper, base);
   const before = structuredClone(s); assert.equal(apply(s, 'fight', quiet).kind, 'refused'); assert.deepEqual(s, before);
 });
 test('HOF-U55 failed encounter stays for a real battle before rescue can complete', () => {
   for (const fed of [true, false]) {
     const s = pending(fed); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted');
-    assert.equal(s.run.node, 'grove'); assert.equal(s.run.forester.stage, 'fight'); assert.equal(s.run.forester.rescued, false); assert.equal(s.run.binding, null);
+    assert.equal(s.run.node, 'grove'); assert.equal(s.run.forester.stage, 'fight'); assert.equal(s.run.forester.rescued, false); assert.deepEqual(s.run.bindings, []);
     walk(s, ['forest-fight']); assert.equal(s.run.node, 'shrine'); assert.equal(s.run.forester.rescued, fed); assert.equal(s.run.forester.pledged, fed);
   }
 });
 test('HOF-U56 forest death never grants NPC rewards or a future binding', () => {
   const s = pending(true); assert.equal(apply(s, 'listen', slot(4)).kind, 'accepted'); s.run.counts.hp = 1;
   walk(s, ['forest-fight'], deadly); assert.equal(s.run.phase, 'death'); assert.equal(s.run.forester.rescued, false);
-  assert.equal(s.run.binding, null); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1);
+  assert.deepEqual(s.run.bindings, []); assert.equal(s.profile.wins, 0); assert.equal(s.profile.deaths, 1);
 });
 test('HOF-U57 failed encounter handler commits no partial stage or RNG', () => {
   const fragile = { ...game, apply(s, id, random) { const r = apply(s, id, random); if (id === 'listen') throw new Error('after encounter'); return r; } };
@@ -199,11 +209,11 @@ test('HOF-U57 failed encounter handler commits no partial stage or RNG', () => {
   assert.equal(s.choose('listen').kind, 'failed'); failedReadout(s, before, boundary, 'U57');
 });
 test('HOF-U58 failed cooperative battle commits no binding or reward', () => {
-  const fragile = { ...game, apply(s, id, random) { const cooperative = s.run.node === 'elite' && s.run.binding !== null; const r = apply(s, id, random); if (id === 'fight' && cooperative) throw new Error('after cooperation'); return r; } };
+  const fragile = { ...game, apply(s, id, random) { const cooperative = s.run.node === 'elite' && s.run.bindings.some(b => b.id === 'tower-pledge' && b.state === 'pending'); const r = apply(s, id, random); if (id === 'fight' && cooperative) throw new Error('after cooperation'); return r; } };
   const s = new Session(fragile, 42); choose(s, ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'aid', 'listen', 'pass']);
-  assert.equal(s.snapshot().state.run.binding.consumed, false); const before = s.snapshot(), boundary = s.frame().boundary;
+  assert.equal(s.snapshot().state.run.bindings.find(b => b.id === 'tower-pledge').state, 'pending'); const before = s.snapshot(), boundary = s.frame().boundary;
   const normal = new Session(game, 42); normal.restore(before); const liveBoundary = normal.frame().boundary;
-  assert.equal(normal.choose('fight').kind, 'accepted'); committed(normal, before, liveBoundary, 'fight'); assert.equal(normal.snapshot().state.run.binding.consumed, true);
+  assert.equal(normal.choose('fight').kind, 'accepted'); committed(normal, before, liveBoundary, 'fight'); assert.equal(normal.snapshot().state.run.bindings.find(b => b.id === 'tower-pledge').state, 'used');
   assert.equal(s.choose('fight').kind, 'failed'); failedReadout(s, before, boundary, 'U58');
 });
 test('HOF-U59 real saved pending stage restores paid food and next outcome', async () => {
@@ -216,33 +226,34 @@ test('HOF-U59 real saved pending stage restores paid food and next outcome', asy
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
 test('HOF-U60 a new run resets local stages bindings and NPC memory', () => {
-  const s = rescuedElite(); walk(s, ['fight', 'light']); assert.equal(s.run.binding.consumed, true); assert.equal(s.profile.wins, 1);
-  walk(s, ['begin']); assert.equal(s.run.binding, null); assert.deepEqual(s.run.forester, { stage: 'unmet', fed: false, result: 'none', rescued: false, pledged: false });
+  const s = rescuedElite(); walk(s, ['fight', 'light']); assert.equal(s.run.bindings.find(b => b.id === 'tower-pledge').state, 'used'); assert.equal(s.profile.wins, 1);
+  walk(s, ['begin']); assert.deepEqual(s.run.bindings, []); assert.deepEqual(s.run.forester, { stage: 'unmet', fed: false, result: 'none', rescued: false, pledged: false });
   assert.equal(s.profile.wins, 1); assert.deepEqual(s.profile.unlocks, ['canal']);
 });
 test('HOF-U61 retreat cancels pending events without inventing rescue', () => {
   for (const fed of [true, false]) {
-    const s = pending(fed); walk(s, ['retreat']); assert.equal(s.run.forester.stage, 'abandoned'); assert.equal(s.run.binding, null);
+    const s = pending(fed); walk(s, ['retreat']); assert.equal(s.run.forester.stage, 'abandoned'); assert.deepEqual(s.run.bindings, []);
     assert.equal(s.profile.retreats, 1); assert.equal(s.profile.wins, 0); assert.equal(validate(s), true);
   }
 });
 test('HOF-U62 consumed binding cannot be replayed at a visited target', () => {
   const s = rescuedElite(); walk(s, ['fight']); const before = structuredClone(s);
-  s.run.binding.consumed = false; assert.equal(validate(s), false); s.run.binding.consumed = true;
+  s.run.bindings.find(b => b.id === 'tower-pledge').state = 'pending'; assert.equal(validate(s), false);
+  s.run.bindings.find(b => b.id === 'tower-pledge').state = 'used';
   assert.equal(apply(s, 'forest-fight', quiet).kind, 'refused'); assert.deepEqual(s, before);
 });
 test('HOF-U63 retreat at the bound target expires unused help without blocking exit', () => {
   for (const food of [4, 0]) {
     const s = rescuedElite(); s.run.counts.food = food; walk(s, ['retreat']);
-    assert.equal(s.run.phase, 'withdrawn'); assert.equal(s.run.binding.consumed, false); assert.equal(s.profile.retreats, 1); assert.equal(validate(s), true);
-    walk(s, ['begin']); assert.equal(s.run.binding, null); assert.equal(s.run.forester.stage, 'unmet');
+    assert.equal(s.run.phase, 'withdrawn'); assert.equal(s.run.bindings.find(b => b.id === 'tower-pledge').state, 'pending'); assert.equal(s.profile.retreats, 1); assert.equal(validate(s), true);
+    walk(s, ['begin']); assert.deepEqual(s.run.bindings, []); assert.equal(s.run.forester.stage, 'unmet');
   }
 });
 test('HOF-U64 saved promised encounter keeps its local boss parameters', async () => {
   const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'binding-'));
   try {
     const a = new Session(game, 42); choose(a, ['begin', 'cliff', 'ore', 'buy-sabre', 'buy-coat', 'buy-bread', 'leave', 'fight', 'grove', 'aid', 'listen', 'pass']);
-    const saved = a.snapshot(); assert.equal(saved.state.run.binding.consumed, false); const store = new Store(dir); await store.save(a, 'promised');
+    const saved = a.snapshot(); assert.equal(saved.state.run.bindings.find(b => b.id === 'tower-pledge').state, 'pending'); const store = new Store(dir); await store.save(a, 'promised');
     choose(a, ['fight']); const expected = a.snapshot(); const b = new Session(game, 999); await store.load(b, 'promised');
     assert.deepEqual(b.snapshot(), saved); assert.equal(enemyFor(b.snapshot().state).endurance, 2); choose(b, ['fight']); assert.deepEqual(b.snapshot(), expected);
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
@@ -450,9 +461,9 @@ test('HOF-U86 combo table: swapping a slot clears only that slot and drops its c
 test('HOF-U87 combo table: the tower pledge assists once and is consumed', () => {
   const base = initial();
   const st = { run: { ...base.run, node: 'elite', equipped: { weapon: 'none', armor: 'mail' },
-    binding: { mapId: base.run.mapId, nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false } } };
+    bindings: [{ id: 'tower-pledge', state: 'pending' }] } };
   assert.deepEqual(组合效果(st).生效, ['bulwark']);
-  st.run.binding.consumed = true;
+  st.run.bindings[0].state = 'used';
   assert.deepEqual(组合效果(st).生效, []);                   // 消耗后 ✗ 二次协助
 });
 test('HOF-U88 combo table: save and restore keep the equipped combo', async () => {
@@ -473,4 +484,86 @@ test('HOF-U89 combo table: equip changes are explained in the CLI bag line', () 
   const t = 武装(['buy-knife', 'buy-sabre']); t.run.blessing = true;
   apply(t, 'equip-knife', quiet);
   assert.match(view(t).bag, /武器：短刃/); assert.doesNotMatch(view(t).bag, /组合：/);
+});
+
+// ── books#572 绑定表化（`bindings[]` 具名表）与非战斗回收报形 ───────────────────────
+const { BINDINGS } = await import('../../../stories/hof-cli/content.mjs');
+const rescuedShrine = () => { const s = pending(true); assert.equal(apply(s, 'listen', slot(2)).kind, 'accepted'); return s; };
+test('HOF-U90 bindings are a named table and every stored row is checked against it', () => {
+  const s = rescuedShrine();
+  assert.deepEqual(s.run.bindings.map(b => b.id), ['tower-pledge', 'shrine-return']);
+  // 表行本身承载票面要求的六项：前置标记／目标地图／目标点位／原事件／替换事件／兑现形与有效期。
+  for (const row of BINDINGS) {
+    assert.ok(row.mark && row.mapId === 'grayharbor' && row.targetNode && row.original && row.replacement && row.effect, row.id);
+    assert.ok(!('expires' in row) || row.expires === 'current-map-run', '有效期恒为本局当前地图，不设跨局字段');
+  }
+  // 每一条都在表里，且目标点位与原/替换事件逐字相等（表化不是「表内任一成员」的松判据）。
+  for (const b of s.run.bindings) {
+    const row = BINDINGS.find(x => x.id === b.id);
+    assert.ok(row, b.id); assert.equal(row.mapId, s.run.mapId);
+    assert.notEqual(row.original, undefined); assert.notEqual(row.replacement, undefined);
+  }
+});
+test('HOF-U91 non-battle return event is a real action at the bound point, not text', () => {
+  const s = rescuedShrine();
+  assert.equal(s.run.node, 'shrine');
+  const claim = view(s).choices.find(c => c.id === 'claim-shrine-return');
+  assert.ok(claim, '被绑定的点位必须多出一个具名的回收报选项');
+  assert.match(claim.label, /粮食3/);                     // 已知收益写在选项上（玩家可知信息）
+  const before = s.run.counts.food;
+  assert.equal(apply(s, 'claim-shrine-return', quiet).kind, 'accepted');
+  assert.equal(s.run.counts.food, before - 1 + 3);        // 收 3 粮，再付前进 1 粮
+  assert.equal(s.run.node, 'elite');
+  assert.equal(s.run.bindings.find(b => b.id === 'shrine-return').state, 'used');
+});
+test('HOF-U92 the return event changes what the run can do: one food decides the tower step', () => {
+  // 无回报：粮食恰 1 ⇒ 祠堂付得起前进，到塔门后付不起「战后前进 1 粮」。
+  const bare = pending(false); assert.equal(apply(bare, 'listen', slot(1)).kind, 'accepted');
+  bare.run.counts.food = 1;
+  assert.equal(apply(bare, 'pass', quiet).kind, 'accepted'); assert.equal(bare.run.node, 'elite');
+  assert.equal(bare.run.counts.food, 0);
+  assert.equal(view(bare).choices.some(c => c.id === 'fight'), false);   // 同一入口、不同合法结果：无力应战
+  assert.deepEqual(view(bare).choices.map(c => c.id), ['retreat']);
+  // 有回报：同样起手，收 3 粮后仍付得起那一粮。
+  const paid = rescuedShrine(); paid.run.counts.food = 1;
+  assert.equal(apply(paid, 'claim-shrine-return', quiet).kind, 'accepted');
+  assert.equal(paid.run.counts.food, 3);
+  assert.equal(view(paid).choices.find(c => c.id === 'fight').enabled, true);
+});
+test('HOF-U93 bindings honour a minimal conflict rule and reject competing pending targets', () => {
+  // 最小规则：同一目标点位不得同时有两条未兑现；已兑现的可与新的未兑现共存（表内目前无此形状）。
+  const s = rescuedShrine();
+  s.run.bindings.push({ id: 'tower-pledge', state: 'used' });
+  assert.equal(validate(s), false, 'duplicate id must be rejected regardless of state');
+  const t = rescuedShrine();
+  t.run.bindings = [{ id: 'shrine-return', state: 'pending' }];
+  t.run.forester.pledged = true;                          // pledged 必然伴随 tower-pledge 一项
+  assert.equal(validate(t), false, 'pledged without its own binding row');
+});
+test('HOF-U94 leaving the bound point without claiming records a verifiable miss', () => {
+  const s = rescuedShrine();
+  assert.equal(apply(s, 'pass', quiet).kind, 'accepted');
+  assert.equal(s.run.node, 'elite');
+  assert.equal(s.run.bindings.find(b => b.id === 'shrine-return').state, 'missed');
+  assert.equal(s.run.bindings.find(b => b.id === 'tower-pledge').state, 'pending');
+  assert.equal(validate(s), true);
+  // 负例：已到访却仍 pending 是不可达状态。
+  const bad = structuredClone(s); bad.run.bindings.find(b => b.id === 'shrine-return').state = 'pending';
+  assert.equal(validate(bad), false);
+});
+test('HOF-U95 promising a stale game version is named, not silently migrated', async () => {
+  const dir = await fs.mkdtemp(path.join(process.env.HOF_TEST_ROOT, 'bindver-'));
+  try {
+    const s = new Session(game, 42); choose(s, ['begin', 'cliff']); const before = s.snapshot(); const store = new Store(dir);
+    assert.equal(game.version, 4, '本笔把游戏版本抬到 4（绑定由单条键改为具名集合）');
+    const stale = structuredClone(before); stale.game.version = 3;
+    const text = JSON.stringify(stale); await fs.writeFile(path.join(dir, 'v3.json'), text);
+    const failure = await store.load(s, 'v3').then(() => null, e => e);
+    assert.ok(failure, 'v3 档必须被具名拒绝');
+    assert.equal(failure.code, 'SAVE_GAME');
+    assert.match(failure.message, /v3/); assert.match(failure.message, /v4/);   // 两侧版本号都在
+    assert.equal(/接口/.test(failure.message), false, '这是游戏版本不符，不是接口版本');
+    assert.deepEqual(s.snapshot(), before);                                     // 会话不变
+    assert.equal(await fs.readFile(path.join(dir, 'v3.json'), 'utf8'), text);   // 档文件不被改写
+  } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });

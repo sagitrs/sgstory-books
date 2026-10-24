@@ -1,4 +1,4 @@
-import { ITEMS, BREAD, SHOP_STOCK, CATEGORIES, ENTRIES, ENEMIES, NODES, UNLOCKS, COMBO_RULES, COMBOS } from './content.mjs';
+import { ITEMS, BREAD, SHOP_STOCK, CATEGORIES, ENTRIES, ENEMIES, NODES, UNLOCKS, COMBO_RULES, COMBOS, BINDINGS } from './content.mjs';
 const MAX_HP = ITEMS.hp.max, MAX_RUNS = 1000000, MAP = 'grayharbor', WEAPON_STEP = 15, COUNTER_BLESSING = 15, COUNTER_CURSE = 15;
 // 在身条目＝非资源条目（消耗品与装备）；资源不占背包格（#609 §2）。
 const CARRY_IDS = Object.keys(ITEMS).filter(id => ITEMS[id].class !== 'resource');
@@ -9,7 +9,7 @@ const total = p => p.wins + p.deaths + p.retreats;
 const has = (s, id) => s.profile.unlocks.includes(id);
 const freshForester = () => ({ stage: 'unmet', fed: false, result: 'none', rescued: false, pledged: false });
 const freshCounts = watch => ({ hp: MAX_HP, gold: 10, food: 8, tonic: 0, knife: 0, sabre: 0, coat: watch ? 1 : 0, mail: 0 });
-const freshRun = (id = 0, watch = false) => ({ id, phase: id ? 'journey' : 'camp', node: id ? 'fork' : 'harbor', mapId: MAP, forester: freshForester(), binding: null, counts: freshCounts(watch), equipped: { weapon: 'none', armor: watch ? 'coat' : 'none' }, blessing: false, curse: false, visited: [], battles: 0, last: '准备好后选择出发；查询不消耗资源。' });
+const freshRun = (id = 0, watch = false) => ({ id, phase: id ? 'journey' : 'camp', node: id ? 'fork' : 'harbor', mapId: MAP, forester: freshForester(), bindings: [], counts: freshCounts(watch), equipped: { weapon: 'none', armor: watch ? 'coat' : 'none' }, blessing: false, curse: false, visited: [], battles: 0, last: '准备好后选择出发；查询不消耗资源。' });
 // 增删的单一入口（#609 §3）：grant 永不截顶，超上限即具名拒绝。
 // 截顶是调用点的行动规则，不是 grant 的语义（§3.1 裁定甲案）。
 const capReason = id => `${ITEMS[id].name}达到上限`;
@@ -31,7 +31,7 @@ const carryTotal = counts => CARRY_IDS.reduce((n, id) => n + counts[id], 0);
 const stockItem = id => id === 'bread' ? BREAD : ITEMS[id];
 export function initial() { return { profile: { wins: 0, deaths: 0, retreats: 0, unlocks: [] }, run: freshRun() }; }
 function validForester(r) {
-  const f = r.forester, b = r.binding;
+  const f = r.forester, pledged = hasBinding(r, 'tower-pledge');
   if (r.mapId !== MAP || !keys(f, ['stage', 'fed', 'result', 'rescued', 'pledged']) || !['unmet', 'decision', 'check', 'fight', 'done', 'abandoned'].includes(f.stage) || !['none', 'great', 'success', 'failure'].includes(f.result) || !['fed', 'rescued', 'pledged'].every(k => typeof f[k] === 'boolean')) return false;
   if (f.pledged !== f.rescued || (f.rescued && (!f.fed || f.stage !== 'done' || !r.blessing)) || (f.result === 'great' && !f.fed)) return false;
   if (f.stage === 'unmet' && (f.fed || f.result !== 'none' || f.rescued || r.node === 'grove' || r.visited.includes('grove'))) return false;
@@ -45,15 +45,50 @@ function validForester(r) {
   if (r.node === 'grove' && r.phase === 'journey' && !['decision', 'check', 'fight'].includes(f.stage)) return false;
   if (r.visited.includes('grove') && !['done', 'abandoned'].includes(f.stage)) return false;
   if (r.phase === 'death' && r.node === 'grove' && (f.result !== 'failure' || f.rescued)) return false;
-  if (f.pledged !== (b !== null)) return false;
   const targetResolved = r.visited.includes('elite') && !(r.phase === 'withdrawn' && r.node === 'elite');
   const forestBattled = f.stage === 'done' && f.result === 'failure';
   if (f.stage !== 'unmet' && r.battles !== 1 + Number(forestBattled) + Number(targetResolved)) return false;
-  if (b !== null && (!keys(b, ['mapId', 'nodeId', 'original', 'replacement', 'consumed']) || b.mapId !== MAP || b.nodeId !== 'elite' || b.original !== 'keeper' || b.replacement !== 'keeper-assisted' || typeof b.consumed !== 'boolean' || b.consumed !== targetResolved)) return false;
+  // 塔门协助那一项的消费与「目标点已结算」严格对齐（已在 validBindings 逐项核，此处不再重算）。
+  return true;
+}
+/* `books#572`：绑定集合的结构校验。三条硬约束（缺一即拒）：
+ *   ① 每项 `id` 必须是 `BINDINGS` 表的一行 —— 表外值进不了档（✗ 「表内任一成员」的松判据）；
+ *   ② `id` 不得重复；
+ *   ③ 冲突规则：**同一目标点位不得有两条未兑现（`pending`）的绑定** —— 已兑现的可与新的未兑现共存。
+ *   ★没有优先级数字字段，也不做通用调度：表里目前的两行目标不同，此约束就是「最小规则」。
+ *   ★`mapId` 逐行等于当前地图：跨图**不实现**，这个字段是留给它的接缝。 */
+function validBindings(r) {
+  const list = r.bindings;
+  if (!Array.isArray(list) || list.length > BINDINGS.length) return false;
+  const seen = new Set(), pendingTargets = new Set();
+  for (const b of list) {
+    if (!keys(b, ['id', 'state']) || !['pending', 'used', 'missed'].includes(b.state)) return false;
+    const row = BINDINGS.find(x => x.id === b.id);
+    if (!row || row.mapId !== r.mapId || row.mark !== 'rescued') return false;
+    if (seen.has(b.id)) return false;
+    seen.add(b.id);
+    // `pending` 只允许出现在**尚未到访**的目标上；唯一例外是「到了目标点却没应战就撤退」
+    // （那正是既有 U63 的语义：干预仍在，本局结束使其失效）——用与 targetResolved 同一条判据。
+    if (b.state === 'pending') {
+      const stillOpen = r.phase === 'withdrawn' && r.node === row.targetNode;
+      if (r.visited.includes(row.targetNode) && !stillOpen) return false;
+      if (pendingTargets.has(row.targetNode)) return false;
+      pendingTargets.add(row.targetNode);
+    }
+    // 战斗形的「已兑现」与「目标点已结算」严格对齐（U53/U62 的既有判据，表化后不放松）。
+    if (row.effect === 'battle') {
+      const resolved = r.visited.includes(row.targetNode) && !(r.phase === 'withdrawn' && r.node === row.targetNode);
+      if (b.id === 'tower-pledge' && (b.state === 'used') !== resolved) return false;
+    }
+  }
+  // 救助完成才可能有绑定；没救成而档里有绑定即不可能状态。
+  if (list.length && !r.forester.rescued) return false;
+  // 反向亦然：`pledged` 就是「塔门协助」那一项的存在性，二者不得单边成立。
+  if (r.forester.pledged !== seen.has('tower-pledge')) return false;
   return true;
 }
 export function validate(s) {
-  if (!keys(s, ['profile', 'run']) || !keys(s.profile, ['wins', 'deaths', 'retreats', 'unlocks']) || !keys(s.run, ['id', 'phase', 'node', 'mapId', 'forester', 'binding', 'counts', 'equipped', 'blessing', 'curse', 'visited', 'battles', 'last'])) return false;
+  if (!keys(s, ['profile', 'run']) || !keys(s.profile, ['wins', 'deaths', 'retreats', 'unlocks']) || !keys(s.run, ['id', 'phase', 'node', 'mapId', 'forester', 'bindings', 'counts', 'equipped', 'blessing', 'curse', 'visited', 'battles', 'last'])) return false;
   const p = s.profile, r = s.run;
   if (!['wins', 'deaths', 'retreats'].every(k => integer(p[k], MAX_RUNS)) || total(p) > MAX_RUNS || !Array.isArray(p.unlocks) || new Set(p.unlocks).size !== p.unlocks.length || p.unlocks.some(k => !Object.hasOwn(UNLOCKS, k))) return false;
   if (has(s, 'canal') !== (p.wins > 0) || has(s, 'watch') !== (p.deaths > 0)) return false;
@@ -68,7 +103,7 @@ export function validate(s) {
     if (id === 'none') continue;
     if (!Object.hasOwn(ITEMS, id) || ITEMS[id].slot !== slot || r.counts[id] < 1) return false;
   }
-  if (!Array.isArray(r.visited) || r.visited.length > 11 || new Set(r.visited).size !== r.visited.length || r.visited.some(k => !Object.hasOwn(NODES, k) || k === 'harbor') || !validForester(r)) return false;
+  if (!Array.isArray(r.visited) || r.visited.length > 11 || new Set(r.visited).size !== r.visited.length || r.visited.some(k => !Object.hasOwn(NODES, k) || k === 'harbor') || !validBindings(r) || !validForester(r)) return false;
   const camp = { hp: MAX_HP, gold: 10, food: 8, tonic: 0, knife: 0, sabre: 0, coat: 0, mail: 0 };
   if (r.phase === 'camp') return r.id === 0 && total(p) === 0 && r.node === 'harbor' && r.visited.length === 0 && r.battles === 0 && !r.blessing && !r.curse && r.equipped.weapon === 'none' && r.equipped.armor === 'none' && Object.keys(ITEMS).every(id => r.counts[id] === camp[id]);
   if (r.id === 0 || r.node === 'harbor' || (r.counts.hp === 0) !== (r.phase === 'death')) return false;
@@ -126,7 +161,24 @@ export function encounterOutcome(fed, slot) {
   if (typeof fed !== 'boolean' || !Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error('遭遇判定槽无效');
   return fed ? ['great', 'success', 'success', 'failure'][slot - 1] : ['success', 'failure', 'failure', 'failure'][slot - 1];
 }
-function assisted(r) { return r.node === 'elite' && r.binding?.mapId === r.mapId && r.binding?.nodeId === r.node && !r.binding.consumed; }
+function assisted(r) { return bindingOf(r, 'tower-pledge')?.state === 'pending' && r.node === 'elite'; }
+// 绑定表的读取入口（单一助词）：表行 + 当前存档状态合成只读视图，避免调用方各自 find。
+function bindingOf(r, id) {
+  const item = r.bindings.find(b => b.id === id);
+  if (!item) return null;
+  const row = BINDINGS.find(x => x.id === id);
+  return { ...row, state: item.state };
+}
+const hasBinding = (r, id) => r.bindings.some(b => b.id === id);
+const setBindingState = (r, id, state) => { const item = r.bindings.find(b => b.id === id); if (item) item.state = state; };
+// 首次救助完成时写入绑定：只写「前置标记 = rescued」的那些表行，且只写点位上**尚未到访**的。
+// 幂等、不重复写（绑定的产生点只此一处，除新局重置外不被任何地方添加）。
+function bindFor(r, mark) {
+  for (const row of BINDINGS) {
+    if (row.mark !== mark || row.mapId !== r.mapId || hasBinding(r, row.id) || r.visited.includes(row.targetNode)) continue;
+    r.bindings.push({ id: row.id, state: 'pending' });
+  }
+}
 export function enemyFor(s) {
   const r = s.run;
   if (r.node === 'elite') return assisted(r) ? { ...ENEMIES.keeper, endurance: 2 } : ENEMIES.keeper;
@@ -190,7 +242,9 @@ function options(s) {
     case 'dunes': add('fight', '驱逐食砂犬（胜后前进耗1粮）', food()); add('bribe', '付2金币绕过食砂犬（前进耗1粮）', counts.gold < 2 ? '需要2金币' : food()); break;
     case 'shrine':
       add('bless', '献2金币点灯（前进耗1粮）', r.blessing ? '已有灯祝福，不能叠加' : counts.gold < 2 ? '需要2金币' : food());
-      add('curse', '取走供品旁的5金币（前进耗1粮）', food(), 'guarded'); add('pass', '不取供品，继续前行（耗1粮）', food()); break;
+      add('curse', '取走供品旁的5金币（前进耗1粮）', food(), 'guarded'); add('pass', '不取供品，继续前行（耗1粮）', food());
+      for (const row of pendingAt(r, 'shrine')) add(`claim-${row.id}`, `收起${row.name}（${Object.entries(row.reward || {}).map(([k, v]) => `${ITEMS[k].name}${v}`).join('、')}；收完再付前进1粮）`, food());
+      break;
     case 'elite': add('fight', '挑战失灯守卫，结算整场精英战（胜后前进耗1粮）', food()); break;
     case 'beacon': add('light', '点亮灯塔，完成挑战'); break;
     default: throw new Error('旅程节点无规则');
@@ -206,14 +260,39 @@ function options(s) {
 function advance(s, node, cost = 1) {
   const r = s.run;
   if (r.counts.food < cost || r.visited.includes(r.node) || r.visited.includes(node)) throw new Error('路线前置或一次性边界不符');
+  const left = r.node;
   mustSpend(r.counts, 'food', cost); r.visited.push(r.node); r.node = node;
   if (node === 'grove') r.forester.stage = 'decision';
+  expireMissed(s, left);
 }
+/* 离开某点位时，目标就是它但未兑现的**回收报类**绑定记 `missed`（这一趟错过了）。
+ *   ★战斗形不需要这一步：它的兑现点是「应战」本身，而应战就在该节点上发生。
+ *   ★`missed` 是**可验证的历史事实**，不是静默丢掉：`validate` 要求「目标已到访」的绑定
+ *     不得停在 `pending`（那是不可达状态），而 `pending` 只允许出现在**尚未到访**的目标上。 */
+function expireMissed(s, left) {
+  const r = s.run;
+  for (const item of r.bindings) {
+    if (item.state !== 'pending') continue;
+    const row = BINDINGS.find(x => x.id === item.id);
+    if (row && row.effect === 'reward' && row.targetNode === left) item.state = 'missed';
+  }
+}
+/* `books#572` 第二形（**非战斗的回报事件**）：被绑定的点位多出一个具名的行动选项。
+ *   ★为什么是「选项」而不是「到点自动发」：自动发会静默改写**每一条**经过该点位的行走的粮数，
+ *     也就是改写既有判据的度量对象（U28/U51 等）；而票面要的是「**一次性执行时点**」。
+ *     玩家必须亲自选它 ⇒ 同一入口、不同合法结果，仍是机制而非文案。
+ *   ★不选它而离开该点位，该次到访就错过（与塔门「未应战即撤退」同形）；新局重置。
+ *   ★兑现后 `state` 记 `used`，同一次动作提交内完成 ⇒ 不可能重复兑现。 */
+const pendingAt = (r, node) => r.bindings
+  .filter(b => b.state === 'pending')
+  .map(b => BINDINGS.find(x => x.id === b.id))
+  .filter(row => row && row.mapId === r.mapId && row.targetNode === node);
 function unlock(s, id) { if (!has(s, id)) s.profile.unlocks.push(id); }
 function finish(s, kind) {
   const r = s.run, counts = r.counts;
   if (r.phase !== 'journey') throw new Error('本局已经结算');
   if (kind === 'withdrawn' && r.node === 'grove') r.forester.stage = 'abandoned';
+  expireMissed(s, r.node);   // 在该点位直接结束也算「离开」，未收的回收报记 missed（否则留下不可达的 pending）
   r.visited.push(r.node); r.phase = kind;
   if (kind === 'death') {
     // §4 死亡清算：逐条按表，不用统一的「清空背包」（那会连应保留的半数金币一起清掉）。
@@ -233,8 +312,8 @@ function completeForester(s) {
   if (f.fed) {
     f.rescued = true; f.pledged = true;
     mustGrant(r.counts, 'hp', Math.min(7, MAX_HP - r.counts.hp)); r.blessing = true;   // §3.1 甲案：截顶在调用点
-    r.binding = { mapId: r.mapId, nodeId: 'elite', original: 'keeper', replacement: 'keeper-assisted', consumed: false };
-    message = '守林人站稳了。他打开药囊为你敷药，把小灯递到你掌边。“这条路我认得。塔门前，我会再找你。”';
+    bindFor(r, 'rescued');   // 前置标记成立才写绑定；表驱动，不在这里手写目标与替换事件
+    message = '守林人站稳了。他打开药囊为你敷药，把小灯递到你掌边。“这条路我认得。塔门前，我会再找你。到了祠堂，先看看灯座边。”';
     // 不可达分支（§3.1 D2）：单局金币上界 42 ⇒ 超上限的礼物永远取不到；按严格 grant 的形态写成「触顶则不给」。
     if (f.result === 'great') { const gift = grant(r.counts, 'gold', 2).ok ? 2 : 0; message += `他又取出${gift}枚金币，谢你没有丢下他。`; }
   }
@@ -248,7 +327,7 @@ function fight(s, random) {
   const armor = r.equipped.armor === 'none' ? 0 : ITEMS[r.equipped.armor].armor;
   const result = battle(foe, counts.hp, weapon, armor, r.blessing, r.curse, random);
   mustSpend(counts, 'hp', counts.hp - result.hp); r.battles++;
-  if (cooperative) r.binding.consumed = true;
+  if (cooperative) setBindingState(r, 'tower-pledge', 'used');
   const message = (cooperative ? '守林人投下松脂火把，牵制了守卫。' : '') + `${foe.name}：有效反击${result.hits}次，损失${result.damage}生命。`;
   if (!result.won) {
     if (r.node === 'grove') r.forester.stage = 'done';
@@ -307,7 +386,14 @@ export function apply(s, id, random) {
       f.stage = 'check';
     }
   } else if (r.node === 'dunes') { mustSpend(counts, 'gold', 2); advance(s, 'shrine'); message = '付2金币绕过食砂犬，另耗1粮前进；没有战利品。'; }
-  else if (r.node === 'shrine') {
+  else if (r.node === 'shrine' && id.startsWith('claim-')) {
+    const row = BINDINGS.find(x => `claim-${x.id}` === id);
+    if (!row) throw new Error('未定义的回收报选项');
+    for (const [res, amount] of Object.entries(row.reward || {})) mustGrant(counts, res, amount);
+    setBindingState(r, row.id, 'used');
+    message = `你在灯座边找到了${row.name}——${Object.entries(row.reward || {}).map(([k, v]) => `${ITEMS[k].name}${v}`).join('、')}。`;
+    advance(s, 'elite'); message += '收好之后付1粮前进。';
+  } else if (r.node === 'shrine') {
     if (id === 'bless') { mustSpend(counts, 'gold', 2); r.blessing = true; message = '献钱点起灯祝福。'; }
     else if (id === 'curse') { mustGrant(counts, 'gold', 5); r.curse = true; message = '取走供钱，灯影歪斜，寒意附在你的背后。'; }
     else message = '未取供品，走向塔门。';
@@ -323,7 +409,8 @@ function sceneText(r) {
     if (r.forester.stage === 'check') return r.forester.fed ? '守林人扶住药囊，侧耳听了一会儿。“先别踩那片枯叶。”小灯在他掌心微微摇晃。' : '你背起干粮，守林人没有跟上来。折枝声忽近忽远，来路渐渐被雾遮住。';
     if (r.forester.stage === 'fight') return '低矮的影子从倒木后逼近，尖牙贴着你的脚边。应战后整场一次结算；可先换装或用药。';
   }
-  if (r.node === 'elite' && r.binding) return '塔门前，守林人从墙后探出头来，手里握着松脂火把。“我牵住它们，你找机会过去。”守卫仍堵着门。';
+  if (r.node === 'elite' && bindingOf(r, 'tower-pledge')?.state === 'pending') return '塔门前，守林人从墙后探出头来，手里握着松脂火把。“我牵住它们，你找机会过去。”守卫仍堵着门。';
+  if (r.node === 'shrine' && bindingOf(r, 'shrine-return')?.state === 'pending') return `${NODES.shrine.text}\n灯座边放着三份干粮，用布包得整整齐齐——是他托人先送到的。`;
   return NODES[r.node].text;
 }
 function enemyClue(s) {
@@ -369,12 +456,22 @@ function foresterDetail(r) {
   if (f.stage === 'check') return '你已经作出选择，林间的响动还没有平息。';
   return '倒木后的鼠群已经扑上来，你还没有离开林地。';
 }
+// 绑定详情：从表行取「是什么」，从存档取「还剩什么」，✗ 不各写一份文案。
+function bindingDetail(r) {
+  if (!r.bindings.length) return '';
+  return r.bindings.map(b => {
+    const row = BINDINGS.find(x => x.id === b.id);
+    const how = row.effect === 'battle' ? '战斗中牵制敌人' : `兑现 ${Object.entries(row.reward || {}).map(([k, v]) => `${ITEMS[k].name}${v}`).join('、')}`;
+    const state = { pending: '尚未兑现', used: '已兑现', missed: '这一趟错过了' }[b.state];
+    return `@${NODES[row.targetNode].name}：${row.short}（${how}；${state}）`;
+  }).join('\n');
+}
 function detailText(id, s) {
   if (ITEMS[id]) return describe(id, true); // 与 bag 的逐条详情是同一函数
   if (id === 'blessing') return '在空灯祠堂献 2 金币点灯所得。受祝福时敌方反击更难命中（受概率边界限制）；已有祝福不能叠加。';
   if (id === 'curse') return '取走空灯祠堂供钱所得。受诅咒时敌方反击更易命中（受概率边界限制）。';
   if (id === 'forester-aid' || id === 'intel-forester') return foresterDetail(s.run);
-  if (id === 'binding' || id === 'intel-binding') return '守林人答应在塔门前牵制失灯守卫；只助一次，用过即失效。';
+  if (id === 'binding' || id === 'intel-binding') return bindingDetail(s.run);
   if (id === 'intel-map') return mapText(s); // 与 map 查询是同一函数
   throw new Error('未定义的诊断条目');
 }
@@ -388,10 +485,10 @@ function entryData(id, s) {
   if (id === 'blessing') return { id, name: row.name, active: true, counterChanceDelta: -COUNTER_BLESSING };
   if (id === 'curse') return { id, name: row.name, active: true, counterChanceDelta: COUNTER_CURSE };
   if (id === 'forester-aid') return { id, name: row.name, ...r.forester };
-  if (id === 'binding') return { id, name: row.name, binding: { ...r.binding } };
+  if (id === 'binding') return { id, name: row.name, bindings: r.bindings.map(b => ({ ...b })) };
   if (id === 'intel-map') return { id, name: row.name, node: r.node, visited: [...r.visited], canalUnlocked: has(s, 'canal'), nodes: NODES };
   if (id === 'intel-forester') return { id, name: row.name, stage: r.forester.stage, fed: r.forester.fed, result: r.forester.result, rescued: r.forester.rescued };
-  if (id === 'intel-binding') return { id, name: row.name, pledged: r.forester.pledged, binding: r.binding ? { ...r.binding } : null };
+  if (id === 'intel-binding') return { id, name: row.name, pledged: r.forester.pledged, bindings: r.bindings.map(b => ({ ...b })) };
   throw new Error('未定义的诊断条目');
 }
 export function inspect(target, state) {
@@ -412,4 +509,4 @@ export function inspect(target, state) {
   if (!found || !found.visible(r)) return null;
   return { title: found.name, text: detailText(found.id, state), entries: [], data: entryData(found.id, state) };
 }
-export default { id: 'grayharbor-lamp', version: 3, initial, validate, view, apply, inspect };
+export default { id: 'grayharbor-lamp', version: 4, initial, validate, view, apply, inspect };
