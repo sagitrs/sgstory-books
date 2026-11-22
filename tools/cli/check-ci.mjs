@@ -34,6 +34,17 @@ const COMMANDS = [
   'node tools/check-readme-tables.mjs tools/README.md tools/cli/README.md',
   ...['unit', 'e2e', 'unit --selftest', 'e2e --selftest'].map(s => `node tools/cli/test.mjs --engine "$GITHUB_WORKSPACE/engine" --suite ${s}`),
 ];
+const COUNT_CLAIMS = [
+  { id: 'readme-root', file: 'README.md', re: /产品unit(\d+)\/e2e(\d+)与H1\/H2自证各4项分账/, unit: 1, e2e: 2 },
+  { id: 'tools-readme-family', file: 'tools/README.md', re: /独立CLI游戏unit(\d+)、e2e(\d+)非空族/, unit: 1, e2e: 2 },
+  { id: 'tools-readme-expect', file: 'tools/README.md', re: /期望unit(\d+)\/e2e(\d+)通过/, unit: 1, e2e: 2 },
+  { id: 'cli-readme-family', file: 'tools/cli/README.md', re: /登记unit(\d+)、e2e(\d+)个独立名称/, unit: 1, e2e: 2 },
+  { id: 'cli-readme-no-shrink', file: 'tools/cli/README.md', re: /不缩正式e2e(\d+)项/, e2e: 1 },
+  { id: 'test-contract', file: 'docs/plans/hof-cli/test-contract.md', re: /产品unit(\d+)、e2e(\d+)，计划\/名字\/实际文件非空对账/, unit: 1, e2e: 2 },
+  { id: 'event-review', file: 'docs/plans/hof-cli/event-review.md', re: /当前unit(\d+)、e2e(\d+)，共(\d+)个产品用例/, unit: 1, e2e: 2, total: 3 },
+  { id: 'story-readme', file: 'stories/hof-cli/README.md', re: /unit(\d+)个具名用例、正常玩家e2e(\d+)个/, unit: 1, e2e: 2 },
+  { id: 'prototype-review', file: 'docs/plans/hof-cli/prototype-review.md', re: /(\d+)\/(\d+)是当前产品用例/, unit: 1, e2e: 2 },
+];
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const table = s => [...s.matchAll(/^\|\s*`(tools\/cli\/[^`]+\.mjs)`\s*\|/gm)].map(m => m[1]).sort();
 export function blocks(wf) {
@@ -43,6 +54,16 @@ export function blocks(wf) {
     i--; result.push(block.join('\n').trimEnd());
   }
   return result;
+}
+function checkCounts(d, need) {
+  const unitN = d.registry.unit.cases.length, e2eN = d.registry.e2e.cases.length;
+  for (const c of COUNT_CLAIMS) {
+    const m = d.countSources[c.file].match(c.re);
+    need(m, `count-${c.id}-missing`);
+    if (c.unit !== undefined) need(Number(m[c.unit]) === unitN && Number(m[c.e2e]) === e2eN, `count-${c.id}: ${m[c.unit]}/${m[c.e2e]} != registry ${unitN}/${e2eN}`);
+    else if (c.e2e !== undefined) need(Number(m[c.e2e]) === e2eN, `count-${c.id}: e2e ${m[c.e2e]} != registry ${e2eN}`);
+    if (c.total !== undefined) need(Number(m[c.total]) === unitN + e2eN, `count-${c.id}-total: ${m[c.total]} != registry ${unitN + e2eN}`);
+  }
 }
 function check(d) {
   const need = (ok, code) => { if (!ok) throw new Error(`HOF_CI ${code}`); };
@@ -74,6 +95,7 @@ function check(d) {
     const k = r.knife;
     need(k.name === (suite === 'unit' ? 'H1' : 'H2') && k.path === 'stories/hof-cli/game.mjs' && r.cases.includes(k.target) && k.anchor !== k.replacement && d.game.split(k.anchor).length === 2, `knife-${suite}`);
   }
+  checkCounts(d, need);
   need(d.legacy.every(x => x.current === x.base), 'legacy-isolation');
 }
 function load() {
@@ -89,7 +111,9 @@ function load() {
     const files = fs.readdirSync(path.join(ROOT, `tests/hof-cli/${suite}`)).filter(x => x.endsWith('.test.mjs')).sort().map(x => `tests/hof-cli/${suite}/${x}`);
     actual[suite] = { files, names: files.flatMap(f => [...read(f).matchAll(/\btest\('([^']+)'/g)].map(m => m[1])) };
   }
-  return { workflow: read(WF), contract: read('docs/plans/hof-cli/test-contract.md'), toolsReadme: read('tools/README.md'), cliReadme: read('tools/cli/README.md'), tools: fs.readdirSync(path.join(ROOT, 'tools/cli')).filter(x => x.endsWith('.mjs')).sort().map(x => `tools/cli/${x}`), registry: JSON.parse(read('tests/hof-cli/registry.json')), actual, game: read('stories/hof-cli/game.mjs'), e2eSource: read('tests/hof-cli/e2e/player.test.mjs'), legacy: LEGACY.map(p => ({ path: p, base: git('show', `${base}:${p}`), current: read(p) })), base };
+  const countSources = {};
+  for (const file of [...new Set(COUNT_CLAIMS.map(c => c.file))]) countSources[file] = read(file);
+  return { workflow: read(WF), contract: read('docs/plans/hof-cli/test-contract.md'), toolsReadme: read('tools/README.md'), cliReadme: read('tools/cli/README.md'), tools: fs.readdirSync(path.join(ROOT, 'tools/cli')).filter(x => x.endsWith('.mjs')).sort().map(x => `tools/cli/${x}`), registry: JSON.parse(read('tests/hof-cli/registry.json')), actual, game: read('stories/hof-cli/game.mjs'), e2eSource: read('tests/hof-cli/e2e/player.test.mjs'), legacy: LEGACY.map(p => ({ path: p, base: git('show', `${base}:${p}`), current: read(p) })), countSources, base };
 }
 function controls(data) {
   const paired = (d, change) => { const prior = d.workflow; d.workflow = change(prior); d.contract = d.contract.replace(prior, d.workflow); };
@@ -106,12 +130,14 @@ function controls(data) {
     ['empty-e2e-registry', d => { d.registry.e2e.cases = []; }],
     ['omit-README-tool', d => { d.toolsReadme = d.toolsReadme.split('\n').filter(x => !x.startsWith('| `tools/cli/test.mjs`')).join('\n'); }],
     ['legacy-pin-change', d => { d.legacy[0].current += ' '; }],
+    ['stale-count-value', d => { d.countSources['README.md'] = d.countSources['README.md'].replace('unit95/e2e22', 'unit95/e2e21'); }, 'HOF_CI count-readme-root'],
+    ['missing-count-claim', d => { d.countSources['tools/cli/README.md'] = d.countSources['tools/cli/README.md'].replace('登记unit95、e2e22个独立名称', '登记信息见 registry'); }, 'HOF_CI count-cli-readme-family-missing'],
   ];
-  for (const [name, mutate] of cases) {
-    const d = structuredClone(data); mutate(d); let rejected = false;
-    try { check(d); } catch (e) { rejected = e.message.startsWith('HOF_CI '); }
-    if (!rejected) throw new Error(`HOF_CI_SELFTEST ${name} false green`);
-    console.log(`HOF_CI_SELFTEST ${name}: rejected`);
+  for (const [name, mutate, expect] of cases) {
+    const d = structuredClone(data); mutate(d); let rejected = false, message = '';
+    try { check(d); } catch (e) { rejected = e.message.startsWith('HOF_CI '); message = e.message; }
+    if (!rejected || (expect && !message.includes(expect))) throw new Error(`HOF_CI_SELFTEST ${name} false green${expect ? ` (expected ${expect}, got ${message})` : ''}`);
+    console.log(`HOF_CI_SELFTEST ${name}: rejected${expect ? ` (${message})` : ''}`);
   }
   console.log(`HOF_CI_SELFTEST ${cases.length}/${cases.length}; memory controls only`);
 }
