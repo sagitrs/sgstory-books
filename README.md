@@ -6,7 +6,7 @@
 
 ## 原创CLI原型：灰港送灯
 
-[启动、正常胜局/下一局与测试](stories/hof-cli/README.md)使用独立完整引擎pin、Node22/Linux，标准库即可跑。含真实分支、资源事件、商店/装备/消耗品、整场战斗、精英、胜败/合法撤退、下一局解锁及手动跨进程存读；不改变Babel网页pin或发布路径。产品unit42/e2e8与H1/H2自证各4项分账，未覆盖/限制见游戏README；[审查地图](docs/plans/hof-cli/prototype-review.md)给出需求—实现—测试对应。CLI工具仍在根内的`tools/cli/`，由它的门实际对账，不声称旧平面scanner已递归覆盖。
+[启动、正常胜局/下一局与测试](stories/hof-cli/README.md)使用独立完整引擎pin、Node22/Linux，标准库即可跑。含真实分支、资源事件、商店/装备/消耗品、整场战斗、精英、胜败/合法撤退、下一局解锁及手动跨进程存读；不改变Babel网页pin或发布路径。产品unit95/e2e22与H1/H2自证各4项分账（#570 原验收 42+8，历史基线），未覆盖/限制见游戏README；[审查地图](docs/plans/hof-cli/prototype-review.md)给出需求—实现—测试对应。CLI工具仍在根内的`tools/cli/`，由它的门实际对账，不声称旧平面scanner已递归覆盖。
 
 ## 游戏测试指导
 

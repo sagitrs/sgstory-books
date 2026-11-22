@@ -10,8 +10,8 @@
 
 | 路径 | 一句话用途 |
 |---|---|
-| `tools/cli/check-ci.mjs` | 独立CLI静态门：许可workflow/嵌套工具/登记/网页隔离；配对内存反控 |
-| `tools/cli/test.mjs` | 独立CLI游戏unit42、e2e8非空族及H1/H2真实副本刀；Linux计数/只读/清理/超时 |
+| `tools/cli/check-ci.mjs` | 独立CLI静态门：许可workflow/嵌套工具/登记/网页隔离/计数声明对registry核账；配对内存反控 |
+| `tools/cli/test.mjs` | 独立CLI游戏unit95、e2e22非空族及H1/H2真实副本刀（#570 原验收 42+8，历史）；Linux计数/只读/清理/超时 |
 | `tools/cli/player.mjs` | 正常CLI玩家共用库，由e2e实际import，不单独启动；只stdin/stdout，未改档/中途换RNG |
 | `tools/check-refs.mjs` | 引用核，逐引用核对清单与实存 |
 | `tools/check-premerge.mjs` | 合前检查（①基座同尖 ②回退行 0 ③patch-id 证纯 rebase；★**三面一律对「声明基」判**〔`--base` ⇒ `GITHUB_BASE_REF` ⇒ 缺省 `origin/main`，且**输出明写判基**〕；★`--base` **空值／缺值** ⇒ **具名装置错 `rc=2`**（✗ 静默回退；★判基明账须**如实**）；`--selftest` 自检 **22 断言**） |
@@ -74,7 +74,7 @@ node tools/cli/test.mjs --engine "$ENGINE" --suite unit --selftest
 node tools/cli/test.mjs --engine "$ENGINE" --suite e2e --selftest
 ```
 
-期望unit42/e2e8通过，产品失败/环境作废/未覆盖均0；H1/H2各基线0、目标具名1、复原0、字节同的4/4另计，静态反控另计。player是e2e真正使用的库，不伪装成CI直跑工具。设立理由：CLI产品使用独立pin与真实终端，不借网页测试通过冒验收；旧平面scanner不递归嵌套目录，新门实际对账`tools/cli/*.mjs`与本表/嵌套表/当前workflow，缺/空/未登记/超时具名rc2。两树只读、私有临时目录与自证说明见嵌套索引。旧工具/网页判据保持分账。
+期望unit95/e2e22通过（#570 原验收 42+8，历史），产品失败/环境作废/未覆盖均0；H1/H2各基线0、目标具名1、复原0、字节同的4/4另计，静态反控另计。player是e2e真正使用的库，不伪装成CI直跑工具。设立理由：CLI产品使用独立pin与真实终端，不借网页测试通过冒验收；旧平面scanner不递归嵌套目录，新门实际对账`tools/cli/*.mjs`与本表/嵌套表/当前workflow，缺/空/未登记/超时具名rc2。两树只读、私有临时目录与自证说明见嵌套索引。旧工具/网页判据保持分账。
 
 ## 退出码三分：`0`／`1`／`2` 各指什么（★读任何读数前先看这一节）
 
